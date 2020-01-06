@@ -6,9 +6,9 @@
 .zip
 .csv
 .xlsx
-fish data/edi.415.1
-fish data/edi.244.3
-fish data/edi.233.2
+/fish data/edi.415.1
+/fish data/edi.244.3
+/fish data/edi.233.2
 
 # Session Data files
 .RData

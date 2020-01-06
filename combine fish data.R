@@ -3,6 +3,7 @@
 library(tidyverse)
 library(readxl)
 library(lubridate)
+library(readr)
 
 #datasets to include:
 #FMWT
@@ -16,6 +17,9 @@ library(lubridate)
 #data origionally from: ftp://ftp.wildlife.ca.gov/TownetFallMidwaterTrawl/FMWT%20Data/FMWT%201967-2018%20Catch%20Matrix_updated.zip
 
 #On 1/6, it was just data through 2018. 2019 data should be ready by 1/13
+
+#at location infomrmatino for stations that don't have any
+stations = read.csv("AllIEP.csv")
 
 
 FMWT <- read_excel("fish data/FMWT 1967-2018 Catch Matrix_updated.xlsx", 
@@ -43,9 +47,10 @@ FMWT2 = pivot_longer(FMWT, cols = `Aequorea spp.`:`Yellowfin Goby`, names_to = "
 #also all data before 2000
 
 FMWT3 = filter(FMWT2, Count != 0, !is.na(Count), Year >1999, 
-               StationCode %in% c(795, 796, 797, 719, 723, 721, 705:717))
-FMWT3$Survey = "FMWT"
-FMWT3$MethodCode = "FMWT"
+               StationCode %in% c(795, 796, 797, 719, 723, 721, 705:717)) %>%
+  mutate(Survey = "FMWT", MethodCode = "FMWT") %>%
+left_join(FMWT3, stations, by = c("Survey", "StationCode"))
+
 
 #Get rid of the jellyfish
 #FMWT3 = filter(FMWT3, CommonName %in% c("Jellyfish (unid)", "Maeotias marginata"))
@@ -101,19 +106,52 @@ TownetData <- read_excel("fish data/TownetData_1959-2019.xlsx",
                          col_types = c("numeric","numeric", "date","text",
                                        rep("numeric", 96)),
                          sheet = "CatchPerTow")
+
+#change the names to match Yolo
 oldnames = names(TownetData)
 names(TownetData) = c("Year", "Survey", "SampleDate",
                       "StationCode", "Tow", "Index",
                       "VolumeSampled", "Secchi", "WaterTemperature", "Conductivity",
                       "Depth", oldnames[12:100])
+
+#pivot from wide to long
 Townet = pivot_longer(TownetData, cols = `Age-0 Striped Bass`:`Yellowfin Goby`, 
                       names_to = "Townet", values_to = "Count")
 
-Townet = filter(Townet, Count != 0, Year > 1999, StationCode %in% c(706:800))
-Townet$Survey = "Townet"
-Townet$MethodCode = "Townet"
-fish = unique(Townet$Townet)
-write.csv(fish, "fish.csv")
+#just the positive catches, only since 2000, and only stations near Yolo
+Townet = filter(Townet, Count != 0, Year > 1999, 
+                StationCode %in% c(706:800)) %>%
+  #Add a varible for the survey name and the method code
+  mutate(Survey = "Townet", MethodCode = "Townet") %>%
+  left_join(stations, by = c("Survey", "StationCode"))
+
+#now DJFMP (just the beach seines, since none of the tows are anywhere near)
+DJFMP_BS <- read_csv("fish data/edi.244.3/1976-2018_DJFMP_beach_seine_fish_and_water_quality_data.csv", 
+                     col_types = cols(Conductivity = col_number(), 
+                                      DO = col_number(), EndMeter = col_skip(), 
+                                      SampleDate = col_date(format = "%Y-%m-%d"), 
+                                      SampleTime = col_time(format = "%H:%M:%S"), 
+                                      Secchi = col_number(), SeineDepth = col_number(), 
+                                      StartMeter = col_skip(), TotalMeter = col_skip(), 
+                                      TowDirectionCode = col_number(), 
+                                      TowNumber = col_number(), Turbidity = col_number(), 
+                                      Volume = col_number()))
+
+#Just the last twenty year, only region 2 (liberty Island and nearby)
+DJFMP = filter(DJFMP_BS, SampleDate > "1999-12-31", RegionCode == 2)
+
+#update the names
+names(DJFMP) = c("Location", "RegionCode", "StationCode",
+                 "SampleDate",  "SampleTime","MethodCode",
+                 "GearConditionCode", "Weather", "DO",
+                 "WaterTemperature","Turbidity","Secchi",
+                 "Conductivity", "Tow","TowDirectionCode",
+                 "Duration", "Debris", "Disturbance", "AlternateSite",
+                 "SeineLength", "SeineWidth", "Depth", "VolumeSampled",
+                 "OrganismCode", "DJFMP", "MarkCode", "StageCode",
+                 "Maturation", "FL", "Race", "Count")
+
+
 
 
 #upload fish common names crosswalk
@@ -126,7 +164,7 @@ Townet2 = mutate(Townet, Latitude = NA, Longitude = NA) %>%
          CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
 
 FMWT3 = merge(FMWT3, unique(fishnamescrosswalk[,c(1,3)]))
-FMWT4 = mutate(FMWT3, Tow = 1, Latitude = NA, Longitude = NA) %>%
+FMWT4 = mutate(FMWT3, Tow = 1) %>%
   select(SampleDate, Survey, StationCode, MethodCode, Count,
          Secchi, Conductivity, WaterTemperature, 
          CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
@@ -143,4 +181,18 @@ EDSM3 = mutate(EDSM2, Year = year(SampleDate), Survey = "EDSM") %>%
                Secchi, Conductivity, WaterTemperature, 
                CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
 
-Allfishdata = rbind(Yolo2, EDSM3, Townet2, FMWT4)
+DJFMP2 = merge(DJFMP, unique(fishnamescrosswalk[,c(1,4)]))
+DJFMP3 = mutate(DJFMP2, Year = year(SampleDate), 
+                Survey = "DJFMP") %>%
+  left_join(stations, by = c("Survey", "StationCode")) %>%
+  select(SampleDate, Survey, Year, StationCode, MethodCode, Count,
+         Secchi, Conductivity, WaterTemperature, 
+         CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
+
+Allfishdata = rbind(Yolo2, EDSM3, Townet2, FMWT4, DJFMP3)
+
+#at location infomrmatino for stations that don't have any
+stations = read.csv("AllIEP.csv")
+Allfishdata2 = left_join(Allfishdata, stations, by = c("StationCode", "Survey"))
+  
+write.csv(Allfishdata, "Allfishdata.csv")
