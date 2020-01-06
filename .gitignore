@@ -2,6 +2,12 @@
 .Rhistory
 .Rapp.history
 
+#large data sets
+.zip
+/edi.415.1
+/edi.244.3
+/edi.233.2
+
 # Session Data files
 .RData
 
