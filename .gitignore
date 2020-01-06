@@ -4,9 +4,11 @@
 
 #large data sets
 .zip
-/edi.415.1
-/edi.244.3
-/edi.233.2
+.csv
+.xlsx
+fish data/edi.415.1
+fish data/edi.244.3
+fish data/edi.233.2
 
 # Session Data files
 .RData
