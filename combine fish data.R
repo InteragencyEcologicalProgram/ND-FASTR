@@ -14,15 +14,14 @@ library(readr)
 #DJFMP
 
 #First FMWT
-#data origionally from: ftp://ftp.wildlife.ca.gov/TownetFallMidwaterTrawl/FMWT%20Data/FMWT%201967-2018%20Catch%20Matrix_updated.zip
+#data origionally from: ftp://ftp.wildlife.ca.gov/TownetFallMidwaterTrawl/FMWT%20Data/FMWT%201967-2019%20Catch%20Matrix_updated.zip
 
-#On 1/6, it was just data through 2018. 2019 data should be ready by 1/13
 
 #at location infomrmatino for stations that don't have any
 stations = read.csv("AllIEP.csv")
 
 
-FMWT <- read_excel("fish data/FMWT 1967-2018 Catch Matrix_updated.xlsx", 
+FMWT <- read_excel("fish data/FMWT 1967-2019 Catch Matrix_updated.xlsx", 
                         sheet = "FlatFile", col_types = c("numeric", 
                                "date", "numeric", "text", "date", rep("numeric", 123)))
 
@@ -48,8 +47,8 @@ FMWT2 = pivot_longer(FMWT, cols = `Aequorea spp.`:`Yellowfin Goby`, names_to = "
 
 FMWT3 = filter(FMWT2, Count != 0, !is.na(Count), Year >1999, 
                StationCode %in% c(795, 796, 797, 719, 723, 721, 705:717)) %>%
-  mutate(Survey = "FMWT", MethodCode = "FMWT") %>%
-left_join(FMWT3, stations, by = c("Survey", "StationCode"))
+ mutate( Survey = "FMWT", MethodCode = "FMWT") %>%
+ left_join( stations, by = c("Survey", "StationCode"))
 
 
 #Get rid of the jellyfish
@@ -191,8 +190,9 @@ DJFMP3 = mutate(DJFMP2, Year = year(SampleDate),
 
 Allfishdata = rbind(Yolo2, EDSM3, Townet2, FMWT4, DJFMP3)
 
-#at location infomrmatino for stations that don't have any
-stations = read.csv("AllIEP.csv")
-Allfishdata2 = left_join(Allfishdata, stations, by = c("StationCode", "Survey"))
-  
-write.csv(Allfishdata, "Allfishdata.csv")
+#total catch by species
+AllfishdataSum = group_by(Allfishdata, SampleDate, Survey, StationCode, MethodCode, Secchi, Conductivity,
+                          WaterTemperature, CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude) %>%
+  summarize(totalCount = sum(Count))
+
+write.csv(AllfishdataSum, "Allfishdata.csv", row.names = F)
