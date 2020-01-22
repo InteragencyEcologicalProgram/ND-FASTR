@@ -23,7 +23,7 @@ stations = read.csv("AllIEP.csv")
 
 FMWT <- read_excel("fish data/FMWT 1967-2019 Catch Matrix_updated.xlsx", 
                         sheet = "FlatFile", col_types = c("numeric", 
-                               "date", "numeric", "text", "date", rep("numeric", 123)))
+                               "date", "numeric", "text", "date", rep("numeric", 127)))
 
 #need to make column headers match Yolo
 #SampleDate	SampleTime	StationCode	MethodCode	GearID	CommonName	GeneticallyConfirmed	
