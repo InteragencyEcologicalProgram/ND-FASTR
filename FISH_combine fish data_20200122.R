@@ -13,17 +13,17 @@ library(readr)
 #EDSM
 #DJFMP
 
+#add location infomrmation for stations that don't have any
+stations = read.csv("FISH_MAN_AllIEPstations_20200122.csv")
+
 #First FMWT
 #data origionally from: ftp://ftp.wildlife.ca.gov/TownetFallMidwaterTrawl/FMWT%20Data/FMWT%201967-2019%20Catch%20Matrix_updated.zip
 
 
-#at location infomrmatino for stations that don't have any
-stations = read.csv("AllIEP.csv")
-
-
 FMWT <- read_excel("fish data/FMWT 1967-2019 Catch Matrix_updated.xlsx", 
                         sheet = "FlatFile", col_types = c("numeric", 
-                               "date", "numeric", "text", "date", rep("numeric", 127)))
+                               "date", "numeric", "text", "date", 
+                               rep("numeric", 127)))
 
 #need to make column headers match Yolo
 #SampleDate	SampleTime	StationCode	MethodCode	GearID	CommonName	GeneticallyConfirmed	
@@ -32,27 +32,37 @@ FMWT <- read_excel("fish data/FMWT 1967-2019 Catch Matrix_updated.xlsx",
 #WeatherCode	WaterTemperature	Secchi	Conductivity	SpCnd	DO	pH	
 #Turbidity	SubstrateCode	Tide	VolumeSeined	Latitude	Longitude
 
+#record the previous names so we don't have to write out all the fish names again
 oldnames = names(FMWT)
+
+#re-assign new names
 names(FMWT) = c("Year", "SampleDate", "Survey", "StationCode", 
                 "SampleTime", "Index", "WaterTemperature", 
                 "Conductivity", "BottomConductivity", "Turbidity", "Secchi", "Depth",
                 "VolumeSampled", "Tide", "Tow Direction", "WeatherCode", "Microcystis", "Wave",
-                oldnames[19:128]) 
+                oldnames[19:132]) 
 
-#Now flip it from wide to long
-FMWT2 = pivot_longer(FMWT, cols = `Aequorea spp.`:`Yellowfin Goby`, names_to = "FMWT", values_to = "Count")
+#Now flip it from wide to long using "pivot_longer" (from tidyr)
+FMWT2 = pivot_longer(FMWT, 
+                     cols = `Aequorea spp (Lens Jellyfish)`:`Yellowfin Goby`, #These are the columsn we want to pivot
+                     names_to = "FMWT", values_to = "Count") #tell it what we want to name the new columns
+#any column that isn't specified won't be pivoted. 
+
+
 
 #Get rid of zeros, NAs, and the stations we don't care about. 
-#also all data before 2000
+#also all data before 2000. We use the function "filter" from dplyr
 
 FMWT3 = filter(FMWT2, Count != 0, !is.na(Count), Year >1999, 
                StationCode %in% c(795, 796, 797, 719, 723, 721, 705:717)) %>%
+  
+  #Now make a new column for "Survey" and "Method"
  mutate( Survey = "FMWT", MethodCode = "FMWT") %>%
+  
+  #join it to the station locations
  left_join( stations, by = c("Survey", "StationCode"))
 
 
-#Get rid of the jellyfish
-#FMWT3 = filter(FMWT3, CommonName %in% c("Jellyfish (unid)", "Maeotias marginata"))
 
 
 #Now for EDSM
@@ -98,6 +108,8 @@ YBFMP <- read_csv("fish data/edi.233.2/YBFMP_Fish_Catch_and_Water_Quality.csv",
 
 #Filter it to post 2000
 YBFMP = filter(YBFMP, SampleDate > "01/01/2000")
+
+#rename a few of hte columns to make it easier to join with the other data sets
 YBFMP = rename(YBFMP, VolumeSampled = VolumeSeined, Yolo = CommonName)
 
 #Now townet
@@ -154,32 +166,48 @@ names(DJFMP) = c("Location", "RegionCode", "StationCode",
 
 
 #upload fish common names crosswalk
-fishnamescrosswalk <- read_excel("fishnamescrosswalk.xlsx")
+fishnamescrosswalk <- read_excel("FISH_MAN_namescrosswalk_20200122.xlsx")
 
+#Use "merge" to add the standardized common names to the origional data set
 Townet = merge(Townet, unique(fishnamescrosswalk[,c(1,5)]))
+
+#Now make a new column for latitude and logitude
 Townet2 = mutate(Townet, Latitude = NA, Longitude = NA) %>%
+  
+  #Subset just the columns we care about
   select(SampleDate, Survey, StationCode, MethodCode, Count,
          Secchi, Conductivity, WaterTemperature, 
          CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
 
+#add the standardized names to FMWT
 FMWT3 = merge(FMWT3, unique(fishnamescrosswalk[,c(1,3)]))
+
+#add a new column and select the columns that are standard between data sets. 
 FMWT4 = mutate(FMWT3, Tow = 1) %>%
   select(SampleDate, Survey, StationCode, MethodCode, Count,
          Secchi, Conductivity, WaterTemperature, 
          CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
 
+#add standardized names to Yolo
 Yolo = merge(YBFMP, unique(fishnamescrosswalk[,c(1,2)]))
-Yolo2 = mutate(Yolo, Year = year(SampleDate), Tow = 1, Depth = NA, Survey = "Yolo") %>%
+
+#add some new columns so we can merge them and select the standard columns.
+Yolo2 = mutate(Yolo, Year = year(SampleDate), 
+               Tow = 1, 
+               Depth = NA, 
+               Survey = "Yolo") %>%
   select(SampleDate, Survey, StationCode, MethodCode, Count,
          Secchi, Conductivity, WaterTemperature, 
          CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
 
+#do the same thing for EDSM
 EDSM2 = merge(EDSM, unique(fishnamescrosswalk[,c(1,4)]))
 EDSM3 = mutate(EDSM2, Year = year(SampleDate), Survey = "EDSM") %>%
   select(SampleDate, Survey, Year, StationCode, MethodCode, Count,
                Secchi, Conductivity, WaterTemperature, 
                CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
 
+#now do it for DJFMP
 DJFMP2 = merge(DJFMP, unique(fishnamescrosswalk[,c(1,4)]))
 DJFMP3 = mutate(DJFMP2, Year = year(SampleDate), 
                 Survey = "DJFMP") %>%
@@ -188,11 +216,17 @@ DJFMP3 = mutate(DJFMP2, Year = year(SampleDate),
          Secchi, Conductivity, WaterTemperature, 
          CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
 
+#Use "rbind" to put all the data sets together.
 Allfishdata = rbind(Yolo2, EDSM3, Townet2, FMWT4, DJFMP3)
 
-#total catch by species
-AllfishdataSum = group_by(Allfishdata, SampleDate, Survey, StationCode, MethodCode, Secchi, Conductivity,
-                          WaterTemperature, CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude) %>%
+#Some of the data sets also had fish length information, so there are multiple rows
+#for each species. We can use "group_by" and "summarize" to calculate the total catch
+#for each sampling even.
+AllfishdataSum = group_by(Allfishdata, SampleDate, Survey, StationCode, 
+                          MethodCode, Secchi, Conductivity,
+                          WaterTemperature, CommonName, Year, Tow, 
+                          Depth, VolumeSampled, Latitude, Longitude) %>%
   summarize(totalCount = sum(Count))
 
-write.csv(AllfishdataSum, "Allfishdata.csv", row.names = F)
+#Export the final, integrated data set.
+write.csv(AllfishdataSum, "FISH_MAN_allIEPsurveys_20200123.csv", row.names = F)
