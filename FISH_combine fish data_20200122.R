@@ -26,18 +26,18 @@ FMWT <- read_excel("fish data/FMWT 1967-2019 Catch Matrix_updated.xlsx",
                                rep("numeric", 127)))
 
 #need to make column headers match Yolo
-#SampleDate	SampleTime	StationCode	MethodCode	GearID	CommonName	GeneticallyConfirmed	
-#GeneticID	Field_ID_CommonName	ForkLength	Count	FishSex	Race	
-#MarkCode	CWTSample	FishTagID	StageCode	Dead	GearConditionCode	
-#WeatherCode	WaterTemperature	Secchi	Conductivity	SpCnd	DO	pH	
-#Turbidity	SubstrateCode	Tide	VolumeSeined	Latitude	Longitude
+#           "SampleID"      "Date"          "Year"          "Month"         "Time"          "DateTime"     
+#"StationCode"   "MethodCode"    "GearID"        "ConditionCode" "VegCode"       "OrganismCode"  "CommonName"   
+#"FishTagID"     "GeneticID"     "ForkLength"    "Count"         "Race"          "StageCode"     "WeatherCode"  
+# "WaterTemp"     "Secchi"        "Conductivity"  "SpCnd"         "DO"            "pH"            "Turbidity"    
+#"SubstrateCode" "Tide"          "SeineVol"      "TrapStatus"   
 
 #record the previous names so we don't have to write out all the fish names again
 oldnames = names(FMWT)
 
 #re-assign new names
-names(FMWT) = c("Year", "SampleDate", "Survey", "StationCode", 
-                "SampleTime", "Index", "WaterTemperature", 
+names(FMWT) = c("Year", "Date", "Survey", "StationCode", 
+                "Time", "Index", "WaterTemp", 
                 "Conductivity", "BottomConductivity", "Turbidity", "Secchi", "Depth",
                 "VolumeSampled", "Tide", "Tow Direction", "WeatherCode", "Microcystis", "Wave",
                 oldnames[19:132]) 
@@ -82,10 +82,10 @@ EDSM = EDSM[,c(1,2,3,4,6,7,8,9,13,14,17, 19,20,21:30,32,33)]
 #fix the names
 oldnames = names(EDSM)
 names(EDSM) = c("Region", "SubRegion", "Stratum", "StationCode", 
-                "SampleDate", 
-                "SampleTime", "Duration", "Tow","Latitude", "Longitude",
+                "Date", 
+                "Time", "Duration", "Tow","Latitude", "Longitude",
                 "MethodCode","Tow Direction", "Depth", "Tide", "WeatherCode",
-                "WaterTemperature", "DO",
+                "WaterTemp", "DO",
                 "Conductivity", "Turbidity", "Secchi", 
                 "VolumeSampled", "Debris", "DJFMP", "ForkLength", "Count")
 
@@ -95,22 +95,24 @@ names(EDSM) = c("Region", "SubRegion", "Stratum", "StationCode",
 EDSM$Survey = "EDSM"
 
 #Yolo bypass
-YBFMP <- read_csv("fish data/edi.233.2/YBFMP_Fish_Catch_and_Water_Quality.csv", 
-                  col_types = cols(Conductivity = col_number(), 
-                                   DO = col_number(), SampleDate = col_date(format = "%m/%d/%Y"), 
-                                   SampleTime = col_time(format = "%H:%M"),
-                                   FishTagID = col_character(),
-                                   GeneticID = col_character(),
-                                   Tide = col_character(),
-                                   FishSex = col_character(),
-                                   SpCnd = col_number(), Turbidity = col_number(), 
-                                   VolumeSeined = col_number(), pH = col_number()))
-
+YBFMP <- read_csv("fish data/FISH_RAW_YBFMP_WQ_Fish_2011_thru_2019_20200206.csv", 
+                                                           col_types = cols(Date = col_date(format = "%Y-%m-%d"), 
+                                                                            DateTime = col_datetime(format = "%Y-%m-%d %H:%M:%S"), 
+                                                                            FishTagID = col_character(), GeneticID = col_character(), 
+                                                                            SeineVol = col_number(), SpCnd = col_number(), 
+                                                                            SubstrateCode = col_character(), 
+                                                                            Tide = col_character(), Time = col_time(format = "%H:%M:%S"), 
+                                                                            Turbidity = col_double(), VegCode = col_character(), 
+                                                                            X1 = col_skip()))
 #Filter it to post 2000
-YBFMP = filter(YBFMP, SampleDate > "01/01/2000")
+YBFMP = filter(YBFMP, Date > "2000-01-01")
 
 #rename a few of hte columns to make it easier to join with the other data sets
-YBFMP = rename(YBFMP, VolumeSampled = VolumeSeined, Yolo = CommonName)
+YBFMP = rename(YBFMP, VolumeSampled = SeineVol, Yolo = CommonName)
+
+#attach latitude and longitude
+YBFMP2 = inner_join(YBFMP, stations, by = c("StationCode"))
+
 
 #Now townet
 TownetData <- read_excel("fish data/TownetData_1959-2019.xlsx",  
@@ -120,9 +122,9 @@ TownetData <- read_excel("fish data/TownetData_1959-2019.xlsx",
 
 #change the names to match Yolo
 oldnames = names(TownetData)
-names(TownetData) = c("Year", "Survey", "SampleDate",
+names(TownetData) = c("Year", "Survey", "Date",
                       "StationCode", "Tow", "Index",
-                      "VolumeSampled", "Secchi", "WaterTemperature", "Conductivity",
+                      "VolumeSampled", "Secchi", "WaterTemp", "Conductivity",
                       "Depth", oldnames[12:100])
 
 #pivot from wide to long
@@ -153,9 +155,9 @@ DJFMP = filter(DJFMP_BS, SampleDate > "1999-12-31", RegionCode == 2)
 
 #update the names
 names(DJFMP) = c("Location", "RegionCode", "StationCode",
-                 "SampleDate",  "SampleTime","MethodCode",
+                 "Date",  "Time","MethodCode",
                  "GearConditionCode", "Weather", "DO",
-                 "WaterTemperature","Turbidity","Secchi",
+                 "WaterTemp","Turbidity","Secchi",
                  "Conductivity", "Tow","TowDirectionCode",
                  "Duration", "Debris", "Disturbance", "AlternateSite",
                  "SeineLength", "SeineWidth", "Depth", "VolumeSampled",
@@ -175,8 +177,8 @@ Townet = merge(Townet, unique(fishnamescrosswalk[,c(1,5)]))
 Townet2 = mutate(Townet, Latitude = NA, Longitude = NA) %>%
   
   #Subset just the columns we care about
-  select(SampleDate, Survey, StationCode, MethodCode, Count,
-         Secchi, Conductivity, WaterTemperature, 
+  select(Date, Survey, StationCode, MethodCode, Count,
+         Secchi, Conductivity, WaterTemp, 
          CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
 
 #add the standardized names to FMWT
@@ -184,36 +186,36 @@ FMWT3 = merge(FMWT3, unique(fishnamescrosswalk[,c(1,3)]))
 
 #add a new column and select the columns that are standard between data sets. 
 FMWT4 = mutate(FMWT3, Tow = 1) %>%
-  select(SampleDate, Survey, StationCode, MethodCode, Count,
-         Secchi, Conductivity, WaterTemperature, 
+  select(Date, Survey, StationCode, MethodCode, Count,
+         Secchi, Conductivity, WaterTemp, 
          CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
 
 #add standardized names to Yolo
-Yolo = merge(YBFMP, unique(fishnamescrosswalk[,c(1,2)]))
+Yolo = merge(YBFMP2, unique(fishnamescrosswalk[,c(1,2)]))
 
 #add some new columns so we can merge them and select the standard columns.
-Yolo2 = mutate(Yolo, Year = year(SampleDate), 
+Yolo2 = mutate(Yolo, Year = year(Date), 
                Tow = 1, 
                Depth = NA, 
                Survey = "Yolo") %>%
-  select(SampleDate, Survey, StationCode, MethodCode, Count,
-         Secchi, Conductivity, WaterTemperature, 
+  select(Date, Survey, StationCode, MethodCode, Count,
+         Secchi, Conductivity, WaterTemp, 
          CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
 
 #do the same thing for EDSM
 EDSM2 = merge(EDSM, unique(fishnamescrosswalk[,c(1,4)]))
-EDSM3 = mutate(EDSM2, Year = year(SampleDate), Survey = "EDSM") %>%
-  select(SampleDate, Survey, Year, StationCode, MethodCode, Count,
-               Secchi, Conductivity, WaterTemperature, 
+EDSM3 = mutate(EDSM2, Year = year(Date), Survey = "EDSM") %>%
+  select(Date, Survey, Year, StationCode, MethodCode, Count,
+               Secchi, Conductivity, WaterTemp, 
                CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
 
 #now do it for DJFMP
 DJFMP2 = merge(DJFMP, unique(fishnamescrosswalk[,c(1,4)]))
-DJFMP3 = mutate(DJFMP2, Year = year(SampleDate), 
+DJFMP3 = mutate(DJFMP2, Year = year(Date), 
                 Survey = "DJFMP") %>%
   left_join(stations, by = c("Survey", "StationCode")) %>%
-  select(SampleDate, Survey, Year, StationCode, MethodCode, Count,
-         Secchi, Conductivity, WaterTemperature, 
+  select(Date, Survey, Year, StationCode, MethodCode, Count,
+         Secchi, Conductivity, WaterTemp, 
          CommonName, Year, Tow, Depth, VolumeSampled, Latitude, Longitude)
 
 #Use "rbind" to put all the data sets together.
@@ -222,11 +224,11 @@ Allfishdata = rbind(Yolo2, EDSM3, Townet2, FMWT4, DJFMP3)
 #Some of the data sets also had fish length information, so there are multiple rows
 #for each species. We can use "group_by" and "summarize" to calculate the total catch
 #for each sampling even.
-AllfishdataSum = group_by(Allfishdata, SampleDate, Survey, StationCode, 
+AllfishdataSum = group_by(Allfishdata, Date, Survey, StationCode, 
                           MethodCode, Secchi, Conductivity,
-                          WaterTemperature, CommonName, Year, Tow, 
+                          WaterTemp, CommonName, Year, Tow, 
                           Depth, VolumeSampled, Latitude, Longitude) %>%
   summarize(totalCount = sum(Count))
 
 #Export the final, integrated data set.
-write.csv(AllfishdataSum, "FISH_MAN_allIEPsurveys_20200123.csv", row.names = F)
+write.csv(AllfishdataSum, "FISH_MAN_allIEPsurveys_20200220.csv", row.names = F)
