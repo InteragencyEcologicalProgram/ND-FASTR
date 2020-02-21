@@ -14,7 +14,7 @@ library(readr)
 #DJFMP
 
 #add location infomrmation for stations that don't have any
-stations = read.csv("FISH_MAN_AllIEPstations_20200122.csv")
+stations = read.csv("FISH_MAN_AllIEPstations_20200220.csv", stringsAsFactors = F)
 
 #First FMWT
 #data origionally from: ftp://ftp.wildlife.ca.gov/TownetFallMidwaterTrawl/FMWT%20Data/FMWT%201967-2019%20Catch%20Matrix_updated.zip
@@ -112,7 +112,6 @@ YBFMP = rename(YBFMP, VolumeSampled = SeineVol, Yolo = CommonName)
 
 #attach latitude and longitude
 YBFMP2 = inner_join(YBFMP, stations, by = c("StationCode"))
-
 
 #Now townet
 TownetData <- read_excel("fish data/TownetData_1959-2019.xlsx",  
@@ -231,4 +230,4 @@ AllfishdataSum = group_by(Allfishdata, Date, Survey, StationCode,
   summarize(totalCount = sum(Count))
 
 #Export the final, integrated data set.
-write.csv(AllfishdataSum, "FISH_MAN_allIEPsurveys_20200220.csv", row.names = F)
+write.csv(AllfishdataSum, "FISH_MAN_allIEPsurveys_20200221.csv", row.names = F)
