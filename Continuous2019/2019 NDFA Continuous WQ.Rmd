@@ -1,0 +1,192 @@
+---
+title: "2019 NDFA results"
+author: "B. Davis"
+date: "2/25/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+Continuous Water Quality
+Combine all 10 datasets from DWR/NCRO and USGS. There was some prep of excel files, DWR from Amanda, and USGS edited.
+
+```{r setup, include=FALSE}
+#setwd("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/Continuous Water Quality-NCRO")
+
+#Sites in order from Northern-most to Southern (RMB > RVB)
+RMB <- read.csv("Continuous2019/NDFA 2019 continuous_RMB.csv")
+RCS <- read.csv("Continuous2019/NDFA 2019 continuous_RCS.csv")
+RD22 <- read.csv("Continuous2019/NDFA 2019 continuous_RD22.csv")
+I80 <- read.csv("Continuous2019/NDFA 2019 continuous_I80.csv")
+LIS <- read.csv("Continuous2019/NDFA 2019 continuous_LIS.csv")
+STTD <- read.csv("Continuous2019/NDFA 2019 continuous_STTD.csv")
+TOE <- read.csv("Continuous2019/NDFA 2019 continuous_TOE.csv")
+LIB <- read.csv("Continuous2019/NDFA 2019 continuous_LIB.csv")
+RYI <- read.csv("Continuous2019/NDFA 2019 continuous_RYI.csv")
+RVB <- read.csv("Continuous2019/NDFA 2019 continuous_RVB.csv")
+
+```
+
+Add station details
+
+```{r cars}
+#Station adjustments; estimate Chl concentration from RFU *4. Then remove and keep only Chl - concentration for USGS and EMP stations to match the DWR stations
+LIB$Chl=LIB$Chl.RFU*4
+
+LIB2<- LIB[,c(1,4,5,6,7,8,9)]
+TOE2<- TOE[,c(1,3,4,5,6,7,10)]
+RYI2<- RYI[,c(1,3,4,5,6,7,14)]
+RVB2<- RVB[,c(1,2,4,5,6,7,8,9)]
+
+#add a few addition coloumns with information to prep data files before merge
+RMB$Station="RMB"
+RMB$Region="Colusa Drain/Ridge Cut Slough"
+
+RCS$Station="RCS"
+RCS$Region="Colusa Drain/Ridge Cut Slough"
+
+RD22$Station="RD22"
+RD22$Region="Central Yolo Bypass"
+
+I80$Station="I80"
+I80$Region="Central Yolo Bypass"
+
+LIS$Station="LIS"
+LIS$Region="Lower Yolo Bypass"
+
+STTD$Station="STTD"
+STTD$Region="Lower Yolo Bypass"
+
+TOE2$Station="TOE"
+TOE2$Region="Cache Slough Complex"
+
+LIB2$Station="LIB"
+LIB2$Region="Cache Slough Complex"
+
+RYI2$Station="RYI"
+RYI2$Region="Cache Slough Complex"
+
+RVB2$Region="Lower Sac River"
+
+#bind all 10 datasets together
+CWQ=rbind(RMB,RCS,RD22,I80,LIS,STTD,TOE2,LIB2,RYI2, RVB2)
+head(CWQ)
+#set N to S levels
+CWQ$Station<-factor(CWQ$Station, levels=c("RMB","RCS","RD22","I80","LIS","STTD","TOE","LIB","RYI", "RVB"))
+
+library(dplyr)
+library(rlang)
+library(scales)
+library(ggrepel)
+
+#reformat the date and time and make new dataframe
+CWQ$time <- as.POSIXct(CWQ$Date, format = "%m/%d/%Y %H:%M")
+
+#alternate way is to create a new dataframe for datetime strip
+#dateCWQ= strptime(CWQ$Date,format='%m/%d/%Y %H:%M')
+#CWQdata=data.frame(dateCWQ, CWQ$Conductivity,CWQ$Temperature, CWQ$Turbidity,CWQ$DO, CWQ$pH, CWQ$Chl, CWQ$Station)
+
+
+```
+
+Make CWQ exploratory plots
+
+
+```{r pressure, echo=FALSE}
+
+library(ggplot2)
+library(lubridate)
+
+limits = c(ymd_hms("2019-07-30 04:00:00"), ymd_hms("2019-11-01 23:45:00"))
+pulselimits = c(ymd_hms("2019-08-25 04:00:00"),  ymd_hms("2019-09-21 23:45:00"))
+#plot all 10 snesor data
+
+ggplot(data=CWQ, aes(x=time,y=Chl,colour=factor(Station),group=Station))+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d")) +theme(axis.text.x=element_text(angle=90))+
+  scale_y_continuous(name='Chlorophyll (ug/L)',limits=c(0.1,175))+
+  annotate("rect", xmin = pulselimits[1], xmax = pulselimits[2], ymin = 0.1, ymax = 175,alpha = .2)+ 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+#+scale_color_manual(breaks=c("LIS", "RVB"),labels=c("LIS", "RVB"), values=c("black", "blue"))
+
+#plot by each station
+ggplot(data=CWQ, aes(x=time,y=Chl,colour=factor(Station),group=Station))+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d")) +theme(axis.text.x=element_text(angle=90))+
+  facet_grid(Station~., scales ="free_y")+
+  scale_y_continuous(name='Chlorophyll (ug/L)')+
+  annotate("rect",  xmin = pulselimits[1], xmax = pulselimits[2], ymin = 0.1, ymax = 175,alpha = .2)+
+  theme(legend.position='none')
+
+#plot by each region
+CWQ$Region<-factor(CWQ$Region, levels=c("Colusa Drain/Ridge Cut Slough","Central Yolo Bypass","Lower Yolo Bypass","Cache Slough Complex","Lower Sac River"))
+ggplot(data=CWQ, aes(x=time,y=Chl,colour=factor(Station),group=Station))+
+    scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), 
+                   labels=date_format("%m/%d"),
+                   limits = limits) +
+  facet_grid(Region~., scales="free_y")+geom_line(size=.2)+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=90))+
+  ylab('Chlorophyll (ug/L)')+
+  annotate("rect", xmin = pulselimits[1], xmax = pulselimits[2], ymin = -Inf, ymax = Inf, alpha = 0.2)#+
+#  annotate("vline", xintercept = pulselimits[2]) 
+
+
+test = filter(CWQ, Chl > 50, Region == "Cache Slough Complex")
+
+```
+
+Briefly look at other water quality paramters to plot to confirm 2019 predictions table
+
+```{r pressure, echo=FALSE}
+#temp
+ggplot(data=CWQ, aes(x=time,y=Temperature,colour=factor(Station),group=Station))+
+  facet_grid(Region~., scales="free_y")+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d")) +theme(axis.text.x=element_text(angle=90))+
+  scale_y_continuous(name='Temperature (C)', limits=c(12,35))+
+  annotate("rect", xmin = CWQ$time[1800], xmax = CWQ$time[4471], ymin = 12, ymax = 35,alpha = .2)
+
+#DO
+ggplot(data=CWQ, aes(x=time,y=DO,colour=factor(Station),group=Station))+
+  facet_grid(Region~., scales="free_y")+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d")) +theme(axis.text.x=element_text(angle=90))+
+  scale_y_continuous(name='DO (mg/ml)', limits=c(2,16))+
+  annotate("rect", xmin = CWQ$time[1800], xmax = CWQ$time[4471], ymin = 2, ymax = 16,alpha = .2)
+
+#pH
+ggplot(data=CWQ, aes(x=time,y=pH,colour=factor(Station),group=Station))+
+  facet_grid(Region~., scales="free_y")+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d")) +theme(axis.text.x=element_text(angle=90))+
+  scale_y_continuous(name='pH (total units)', limits=c(7,9.5))+
+  annotate("rect", xmin = CWQ$time[1800], xmax = CWQ$time[4471], ymin = 7, ymax = 9.5,alpha = .2)
+
+#conductivity
+ggplot(data=CWQ, aes(x=time,y=Conductivity,colour=factor(Station),group=Station))+
+  facet_grid(Region~., scales="free_y")+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d")) +theme(axis.text.x=element_text(angle=90))+
+  scale_y_continuous(name='Conductivity (uS/cm)', limits=c(100,1500))+
+  annotate("rect", xmin = CWQ$time[1800], xmax = CWQ$time[4471], ymin = 100, ymax = 1500,alpha = .2)
+
+#turbidity
+ggplot(data=CWQ, aes(x=time,y=Turbidity,colour=factor(Station),group=Station))+
+  facet_grid(Region~., scales="free_y")+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d")) +theme(axis.text.x=element_text(angle=90))+
+  scale_y_continuous(name='Turbidity (FNU)', limits=c(0,150))+
+  annotate("rect", xmin = CWQ$time[1800], xmax = CWQ$time[4471], ymin = 0, ymax = 150,alpha = .2)
+
+```
+
+Call in phytoplankton data
+
+```{r pressure, echo=FALSE}
+phyt <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/Continuous Water Quality-NCRO/LT_phyto_RAW_2019bd.csv")
+
+
+```
+
+
+```{r pressure, echo=FALSE}
+
+
+
+```
+
+
+```{r pressure, echo=FALSE}
+
+
+
+```
