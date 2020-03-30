@@ -1,0 +1,42 @@
+---
+title: "AddPhaseActions"
+author: "Catarina Pien"
+date: "2/26/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+```
+
+## Download data
+
+```{r download and filter dates}
+Fish_all <- read.csv("Data/FISH_MAN_allIEPsurveys_20200221.csv")
+FlowDesignation <- read.csv("Data/FlowDatesDesignations.csv")
+
+# Define date, create month
+Fish_all$Date <- ymd(Fish_all$Date)
+Fish_all$Month <- month(Fish_all$Date)
+Fish_all$Day <- day(Fish_all$Date)
+Fish_all$Year <- ordered(Fish_all$Year)
+FlowDesignation$Year <- ordered(FlowDesignation$Year)
+FlowDesignation$PreFlowStart <- mdy(FlowDesignation$PreFlowStart)
+FlowDesignation$PreFlowEnd <- mdy(FlowDesignation$PreFlowEnd)
+FlowDesignation$PostFlowStart <- mdy(FlowDesignation$PostFlowStart)
+FlowDesignation$PostFlowEnd <- mdy(FlowDesignation$PostFlowEnd)
+
+# Merge data from FlowDesignation Table (Water Year Type, Flow days and type)
+# Filter only Pre-During-Post Flow Action Data. 
+Fish_ndfa <- inner_join(Fish_all,FlowDesignation, by = "Year")   
+Fish_ndfa <- Fish_ndfa %>%
+   mutate(ActionPhase = ifelse(Date > PreFlowStart & Date<PreFlowEnd, "Pre", NA)) %>%
+   mutate(ActionPhase = replace(ActionPhase, Date > PreFlowEnd & Date < PostFlowStart, "During")) %>% 
+   mutate(ActionPhase = replace(ActionPhase, Date > PostFlowStart & Date < PostFlowEnd, "Post")) %>%
+   filter(!is.na(ActionPhase)) %>%
+   select(-c(PreFlowStart:PostFlowEnd))
+
+```
