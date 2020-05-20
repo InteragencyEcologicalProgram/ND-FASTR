@@ -11,6 +11,8 @@ library(lubridate)
 
 # random extra code
 
+# practice git hub 
+
 # Define path on SharePoint site for data - this works if you have the SharePoint site synced
 # to your computer
 sharepoint_path <- normalizePath(
