@@ -66,3 +66,22 @@ usgs_data <- usgs_data %>%
     raw_data_t = map(raw_data, .f = as_tibble)
   )
 
+# Define path on SharePoint site to export data to
+sharepoint_path <- normalizePath(
+  file.path(
+    Sys.getenv("USERPROFILE"),
+    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/Raw_Data/Continuous"
+  )
+)
+
+# Export raw data as .csv files for each site
+walk2(
+  usgs_data$raw_data_t,
+  usgs_data$site_name,
+  .f = ~write_excel_csv(
+    .x, 
+    path = paste0(sharepoint_path, "/RTM_RAW_USGS_", .y, ".csv"),
+    na = ""
+  )
+)
+
