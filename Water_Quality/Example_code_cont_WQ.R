@@ -9,7 +9,7 @@ library(lubridate)
 
 # Import Data -------------------------------------------------------------
 
-  # Define path on SharePoint site for data - this works if you have the SharePoint site synced
+# Define path on SharePoint site for data - this works if you have the SharePoint site synced
 # to your computer
 sharepoint_path <- normalizePath(
   file.path(
