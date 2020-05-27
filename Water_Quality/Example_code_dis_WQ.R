@@ -5,12 +5,12 @@
 library(tidyverse)
 library(readxl)
 library(lubridate)
-library(dplyr)
+library(hms)
 
 # Import Data -------------------------------------------------------------
 
 # Define path on SharePoint site for data - this works if you have the SharePoint site synced
-# to your computer
+  # to your computer
 sharepoint_path <- normalizePath(
   file.path(
     Sys.getenv("USERPROFILE"),
@@ -20,7 +20,6 @@ sharepoint_path <- normalizePath(
 
 # 1. Importing nutrient data from SharePoint
 
-
 nuts <- read_excel(
   path = paste0(sharepoint_path, "/DWQ_nuts_raw.xlsx"), sheet = "WQData (11)"
 )
@@ -29,8 +28,51 @@ head(nuts)
 
 str(nuts)
 
-#example of old code for different study for subsetting by station
+# Look at unique values in the Time variable
+sort(unique(nuts$Time))
+# There are two different types of formats in this variable which is why it imported 
+  # as a character variable
 
+# Are there any NA values in the Time variable?
+anyNA(nuts$Time)
+# No- that is good
+
+# Look at unique values in the Result variable
+sort(unique(nuts$Result))
+# All values below the Reporting Limit are marked with "< R.L."
+
+# Clean up Time and Result variables
+nuts_clean <- nuts %>% 
+  mutate(
+    # Convert Time variable from character to hms/difftime
+    Time = if_else(
+      str_detect(Time, ":"),
+      parse_hms(Time),
+      as_hms(round(as.numeric(Time) * 24 * 60 * 60, 0))
+    ),
+    # Create a new variable to identify values below the Reporting Limit
+    Lab_Detect = if_else(
+      str_detect(Result, "<"),
+      "Non-detect",
+      "Detect"
+    ),
+    # Convert Result variable from character to numeric
+    Result = if_else(
+      str_detect(Result, "<"),
+      1,  # USED 1 AS A PLACEHOLDER, NEED TO ADD REPORTING LIMITS TO THIS DATAFRAME
+      as.numeric(Result)
+    )
+  )
+
+# Look for Lab Replicates
+nuts_lab_reps <- nuts_clean %>%
+  count(StationCode, Date, Analyte, Purpose) %>% 
+  filter(n > 1)
+# There are 1,061 Lab replicate pairs in this dataset
+# NEED TO DECIDE WHAT TO DO WITH FIELD DUPLICATES AND LAB REPLICATES
+
+
+#example of old code for different study for subsetting by station
 CM40<- subset(CM, station== "CM40")
 CM42<- subset(CM, station== "CM42")
 CM43<- subset(CM, station== "CM43")
