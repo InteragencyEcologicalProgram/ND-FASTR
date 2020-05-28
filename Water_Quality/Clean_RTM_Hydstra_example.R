@@ -28,6 +28,9 @@ i80_orig <- read_csv(
 
 glimpse(i80_orig)
 
+
+# Clean Data --------------------------------------------------------------
+
 # HYDSTRA PARAMETER CODES:
   # 450 - Water Temperature (Celcius)
   # 630 - Depth below water surface (meters)
@@ -65,6 +68,9 @@ glimpse(i80_orig)
     )
 
   glimpse(i80_clean)
+  
+
+# Export Data -------------------------------------------------------------
 
 # Export formatted data as a .csv file 
 i80_clean %>% 

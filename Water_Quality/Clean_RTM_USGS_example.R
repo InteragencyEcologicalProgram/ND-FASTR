@@ -40,7 +40,10 @@ names(ryi_orig_2)
 # Bind ryi_orig1 and ryi_orig2
 ryi_orig <- bind_rows(ryi_orig_1, ryi_orig_2)
 
-glimpse(ryi_orig)  
+glimpse(ryi_orig)
+
+
+# Clean Data --------------------------------------------------------------
 
 # USGS PARAMETER CODES:
   # 00060 - Discharge (cfs)
@@ -149,6 +152,9 @@ ryi_clean <- ryi_orig %>%
   
   glimpse(ryi_clean1)
   
+
+# Export Data -------------------------------------------------------------
+
 # Export formatted data as a .csv file 
 ryi_clean1 %>% 
   write_excel_csv(

@@ -41,6 +41,9 @@ rvb_orig <- bind_rows(rvb_orig1, rvb_orig2)
 
 glimpse(rvb_orig)
 
+
+# Clean Data --------------------------------------------------------------
+
 # EMP-Field PARAMETER CODES:
   # [Water]  Dissolved Oxygen (mg/L) -(Dissolved) YSI Sonde { Data }  @ 15 min Inst 1 m deep
   # [Water]  pH (pH Units) -(n/a) YSI Sonde { Data }  @ 15 min Inst 1 m deep
@@ -114,6 +117,9 @@ rvb_clean <- rvb_orig %>%
   
   glimpse(rvb_clean1)
   
+
+# Export Data -------------------------------------------------------------
+
 # Export formatted data as a .csv file 
 rvb_clean1 %>% 
   write_excel_csv(
