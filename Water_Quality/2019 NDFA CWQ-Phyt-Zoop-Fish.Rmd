@@ -1,0 +1,1323 @@
+---
+title: "2019 North Delta Flow Action Water Quality & Biological Monitoring Results"
+author: "Brittany Davis & Mallory Bedwell"
+date: "5/26/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+Analysis for the 2019 North Delta Flow Action, including measures of Continuous Water Quality, Discrete Water Quality and nutrients, Zooplankton, Phytoplankton, and Fish surveys.
+
+
+# Water Quality
+
+
+### Continuous Water Quality
+
+Combine all 10 datasets from DWR/NCRO and USGS. There was some prep of excel files, DWR from Amanda, and USGS revision of column headers.
+
+```{r Continuous Water quality, include=FALSE}
+setwd("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis")
+
+# CWQ data wrangle####
+
+#Sites in order from Northern-most to Southern (RMB > RVB)
+RMB <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/NDFA 2019 continuous_RMB.csv")
+RCS <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/NDFA 2019 continuous_RCS.csv")
+RD22 <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/NDFA 2019 continuous_RD22.csv")
+I80 <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/NDFA 2019 continuous_I80.csv")
+LIS <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/NDFA 2019 continuous_LIS.csv")
+STTD <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/NDFA 2019 continuous_STTD.csv")
+TOE <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/NDFA 2019 continuous_TOE.csv")
+LIB <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/NDFA 2019 continuous_LIB.csv")
+RYI <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/NDFA 2019 continuous_RYI.csv")
+RVB <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/NDFA 2019 continuous_RVB.csv")
+
+
+#Station adjustments; estimate Chl concentration from RFU *4. Then remove and keep only Chl - concentration for USGS and EMP stations to match the DWR stations
+LIB$Chl=LIB$Chl.RFU*4
+
+LIB2<- LIB[,c(1,4,5,6,7,8,9)]
+TOE2<- TOE[,c(1,3,4,5,6,7,10)]
+RYI2<- RYI[,c(1,3,4,5,6,7,14)]
+RVB2<- RVB[,c(1,2,4,5,6,7,8,9)]
+
+#add a few addition coloumns with information to prep data files before merge
+RMB$Station="RMB"
+RMB$Region="Colusa Drain/Ridge Cut Slough"
+
+RCS$Station="RCS"
+RCS$Region="Colusa Drain/Ridge Cut Slough"
+
+RD22$Station="RD22"
+RD22$Region="Central Yolo Bypass"
+
+I80$Station="I80"
+I80$Region="Central Yolo Bypass"
+
+LIS$Station="LIS"
+LIS$Region="Lower Yolo Bypass"
+
+STTD$Station="STTD"
+STTD$Region="Lower Yolo Bypass"
+
+TOE2$Station="TOE"
+TOE2$Region="Cache Slough Complex"
+
+LIB2$Station="LIB"
+LIB2$Region="Cache Slough Complex"
+
+RYI2$Station="RYI"
+RYI2$Region="Cache Slough Complex"
+
+RVB2$Region="Lower Sac River"
+
+#bind all 10 datasets together
+CWQ=rbind(RMB,RCS,RD22,I80,LIS,STTD,TOE2,LIB2,RYI2, RVB2)
+head(CWQ)
+#set N to S levels
+CWQ$Station<-factor(CWQ$Station, levels=c("RMB","RCS","RD22","I80","LIS","STTD","TOE","LIB","RYI", "RVB"))
+
+library(dplyr)
+library(rlang)
+library(scales)
+library(ggrepel)
+
+#reformat the date and time and make new dataframe
+CWQ$time <- as.POSIXct(CWQ$Date, format = "%m/%d/%Y %H:%M")
+
+#alternate way is to create a new dataframe for datetime strip
+#dateCWQ= strptime(CWQ$Date,format='%m/%d/%Y %H:%M')
+#CWQdata=data.frame(dateCWQ, CWQ$Conductivity,CWQ$Temperature, CWQ$Turbidity,CWQ$DO, CWQ$pH, CWQ$Chl, CWQ$Station)
+
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+## Chlorophyl by region#####
+
+library(ggplot2)
+library(lubridate)
+
+limits = c(ymd_hms("2019-07-30 04:00:00"), ymd_hms("2019-11-01 23:45:00"))
+pulselimits = c(ymd_hms("2019-08-25 04:00:00"),  ymd_hms("2019-09-21 23:45:00"))
+#plot all 10 snesor data
+
+ggplot(data=CWQ, aes(x=time,y=Chl,colour=factor(Station),group=Station))+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d")) +theme(axis.text.x=element_text(angle=90))+
+  scale_y_continuous(name='Chlorophyll (ug/L)',limits=c(0.1,175))+
+  annotate("rect", xmin = pulselimits[1], xmax = pulselimits[2], ymin = 0.1, ymax = 175,alpha = .2)+ 
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+
+#plot by each station
+ggplot(data=CWQ, aes(x=time,y=Chl,colour=factor(Station),group=Station))+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d")) +theme(axis.text.x=element_text(angle=90))+
+  facet_grid(Station~., scales ="free_y")+
+  scale_y_continuous(name='Chlorophyll (ug/L)')+
+  annotate("rect",  xmin = pulselimits[1], xmax = pulselimits[2], ymin = 0.1, ymax = 175,alpha = .2)+
+  theme(legend.position='none')
+
+#plot by each region
+CWQ$Region<-factor(CWQ$Region, levels=c("Colusa Drain/Ridge Cut Slough","Central Yolo Bypass","Lower Yolo Bypass","Cache Slough Complex","Lower Sac River"))
+ggplot(data=CWQ, aes(x=time,y=Chl,colour=factor(Station),group=Station))+
+    scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), 
+                   labels=date_format("%m/%d"),
+                   limits = limits) +
+  facet_grid(Region~., scales="free_y")+geom_line(size=.2)+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=90))+
+  ylab('Chlorophyll (ug/L)')+
+  geom_vline(xintercept = pulselimits[1])+
+  geom_vline(xintercept = pulselimits[2])#+
+#  annotate("vline", xintercept = pulselimits[2]) 
+
+#add gray line
+ggplot(data=CWQ, aes(x=time,y=Chl,colour=factor(Station),group=Station))+
+    scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), 
+                   labels=date_format("%m/%d"),
+                   limits = limits) +
+  facet_grid(Region~., scales="free_y")+geom_line(size=.2)+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=90))+
+  ylab('Chlorophyll (ug/L)')+
+  annotate("rect", xmin = pulselimits[1], xmax = pulselimits[2], ymin = -Inf, ymax = Inf, alpha = 0.2)+ 
+  theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+#test removing data above certain values since we know it's instrument error
+#test = filter(CWQ, Chl > 50, Region == "Cache Slough Complex")
+
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# temp ####
+
+# reomoving all regional facets +facet_grid(Region~., scales="free_y")
+
+ggplot(data=CWQ, aes(x=time,y=Temperature,colour=factor(Station),group=Station))+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d"),limits=limits) +theme(axis.text.x=element_text(angle=90))+
+  scale_y_continuous(name='Temperature (C)', limits=c(12,35))+
+  annotate("rect", xmin = CWQ$time[1800], xmax = CWQ$time[4471], ymin = 12, ymax = 35,alpha = .2)+
+
+# DO ####
+
+ggplot(data=CWQ, aes(x=time,y=DO,colour=factor(Station),group=Station))+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d"),limits=limits) +theme(axis.text.x=element_text(angle=90))+
+  scale_y_continuous(name='DO (mg/ml)', limits=c(2,16))+
+  annotate("rect", xmin = CWQ$time[1800], xmax = CWQ$time[4471], ymin = 2, ymax = 16,alpha = .2)
+
+# pH ####
+
+ggplot(data=CWQ, aes(x=time,y=pH,colour=factor(Station),group=Station))+
+  facet_grid(Region~., scales="free_y")+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d"),limits=limits) +theme(axis.text.x=element_text(angle=90))+
+  scale_y_continuous(name='pH (total units)', limits=c(7,9.5))+
+  annotate("rect", xmin = CWQ$time[1800], xmax = CWQ$time[4471], ymin = 7, ymax = 9.5,alpha = .2)
+
+# conductivity ####
+
+ggplot(data=CWQ, aes(x=time,y=Conductivity,colour=factor(Station),group=Station))+
+  facet_grid(Region~., scales="free_y")+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d"),limits=limits) +theme(axis.text.x=element_text(angle=90))+
+  scale_y_continuous(name='Conductivity (uS/cm)', limits=c(100,1500))+
+  annotate("rect", xmin = CWQ$time[1800], xmax = CWQ$time[4471], ymin = 100, ymax = 1500,alpha = .2)
+
+# turbidity ####
+
+ggplot(data=CWQ, aes(x=time,y=Turbidity,colour=factor(Station),group=Station))+
+  facet_grid(Region~., scales="free_y")+geom_line(size=.2)+theme_bw()+scale_x_datetime("Date 2019",breaks=date_breaks("96 hour"), labels=date_format("%m/%d"),limits=limits) +theme(axis.text.x=element_text(angle=90))+
+  scale_y_continuous(name='Turbidity (FNU)', limits=c(0,150))+
+  annotate("rect", xmin = CWQ$time[1800], xmax = CWQ$time[4471], ymin = 0, ymax = 150,alpha = .2)
+
+```
+
+### Discrete Water Quality
+
+Make descriptive plots of nutrients in the system and how they change across space an time. 
+NOTE: all "Results" below with values below the Reporting Limit (<R.L.) have been removed from the dataset (n=~100 points)
+
+### Nutrients
+
+```{r Nutrients, echo=FALSE}
+#call in nutrient dataset
+DWQ <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/WQ_discrete_nutrients_2019bd.csv")
+#make Date column a date
+DWQ$Date <- as.Date(DWQ$Date)
+#Code from Mallory to format creation of DateTime column
+DWQ$Date <- format(as.Date(DWQ$Date, format = "%m/%d/%Y"), "%Y-%m-%d")
+
+Chl <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/LT_discrete_chla_RAW_2019bd.csv")
+Chl$Date <- Chl$Date <- format(as.Date(Chl$Date, format = "%m/%d/%Y"), "%Y-%m-%d")
+
+#create a chl subset to plot over continuous
+#remove phaeophytin from analytes
+Chl.2 <- Chl[Chl$Analyte %in% c("Chla"),]
+#remove replicate from purpose
+Chl.3 <- Chl.2[Chl.2$Purpose %in% c("Normal Sample","Duplicate Sample"),]
+#Now merge data and time colum
+  #Chl.3$datetime<-paste(Chl.3$Date,Chl.3$Time,sep=" ")
+#reformat the date and time and make new dataframe
+  #Chl.3$datetime <- as.POSIXct(Chl.3$datetime, format = "%Y-%m-%d %H:%M")
+
+
+#bind chl with all discrete nutrients for analysis
+WQ=rbind(DWQ,Chl)
+
+
+
+
+#make a unique column with the analyte name and merge the units, first make an empyty column with an end parentheses to paste in
+WQ$Space1=" "
+WQ$Space2="("
+WQ$Space3=")"
+WQ$Analyte.Unit<-paste(WQ$Analyte,WQ$Space1,WQ$Space2,WQ$Units,WQ$Space3,sep="")
+
+#Go back and remove the extra naming columns, keep only columns listed below
+WQ1<- WQ[,c(1:9,13)]
+
+#remove replicate samples
+#WQ1 <- WQ[WQ$Purpose %in% c("Normal Sample", "Duplicate Sample"),]
+ 
+#remove duplicate sites and SHR
+#5/5/20-No longer removing SHR for plots - MEB
+#WQ1 <- WQ1[WQ1$StationCode %in% c("BL5", "I80", "LIB", "LIS", "RCS", "RD22", "RMB", "RVB", "RYI", "STTD"),]
+
+#add column of N:P ration
+#separate out N and P
+WQ_N <- WQ1[WQ1$Analyte %in% c("DisNitrateNitrite"),]
+WQ_P <- WQ1[WQ1$Analyte %in% c("DOP"),]
+#merge together to get values in same row
+WQ_NP <-left_join(WQ_N, WQ_P, by = c("StationCode", "Date", "Time", "Purpose"))
+#get rid of extra columns and change headings to match WQ1 table
+WQ_NP$Time.y <- NULL
+WQ_NP$Units.y <- NULL
+WQ_NP$Method.y <- NULL
+WQ_NP$Depth.y <- NULL
+WQ_NP$Purpose.y <- NULL
+WQ_NP$Analyte.Unit.y <- NULL
+colnames(WQ_NP)[colnames(WQ_NP) == 'Time.x'] <- 'Time'
+colnames(WQ_NP)[colnames(WQ_NP) == 'Units.x'] <- 'Units'
+colnames(WQ_NP)[colnames(WQ_NP) == 'Method.x'] <- 'Method'
+colnames(WQ_NP)[colnames(WQ_NP) == 'Depth.x'] <- 'Depth'
+colnames(WQ_NP)[colnames(WQ_NP) == 'Purpose.x'] <- 'Purpose'
+colnames(WQ_NP)[colnames(WQ_NP) == 'Analyte.Unit.x'] <- 'Analyte.Unit'
+#change entries in some columns to reflect new calculation
+WQ_NP$Units <- as.character(WQ_NP$Units)
+WQ_NP$Method <- as.character(WQ_NP$Method)
+WQ_NP$Analyte.Unit <- as.character(WQ_NP$Analyte.Unit)
+
+WQ_NP$Units[WQ_NP$Units == 'mg/L as N'] <-'none'
+WQ_NP$Method[WQ_NP$Method == 'Std Method 4500-NO3-F (28Day) [1]*'] <-'ratio'
+WQ_NP$Analyte.Unit[WQ_NP$Analyte.Unit == 'DisNitrateNitrite (mg/L as N)'] <-'N:P'
+#calculate ratio
+WQ_NP$N_P <- WQ_NP$Result.x/WQ_NP$Result.y
+#remove and change columns to match with WQ1
+WQ_NP$Result.x <- NULL
+WQ_NP$Result.y <- NULL
+WQ_NP$Analyte.y <-NULL
+colnames(WQ_NP)[colnames(WQ_NP) == 'Analyte.x'] <- 'Analyte'
+colnames(WQ_NP)[colnames(WQ_NP) == 'N_P'] <- 'Result'
+WQ_NP$Analyte <- as.character(WQ_NP$Analyte)
+WQ_NP$Analyte[WQ_NP$Analyte == 'DisNitrateNitrite'] <-'N:P'
+
+
+#merge with WQ1
+WQ1_NP <-rbind(WQ1, WQ_NP)
+
+
+#Calculatemean and CI of analytes.
+library(plyr)
+#WQmean<-ddply(WQ1, .(Date, StationCode, Analyte.Unit), summarise, mean=mean(Result, na.rm=TRUE), sd=sd(Result, na.rm=TRUE), n=length(Result),se=sd/sqrt(n), CI=qt(0.975,df=n-1)*sd/sqrt(n))
+
+
+#add new column called Sampling.Date
+WQ1_NP$Sampling.Date <- ifelse(
+  WQ1_NP$Date == as.Date("2019-08-06"), "8/7", 
+    ifelse(WQ1_NP$Date == as.Date("2019-08-07"), "8/7",
+      ifelse(WQ1_NP$Date == as.Date("2019-08-20"), "8/21",
+        ifelse(WQ1_NP$Date == as.Date("2019-08-21"), "8/21",
+        ifelse(WQ1_NP$Date == as.Date("2019-09-03"), "9/4",
+        ifelse(WQ1_NP$Date == as.Date("2019-09-04"), "9/4", 
+        ifelse(WQ1_NP$Date == as.Date("2019-09-17"), "9/18",
+        ifelse(WQ1_NP$Date == as.Date("2019-09-18"), "9/18",
+        ifelse(WQ1_NP$Date == as.Date("2019-10-01"), "10/2",
+        ifelse(WQ1_NP$Date == as.Date("2019-10-02"), "10/2",
+        ifelse(WQ1_NP$Date == as.Date("2019-10-15"), "10/16",
+        ifelse(WQ1_NP$Date == as.Date("2019-08-05"), "8/7",#SHR dates
+        ifelse(WQ1_NP$Date == as.Date("2019-08-19"), "8/21",#SHR dates
+        ifelse(WQ1_NP$Date == as.Date("2019-09-05"), "9/4",#SHR dates
+        ifelse(WQ1_NP$Date == as.Date("2019-09-16"), "9/18",#SHR dates
+        ifelse(WQ1_NP$Date == as.Date("2019-09-30"), "10/2",#SHR dates
+        ifelse(WQ1_NP$Date == as.Date("2019-10-14"), "10/16",#SHR dates
+     ifelse(WQ1_NP$Date == as.Date("2019-10-16"),"10/16","7"))))))))))))))))))
+
+#add new column called Sampling.Time
+WQ1_NP$Sampling.Time<- ifelse(
+  WQ1_NP$Sampling.Date == as.factor("8/7"), "Before", 
+    ifelse(WQ1_NP$Sampling.Date == as.factor("8/21"), "Before",
+     ifelse(WQ1_NP$Sampling.Date == as.factor("9/4"), "During", 
+     ifelse(WQ1_NP$Sampling.Date == as.factor("9/18"), "During",
+     ifelse(WQ1_NP$Sampling.Date == as.factor("10/2"), "After",
+     ifelse(WQ1_NP$Sampling.Date == as.factor("10/16"),"After","After"))))))
+
+#set levels
+WQ1_NP$Sampling.Time<-factor(WQ1_NP$Sampling.Time, levels=c("Before","During","After"))
+WQ1_NP$Sampling.Date<-factor(WQ1_NP$Sampling.Date, levels=c("8/7","8/21","9/4","9/18","10/2","10/16"))
+WQ1_NP$StationCode<-factor(WQ1_NP$StationCode, levels=c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB", "SHR"))
+
+
+#plot all nutrients
+ggplot(data=WQ1_NP, aes(x=Sampling.Date,y=Result,colour=factor(StationCode),group=StationCode)) +
+  facet_wrap(~Analyte.Unit, scales="free_y",ncol=4)+geom_line(size=.2)+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=90))
+
+### Nutrients by Regions ####
+
+#set regions then rename all stations
+WQ1_NP$Region=WQ1_NP$StationCode
+levels(WQ1_NP$Region)[levels(WQ1_NP$Region)=="RMB"] <- "Colusa Drain/Ridge Cut"
+levels(WQ1_NP$Region)[levels(WQ1_NP$Region)=="RCS"] <- "Colusa Drain/Ridge Cut"
+levels(WQ1_NP$Region)[levels(WQ1_NP$Region)=="RD22"] <- "Central Yolo Bypass"
+levels(WQ1_NP$Region)[levels(WQ1_NP$Region)=="I80"] <- "Central Yolo Bypass"
+levels(WQ1_NP$Region)[levels(WQ1_NP$Region)=="LIS"] <- "Lower Yolo Bypass"
+levels(WQ1_NP$Region)[levels(WQ1_NP$Region)=="STTD"] <- "Lower Yolo Bypass"
+levels(WQ1_NP$Region)[levels(WQ1_NP$Region)=="BL5"] <- "Cache Slough Complex"
+levels(WQ1_NP$Region)[levels(WQ1_NP$Region)=="LIB"] <- "Cache Slough Complex"
+levels(WQ1_NP$Region)[levels(WQ1_NP$Region)=="RYI"] <- "Cache Slough Complex"
+levels(WQ1_NP$Region)[levels(WQ1_NP$Region)=="RVB"] <- "Lower Sac River"
+levels(WQ1_NP$Region)[levels(WQ1_NP$Region)=="SHR"] <- "Sac River"
+
+
+#plot all nutrients by region
+ggplot(data=WQ1_NP, aes(x=Sampling.Date,y=Result,colour=factor(Region),group=Region))+geom_point(size=.2)+ geom_smooth(aes(group=factor(Region),color=factor(Region), method="loess",se=F))+
+  facet_wrap(~Analyte.Unit, scales="free_y",ncol=2)+
+  theme_bw()+
+  theme(axis.text.x=element_text(angle=90))
+
+#Need to Spread the data for multivariate analysis, ANOSIM, or NDMS
+
+#kepp only following columns
+  #WQ2=WQ1[,c("StationCode","Date","Result","Purpose","Analyte.Unit","Sampling.Date","Sampling.Time","Region")]
+#remove replicate from purpose
+  #WQ2 <- WQ1[WQ1$Purpose %in% c("Normal Sample","Duplicate Sample"),]
+
+
+
+#combine WQ1_NP wtih discrete WQ measurements 
+#read in file
+Dis_2019 <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/2019_NDFA_physical data.csv", stringsAsFactors = FALSE)
+# Convert dates and times into POSIXct-compliant values
+# Edit time for 2019-10-02 09:17:00	
+# to allow joining with zoop data
+library(tidyr)
+Dis_2019 <- Dis_2019 %>% unite(DateTime, c("Date","Time"), sep = " ")
+#change times from military to standard to match WQ3
+Dis_2019$DateTime <- gsub("8/6/2019 14:10","8/6/2019 02:10",Dis_2019$DateTime) 
+Dis_2019$DateTime <- gsub("8/6/2019 13:50","8/6/2019 01:50",Dis_2019$DateTime) 
+Dis_2019$DateTime <- gsub("10/15/2019 14:24","10/15/2019 02:24",Dis_2019$DateTime) 
+Dis_2019$DateTime <- gsub("10/15/2019 13:16","10/15/2019 01:16",Dis_2019$DateTime)
+Dis_2019$DateTime <- as.POSIXct(Dis_2019$DateTime, format = c("%m/%d/%Y %H:%M"))
+
+#change to datetime in WQ3 dataset
+WQ3 <- WQ1_NP %>% unite(DateTime, c("Date","Time"), sep = " ")
+WQ3$DateTime <- as.POSIXct(WQ3$DateTime)
+
+#change column headings to match
+colnames(Dis_2019)[colnames(Dis_2019) == 'Station.Code'] <- 'StationCode'
+
+WQ3$StationCode <-as.character(WQ3$StationCode)
+
+#combine tables
+Dis_WQ <- left_join(WQ3, Dis_2019, by = c('StationCode', 'DateTime'))
+
+#write table
+write.csv(Dis_WQ, file="2019 DWQ physical and nutrients.csv",row.names=FALSE)
+
+
+
+```
+
+# Lower Trophic Responses
+
+### Phytoplankton
+
+```{r Phyto plots }
+
+# Phytoplankton Biovolume ####
+
+phyt <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/LT_phyto_RAW_2019bd.csv")
+
+#make Date column a date
+phyt$Date <- as.Date(phyt$Date)
+
+#add new column called Sampling.Date
+phyt$Sampling.Date <- ifelse(
+  phyt$Date == as.Date("2019-08-06"), "8/7", 
+    ifelse(phyt$Date == as.Date("2019-08-07"), "8/7",
+      ifelse(phyt$Date == as.Date("2019-08-20"), "8/21",
+        ifelse(phyt$Date == as.Date("2019-08-21"), "8/21",
+        ifelse(phyt$Date == as.Date("2019-09-03"), "9/4",
+        ifelse(phyt$Date == as.Date("2019-09-04"), "9/4", 
+        ifelse(phyt$Date == as.Date("2019-09-17"), "9/18",
+        ifelse(phyt$Date == as.Date("2019-09-18"), "9/18",
+        ifelse(phyt$Date == as.Date("2019-10-01"), "10/2",
+        ifelse(phyt$Date == as.Date("2019-10-02"), "10/2",
+        ifelse(phyt$Date == as.Date("2019-10-15"), "10/16",
+     ifelse(phyt$Date == as.Date("2019-10-16"),"10/16","7"))))))))))))
+
+#7 will show up as SHR and will need to be adjusted if used
+
+#remove duplicate sites
+NDFA_phyt <- phyt[phyt$StationCode %in% c("BL5", "I80", "LIB", "LIS", "RCS", "RD22", "RMB", "RVB", "RYI", "STTD"),]
+
+
+#Plot 1 sum total CPUE by site and date
+NDFA_phyt_sum <- NDFA_phyt %>% 
+  group_by(Sampling.Date, StationCode) %>% summarize(biov = sum(biovol.ml))
+
+#add new column called Sampling.Time
+NDFA_phyt_sum$Sampling.Time<- ifelse(
+  NDFA_phyt_sum$Sampling.Date == as.factor("8/7"), "Before", 
+    ifelse(NDFA_phyt_sum$Sampling.Date == as.factor("8/21"), "Before",
+     ifelse(NDFA_phyt_sum$Sampling.Date == as.factor("9/4"), "During", 
+     ifelse(NDFA_phyt_sum$Sampling.Date == as.factor("9/18"), "During",
+     ifelse(NDFA_phyt_sum$Sampling.Date == as.factor("10/2"), "After",
+     ifelse(NDFA_phyt_sum$Sampling.Date == as.factor("10/16"),"After","After"))))))
+
+#set regions then rename all stations
+NDFA_phyt_sum$Region=NDFA_phyt_sum$StationCode
+levels(NDFA_phyt_sum$Region)[levels(NDFA_phyt_sum$Region)=="RMB"] <- "Colusa Drain/Ridge Cut"
+levels(NDFA_phyt_sum$Region)[levels(NDFA_phyt_sum$Region)=="RCS"] <- "Colusa Drain/Ridge Cut"
+levels(NDFA_phyt_sum$Region)[levels(NDFA_phyt_sum$Region)=="RD22"] <- "Central Yolo Bypass"
+levels(NDFA_phyt_sum$Region)[levels(NDFA_phyt_sum$Region)=="I80"] <- "Central Yolo Bypass"
+levels(NDFA_phyt_sum$Region)[levels(NDFA_phyt_sum$Region)=="LIS"] <- "Lower Yolo Bypass"
+levels(NDFA_phyt_sum$Region)[levels(NDFA_phyt_sum$Region)=="STTD"] <- "Lower Yolo Bypass"
+levels(NDFA_phyt_sum$Region)[levels(NDFA_phyt_sum$Region)=="BL5"] <- "Cache Slough Complex"
+levels(NDFA_phyt_sum$Region)[levels(NDFA_phyt_sum$Region)=="LIB"] <- "Cache Slough Complex"
+levels(NDFA_phyt_sum$Region)[levels(NDFA_phyt_sum$Region)=="RYI"] <- "Cache Slough Complex"
+levels(NDFA_phyt_sum$Region)[levels(NDFA_phyt_sum$Region)=="RVB"] <- "Lower Sac River"
+
+
+#set levels
+NDFA_phyt_sum$Sampling.Time<-factor(NDFA_phyt_sum$Sampling.Time, levels=c("Before","During","After"))
+NDFA_phyt_sum$Sampling.Date<-factor(NDFA_phyt_sum$Sampling.Date, levels=c("8/7","8/21","9/4","9/18","10/2","10/16"))
+
+#Plot 1: Phyto biomass by space and time ####
+ggplot(NDFA_phyt_sum, aes(x = Sampling.Date, y = StationCode, fill=biov)) +theme_bw()+
+              geom_tile(colour="gray") +
+              scale_fill_distiller(palette = "Spectral") +
+              scale_y_discrete(limits = rev(c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5",    "LIB", "RYI", "RVB")),expand = c(0,0))+
+facet_grid(~Sampling.Time,switch = "x", scales = "free_x", space = "free_x")+
+  xlab("Sampling Date")+
+  ylab("Station (North to South)\n")+ 
+  labs(fill = "Phytoplankton\nBiovolume (um3/mL)\n\n\n")+ 
+  theme(legend.position = "bottom")+
+  theme(legend.text =element_text(size=10,angle=45,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=0,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black", face="bold"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black", face="bold"))+
+  theme(strip.text.x = element_text(face="bold"),
+          strip.background = element_rect(colour="black"),panel.border = element_rect(colour = "black", fill=NA, size=.01))
+
+#Plot 2 sum total CPUE (biovolume) by region and time period
+NDFA_phyt_sum2 <- NDFA_phyt_sum %>% 
+  group_by(Sampling.Time, Region) %>% summarize(biovol = sum(biov))
+
+#Plot 2: Phyto biomass by region and time ####
+ggplot(NDFA_phyt_sum2, aes(x = Sampling.Time, y = Region, fill=biovol)) +theme_bw()+
+              geom_tile(colour = "gray") +
+              scale_fill_distiller(palette = "Spectral") +
+              scale_y_discrete(limits = rev(c("Colusa Drain/Ridge Cut", "Central Yolo Bypass", "Lower Yolo Bypass", "Cache Slough Complex", "Lower Sac River")))+
+  xlab("\nSampling Period")+
+  ylab("Region (North to South)\n")+ 
+  labs(fill = "Phytoplankton\nBiovolume (um3/mL)\n")+ 
+  theme(legend.position = "right")+
+  theme(legend.text =element_text(size=10,angle=0,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=0,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black", face="bold"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black",face="bold"))+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=.01))
+
+
+
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# Phyto by all Genus ####
+
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+
+#Plot2 sum total phytoplankton by station and genus
+NDFA_phyt_genus <- NDFA_phyt %>% 
+  group_by(Sampling.Date, StationCode, Genus) %>% summarize(biov = sum(biovol.ml))
+
+#add new column called Sampling.Time
+NDFA_phyt_genus$Sampling.Time<- ifelse(
+  NDFA_phyt_genus$Sampling.Date == as.factor("8/7"), "Before", 
+    ifelse(NDFA_phyt_genus$Sampling.Date == as.factor("8/21"), "Before",
+     ifelse(NDFA_phyt_genus$Sampling.Date == as.factor("9/4"), "During", 
+     ifelse(NDFA_phyt_genus$Sampling.Date == as.factor("9/18"), "During",
+     ifelse(NDFA_phyt_genus$Sampling.Date == as.factor("10/2"), "After",
+     ifelse(NDFA_phyt_genus$Sampling.Date == as.factor("10/16"),"After","After"))))))
+
+
+#set levels
+NDFA_phyt_genus$Sampling.Time<-factor(NDFA_phyt_genus$Sampling.Time, levels=c("Before","During","After"))
+NDFA_phyt_genus$Sampling.Date<-factor(NDFA_phyt_genus$Sampling.Date, levels=c("8/7","8/21","9/4","9/18","10/2","10/16"))
+
+#plot 2 
+ggplot(NDFA_phyt_genus, mapping=aes(x = Sampling.Date, y = Genus, fill=biov)) +geom_tile() +
+              scale_fill_distiller(palette = "Spectral")+facet_grid(~Sampling.Time,switch = "x", scales = "free_x", space = "free_x")
+
+ggplot(NDFA_phyt_genus, aes(y = StationCode, x = Genus)) +
+              geom_tile(aes(fill=biov)) +
+              scale_fill_distiller(palette = "Spectral")+
+              scale_y_discrete(limits = rev(c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB")))+theme(axis.text.x =element_text(angle=90))+facet_grid(Sampling.Time~.,switch = "x", scales = "free_x", space = "free_x")
+
+
+# Genus to percentage ####
+
+#convert data to percent genus and replot
+genus_perc=group_by(NDFA_phyt_genus, StationCode, Sampling.Date) %>% transmute(Genus, percent = biov/sum(biov))
+genus_perc$Percent.Genus=genus_perc$percent*100
+genus_perc$Sampling.Date=as.factor(genus_perc$Sampling.Date)
+genus_perc$Sampling.Date<-factor(genus_perc$Sampling.Date, levels=c("8/7","8/21","9/4","9/18","10/2","10/16"))
+
+
+#add new times periods to genus dataset
+genus_perc$Sampling.Time=genus_perc$Sampling.Date
+levels(genus_perc$Sampling.Time)[levels(genus_perc$Sampling.Time)=="8/7"] <- "Before"
+levels(genus_perc$Sampling.Time)[levels(genus_perc$Sampling.Time)=="8/21"] <- "Before"
+levels(genus_perc$Sampling.Time)[levels(genus_perc$Sampling.Time)=="9/4"] <- "During"
+levels(genus_perc$Sampling.Time)[levels(genus_perc$Sampling.Time)=="9/18"] <- "During"
+levels(genus_perc$Sampling.Time)[levels(genus_perc$Sampling.Time)=="10/2"] <- "After"
+levels(genus_perc$Sampling.Time)[levels(genus_perc$Sampling.Time)=="10/16"] <- "After"
+
+#plot of species by action time
+ggplot(genus_perc, mapping=aes(x = Sampling.Date, y = Genus, fill=Percent.Genus)) +geom_tile() +
+              scale_fill_distiller(palette = "Spectral")+facet_grid(~Sampling.Time,switch = "x", scales = "free_x", space = "free_x")
+
+#plot of species by site
+ggplot(genus_perc, mapping=aes(x = StationCode, y = Genus, fill=Percent.Genus)) +geom_tile() +
+              scale_fill_distiller(palette = "Spectral")+scale_x_discrete(limits = rev(c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB")))+theme(axis.text.x =element_text(angle=90))
+
+
+#plot of species by time and space
+ggplot(genus_perc, aes(y = Genus, x = StationCode)) +
+              geom_tile(aes(fill=Percent.Genus)) +
+              scale_fill_distiller(palette = "Spectral")+
+              scale_x_discrete(limits = rev(c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB")))+theme(axis.text.x =element_text(angle=90))+facet_grid(.~Sampling.Time, scales = "free_x", space = "free_x")
+
+
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# Phyto by Functional Taxa Groups ####
+
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#rename other alage and flagellates into one group
+levels(NDFA_phyt$FunctionalGroup)[levels(NDFA_phyt$FunctionalGroup)=="Other Algae"] <- "Other"
+levels(NDFA_phyt$FunctionalGroup)[levels(NDFA_phyt$FunctionalGroup)=="Other Flagellates"] <- "Other"
+
+# Taxon by time ####
+NDFA_phyt_group <- NDFA_phyt %>% 
+  group_by(Sampling.Date, StationCode, FunctionalGroup) %>% summarize(biov = sum(biovol.ml))
+
+
+#add new column called Sampling.Time
+NDFA_phyt_group$Sampling.Time<- ifelse(
+  NDFA_phyt_group$Sampling.Date == as.factor("8/7"), "Before", 
+    ifelse(NDFA_phyt_group$Sampling.Date == as.factor("8/21"), "Before",
+     ifelse(NDFA_phyt_group$Sampling.Date == as.factor("9/4"), "During", 
+     ifelse(NDFA_phyt_group$Sampling.Date == as.factor("9/18"), "During",
+     ifelse(NDFA_phyt_group$Sampling.Date == as.factor("10/2"), "After",
+     ifelse(NDFA_phyt_group$Sampling.Date == as.factor("10/16"),"After","After"))))))
+
+#set regions then rename all stations
+NDFA_phyt_group$Region=NDFA_phyt_group$StationCode
+levels(NDFA_phyt_group$Region)[levels(NDFA_phyt_group$Region)=="RMB"] <- "Colusa Drain/Ridge Cut"
+levels(NDFA_phyt_group$Region)[levels(NDFA_phyt_group$Region)=="RCS"] <- "Colusa Drain/Ridge Cut"
+levels(NDFA_phyt_group$Region)[levels(NDFA_phyt_group$Region)=="RD22"] <- "Central Yolo Bypass"
+levels(NDFA_phyt_group$Region)[levels(NDFA_phyt_group$Region)=="I80"] <- "Central Yolo Bypass"
+levels(NDFA_phyt_group$Region)[levels(NDFA_phyt_group$Region)=="LIS"] <- "Lower Yolo Bypass"
+levels(NDFA_phyt_group$Region)[levels(NDFA_phyt_group$Region)=="STTD"] <- "Lower Yolo Bypass"
+levels(NDFA_phyt_group$Region)[levels(NDFA_phyt_group$Region)=="BL5"] <- "Cache Slough Complex"
+levels(NDFA_phyt_group$Region)[levels(NDFA_phyt_group$Region)=="LIB"] <- "Cache Slough Complex"
+levels(NDFA_phyt_group$Region)[levels(NDFA_phyt_group$Region)=="RYI"] <- "Cache Slough Complex"
+levels(NDFA_phyt_group$Region)[levels(NDFA_phyt_group$Region)=="RVB"] <- "Lower Sac River"
+
+#set levels
+NDFA_phyt_group$Sampling.Time<-factor(NDFA_phyt_group$Sampling.Time, levels=c("Before","During","After"))
+NDFA_phyt_group$Sampling.Date<-factor(NDFA_phyt_group$Sampling.Date, levels=c("8/7","8/21","9/4","9/18","10/2","10/16"))
+NDFA_phyt_group$StationCode<-factor(NDFA_phyt_group$StationCode, levels=c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB"))
+
+ggplot(NDFA_phyt_group, mapping=aes(x = Sampling.Date, y = FunctionalGroup, fill=biov)) +geom_tile() +
+              scale_fill_distiller(palette = "Spectral")+facet_grid(~Sampling.Time,switch = "x", scales = "free_x", space = "free_x")+theme(axis.text.x =element_text(angle=90))+ theme(axis.text.y = element_text(colour=NDFA_phyt_group$FunctionalGroup))+
+              scale_y_discrete(limits = rev(c("Chlorophytes", "Cryptophytes", "Cyanophytes", "Diatoms", "Other")))+
+  xlab("Sampling Date")+
+  ylab("Functional Group")+ 
+  labs(fill = "Biovolume (um3/mL)\n\n\n")+ 
+  theme(legend.position = "bottom")+
+  theme(legend.text =element_text(size=10,angle=45,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=0,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black"))
+
+# Taxon biomass by Space and time ####
+
+#sum total CPUE by site and date
+#add new column called Sampling.Time
+NDFA_phyt$Sampling.Time<- ifelse(
+  NDFA_phyt$Sampling.Date == as.factor("8/7"), "Before", 
+    ifelse(NDFA_phyt$Sampling.Date == as.factor("8/21"), "Before",
+     ifelse(NDFA_phyt$Sampling.Date == as.factor("9/4"), "During", 
+     ifelse(NDFA_phyt$Sampling.Date == as.factor("9/18"), "During",
+     ifelse(NDFA_phyt$Sampling.Date == as.factor("10/2"), "After",
+     ifelse(NDFA_phyt$Sampling.Date == as.factor("10/16"),"After","After"))))))
+
+NDFA_phyt_group2 <- NDFA_phyt_group %>% 
+  group_by(Sampling.Time, Region, FunctionalGroup) %>% summarize(biovol = sum(biov))
+
+#plot 1: phyto group by site and time ####
+ggplot(NDFA_phyt_group, mapping=aes(x = FunctionalGroup, y = StationCode, fill=biov)) +geom_tile() +
+              scale_fill_distiller(palette = "Spectral")+facet_grid(~Sampling.Time,switch = "x", scales = "free_x", space = "free_x")+theme(axis.text.x =element_text(angle=90))+ theme(axis.text.y = element_text(colour=NDFA_phyt_group$FunctionalGroup))+
+  xlab("Sampling Date\n")+
+  ylab("Station (North to South)")+ 
+  labs(fill = "Biovolume (um3/mL)\n\n\n")+ 
+  theme(legend.position = "bottom")+
+  theme(legend.text =element_text(size=10,angle=45,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=90,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black"))+
+              scale_y_discrete(limits = rev(c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB")))
+
+#plot 2: phyto functional group by region and period ####
+ggplot(NDFA_phyt_group2, mapping=aes(x = FunctionalGroup, y = Region, fill=biovol))+theme_bw()+ geom_tile(colour = "gray") +
+              scale_fill_distiller(palette = "Spectral")+facet_grid(~Sampling.Time)+ theme(axis.text.y = element_text(colour=NDFA_phyt_group$FunctionalGroup))+
+  xlab("\nPhtyoplankton Taxa ")+
+  ylab("Station (North to South)")+ 
+  labs(fill = "Biovolume (um3/mL)\n\n\n")+ 
+  theme(legend.position = "bottom")+
+  theme(legend.text =element_text(size=10,angle=45,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=90,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black", face="bold"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black", face="bold"))+
+              scale_y_discrete(limits = rev(c("Colusa Drain/Ridge Cut", "Central Yolo Bypass", "Lower Yolo Bypass", "Cache Slough Complex", "Lower Sac River")),expand = c(0,0))+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=.01))
+
+
+# PERCENT TAXON ####
+
+#convert data to percent taxon and replot
+group_perc=group_by(NDFA_phyt_group, StationCode, Sampling.Date) %>% transmute(FunctionalGroup, percent = biov/sum(biov))
+group_perc$Percent.Taxon=group_perc$percent*100
+group_perc$Sampling.Date=as.factor(group_perc$Sampling.Date)
+group_perc$Sampling.Date<-factor(group_perc$Sampling.Date, levels=c("8/7","8/21","9/4","9/18","10/2","10/16"))
+
+
+#add new times periods
+group_perc$Sampling.Time=group_perc$Sampling.Date
+levels(group_perc$Sampling.Time)[levels(group_perc$Sampling.Time)=="8/7"] <- "Before"
+levels(group_perc$Sampling.Time)[levels(group_perc$Sampling.Time)=="8/21"] <- "Before"
+levels(group_perc$Sampling.Time)[levels(group_perc$Sampling.Time)=="9/4"] <- "During"
+levels(group_perc$Sampling.Time)[levels(group_perc$Sampling.Time)=="9/18"] <- "During"
+levels(group_perc$Sampling.Time)[levels(group_perc$Sampling.Time)=="10/2"] <- "After"
+levels(group_perc$Sampling.Time)[levels(group_perc$Sampling.Time)=="10/16"] <- "After"
+
+#add region
+group_perc$Region=group_perc$StationCode
+levels(group_perc$Region)[levels(group_perc$Region)=="RMB"] <- "Colusa Drain/Ridge Cut"
+levels(group_perc$Region)[levels(group_perc$Region)=="RCS"] <- "Colusa Drain/Ridge Cut"
+levels(group_perc$Region)[levels(group_perc$Region)=="RD22"] <- "Central Yolo Bypass"
+levels(group_perc$Region)[levels(group_perc$Region)=="I80"] <- "Central Yolo Bypass"
+levels(group_perc$Region)[levels(group_perc$Region)=="LIS"] <- "Lower Yolo Bypass"
+levels(group_perc$Region)[levels(group_perc$Region)=="STTD"] <- "Lower Yolo Bypass"
+levels(group_perc$Region)[levels(group_perc$Region)=="BL5"] <- "Cache Slough Complex"
+levels(group_perc$Region)[levels(group_perc$Region)=="LIB"] <- "Cache Slough Complex"
+levels(group_perc$Region)[levels(group_perc$Region)=="RYI"] <- "Cache Slough Complex"
+levels(group_perc$Region)[levels(group_perc$Region)=="RVB"] <- "Lower Sac River"
+
+#plot 1 taxa by site and time
+ggplot(group_perc, mapping=aes(x = FunctionalGroup, y = StationCode, fill=Percent.Taxon)) +geom_tile() +
+              scale_fill_distiller(palette = "Spectral")+facet_grid(~Sampling.Time,switch = "x", scales = "free_x", space = "free_x")+theme(axis.text.x =element_text(angle=90))+
+  xlab("\nTaxa")+
+  ylab("Station (North to South)")+ 
+  labs(fill = "Percent Taxa \n\n\n")+ 
+  theme(legend.position = "bottom")+
+  theme(legend.text =element_text(size=10,angle=45,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=90,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black"))+
+              scale_y_discrete(limits = rev(c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB")),expand = c(0,0))
+
+
+#plot 3. taxo by region and period ####
+ggplot(group_perc, mapping=aes(x = FunctionalGroup, y = Region, fill=Percent.Taxon))+theme_bw() +geom_tile(colour="black") +
+              scale_fill_distiller(palette = "Spectral", limits=c(0,100))+facet_grid(~Sampling.Time)+theme(axis.text.x =element_text(angle=90))+
+  xlab("\nPhytoplankton Taxa")+
+  ylab("Region (North to South)")+ 
+  labs(fill = "Percent Taxa \n\n\n")+ 
+  theme(legend.position = "bottom")+
+  theme(legend.text =element_text(size=10,angle=45,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=90,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black", face="bold"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black",face="bold"))+
+              scale_y_discrete(limits = rev(c("Colusa Drain/Ridge Cut", "Central Yolo Bypass", "Lower Yolo Bypass", "Cache Slough Complex", "Lower Sac River")),expand = c(0,0))
+
+#plot 4. sites on x axis
+ggplot(group_perc, mapping=aes(y = FunctionalGroup, x = StationCode, fill=Percent.Taxon)) +geom_tile(colour="gray") +
+              scale_fill_distiller(palette = "Spectral")+facet_grid(Sampling.Time~.,switch = "x", scales = "free_x", space = "free_x")+theme(axis.text.x =element_text(angle=90))+
+  xlab("\nStation (North to South)")+
+  ylab("Taxa\n")+ 
+  labs(fill = "Percent Taxa \n\n\n")+ 
+  theme(legend.position = "bottom")+
+  theme(legend.text =element_text(size=10,angle=45,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=0,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black"))+
+              scale_x_discrete(limits = c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB"))+
+              scale_y_discrete(limits = rev(c("Chlorophytes", "Cryptophytes", "Cyanophytes", "Diatoms", "Other")))
+
+
+```
+
+
+For phytoplankton statistics, first data is not parametric, with non-normal distributions (Shapiro wilks test) and homogeneity of variances (levenes Test), log-transformed data. FOr total phytoplankton biovolume across space and action time use a 2-way ANOVA. For changes in composition in phytoplankton, used a 2-way ANOSIM.
+
+```{r Phyto stats }
+library(car)
+library(multcomp)
+
+##test for parametric assumptions#
+shapiro.test(NDFA_phyt_sum$biov) #Fail
+NDFA_phyt_sum$logbiov=log10(NDFA_phyt_sum$biov) # w-stat close to 1 -OK
+shapiro.test(NDFA_phyt_sum$logbiov) #PASS
+leveneTest(NDFA_phyt_sum$logbiov~NDFA_phyt_sum$Region) #Pass
+leveneTest(NDFA_phyt_sum$logbiov~NDFA_phyt_sum$Sampling.Time)#Pass
+#anova of total phytoplankton biovolume
+phyt.mod=aov(logbiov~Sampling.Time*Region,data=NDFA_phyt_sum)
+summary(phyt.mod)
+
+#post hoc
+library(lsmeans)
+library(emmeans)
+L1=lsmeans(phyt.mod,~Region|Sampling.Time,adjust="Tukey")
+cld(L1,Letters=letters) 
+L2=lsmeans(phyt.mod,~Sampling.Time|Region,adjust="Tukey")
+cld(L2,Letters=letters)
+
+#Total phytoplankton biovolume was log transformed. The central Yolo BYpass had a significant increase in total phyto biovolumne after the action (P<0.05), whereas biovolume in other upper and downstream regions did not change across time (P>0.05).
+
+
+#Is the presence of certain phyto taxa dominant?
+library(MASS)
+library(reshape)
+library(reshape2)
+library(vegan)
+
+
+#test parametric assumptions
+shapiro.test(NDFA_phyt_group$biov) #Fail
+#make new column and tranform data
+NDFA_phyt_group$logbiov=log10(NDFA_phyt_group$biov) # w-stat close to 1 -OK
+shapiro.test(NDFA_phyt_group$logbiov)
+#test homogeneity of variances on log transformed data
+leveneTest(NDFA_phyt_group$logbiov~NDFA_phyt_group$Region) #Pass
+leveneTest(NDFA_phyt_group$logbiov~NDFA_phyt_group$Sampling.Time)#Pass
+#anova of total phytoplankton biovolume
+phyt.mod2=aov(logbiov~Sampling.Time*Region+FunctionalGroup,data=NDFA_phyt_group)
+Anova(phyt.mod2) #different sampling size so used Type II tests
+summary(phyt.mod2)
+#post hoc
+Lg2=lsmeans(phyt.mod2,~FunctionalGroup,adjust="Tukey")
+cld(Lg2,Letters=letters)
+Lg3=lsmeans(phyt.mod2,~Sampling.Time|FunctionalGroup,adjust="Tukey")
+cld(Lg3,Letters=letters)
+Lg4=lsmeans(phyt.mod2,~FunctionalGroup|Region,adjust="Tukey")
+cld(Lg4,Letters=letters)
+Lg5=lsmeans(phyt.mod2,~Region|FunctionalGroup,adjust="Tukey")
+cld(Lg5,Letters=letters)
+
+#overall we see the most dominant phytoplankton are cyanophytes, followed by Diatoms and chlorophyes (p<0.05), but the biovolume of each functional group are not affected by the pulse as they do not change across time period (independent of time).There were some spatial differences in taxa, such that the colusa, central and yolo bypass had more chlorophyes, and diatoms than lower regions of CSC and Rio Vista
+
+
+# take all datasets and left join together
+#ANOSIM
+
+
+```
+
+
+
+### Zooplankton 
+for 2019. FIrst create zooplankton heatmaps of CPUE, convert to percent tax, and then Look at zooplankton food type and classification a bit more detailed across space and time. Also convert the biomass/CPUE to percent taxa.
+
+
+```{r Zooplankton Figures, echo=FALSE}
+library(readr)
+library(lubridate)
+library(dplyr)
+library(tidyr)
+library(RColorBrewer)
+library(ggplot2)
+
+food <- read.csv("C:/Users/bedavis/OneDrive - California Department of Water Resources/My Documents/Special Studies/Internal/NDFA/2019 NDFA/2019 NDFA Data Analysis/NDFA_2019_zoop_CPUE_allsites_alldates.csv", header = TRUE)
+
+#make Date column a date
+food$Date <- as.Date(food$Date)
+head(food)
+
+#remove duplicate sites
+NDFA_food <- food[food$Station.Code %in% c("BL5", "I80", "LIB", "LIS", "RCS", "RD22", "RMB", "RVB", "RYI", "STTD"),]
+
+#make new column for sampling dates
+NDFA_food$Sampling.Date <- ifelse(
+  NDFA_food$Date == as.Date("2019-08-06"), "8/7", 
+    ifelse(NDFA_food$Date == as.Date("2019-08-07"), "8/7",
+      ifelse(NDFA_food$Date == as.Date("2019-08-20"), "8/21",
+        ifelse(NDFA_food$Date == as.Date("2019-08-21"), "8/21",
+        ifelse(NDFA_food$Date == as.Date("2019-09-03"), "9/4",
+        ifelse(NDFA_food$Date == as.Date("2019-09-04"), "9/4", 
+        ifelse(NDFA_food$Date == as.Date("2019-09-17"), "9/18",
+        ifelse(NDFA_food$Date == as.Date("2019-09-18"), "9/18",
+        ifelse(NDFA_food$Date == as.Date("2019-10-01"), "10/2",
+        ifelse(NDFA_food$Date == as.Date("2019-10-02"), "10/2",
+        ifelse(NDFA_food$Date == as.Date("2019-10-15"), "10/16",
+     ifelse(NDFA_food$Date == as.Date("2019-10-16"),"10/16","7"))))))))))))
+
+
+#sum total CPUE by site and date
+NDFA_food_sum <- NDFA_food %>% 
+  group_by(Sampling.Date, Station.Code) %>% summarize(CPUE = sum(CPUE))
+
+
+#add new column called Sampling.Time
+NDFA_food_sum$Sampling.Time<- ifelse(
+  NDFA_food_sum$Sampling.Date == as.factor("8/7"), "Before", 
+    ifelse(NDFA_food_sum$Sampling.Date == as.factor("8/21"), "Before",
+     ifelse(NDFA_food_sum$Sampling.Date == as.factor("9/4"), "During", 
+     ifelse(NDFA_food_sum$Sampling.Date == as.factor("9/18"), "During",
+     ifelse(NDFA_food_sum$Sampling.Date == as.factor("10/2"), "After",
+     ifelse(NDFA_food_sum$Sampling.Date == as.factor("10/16"),"After","After"))))))
+
+
+
+#set levels
+NDFA_food_sum$Sampling.Time<-factor(NDFA_food_sum$Sampling.Time, levels=c("Before","During","After"))
+NDFA_food_sum$Sampling.Date<-factor(NDFA_food_sum$Sampling.Date, levels=c("8/7","8/21","9/4","9/18","10/2","10/16"))
+
+# Zoop CPUE by space and time #####
+ggplot(NDFA_food_sum, aes(x = Sampling.Date, y = Station.Code)) +
+              geom_tile(aes(fill=CPUE)) +
+              scale_fill_distiller(palette = "Spectral") +
+              scale_y_discrete(limits = rev(c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5",    "LIB", "RYI", "RVB")),expand = c(0,0))+
+facet_grid(~Sampling.Time,switch = "x", scales = "free_x", space = "free_x")+
+  xlab("Sampling Date")+
+  ylab("Station (North to South)\n")+ 
+  labs(fill = "CPUE")+ 
+  theme(legend.position = "right")+
+  theme(legend.text =element_text(size=10,angle=0,color="black",vjust=0.8,hjust = (0.5)))+
+  theme(axis.text.x=element_text(size=12, angle=0,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black"))
+
+
+#Sum by region ####
+#add region
+
+NDFA_food_sum$Region=NDFA_food_sum$Station.Code
+levels(NDFA_food_sum$Region)[levels(NDFA_food_sum$Region)=="RMB"] <- "Colusa Drain/Ridge Cut"
+levels(NDFA_food_sum$Region)[levels(NDFA_food_sum$Region)=="RCS"] <- "Colusa Drain/Ridge Cut"
+levels(NDFA_food_sum$Region)[levels(NDFA_food_sum$Region)=="RD22"] <- "Central Yolo Bypass"
+levels(NDFA_food_sum$Region)[levels(NDFA_food_sum$Region)=="I80"] <- "Central Yolo Bypass"
+levels(NDFA_food_sum$Region)[levels(NDFA_food_sum$Region)=="LIS"] <- "Lower Yolo Bypass"
+levels(NDFA_food_sum$Region)[levels(NDFA_food_sum$Region)=="STTD"] <- "Lower Yolo Bypass"
+levels(NDFA_food_sum$Region)[levels(NDFA_food_sum$Region)=="BL5"] <- "Cache Slough Complex"
+levels(NDFA_food_sum$Region)[levels(NDFA_food_sum$Region)=="LIB"] <- "Cache Slough Complex"
+levels(NDFA_food_sum$Region)[levels(NDFA_food_sum$Region)=="RYI"] <- "Cache Slough Complex"
+levels(NDFA_food_sum$Region)[levels(NDFA_food_sum$Region)=="RVB"] <- "Lower Sac River"
+
+#sum total CPUE by region and period
+NDFA_food_sum2 <- NDFA_food_sum %>% 
+  group_by(Sampling.Time, Region) %>% summarize(CPUE2 = sum(CPUE))
+
+
+ggplot(NDFA_food_sum2, aes(x = Sampling.Time, y = Region, fill=CPUE2)) +theme_bw()+
+              geom_tile(colour = "gray") +
+              scale_fill_distiller(palette = "Spectral") +
+              scale_y_discrete(limits = rev(c("Colusa Drain/Ridge Cut", "Central Yolo Bypass", "Lower Yolo Bypass", "Cache Slough Complex", "Lower Sac River")))+
+  xlab("\nSampling Period")+
+  ylab("Region (North to South)\n")+ 
+  labs(fill = "Zooplankton CPUE \n")+ 
+  theme(legend.position = "right")+
+  theme(legend.text =element_text(size=10,angle=0,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=0,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black", face="bold"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black",face="bold"))+
+  theme(panel.border = element_rect(colour = "black", fill=NA, size=.01))
+
+
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# Zoop by Classification ####
+
+#sum total CPUE by site and date
+NDFA_food_org <- NDFA_food %>% 
+  group_by(Sampling.Date, Station.Code, Classification) %>% summarize(CPUE = sum(CPUE))
+
+#add new column called Sampling.Time
+NDFA_food_org$Sampling.Time<- ifelse(
+  NDFA_food_org$Sampling.Date == as.factor("8/7"), "Before", 
+    ifelse(NDFA_food_org$Sampling.Date == as.factor("8/21"), "Before",
+     ifelse(NDFA_food_org$Sampling.Date == as.factor("9/4"), "During", 
+     ifelse(NDFA_food_org$Sampling.Date == as.factor("9/18"), "During",
+     ifelse(NDFA_food_org$Sampling.Date == as.factor("10/2"), "After",
+     ifelse(NDFA_food_org$Sampling.Date == as.factor("10/16"),"After","After"))))))
+
+NDFA_food_org$Region=NDFA_food_org$Station.Code
+levels(NDFA_food_org$Region)[levels(NDFA_food_org$Region)=="RMB"] <- "Colusa Drain/Ridge Cut"
+levels(NDFA_food_org$Region)[levels(NDFA_food_org$Region)=="RCS"] <- "Colusa Drain/Ridge Cut"
+levels(NDFA_food_org$Region)[levels(NDFA_food_org$Region)=="RD22"] <- "Central Yolo Bypass"
+levels(NDFA_food_org$Region)[levels(NDFA_food_org$Region)=="I80"] <- "Central Yolo Bypass"
+levels(NDFA_food_org$Region)[levels(NDFA_food_org$Region)=="LIS"] <- "Lower Yolo Bypass"
+levels(NDFA_food_org$Region)[levels(NDFA_food_org$Region)=="STTD"] <- "Lower Yolo Bypass"
+levels(NDFA_food_org$Region)[levels(NDFA_food_org$Region)=="BL5"] <- "Cache Slough Complex"
+levels(NDFA_food_org$Region)[levels(NDFA_food_org$Region)=="LIB"] <- "Cache Slough Complex"
+levels(NDFA_food_org$Region)[levels(NDFA_food_org$Region)=="RYI"] <- "Cache Slough Complex"
+levels(NDFA_food_org$Region)[levels(NDFA_food_org$Region)=="RVB"] <- "Lower Sac River"
+
+
+#set levels
+NDFA_food_org$Sampling.Time<-factor(NDFA_food_org$Sampling.Time, levels=c("Before","During","After"))
+NDFA_food_org$Sampling.Date<-factor(NDFA_food_org$Sampling.Date, levels=c("8/7","8/21","9/4","9/18","10/2","10/16"))
+
+NDFA_food_org$Station.Code<-factor(NDFA_food_org$Station.Code, levels=c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB"))
+
+ggplot(NDFA_food_org, mapping=aes(x = Sampling.Date, y = Classification, fill=CPUE)) +geom_tile() +
+              scale_fill_distiller(palette = "Spectral")+facet_grid(~Sampling.Time,switch = "x", scales = "free_x", space = "free_x")+theme(axis.text.x =element_text(angle=90))+ theme(axis.text.y = element_text(colour=NDFA_food_org$Classification))+
+              scale_y_discrete(limits = rev(c("Calanoids", "Cladocera", "Cyclopoids", "Harpacticoids", "Microzooplankton_Nauplii")))+
+  xlab("Sampling Date")+
+  ylab("Taxa")+ 
+  labs(fill = "CPUE\n\n\n")+ 
+  theme(legend.position = "bottom")+
+  theme(legend.text =element_text(size=10,angle=45,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=0,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black"))
+
+#plot by space
+ggplot(NDFA_food_org, mapping=aes(y = Classification, x = Station.Code, fill=CPUE)) +geom_tile() +
+              scale_fill_distiller(palette = "Spectral")+facet_grid(Sampling.Time~.,switch = "x", scales = "free_x", space = "free_x")+theme(axis.text.x =element_text(angle=90))+ theme(axis.text.y = element_text(colour=NDFA_food_org$Classification))+
+              scale_y_discrete(limits = rev(c("Calanoids", "Cladocera", "Cyclopoids", "Harpacticoids", "Microzooplankton_Nauplii")))+
+  xlab("Sampling Date")+
+  ylab("Taxa")+ 
+  labs(fill = "CPUE\n\n\n")+ 
+  theme(legend.position = "bottom")+
+  theme(legend.text =element_text(size=10,angle=45,color="black",vjust =.8 ))+
+  theme(axis.text.x=element_text(size=12, angle=0,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black"))
+
+#sum by region and period
+NDFA_food_org2 <- NDFA_food_org %>% 
+  group_by(Sampling.Time, Region, Classification) %>% summarize(CPUE2 = sum(CPUE))
+
+#=Zooplankton taxo by region and period ####
+ggplot(NDFA_food_org2, mapping=aes(x = Classification, y = Region, fill=CPUE2))+theme_bw() +geom_tile(colour="black") +
+              scale_fill_distiller(palette = "Spectral")+facet_grid(~Sampling.Time)+theme(axis.text.x =element_text(angle=90))+
+  xlab("\nZooplankton Taxa")+
+  ylab("Region (North to South)")+ 
+  labs(fill = "Zooplankton CPUE \n")+ 
+  theme(legend.position = "right")+
+  theme(legend.text =element_text(size=10,angle=0,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=90,vjust=0.5,hjust=.5,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black", face="bold"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black",face="bold"))+
+              scale_y_discrete(limits = rev(c("Colusa Drain/Ridge Cut", "Central Yolo Bypass", "Lower Yolo Bypass", "Cache Slough Complex", "Lower Sac River")),expand = c(0,0))+
+  scale_x_discrete("Taxa", breaks=c("Calanoids", "Cladocera", "Cyclopoids", "Harpacticoids", "Microzooplankton_Nauplii"), labels=c("Calanoids", "Cladocerans", "Cyclopoids", "Harpacticoids", "Microzoop\nNauplii"))
+
+#sampling time by classification
+
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# Percent Zooplankton ####
+
+#convert data to percent taxon and replot
+zoop_perc=group_by(NDFA_food_org, Station.Code, Sampling.Date) %>% transmute(Classification, percent = CPUE/sum(CPUE))
+zoop_perc$Percent.Taxon=zoop_perc$percent*100
+zoop_perc$Sampling.Date=as.factor(zoop_perc$Sampling.Date)
+zoop_perc$Sampling.Date<-factor(zoop_perc$Sampling.Date, levels=c("8/7","8/21","9/4","9/18","10/2","10/16"))
+
+
+#add new times periods
+zoop_perc$Sampling.Time=zoop_perc$Sampling.Date
+levels(zoop_perc$Sampling.Time)[levels(zoop_perc$Sampling.Time)=="8/7"] <- "Before"
+levels(zoop_perc$Sampling.Time)[levels(zoop_perc$Sampling.Time)=="8/21"] <- "Before"
+levels(zoop_perc$Sampling.Time)[levels(zoop_perc$Sampling.Time)=="9/4"] <- "During"
+levels(zoop_perc$Sampling.Time)[levels(zoop_perc$Sampling.Time)=="9/18"] <- "During"
+levels(zoop_perc$Sampling.Time)[levels(zoop_perc$Sampling.Time)=="10/2"] <- "After"
+levels(zoop_perc$Sampling.Time)[levels(zoop_perc$Sampling.Time)=="10/16"] <- "After"
+
+ggplot(zoop_perc, mapping=aes(x = Classification, y = Station.Code, fill=Percent.Taxon)) +geom_tile() +
+              scale_fill_distiller(palette = "Spectral")+facet_grid(~Sampling.Time,switch = "x", scales = "free_x", space = "free_x")+theme(axis.text.x =element_text(angle=90))+
+  xlab("\nTaxa")+
+  ylab("Station (North to South)")+ 
+  labs(fill = "Percent Taxa \n\n\n")+ 
+  theme(legend.position = "bottom")+
+  theme(legend.text =element_text(size=10,angle=45,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=90,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black"))+
+              scale_y_discrete(limits = rev(c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB")))
+
+#sites on x axis
+ggplot(zoop_perc, mapping=aes(y = Classification, x = Station.Code, fill=Percent.Taxon)) +geom_tile() +
+              scale_fill_distiller(palette = "Spectral")+facet_grid(Sampling.Time~.,switch = "x", scales = "free_x", space = "free_x")+theme(axis.text.x =element_text(angle=90))+
+  xlab("\nStation (North to South)")+
+  ylab("Taxa\n")+ 
+  labs(fill = "Percent Taxa")+ 
+  theme(legend.position = "right")+
+  theme(legend.text =element_text(size=10,angle=0,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=45,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black"))+
+              scale_y_discrete(limits = rev(c("Calanoids", "Cladocera", "Cyclopoids", "Harpacticoids", "Microzooplankton_Nauplii")))
+
+
+#Percent by region ####
+
+#convert data to percent taxon and replot
+zoop_perc2=group_by(NDFA_food_org2, Region, Sampling.Time) %>% transmute(Classification, percent = CPUE2/sum(CPUE2))
+zoop_perc2$Percent.Taxon=zoop_perc2$percent*100
+zoop_perc2$Sampling.Time<-factor(zoop_perc2$Sampling.Time, levels=c("Before","During","After"))
+
+#plot percent tax by region
+ggplot(zoop_perc2, mapping=aes(x = Classification, y = Region, fill=Percent.Taxon)) +theme_bw()+geom_tile(colour="gray") +
+              scale_fill_distiller(palette = "Spectral",limits=c(0,100))+facet_grid(~Sampling.Time)+theme(axis.text.x =element_text(angle=90))+
+  xlab("\nTaxa")+
+  ylab("Station (North to South)")+ 
+  labs(fill = "Percent \n\n\n")+ 
+  theme(legend.position = "bottom")+
+  theme(legend.text =element_text(size=10,angle=0,color="black"))+
+  theme(axis.text.x=element_text(size=12, angle=90,color="black"))+
+  theme(axis.text.y=element_text(size=12, angle=0,color="black"))+
+  theme(axis.title.y=element_text(size=12, angle=90,color="black",face="bold"))+
+  theme(axis.title.x=element_text(size=12, angle=0,color="black",face="bold"))+
+              scale_y_discrete(limits = rev(c("Colusa Drain/Ridge Cut", "Central Yolo Bypass", "Lower Yolo Bypass", "Cache Slough Complex", "Lower Sac River")))+
+  scale_x_discrete("Taxa", breaks=c("Calanoids", "Cladocera", "Cyclopoids", "Harpacticoids", "Microzooplankton_Nauplii"), labels=c("Calanoids", "Cladocerans", "Cyclopoids", "Harpacticoids", "Microzoop\nNauplii"))
+
+
+
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# Zoop by organism, sampling period, and station ####
+
+#make copy of NDFA_food table
+NDFA_zoop_org <- NDFA_food
+
+#add new column called Sampling.Time
+NDFA_zoop_org$Sampling.Time<- ifelse(
+  NDFA_zoop_org$Sampling.Date == as.factor("8/7"), "Before", 
+    ifelse(NDFA_zoop_org$Sampling.Date == as.factor("8/21"), "Before",
+     ifelse(NDFA_zoop_org$Sampling.Date == as.factor("9/4"), "During", 
+     ifelse(NDFA_zoop_org$Sampling.Date == as.factor("9/18"), "During",
+     ifelse(NDFA_zoop_org$Sampling.Date == as.factor("10/2"), "After",
+     ifelse(NDFA_zoop_org$Sampling.Date == as.factor("10/16"),"After","After"))))))
+
+#sum total CPUE by site and date
+NDFA_zoop_org <- NDFA_zoop_org %>% 
+  group_by(Organism, Station.Code, Sampling.Time) %>% summarize(CPUE = sum(CPUE))
+
+
+#Organism to percentage ####
+
+#convert data to percent organism and replot
+org_perc <- group_by(NDFA_zoop_org, Station.Code, Sampling.Time) %>% transmute(Organism, percent = CPUE/sum(CPUE))
+org_perc$Percent.Org=org_perc$percent*100
+org_perc$Sampling.Time=as.factor(org_perc$Sampling.Time)
+org_perc$Sampling.Time <- factor(org_perc$Sampling.Time, levels=c("Before","During","After"))
+
+#Organism percent by space and time#####
+ggplot(org_perc, aes(y = Organism, x = Station.Code)) +
+              geom_tile(aes(fill=Percent.Org)) +
+              scale_fill_distiller(palette = "Spectral")+
+              scale_x_discrete(limits = c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB"))+
+  theme(axis.text.x =element_text(angle=90))+facet_grid(.~Sampling.Time, scales = "free_x", space = "free_x") +
+  xlab("Station") +
+  labs(fill = "Organism Percent")
+
+```
+
+
+```{r Zoop stats }
+
+
+
+```
+
+
+
+Zooplankton: Evident that the cache complex and rio vista are dominated by Calanoids most of the time from August to October but after the action, CSC and RV do appear to have a subtle increase in Caldocera and Cyclopoids which may have been transported from upstream sites before and during the action. 
+
+
+# Fish Surveys
+
+Lastly, we we look at potential changes in fish assemblage using FMWT, Summer Townet, and YBFMP
+This analysis is of the fish community composition during the 2019 North Delta Flow Action. It is comprised of 4 different sampling methods:
+a) Townet
+b) beach seine
+c) fyke
+d) fall midwater trawl
+
+
+```{r Fish Surveys, message = FALSE, include = FALSE}
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# Fish Community Analysis ####
+
+library(lubridate)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(RColorBrewer)
+
+#upload fish file. only for 2019, August-October
+fish <- read.csv("2019_fish.csv", header = TRUE, stringsAsFactors = FALSE)
+
+#remove unknown fish IDs
+fish <-fish[!(fish$CommonName == "Unknown"),]
+
+#change some of the common names
+fish$CommonName[fish$CommonName == 'Tridentiger spp_'] <- 'Tridentiger spp.'
+
+#add month column to add sampling period
+fish$Date <- format(as.Date(fish$Date, format = "%m/%d/%Y"), "%Y-%m-%d")
+fish$Month <- month(fish$Date)
+
+#add new column with Sampling Period
+fish$sampling.period <- 
+  ifelse(fish$Month == "8", "Before", 
+    ifelse(fish$Month == "9", "During",
+      ifelse(fish$Month == "10", "After",
+                     "")))
+
+#sum fish by ID and date
+fish_sum <- fish %>% 
+  group_by(CommonName, sampling.period) %>% summarize(totalCount = sum(totalCount))
+
+#make sampling.period a factor and order it so that facets come out in correct order
+fish_sum$sampling.period_f = factor(fish_sum$sampling.period, levels=c('Before','During','After'))
+
+
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+# Fish plots ####
+
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#bar plot faceted by species, summed by sampling period
+f <- ggplot(fish_sum, aes(x = sampling.period, y = totalCount)) +
+  geom_bar(stat = "identity") +
+  facet_wrap( ~ CommonName, ncol = 7, scales = "free_y") +
+  scale_x_discrete(limits = c("Before", "During", "After")) +
+  theme(axis.text.x = element_text(angle = 45))
+
+f
+
+
+#bar plot faceted by sampling period, with a bar for each species
+g <- ggplot(fish_sum, aes(x = CommonName, y = totalCount)) +
+  geom_bar(stat = "identity", fill = "#56B4E9") +
+  facet_wrap( ~ sampling.period_f, ncol = 1, scales = "free_y") +
+  theme(axis.text.x = element_text(angle = 90)) +
+  xlab ("Common Name") +
+  ylab ("Total Catch")
+
+g
+
+#total catch seperated by survey and sampling occ
+#sum by survey  and sampling period
+fish_sum_survey <- fish %>% 
+  group_by(Survey, sampling.period) %>% summarize(totalCount = sum(totalCount))
+
+#bar plot faceted by gear type
+h <- ggplot(fish_sum_survey, aes(x = sampling.period, y = totalCount)) +
+  geom_bar(stat = "identity") +
+  facet_wrap( ~ Survey, scales = "free_y") +
+  scale_x_discrete(limits = c("Before", "During", "After"))
+
+
+h
+
+
+#total catch seperated by gear and sampling occ
+#sum by gear  and sampling period
+fish_sum_gear <- fish %>% 
+  group_by(MethodCode, sampling.period) %>% summarize(totalCount = sum(totalCount))
+
+#bar plot faceted by gear type
+i <- ggplot(fish_sum_gear, aes(x = sampling.period, y = totalCount)) +
+  geom_bar(stat = "identity") +
+  facet_wrap( ~ MethodCode, scales = "free_y") +
+  scale_x_discrete(limits = c("Before", "During", "After"))
+
+
+i
+
+
+#subset data based on DSM like species
+fish_sum_smelt <- fish_sum[fish_sum$CommonName %in% c("Inland Silverside", "Wakasagi"), ]
+
+#make CommonName a factor and order it so that facets come out in correct order
+fish_sum_smelt$CommonName_f = factor(fish_sum_smelt$CommonName, levels=c('Wakasagi','Inland Silverside'))
+
+#plot subset of smelt like species
+j <- ggplot(fish_sum_smelt, aes(x = sampling.period, y = totalCount, fill = CommonName_f)) +
+  geom_bar(stat = "identity") +
+  scale_color_manual(values=c("#56B4E9","#E69F00"))+
+  facet_wrap( ~ CommonName_f, scales = "free_y") +
+  scale_x_discrete(limits = c("Before", "During", "After")) +
+  xlab("Sampling Period") +
+  ylab("Total Catch") +
+  theme(legend.position = "none")
+
+j
+
+
+#see if gear type has an influence
+#subset gear type based on DSM species
+fish_sum_gear2 <- fish %>% 
+  group_by(CommonName, MethodCode, sampling.period) %>% summarize(totalCount = sum(totalCount))
+
+
+#subset data based on DSM like species
+fish_sum_gear2_smelt <- fish_sum_gear2[fish_sum_gear2$CommonName %in% c("Inland Silverside", "Wakasagi"), ]
+
+#plot 
+k <- ggplot(fish_sum_gear2_smelt, aes(x = sampling.period, y = totalCount)) +
+  geom_bar(stat = "identity") +
+  facet_grid(MethodCode ~ CommonName, scales = "free_y") +
+  scale_x_discrete(limits = c("Before", "During", "After")) +
+  theme(axis.text.x = element_text(angle = 45))
+
+k
+
+
+#smelt species by location
+#sum by species, sampling period, and station code
+fish_sum_location <- fish %>% 
+  group_by(CommonName, sampling.period, StationCode) %>% summarize(totalCount = sum(totalCount))
+
+#subset by smeltish species
+fish_sum_location_smelt <- fish_sum_location[fish_sum_location$CommonName %in% c("Inland Silverside", "Wakasagi"), ]
+
+#make CommonName a factor and order it so that facets come out in correct order
+fish_sum_location_smelt$CommonName_f = factor(fish_sum_location_smelt$CommonName, levels=c('Wakasagi','Inland Silverside'))
+
+#make sampling.period a factor and order it so that facets come out in correct order
+fish_sum_location_smelt$sampling.period_f = factor(fish_sum_location_smelt$sampling.period, levels=c('Before','During','After'))
+
+#plot
+l <- ggplot(fish_sum_location_smelt, aes(x = StationCode, y = totalCount, fill = CommonName_f)) +
+  geom_bar(stat = "identity") +
+  facet_grid( sampling.period_f ~ CommonName_f, scales = "free") +
+  scale_x_discrete(limits = c("AL1", "AL3", "AL4", "796", "BL1", "BL2", "797", "BL3", "BL4", "719", "721")) +
+  xlab("Location (North to South)") +
+  ylab("Total Catch") +
+  theme(legend.position = "none")
+
+l
+
+#plot of total catch by date? need to sum all species on a specific day
+#add highlighted area for flow action
+fish_sum_date <- fish %>% 
+  group_by(Date) %>% summarize(totalCount = sum(totalCount))
+
+
+fish_sum_date$Group <- "A"
+
+#Plot
+m <- ggplot(fish_sum_date, aes(x = Date, y = totalCount, group = Group)) +
+  geom_point(aes(y = totalCount, color = Group), size = 3) +
+  geom_line(aes(y = totalCount, color = Group), size = 1.5) +
+  scale_color_manual(values = "#56B4E9") +
+  xlab("Date") +
+  ylab("Total Catch") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  geom_rect(data = fish_sum_date, aes(xmin = "2019-08-26", xmax = "2019-09-21", ymin = 0, ymax = Inf), alpha = 0.02) +
+  theme(legend.position = "none")
+
+m
+
+```
