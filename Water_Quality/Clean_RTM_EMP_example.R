@@ -54,7 +54,7 @@ rvb_clean <- rvb_orig %>%
   mutate(
     # Parse date time variable
     DateTime = mdy_hm(DATE),
-    # Convert Station names to NDFA standardized names
+    # Convert Station name to NDFA standardized name
     StationCode = "RVB",
     # Convert Parameter names to NDFA standardized names
     READING_TYPE = case_when(
@@ -124,3 +124,4 @@ rvb_clean1 %>%
 # For easier importing of this file in the future should either:
 # 1) convert file to .xlsx file after exporting, or
 # 2) manually format the 'DateTime' variable in the .csv file to "yyyy-mm-dd hh:mm:ss"
+
