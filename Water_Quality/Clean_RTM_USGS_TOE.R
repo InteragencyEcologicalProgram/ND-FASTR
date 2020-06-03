@@ -26,7 +26,7 @@ toe_orig_1 <- read_csv(
 ) 
 
 # Second TOE station - 11455139
-ryi_orig_2 <- read_csv(
+toe_orig_2 <- read_csv(
   file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_TOE_2.csv"),
   col_types = paste0("-cc", str_c(rep("dc", 3), collapse = ""), "-")
 )
@@ -101,7 +101,7 @@ toe_values <- toe_clean %>%
 toe_qual <- toe_clean %>% 
   select(site_no, DateTime, ends_with("_cd")) %>% 
   pivot_longer(
-    cols = -c(site_no, DateTime, tz_cd),
+    cols = -c(site_no, DateTime),
     names_to = "parameter",
     values_to = "value"
   ) %>% 
