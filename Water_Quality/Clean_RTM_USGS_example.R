@@ -101,7 +101,7 @@ ryi_clean <- ryi_orig %>%
   ryi_qual <- ryi_clean %>% 
     select(site_no, DateTime, ends_with("_cd")) %>% 
     pivot_longer(
-      cols = -c(site_no, DateTime),
+      cols = -c(site_no, DateTime, tz_cd),
       names_to = "parameter",
       values_to = "value"
     ) %>% 
