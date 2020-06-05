@@ -44,7 +44,7 @@ sort(unique(nuts$Result))
 # Clean up Time and Result variables
 nuts_clean <- nuts %>% 
   mutate(
-    # Convert Time variable from character to hms/difftime
+    # Convert Time variable from character to hms/difftime - THIS STILL NEEDS WORK
     Time = if_else(
       str_detect(Time, ":"),
       parse_hms(Time),
