@@ -45,10 +45,11 @@ sort(unique(nuts$Result))
 nuts_clean <- nuts %>% 
   mutate(
     # Convert Time variable from character to hms/difftime - THIS STILL NEEDS WORK
-    Time = if_else(
-      str_detect(Time, ":"),
-      parse_hms(Time),
-      as_hms(round(as.numeric(Time) * 24 * 60 * 60, 0))
+    Time1 = case_when(
+      str_detect(Time, "PM$") & str_sub(Time, end = 2) == 12 ~ parse_hms(Time),
+      str_detect(Time, "PM$") ~ parse_hms(paste0(as.character(as.numeric(str_sub(Time, end = 1)) + 12), str_sub(Time, start = 2))),
+      str_detect(Time, "AM$") ~ parse_hms(Time),
+      TRUE ~ as_hms(round(as.numeric(Time) * 24 * 60 * 60, 0))
     ),
     # Create a new variable to identify values below the Reporting Limit
     Lab_Detect = if_else(
