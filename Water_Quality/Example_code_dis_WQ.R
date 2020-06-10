@@ -14,15 +14,33 @@ library(hms)
 sharepoint_path <- normalizePath(
   file.path(
     Sys.getenv("USERPROFILE"),
-    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/Raw_Data/Discrete"
+    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/Raw_Data"
   )
 )
 
 # 1. Importing nutrient data from SharePoint
 
+# Trying to resolve differences between 3 spreadsheets on SharePoint site:
+# DWQ_nuts_raw.xlsx - 13714 obs
 nuts <- read_excel(
-  path = paste0(sharepoint_path, "/DWQ_nuts_raw.xlsx"), sheet = "WQData (11)"
+  path = paste0(sharepoint_path, "/Discrete/DWQ_nuts_raw.xlsx"), sheet = "WQData (11)"
 )
+
+# WQ_discrete_nutrients_RAW (1).xlsx - 12369 obs
+nuts1 <- read_excel(paste0(sharepoint_path, "/Discrete/WQ_discrete_nutrients_RAW (1).xlsx"))
+
+# WQ_discrete_nutrients_RAW.xlsx - 14361 obs
+nuts2 <- read_excel(paste0(sharepoint_path, "/WQ_discrete_nutrients_RAW.xlsx"))
+
+nuts_select <- nuts %>% select(StationCode, Date, Analyte)
+nuts1_select <- nuts1 %>% select(StationCode, Date, Analyte)
+nuts2_select <- nuts2 %>% select(StationCode, Date, Analyte)
+
+nuts_nuts1_diff <- anti_join(nuts_select, nuts1_select)
+nuts_nuts2_diff <- anti_join(nuts2_select, nuts_select)
+# The WQ_discrete_nutrients_RAW.xlsx file contains some additional data for WWT and DWT that are
+  # not within the DWQ_nuts_raw.xlsx file. This needs to be resolved.
+
 
 head(nuts)
 
