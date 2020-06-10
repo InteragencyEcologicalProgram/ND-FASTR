@@ -1,0 +1,247 @@
+---
+title: "GLM Practice"
+author: "Amanda Casby"
+date: "5/15/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+Load packages
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(pscl)
+library(MASS)
+library(visreg)
+library(readxl)
+library(readr)
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+library(zoo)
+library(scales)
+library(rcompanion)
+library(car)
+library(visreg)
+```
+
+Bring in data 
+```{r, message=FALSE, warning=FALSE}
+ind <- read_csv("InundationWY2010toWY2019.csv")
+cpub <- read_csv("Beach Seine CPUE GEN 2015-2019.csv")
+cpur <- read_csv("STTD CPUE GEN 2015-2019_editedwzeros.csv")
+```
+
+Data Prep 
+```{r, message=FALSE}
+#fix dates
+ind$DOC<-mdy(ind$"Date")
+ind$month <- month(ind$DOC)
+ind$year <- year(ind$DOC)
+
+#set as factor
+ind$month <- as.factor(ind$month)
+ind$year <- as.factor(ind$year)
+
+#change true and false to 0 and 1 
+ind <- ind %>% mutate(Inundation = as.numeric(Inundation))
+
+#dates of interest - seperate due to differences in reporting checks and pulls prior to 2016
+myfunc <- function(x,y){ind[ind$DOC >= x & ind$DOC <= y,]}
+DATE1 <- as.Date("2015-01-01")
+DATE2 <- as.Date("2019-12-03")
+ind <- myfunc(DATE1,DATE2) 
+
+#create month year column
+ind$MY <- as.yearmon(paste(ind$year, ind$month), "%Y %m")
+
+#total days inundated by month and year
+ind_sum_year<-ind %>% 
+  group_by(MY, month, year) %>% 
+  summarize("days.count"= sum(Inundation))
+
+#create year column
+cpub$year <- year(cpub$SampleDate)
+#create month column
+cpub$month <- month(cpub$SampleDate)
+#create month year column
+cpub$MY <- as.yearmon(paste(cpub$year, cpub$month), "%Y %m")
+cpur$MY <- as.yearmon(paste(cpur$Year, cpur$month), "%Y %m")
+
+#total beach seine count by run, month, and year
+cpub_sum_year<-cpub %>% 
+  group_by(Run, MY, month, year) %>% 
+  summarize("fish.count"= sum(total.count), "fish.cpue"=mean(cpue))
+
+#prep screwtrap data
+cpur$fish.count <- cpur$total.count
+cpur$fish.cpue <- cpur$cpue
+cpur_sum_year<-cpur 
+
+#merge beach seine data with innundation - June does not show up because no fish were caught then - would be nice to still include this put may take me a bit to fix that in previous R code so let's roll with this for now and maybe fix it if we have time - otherwise we can just make a note on the plot
+all.seine <- merge(cpub_sum_year, ind_sum_year, by="MY", all.x=T)
+
+#add zeros to innundation for Nov 2019 since we have fish data but no innundation data (and we know it didn't innundate)
+all.seine[["days.count"]][is.na(all.seine[["days.count"]])] <- 0
+
+#merge screwtrap data with innundation 
+all.sttd <- merge(cpur_sum_year, ind_sum_year, by="MY", all.x=T)
+
+#clean up dataframes
+all.seine$Year <- all.seine$year.x
+all.seine <- all.seine[, -c(4, 7:8)]
+all.sttd <- all.sttd[, -c(2, 5, 7:8, 11:12)]
+
+#merge screwtrap and bseine
+all.seine$method <- paste("Beach Seine")
+all.sttd$method <- paste("Screwtrap")
+all.salm <- rbind(all.seine, all.sttd)
+with(all.salm, month.abb[month.x])
+all.salm <- transform(all.salm, Month=month.abb[month.x])
+
+#Total days inundated and fish caught by just month. May be useful for figuring out which months are most useful for salmon in the floodplain
+all.month.seine<-all.seine %>% 
+  group_by(month.x, Run) %>% 
+  summarize("mean.fish"= mean(fish.count), "mean.days"= mean(days.count), "mean.cpue"=mean(fish.cpue))
+
+all.month.sttd<-all.sttd %>% 
+  group_by(month.x, Run) %>% 
+  summarize("mean.fish"= mean(fish.count), "mean.days"= mean(days.count), "mean.cpue"=mean(fish.cpue))
+    
+all.month.salm <- all.salm %>% 
+  group_by(Month, Run, method) %>% 
+  summarize("mean.fish"= mean(fish.count), "mean.days"= mean(days.count), "mean.cpue"=mean(fish.cpue))
+
+```
+
+Running a GLM - Beach Seine
+```{r, beachseine warning=FALSE}
+library(MuMIn)
+library(pscl)
+library(AER)
+
+### Beach Seine - change variable structures, merge with inundation info
+cpub$year <- as.factor(cpub$year)
+cpub$month <- as.factor(cpub$month)
+cpub2 <-  left_join(cpub, ind_sum_year)
+cpub2 <- filter(cpub2, !is.na(days.count),
+                month %in% c("1", "2", "3", "4", "5", "6", "12"), cpue <2)
+cpub2$Run <- factor(cpub2$Run, c("LateFall", "Spring", "Fall", "Winter"))
+
+# Visualize
+ggplot(cpub2, aes(x = days.count, y = cpue)) + geom_point()
+ggplot(cpub2, aes(x = days.count, y = cpue)) + geom_point() + facet_wrap(~Run)
+ggplot(cpub2, aes(x = cpue)) + geom_histogram(binwidth = 0.005)
+
+# Include offset for CPUE
+Samp <- log(cpub2$total.volume.seined.y)
+
+##########
+# Zero-inflated Poisson Model
+f1 <-  formula(total.count~days.count*Run + offset(Samp), data = cpub2)
+zip1 <- zeroinfl(f1, dist = "poisson", link = "logit", data = cpub2); summary(zip1)
+
+
+# Plots 
+# Diagnostic Plots -------------------------------------
+# Model Validation 
+# Calculate residuals
+EP1 <- resid(zip1, type = "pearson")
+
+# Diagnostic Plots
+par(mfrow = c(2,2))
+hist(EP1)
+plot(cpub2$cpue, EP1)
+plot(x=zip1$fitted.values, y = EP1, main = "Pearson residuals")
+qqnorm(EP1)
+
+#############
+# Zero-inflated Negative Binomial 
+zinb1 <- zeroinfl(f1, na.action = "na.fail", dist="negbin", link = "logit", data = cpub2)
+summary(zinb1)
+visreg(zinb1)
+visreg(zinb1, xvar = "days.count", by = "Run")
+
+# Calculate residuals
+EP4 <- resid(zinb1, type = "pearson")
+# Diagnostic Plots
+par(mfrow = c(2,2))
+hist(EP4)
+plot(cpub2$cpue, EP4)
+plot(x=zinb1$fitted.values, y = EP4, main = "Pearson residuals")
+qqnorm(EP4)
+
+# Check which is better: zip1 or zinb1
+lrtest(zip1, zinb1) #negbin better
+
+```
+
+GLM - RSTR
+
+```{r rstr, warning = FALSE}
+#### RSTR
+cpur$Year <- as.factor(cpur$Year)
+cpur$month <- as.factor(cpur$month)
+cpur2 <-  left_join(cpur, ind_sum_year)
+cpur2 <- filter(cpur2, !is.na(days.count), cpue <2)
+
+# Visualize 
+ggplot(cpur2, aes(x = days.count, y = fish.cpue)) + geom_point()
+ggplot(cpur2, aes(x = days.count, y = fish.cpue)) + geom_point()
+
+# Include offset for CPUE
+Samp2 <- log(cpur2$total.hours)
+
+##########
+# Zero-inflated Poisson
+f2 <-  formula(total.count~days.count*Run + offset(Samp2), data = cpur2)
+zip2 <- zeroinfl(f2, dist = "poisson", link = "logit", data = cpur2); summary(zip2)
+
+# Plot 
+# Diagnostic Plots -------------------------------------
+# Model Validation 
+# Calculate residuals
+EP2 <- resid(zip2, type = "pearson")
+
+# Diagnostic Plots
+par(mfrow = c(2,2))
+hist(EP2)
+plot(cpur2$cpue, EP2)
+plot(x=zip2$fitted.values, y = EP2, main = "Pearson residuals")
+qqnorm(EP2)
+
+##########
+# Zero-inflated Negative Binomial 
+zinb2 <- zeroinfl(f2, na.action = "na.fail", dist="negbin", link = "logit", data = cpur2)
+summary(zinb2)
+visreg(zinb2)
+visreg(zinb2, xvar = "days.count", by = "Run")
+
+# Diagnostic Plots
+EP3 <- resid(zinb2, type = "pearson")
+par(mfrow = c(2,2))
+plot(cpur2$cpue, EP3)
+hist(EP3)
+plot(x=zinb2$fitted.values, y = EP3, main = "Pearson residuals")
+qqnorm(EP3)
+
+# Check which is better: zip1 or zinb1
+lrtest(zip2, zinb2) #negbin better
+
+
+
+```
+
+Poisson + Plot
+```{r originalpoisson}
+# Original Poisson model (beach seine + screw trap)
+salmglm = glm(fish.cpue~ days.count, family = poisson, data = all.salm) 
+summary(salmglm)
+
+# Check dispersion
+dispersiontest(salmglm, trafo = 1). #If  z>1 then overdispersed.
+plot(salmglm)
+
+
+```
+
