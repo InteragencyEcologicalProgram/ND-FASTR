@@ -72,9 +72,3 @@ nuts_lab_reps <- nuts_clean %>%
 # NEED TO DECIDE WHAT TO DO WITH FIELD DUPLICATES AND LAB REPLICATES
 
 
-#example of old code for different study for subsetting by station
-CM40<- subset(CM, station== "CM40")
-CM42<- subset(CM, station== "CM42")
-CM43<- subset(CM, station== "CM43")
-CM48<- subset(CM, station== "CM48")
-RRI<- subset(CM, station== "CM42_RRI")
