@@ -55,6 +55,30 @@ sdi_clean <- sdi_orig %>%
   ) %>% 
   select(-dateTime)
 
+# Remove overlapping Specific Conductance and Water Temperature data
+  # Keep the BGC project data when there was more than one study collecting 
+  # data during the same time period
+sdi_hydro_wt_spc <- sdi_clean %>% 
+  select(
+    DateTime,
+    X_.HYDRO.EXO._00010_00000,
+    X_.HYDRO.EXO._00010_00000_cd,
+    X_.HYDRO.EXO._00095_00000,
+    X_.HYDRO.EXO._00095_00000_cd
+  ) %>% 
+  filter(date(DateTime) <= "2013-01-24")
+
+sdi_clean <- sdi_clean %>% 
+  select(
+    -c(
+      X_.HYDRO.EXO._00010_00000,
+      X_.HYDRO.EXO._00010_00000_cd,
+      X_.HYDRO.EXO._00095_00000,
+      X_.HYDRO.EXO._00095_00000_cd
+    )
+  ) %>% 
+  left_join(sdi_hydro_wt_spc)
+
 # Clean SGG data
 sgg_clean <- sgg_orig %>% 
   mutate(
@@ -77,14 +101,19 @@ sdi_values <- sdi_clean %>%
   filter(!is.na(value)) %>% 
   mutate(
     parameter = case_when(
+      str_detect(parameter, "00060") ~ "Flow",
+      str_detect(parameter, "72137") ~ "FlowTF",
       str_detect(parameter, "00010") ~ "WaterTemp",
       str_detect(parameter, "00300") ~ "DO",
       str_detect(parameter, "00095") ~ "SpCnd",
       str_detect(parameter, "00400") ~ "pH",
       str_detect(parameter, "63680") ~ "Turbidity",
+      str_detect(parameter, "32315") ~ "Chla_RFU",
       str_detect(parameter, "32316") ~ "Chla",
       str_detect(parameter, "32295") ~ "fDOM",
+      str_detect(parameter, "32321") ~ "Phyco_RFU",
       str_detect(parameter, "99133") ~ "NitrateNitrite"
     )
-  ) %>% 
+  ) %>%
   pivot_wider(names_from = parameter, values_from = value)
+
