@@ -30,6 +30,12 @@ sharepoint_path <- normalizePath(
     file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_RYI_2.csv"),
     col_types = paste0("-cc", str_c(rep("dc", 12), collapse = ""), "-")
   )
+  
+  # col_types argument uses the following syntax:
+    # "-" skips a column during import
+    # "c" imports a column as text/character
+    # "d" imports a column as numeric/double
+  
 
 # Check if ryi_orig1 and ryi_orig2 have same variable names
 names(ryi_orig_1)
