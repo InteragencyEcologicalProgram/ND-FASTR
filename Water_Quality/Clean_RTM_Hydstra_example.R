@@ -6,6 +6,7 @@
 # Load packages
 library(tidyverse)
 library(lubridate)
+library(readxl)
 
 # Import Data -------------------------------------------------------------
 
@@ -14,19 +15,28 @@ library(lubridate)
 sharepoint_path <- normalizePath(
   file.path(
     Sys.getenv("USERPROFILE"),
-    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam"
+    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/Raw_Data/Continuous"
   )
 )
 
 # Import data
-i80_orig <- read_csv(
-  file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_DWR I80_2013-2019.csv"),
+lis_wq_orig <- read_csv(
+  file = paste0(sharepoint_path, "/RTM_RAW_DWR LIS_2013-2019.csv"),
   col_names = FALSE,
   skip = 3,
   col_types = "cdd-------dd-dd-dd-dd-dd-"  # "c" = character, "d" = numeric, "-" = skip
 ) 
 
-glimpse(i80_orig)
+lis_flow_orig <- read_excel(
+  path = paste0(sharepoint_path, "/RTM_RAW_DWR RCS LIS Flow_2011-2019.xlsx"),
+  sheet = "LIS",
+  col_names = c("DateTime", "Flow", "Flow_Qual"),
+  skip = 3,
+  col_types = c("date", "numeric", "numeric")
+) 
+
+glimpse(lis_wq_orig)
+glimpse(lis_flow_orig)
 
 
 # Clean Data --------------------------------------------------------------
@@ -43,8 +53,8 @@ glimpse(i80_orig)
   # 7004 - Chlorophyll (ug/L)
 
 # Clean data
-  # Change variable names - using NDFA standardized names
-  names(i80_orig) <- c(
+  # Change variable names for WQ dataframe - using NDFA standardized names
+  names(lis_wq_orig) <- c(
     "DateTime",
     "WaterTemp",
     "WaterTemp_Qual",
@@ -60,16 +70,29 @@ glimpse(i80_orig)
     "Chla_Qual"
   )
 
-  # Parse date time variable, and create StationCode variable
-  i80_clean <- i80_orig %>% 
-    mutate(
-      DateTime = mdy_hm(DateTime),
-      StationCode = "I80"
-    )
+  # Parse date time variable on the WQ dataframe
+  lis_wq_clean <- lis_wq_orig %>% 
+    mutate(DateTime = mdy_hm(DateTime))
 
-  glimpse(i80_clean)
+  glimpse(lis_wq_clean)
   
+  # Round DateTime variable in both dataframes to the nearest 15 minute interval so that they can 
+    # be joined together
+  lis_wq_clean <- lis_wq_clean %>% 
+    mutate(DateTime = round_date(DateTime, unit = "15 minute"))
+  
+  lis_flow_clean <- lis_flow_orig %>% 
+    mutate(DateTime = round_date(DateTime, unit = "15 minute"))
+  
+  # Join the WQ and flow dataframes together, use full join to preserve all data
+  lis_all_orig <- full_join(lis_flow_clean, lis_wq_clean)
+  
+  # Finish cleaning lis_all_orig dataframe
+  lis_all_clean <- lis_all_orig %>% 
+    mutate(StationCode = "LIS") %>% 
+    arrange(DateTime)
 
+  
 # Export Data -------------------------------------------------------------
 
 # Export formatted data as a .csv file 
