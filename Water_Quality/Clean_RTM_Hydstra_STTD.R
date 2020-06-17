@@ -1,5 +1,5 @@
 # NDFA Water Quality
-# Purpose: Code to import, clean, and export continuous water quality data
+# Purpose: Code to import, clean, and export STTD continuous water quality data
 # downloaded from Hydstra
 # Author: Amanda Maguire
 
