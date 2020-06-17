@@ -1,7 +1,7 @@
 # NDFA Water Quality
 # Purpose: Code to import, clean, and export I80 continuous water quality data
 # downloaded from Hydstra
-# Author: Amanda Maguire
+# Author: Dave Bosworth & Amanda Maguire
 
 # Load packages
 library(tidyverse)
