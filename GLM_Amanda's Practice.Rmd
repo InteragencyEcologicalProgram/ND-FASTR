@@ -244,4 +244,19 @@ plot(salmglm)
 
 
 ```
+There are some other options for modeling overdisperssed count data in teh "countreg" package wich is available on RForge https://r-forge.r-project.org/R/?group_id=522
+
+```{r}
+library(countreg)
+zinb2x <- zeroinfl(f2, na.action = "na.fail", dist="negbin", link = "logit", data = cpur2)
+summary(zinb2x)
+visreg(zinb2x)
+
+rootogram(zinb2x)
+rootogram(zip2)
+rootogram(zinb1)
+qqrplot(zinb1)
+qqrplot(zinb2)
+
+```
 
