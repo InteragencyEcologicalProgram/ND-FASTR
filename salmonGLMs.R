@@ -6,27 +6,26 @@ library(tidyverse)
 
 #import the data
 
-salmon = read.csv("Salmonid_catch_exporatory data.csv", stringsAsFactors = F)
+salmon = read.csv("YB_Salmonid_catch.csv", stringsAsFactors = F)
 
 #let's see if that read in right
 str(salmon)
 
 #fix a few of the columns so they are the right data type
 salmon = mutate(salmon, 
-                SampleTime = as.POSIXct(strptime(SampleTime, 
-                                                         format = "%I:%M:%S %p")),
+                
                 WYtype = factor(WYtype, levels = c(1:5), 
-                labels = c("CD", "D", "BD", "AN", "W")),
+                labels = c("CD", "D", "BN", "AN", "W")),
                 WYtype.2yrs= factor(WYtype, levels = c(1:5), 
-                                    labels = c("CD", "D", "BD", "AN", "W")) )
+                                    labels = c("CD", "D", "BN", "AN", "W")) )
 
 #Now let's graph annual catch versus transport time from two years ago.
 
 #First calculate total catch by year and species
 #I use "group_by" and "Summarize" to calculate summary stats.
 salmonsum = group_by(salmon, Year, Species) %>%
-  summarize(catch = length(FL), MeanTrans = mean(MeanTrans), 
-            WYtype = first(WYtype), WYtype.2yrs = first(WYtype.2yrs))
+  summarize(catch = length(FL), MeanTrans = mean(MeanTrans), Trans.2yrs = mean(Trans.2yrs), Trans.3yrs = mean(Trans.3yrs), Trans.4yrs = mean(Trans.4yrs),
+            WYtype = first(WYtype), WYtype.2yrs = first(WYtype.2yrs), WYtype.3yrs = first(WYtype.3yrs), WYtype.4yrs = first(WYtype.4yrs))
 
 #Now do a quick histogram, to see if the data are normally distributed
 ggplot(salmonsum, aes(x = catch, fill = Species)) +geom_histogram() + 
@@ -39,9 +38,38 @@ ggplot(salmonsum, aes(x = catch, fill = Species)) +geom_histogram() +
 ggplot(salmonsum, aes(x = catch, y = MeanTrans)) +geom_point() + 
   facet_grid(~Species, scales = "free_x")
 
+
 #Let's try log-transforming both transport difference and catch
 #to see if it looks a little clearer.
 ggplot(salmonsum, aes(x = log(catch), y = log(MeanTrans))) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#copying Rosie's code for addt'l views: transport-2years
+
+#And a scatter plot
+ggplot(salmonsum, aes(x = catch, y = Trans.2yrs)) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#log transformed
+ggplot(salmonsum, aes(x = log(catch), y = log(Trans.2yrs))) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#Now transport-3years
+
+ggplot(salmonsum, aes(x = catch, y = Trans.3yrs)) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#log transformed
+ggplot(salmonsum, aes(x = log(catch), y = log(Trans.3yrs))) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#Now transport-4years
+
+ggplot(salmonsum, aes(x = catch, y = Trans.4yrs)) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#log transformed
+ggplot(salmonsum, aes(x = log(catch), y = log(Trans.4yrs))) +geom_point() + 
   facet_grid(~Species, scales = "free_x")
 
 #Meh.
@@ -60,6 +88,7 @@ summary(m1)
 #check the diagnostic plots
 plot(m1)
 
+
 #check for overdispersion
 library(AER)
 
@@ -69,11 +98,64 @@ dispersiontest(m1)
 #we've got some outliers that are really throwing things off. (2014, 2015, and 2017)
 #We could take them out and re-run the model, or try again with a different distribution
 
+#Checking other transport years (-2,3,4 years)
+m1a = glm(catch ~ Trans.2yrs, family = "poisson", data = salonly)
+summary(m1a)
+
+#check the diagnostic plots
+plot(m1a)
+
+
+#check for overdispersion
+library(AER)
+
+dispersiontest(m1a)
+#Same - dispersion much greater than 1
+#Now trans - 3 years
+m1b = glm(catch ~ Trans.3yrs, family = "poisson", data = salonly)
+summary(m1b)
+
+#check the diagnostic plots
+plot(m1b)
+
+
+#check for overdispersion
+library(AER)
+
+dispersiontest(m1b)
+#Same as the other transport versus years
+#Lastly - trans-4years
+m1c = glm(catch ~ Trans.4yrs, family = "poisson", data = salonly)
+summary(m1c)
+
+#check the diagnostic plots
+plot(m1c)
+
+
+#check for overdispersion
+library(AER)
+
+dispersiontest(m1c)
+# Much higher than 1 again.
+
 #let's try a quasipoisson first
 m2 = glm(catch ~ MeanTrans, family = "quasipoisson", data = salonly)
 summary(m2)
 plot(m2)
 #better, but 2015 and 2017 are still throwing us off
+#Trying trans - (2, 3, 4) years
+m2a = glm(catch ~ Trans.2yrs, family = "quasipoisson", data = salonly)
+summary(m2a)
+plot(m2a)
+#Eh.
+m2b = glm(catch ~ Trans.3yrs, family = "quasipoisson", data = salonly)
+summary(m2b)
+plot(m2b)
+#Nah
+m2c = glm(catch ~ Trans.4yrs, family = "quasipoisson", data = salonly)
+summary(m2c)
+plot(m2c)
+#zzzzzz
 
 #let's try a negaitve binomial.
 library(MASS)
@@ -103,3 +185,60 @@ plot(m5)
 #visualize the model
 library(visreg)
 visreg(m5)
+
+#Now for transport-2yrs
+
+m4a = glm(catch~ Trans.2yrs, family = "poisson", data = salonly2)
+summary(m4a)
+plot(m4a)
+
+#that's much better, but we should also check for overdispersion.
+dispersiontest(m4a)
+#dispersion is still greater than 1, but much better
+
+#now a quasipoisson again
+m5a = glm(catch~ Trans.2yrs, family = "quasipoisson", data = salonly2)
+summary(m5a)
+plot(m5a)
+
+#visualize the model
+library(visreg)
+visreg(m5a)
+
+#Now trans-3 years
+
+m4b = glm(catch~ Trans.3yrs, family = "poisson", data = salonly2)
+summary(m4b)
+plot(m4b)
+
+#that's NOT much better, but we should also check for overdispersion.
+dispersiontest(m4b)
+#dispersion is still greater than 1, but much better
+
+#now a quasipoisson again
+m5b = glm(catch~ Trans.3yrs, family = "quasipoisson", data = salonly2)
+summary(m5b)
+plot(m5b)
+
+#visualize the model
+library(visreg)
+visreg(m5b)
+
+#Now trans-4 years
+
+m4c = glm(catch~ Trans.4yrs, family = "poisson", data = salonly2)
+summary(m4c)
+plot(m4c)
+
+#that's much better, but we should also check for overdispersion.
+dispersiontest(m4c)
+#dispersion is still greater than 1, but much better
+
+#now a quasipoisson again
+m5c = glm(catch~ Trans.4yrs, family = "quasipoisson", data = salonly2)
+summary(m5c)
+plot(m5c)
+
+#visualize the model
+library(visreg)
+visreg(m5c)
