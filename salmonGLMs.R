@@ -23,7 +23,7 @@ salmon = mutate(salmon,
 
 #First calculate total catch by year and species
 #I use "group_by" and "Summarize" to calculate summary stats.
-salmonsum = group_by(salmon, Year, Species) %>%
+salmonsum = group_by(salmon, Year, Species, Flow.Action..Y.N.) %>%
   summarize(catch = length(FL), MeanTrans = mean(MeanTrans), Trans.2yrs = mean(Trans.2yrs), Trans.3yrs = mean(Trans.3yrs), Trans.4yrs = mean(Trans.4yrs),
             WYtype = first(WYtype), WYtype.2yrs = first(WYtype.2yrs), WYtype.3yrs = first(WYtype.3yrs), WYtype.4yrs = first(WYtype.4yrs))
 
@@ -107,7 +107,6 @@ plot(m1a)
 
 
 #check for overdispersion
-library(AER)
 
 dispersiontest(m1a)
 #Same - dispersion much greater than 1
@@ -133,7 +132,6 @@ plot(m1c)
 
 
 #check for overdispersion
-library(AER)
 
 dispersiontest(m1c)
 # Much higher than 1 again.
@@ -188,57 +186,59 @@ visreg(m5)
 
 #Now for transport-2yrs
 
-m4a = glm(catch~ Trans.2yrs, family = "poisson", data = salonly2)
-summary(m4a)
-plot(m4a)
-
-#that's much better, but we should also check for overdispersion.
-dispersiontest(m4a)
-#dispersion is still greater than 1, but much better
-
-#now a quasipoisson again
-m5a = glm(catch~ Trans.2yrs, family = "quasipoisson", data = salonly2)
+m5a = glm(catch~ Trans.2yrs + WYtype, family = "quasipoisson", data = salonly)
 summary(m5a)
 plot(m5a)
 
 #visualize the model
-library(visreg)
 visreg(m5a)
 
 #Now trans-3 years
 
-m4b = glm(catch~ Trans.3yrs, family = "poisson", data = salonly2)
-summary(m4b)
-plot(m4b)
-
-#that's NOT much better, but we should also check for overdispersion.
-dispersiontest(m4b)
-#dispersion is still greater than 1, but much better
-
-#now a quasipoisson again
-m5b = glm(catch~ Trans.3yrs, family = "quasipoisson", data = salonly2)
+m5b = glm(catch~ Trans.3yrs + WYtype, family = "quasipoisson", data = salonly)
 summary(m5b)
 plot(m5b)
 
-#visualize the model
-library(visreg)
+m5b = glm(catch~ Trans.3yrs, family = "quasipoisson", data = salonly)
+summary(m5b2)
+visreg(m5b2)
+plot(m5b2)
 visreg(m5b)
 
 #Now trans-4 years
 
-m4c = glm(catch~ Trans.4yrs, family = "poisson", data = salonly2)
-summary(m4c)
-plot(m4c)
-
-#that's much better, but we should also check for overdispersion.
-dispersiontest(m4c)
-#dispersion is still greater than 1, but much better
-
-#now a quasipoisson again
-m5c = glm(catch~ Trans.4yrs, family = "quasipoisson", data = salonly2)
+m5c = glm(catch~ Trans.4yrs + WYtype, family = "quasipoisson", data = salonly2)
 summary(m5c)
 plot(m5c)
 
-#visualize the model
-library(visreg)
+visreg(m5c)
+
+###################################################################################
+
+#Let's see what happens if we put in some other variables.
+
+mm = glm(catch~Trans.2yrs + WYtype, family = "quasipoisson", salonly2)
+summary(mm)
+
+
+mm = glm(catch~ Trans.3yrs + WYtype.3yrs, 
+         family = "quasipoisson", salonly)
+summary(mm)
+plot(mm)
+
+salonly3 = filter(salonly, Trans.3yrs < 200 & catch <50)
+m5c = glm(catch~ Trans.3yrs, family = "quasipoisson", data = salonly3)
+summary(m5c)
+plot(m5c)
+
+#################################################################################
+
+#go back to the origional and look at action period
+salmon$date = as.Date(paste(salmon$Year, salmon$Month, salmon$Day), format = "%Y %m %d")
+s1 = ggplot(salmon, aes(x = date, color = Flow.Action..Y.N.))
+s1 + geom_bar()
+
+m5c = glm(catch~ Flow.Action..Y.N., family = "quasipoisson", data = salonly)
+summary(m5c)
+plot(m5c)
 visreg(m5c)
