@@ -50,22 +50,17 @@ srh_orig3 <- read_csv(
 ) 
 
 # Check if srh_orig1_wt and srh_orig1_ph and srh_orig1 and srh_orig2 and srh_orig3 have same variable names
-names (srh_orig1_wt)
+names(srh_orig1_wt)
 names(srh_orig1_ph)
 names(srh_orig1)
 names(srh_orig2)
 names(srh_orig3)
 # Yes they do, so they can be binded together without trouble
 
-# Bind srh_orig1_wt and srh_orig1_ph and srh_orig1
-srh_orig1_all <- bind_rows(srh_orig1_wt, srh_orig1_ph, srh_orig1)
+# Bind all raw SRH data together
+srh_all_raw <- bind_rows(srh_orig1, srh_orig1_ph, srh_orig1_wt, srh_orig2, srh_orig3)
 
-glimpse(srh_orig1_all)
-
-#Bind srh_orig1_all and srh_orig2 and srh_orig3
-srh_orig <- bind_rows(srh_orig1_all, srh_orig2, srh_orig3)
-
-glimpse(srh_orig)
+glimpse(srh_all_raw)
 
 
 # Clean Data --------------------------------------------------------------
@@ -79,10 +74,10 @@ glimpse(srh_orig)
 # [Water]  Turbidity (NTU) -(n/a) YSI Sonde { Data }  @ 15 min Inst 1 m deep
 
 # Clean data
-srh_clean <- srh_orig %>% 
+srh_all_clean <- srh_all_raw %>% 
   mutate(
-    # Parse date time variable
-    DateTime = mdy_hm(DATE),
+    # Parse date time variable and round to nearest 15 minute interval
+    DateTime = round_date(mdy_hm(DATE), unit = "15 minute"),
     # Convert Station name to NDFA standardized name
     StationCode = "SRH",
     # Convert Parameter names to NDFA standardized names
@@ -95,10 +90,26 @@ srh_clean <- srh_orig %>%
       str_detect(READING_TYPE, ".{9}Turb") ~ "Turbidity"
     )
   ) %>%
-  select(DateTime, StationCode, READING_TYPE, VALUE, `QAQC Flag`)
+  select(DateTime, StationCode, READING_TYPE, VALUE, `QAQC Flag`) %>% 
+  # Remove duplicate values
+  distinct()
 
 # THE CHLOROPHYLL DATA MAY BE IN RFU UNITS, NEED TO CHECK ON THIS AND 
 # FIGURE OUT HOW TO CONVERT TO ug/L
+
+# Looking for duplicate readings
+srh_duplicates <- srh_all_clean %>% 
+  count(DateTime, READING_TYPE) %>% 
+  filter(n > 1)
+
+srh_duplicates_diff_values <- srh_duplicates %>% 
+  select(-n) %>% 
+  left_join(srh_all_clean)
+
+# Find unique minute and second values for DateTime variable
+unique(minute(srh_all_clean$DateTime))
+unique(second(srh_all_clean$DateTime))
+
 
 # Pivot dataframe to wide format
 # Values
