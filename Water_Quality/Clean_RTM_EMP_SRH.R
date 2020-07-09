@@ -160,9 +160,9 @@ glimpse(srh_all_clean_f)
 # Export Data -------------------------------------------------------------
 
 # Export formatted data as a .csv file 
-rvb_clean1 %>% 
+srh_all_clean_f %>% 
   write_excel_csv(
-    path = paste0(sharepoint_path, "/Processed_Data/Continuous/RTM_OUTPUT_RVB_formatted.csv"),
+    path = paste0(sharepoint_path, "/Processed_Data/Continuous/RTM_OUTPUT_SRH_formatted.csv"),
     na = ""
   )
 
