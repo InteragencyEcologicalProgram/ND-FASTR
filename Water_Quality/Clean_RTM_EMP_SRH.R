@@ -7,6 +7,12 @@
 library(tidyverse)
 library(lubridate)
 
+# Set System Timezone as "Etc/GMT+8" to make it consistent with all df's 
+Sys.setenv(TZ = "Etc/GMT+8")
+Sys.time()
+Sys.timezone()
+
+
 # Import Data -------------------------------------------------------------
 
 # Define path on SharePoint site for data - this works if you have the SharePoint site synced
@@ -55,7 +61,7 @@ names(srh_orig1_ph)
 names(srh_orig1)
 names(srh_orig2)
 names(srh_orig3)
-# Yes they do, so they can be binded together without trouble
+# Yes they do, so they can be bound together without trouble
 
 # Bind all raw SRH data together
 srh_all_raw <- bind_rows(srh_orig1, srh_orig1_ph, srh_orig1_wt, srh_orig2, srh_orig3)
@@ -75,9 +81,13 @@ glimpse(srh_all_raw)
 
 # Clean data
 srh_all_clean <- srh_all_raw %>% 
+  # Remove values with QAQC Flag of X
+  filter(`QAQC Flag` != "X") %>% 
   mutate(
     # Parse date time variable and round to nearest 15 minute interval
     DateTime = round_date(mdy_hm(DATE), unit = "15 minute"),
+    # Define Timezone of date_time as PST (Etc/GMT+8) without daylight savings adjustment
+    DateTime = force_tz(DateTime, tzone = "Etc/GMT+8"),
     # Convert Station name to NDFA standardized name
     StationCode = "SRH",
     # Convert Parameter names to NDFA standardized names
@@ -92,28 +102,20 @@ srh_all_clean <- srh_all_raw %>%
   ) %>%
   select(DateTime, StationCode, READING_TYPE, VALUE, `QAQC Flag`) %>% 
   # Remove duplicate values
-  distinct()
-
+  distinct() %>% 
+  # Remove some duplicates with different values
+    filter(
+      !(DateTime == "2011-03-15 11:30:00" & READING_TYPE == "Chla" & VALUE == 3.80),
+      !(DateTime == "2011-03-15 11:30:00" & READING_TYPE == "DO" & VALUE == 10.21),
+      !(DateTime == "2011-03-15 11:30:00" & READING_TYPE == "WaterTemp" & VALUE == 11.62)
+    )
+  
 # THE CHLOROPHYLL DATA MAY BE IN RFU UNITS, NEED TO CHECK ON THIS AND 
 # FIGURE OUT HOW TO CONVERT TO ug/L
 
-# Looking for duplicate readings
-srh_duplicates <- srh_all_clean %>% 
-  count(DateTime, READING_TYPE) %>% 
-  filter(n > 1)
-
-srh_duplicates_diff_values <- srh_duplicates %>% 
-  select(-n) %>% 
-  left_join(srh_all_clean)
-
-# Find unique minute and second values for DateTime variable
-unique(minute(srh_all_clean$DateTime))
-unique(second(srh_all_clean$DateTime))
-
-
 # Pivot dataframe to wide format
 # Values
-srh_values <- srh_clean %>% 
+srh_all_values <- srh_all_clean %>% 
   pivot_wider(
     id_cols = -'QAQC Flag',
     names_from = READING_TYPE,
@@ -121,7 +123,7 @@ srh_values <- srh_clean %>%
   )
 
 # Qual Codes
-srh_qual <- srh_clean %>% 
+srh_all_qual <- srh_all_clean %>% 
   pivot_wider(
     id_cols = -VALUE,
     names_from = READING_TYPE,
@@ -138,8 +140,8 @@ srh_qual <- srh_clean %>%
   )
 
 # Join two wide dataframes together
-srh_clean1 <- 
-  left_join(srh_values, srh_qual) %>% 
+srh_all_clean_f <- 
+  left_join(srh_all_values, srh_all_qual) %>% 
   # Reorder variables
   select(
     DateTime,
@@ -152,7 +154,7 @@ srh_clean1 <-
     starts_with("DO")
   )
 
-glimpse(rvb_clean1)
+glimpse(srh_all_clean_f)
 
 
 # Export Data -------------------------------------------------------------
