@@ -273,7 +273,7 @@ rm(list= ls()[!(ls() %in% obj_keep)])
 sta_code <- "TOE"
 
 # Define number of parameters collected at site
-num_params_1 <- 11
+num_params_1 <- 12
 num_params_2 <- 3
 
 # Import data
@@ -348,7 +348,7 @@ toe_clean_f <-
     Chla_Qual,
     Chla_RFU,
     Chla_RFU_Qual,
-    #starts_with("fD"),
+    starts_with("fD"),
     starts_with("Phy"),
     starts_with("Ni")
   )
