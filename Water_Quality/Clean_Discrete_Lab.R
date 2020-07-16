@@ -1,6 +1,6 @@
 # NDFA Water Quality
 # Purpose: Code to import, clean, and export discrete laboratory water quality data from Bryte Lab
-# Author: Jenna Rinde
+# Author: Jenna Rinde, Dave Bosworth
 
 # Load packages
 library(tidyverse)
@@ -8,7 +8,7 @@ library(readxl)
 library(lubridate)
 
 
-# Import Data -------------------------------------------------------------
+# 1. Import Data -------------------------------------------------------------
 
 # Define path on SharePoint site for data - this works if you have the SharePoint site synced
   # to your computer
@@ -34,6 +34,9 @@ dis_lab_col_types <- c(
 
 # Import and combine all of the discrete lab data
 dis_lab_data_orig <- map_dfr(dis_lab_files, ~read_excel(.x, col_types = dis_lab_col_types))
+
+
+# 2. Clean Data --------------------------------------------------------------
 
 # Clean up variable names in dis_lab_data_orig
 names(dis_lab_data_orig) <- str_replace_all(names(dis_lab_data_orig), "[:space:]", "")
@@ -111,62 +114,144 @@ dis_lab_data_clean <- dis_lab_data_orig %>%
     ParentSample
   )
 
-# Look for lab replicates
-dis_lab_reps <- dis_lab_data_clean %>%
-  count(StationName, CollectionDate, Analyte, Purpose) %>% 
-  filter(n > 1) %>% 
+
+# 3. Lab Replicates ----------------------------------------------------------
+
+# Remove the unusual lab replicates for DOC collected at SRH in 2019 
+  # which have different Sample codes
+srh_doc_19_orig <- dis_lab_data_clean %>% 
+  filter(
+    StationName == "SRH",
+    Analyte == "DOC",
+    year(CollectionDate) == 2019
+  )
+
+srh_doc_19_clean <- srh_doc_19_orig %>% 
+  filter(
+    !SampleCode %in% c(
+      "E0119B0264",
+      "E0219B0279",
+      "E0319B0689",
+      "E0419B0950",
+      "E0519B1196",
+      "E0619B1364"
+    )
+  )
+
+dis_lab_data_clean1 <- 
+  anti_join(dis_lab_data_clean, srh_doc_19_orig) %>% 
+  bind_rows(srh_doc_19_clean)
+
+# Pull out lab replicates
+dis_lab_reps <- dis_lab_data_clean1 %>%
+  count(SampleCode, Analyte) %>% 
+  filter(n == 2) %>% 
   select(-n)
 
-# Pull lab replicates from dis_lab_data_clean
-dis_lab_rep_pairs <- inner_join(dis_lab_data_clean, dis_lab_reps)
+# Pull lab replicates from dis_lab_data_clean1
+dis_lab_rep_pairs <- inner_join(dis_lab_data_clean1, dis_lab_reps)
 
-# There are some lab replicates with different SampleCodes
-test <- dis_lab_rep_pairs %>% 
-  count(SampleCode, StationName, CollectionDate, Analyte, Purpose) %>% 
-  filter(n == 1)
-# DOC samples collected at SRH in 2019
-# It would be good to remove the samples that were for the Lab's special DOC study
+# The Result and LabDetect variables are unique between lab replicate pairs, 
+  # all other variables are identical
 
-# Add a variable to define obs as either Rep1 or Rep2
-dis_lab_reps_num <- dis_lab_rep_pairs %>%
-  select(-c(SampleCode, Depth, ParentSample)) %>% 
-  group_by(StationName, CollectionDate, Analyte, Purpose) %>% 
+# Pull out Result and LabDetect variables and widen the replicate pairs in separate columns
+dis_lab_reps_wide <- dis_lab_rep_pairs %>%
+  select(SampleCode, Analyte, Result, LabDetect) %>% 
+  # Add a variable to define obs as either Rep1 or Rep2
+  group_by(SampleCode, Analyte) %>% 
   mutate(Rep = row_number()) %>% 
   ungroup() %>% 
-  filter(Rep != 3)
+  # Widen the Result and LabDetect variables
+  pivot_wider(names_from = Rep, values_from = c(Result, LabDetect))
 
-# Widen the Result variable to arrange Replicate Results side-by-side in same row
-dis_lab_reps_r_wide <- dis_lab_reps_num %>%   
-  pivot_wider(
-    id_cols = -LabDetect,
-    names_from = Rep, 
-    values_from = Result,
-    names_prefix = "Result_"
-  )
-
-# Widen the LabDetect variable to arrange Replicates side-by-side in same row
-dis_lab_reps_ld_wide <- dis_lab_reps_num %>%   
-  pivot_wider(
-    id_cols = -Result,
-    names_from = Rep, 
-    values_from = LabDetect,
-    names_prefix = "LabDetect_"
-  )
-
-# Join all lab rep dataframes back together
-dis_lab_reps_wide <- dis_lab_rep_pairs %>% 
-  select(-c(SampleCode, Result, LabDetect)) %>% 
+# Join lab replicate dataframes together and calculate the RPD of the replicate pairs
+dis_lab_reps_f <- dis_lab_rep_pairs %>% 
+  select(-c(Result, LabDetect)) %>% 
   distinct() %>% 
-  left_join(dis_lab_reps_r_wide) %>% 
-  left_join(dis_lab_reps_ld_wide) %>% 
+  left_join(dis_lab_reps_wide) %>% 
   mutate(RPD = round(abs(Result_1 - Result_2)/((Result_1 + Result_2)/2), 3))
 
-# Export lab replicate data as a .csv file
-dis_lab_reps_wide %>% write_excel_csv("Discrete_Lab_Data_Replicates.csv", na = "")
+# Are there any lab replicate pairs with RPD values greater than 25%?
+dis_lab_reps_f %>% filter(RPD > 0.25)  
+# yes, 12 pairs, all but one pair are close to the RL
 
-# Pull out field duplicates and calculate RPD's
+# Export lab replicate data as a .csv file
+dis_lab_reps_f %>% write_excel_csv("Discrete_Lab_Data_Replicates.csv", na = "")
+
+# Only include one of the two lab replicate pairs for the final dataset
+dis_lab_reps_1r <- dis_lab_reps_f %>% 
+  select(-c(Result_2, LabDetect_2, RPD)) %>% 
+  rename(
+    Result = Result_1,
+    LabDetect = LabDetect_1
+  )
+
+dis_lab_data_clean2 <- dis_lab_data_clean1 %>% 
+  anti_join(dis_lab_reps) %>% 
+  bind_rows(dis_lab_reps_1r)
+
+# Clean up working environment
+rm(list = ls()[(ls() != "dis_lab_data_clean2")])
+
+
+# 4. Field Duplicates -----------------------------------------------------
+
+# Pull out Field Duplicates
+dis_field_dups <- dis_lab_data_clean2 %>% filter(Purpose != "Normal Sample")
+
+# Pull out all parent samples from dis_lab_data_clean2 and join with Field Duplicate data
+dis_field_dup_pairs <- 
+  inner_join(
+    dis_lab_data_clean2, 
+    dis_field_dups,
+    by = c("SampleCode" = "ParentSample", "Analyte"),
+    suffix = c("_PS", "_FD")
+ )
+
+# Restructure dis_field_dup_pairs and calculate the RPD of the field duplicate pairs
+dis_field_dup_pairs_f <- dis_field_dup_pairs %>% 
+  mutate(RPD = round(abs(Result_PS - Result_FD)/((Result_PS + Result_FD)/2), 3)) %>% 
+  rename(
+    SampleCode_PS = SampleCode,
+    StationName = StationName_PS,
+    RptLimit = RptLimit_PS,
+    Units = Units_PS,
+    Method = Method_PS
+  ) %>% 
+  select(
+    starts_with("Samp"),
+    StationName,
+    starts_with("Coll"),
+    Analyte,
+    starts_with("Res"),
+    starts_with("LabD"),
+    RPD,
+    RptLimit,
+    Units,
+    Method,
+    starts_with("Dep")
+  )
+
+# Are there any Field Duplicate pairs with RPD values greater than 25%?
+dis_field_dup_pairs_f %>% filter(RPD > 0.25)  
+# yes, 11 pairs, but values are small and the differences aren't alarming
+
+# Export Field Duplicate data as a .csv file
+dis_field_dup_pairs_f %>% write_excel_csv("Discrete_Lab_Data_Field_Dups.csv", na = "")
+
+# Only keep the Normal Samples for the final dataset
+dis_lab_data_clean3 <- dis_lab_data_clean2 %>% filter(Purpose == "Normal Sample")
+
+# Clean up working environment
+rm(list = ls()[(ls() != "dis_lab_data_clean3")])
+
+
+# 5. Final Cleaning and Export --------------------------------------------
+
+
 # Separate date and time?
-# Change column names
+# Change column names?
+# Remove any columns?
 
 # Investigate collection depth
 
