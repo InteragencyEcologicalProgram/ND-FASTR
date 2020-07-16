@@ -19,25 +19,32 @@ sharepoint_path <- normalizePath(
 )
 
 # Import data
-  # 2015-2017 data
-  rvb_orig1 <- read_csv(
-    file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_DWR RVB_2015-2017.csv"),
-    skip = 4
-  ) 
+# 2011-2014 data
+rvb_orig1 <- read_csv(
+  file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_DWR RVB_2011-2014.csv"),
+  skip = 4
+) 
 
-  # 2018-2019 data
-  rvb_orig2 <- read_csv(
-    file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_DWR RVB_2018-2019.csv"),
-    skip = 4
-  ) 
-  
+# 2015-2017 data
+rvb_orig2 <- read_csv(
+  file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_DWR RVB_2015-2017.csv"),
+  skip = 4
+) 
+
+# 2018-2019 data
+rvb_orig3 <- read_csv(
+  file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_DWR RVB_2018-2019.csv"),
+  skip = 4
+) 
+
 # Check if rvb_orig1 and rvb_orig2 have same variable names
 names(rvb_orig1)
 names(rvb_orig2)
+names(rvb_orig3)
 # Yes they do, so they can be binded together without trouble
 
 # Bind rvb_orig1 and rvb_orig2
-rvb_orig <- bind_rows(rvb_orig1, rvb_orig2)
+rvb_orig <- bind_rows(rvb_orig1, rvb_orig2, rvb_orig3)
 
 glimpse(rvb_orig)
 
