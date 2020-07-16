@@ -5,9 +5,9 @@ date: "7/14/2020"
 output: 
   html_document: 
     code_folding: show
-    toc: true
+    toc: yes
     toc_float:
-      collapsed: false
+      collapsed: no
 editor_options: 
   chunk_output_type: console
 ---
