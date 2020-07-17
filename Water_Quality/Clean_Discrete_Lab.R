@@ -6,6 +6,7 @@
 library(tidyverse)
 library(readxl)
 library(lubridate)
+library(dplyr)
 
 
 # 1. Import Data -------------------------------------------------------------
@@ -199,7 +200,7 @@ rm(list = ls()[(ls() != "dis_lab_data_clean2")])
 # Pull out Field Duplicates
 dis_field_dups <- dis_lab_data_clean2 %>% filter(Purpose != "Normal Sample")
 
-# Pull out all parent samples from dis_lab_data_clean2 and join with Field Duplicate data
+# Pull out all parent samples from dis_lab_data_clean2 and join withwr Field Duplicate data
 dis_field_dup_pairs <- 
   inner_join(
     dis_lab_data_clean2, 
@@ -247,13 +248,15 @@ rm(list = ls()[(ls() != "dis_lab_data_clean3")])
 
 
 # 5. Final Cleaning and Export --------------------------------------------
+dis_lab_data_clean3<- dis_lab_data_clean3 %>%
+  rename(StationCode=StationName) %>%
+  rename(DateTime=CollectionDate)
 
+dis_lab_data_clean3<- 
+  select (dis_lab_data_clean3, -c(Depth, Purpose, ParentSample))
 
-# Separate date and time?
-# Change column names?
-# Remove any columns?
+write.csv(dis_lab_data_clean3, 'Discrete_Output_Lab.csv')
 
-# Investigate collection depth
 
 
 
