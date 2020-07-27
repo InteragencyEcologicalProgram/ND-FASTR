@@ -2,7 +2,14 @@
 title: "Code_cont_WQ_I80_plot"
 author: "Amanda Maguire"
 date: "July 27, 2020"
-output: html_document
+output: 
+  html_document: 
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -13,9 +20,10 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 # Purpose
+
+Code to plot continuous water quality data and check for missing data during the study period.
 
 ```{r load packages, message = FALSE, warning = FALSE}
 # Load packages
