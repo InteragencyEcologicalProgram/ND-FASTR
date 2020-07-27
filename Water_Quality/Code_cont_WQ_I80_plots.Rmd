@@ -1,0 +1,113 @@
+---
+title: "Code_cont_WQ_I80_plot"
+author: "Amanda Maguire"
+date: "July 27, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+# Purpose
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+```
+
+# Import Data
+
+```{r import data}
+# Define path on SharePoint site for data
+sharepoint_path <- normalizePath(
+  file.path(
+    Sys.getenv("USERPROFILE"),
+    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/Processed_Data/Continuous"
+  )
+)
+
+# Import I80 data
+i80_orig <- 
+  read_csv(
+    file = paste0(sharepoint_path, "/RTM_OUTPUT_I80_formatted.csv"),
+    col_types = paste0("T", str_c(rep("d", 12), collapse = ""), "c")
+  )
+```
+
+Now, the data looks as we expect it to:
+```{r glimpse data}
+glimpse(i80_orig)
+```
+
+# Create Plots
+
+## One parameter
+
+To start, let's make a simple line plot of one of the parameters collected at the I-80 station. We'll use the `ggplot` function from the ggplot2 package.
+```{r plot one param, warning = FALSE}
+p <- i80_orig %>% 
+  ggplot(aes(x = DateTime, y = Turbidity)) +
+  geom_line()
+
+print(p)
+```
+
+Hmm, it looks like there is some empty space on the left side of the plot without data. We can change the x-axis limits for the plot.
+```{r plot one param change x axis lim, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2019-07-01 00:00:00"), NA))
+```
+
+
+## Multiple parameters
+
+This is nice, but we can also plot multiple parameters at once on a single plot with `facet_grid`. But, first we have to remove the Quality Code variables and restructure the data to a long format using `pivot_longer`.
+```{r pivot data longer}
+i80_long <- i80_orig %>% 
+  select(!ends_with("_Qual")) %>% 
+  pivot_longer(
+    cols = WaterTemp:Chla,
+    names_to = "parameter",
+    values_to = "value"
+  ) 
+```
+
+Now the data is structured so that the parameter names are in the `parameter` variable and the data values are in the `value` variable. 
+```{r display data in long format}
+head(i80_long)
+```
+
+Let's create a plot with facets. Use the `scales` argument set to `"free_y"` in `facet_grid` to adjust y-axis limits to the data of each parameter.
+```{r plot with facets, warning = FALSE}
+p2 <- i80_long %>%
+  ggplot(aes(x = DateTime, y = value)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(parameter),
+    scales = "free_y"
+  )
+
+p2
+```
+
+This is nice, but it would be even nicer to make the plot larger so we can see it better. This is done with the `fig.width` and `fig.height` options in the top of the code chunk.
+```{r plot with facets larger, fig.width = 8.5, fig.height = 11}
+p2
+```
+
+If you would like to zoom in on one particular time period, we can use the `scale_x_datetime` function as we did above.
+```{r plot with facets change x axis lim, warning = FALSE, fig.height = 8}
+p2 + scale_x_datetime(
+  limits = c(
+    as_datetime("2019-07-01 00:00:00"), 
+    as_datetime("2020-01-01 00:00:00")
+  )
+)
+```
