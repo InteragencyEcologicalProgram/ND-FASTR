@@ -1,0 +1,85 @@
+```{r}
+# FASTR - Discrete WQ Timeseries Analysis
+# purpose: timeseries analysis of discrete WQ data for FASTR
+# author: Sarah Perry
+# contact: seperry83@gmail.com
+```
+
+```{r message=FALSE}
+# import packages
+library(zoo)
+library(cowplot)
+library(ggplot2)
+library(tidyverse)
+library(RColorBrewer)
+
+# source functions
+source('timeseries_analysis_funcs.R')
+```
+
+```{r message=FALSE}
+# --- Import Data ---
+# define main FASTR filepath (assumes sync'd with Sharepoint)
+fastr_fp <- 'California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/'
+
+# define relative filepaths 
+rel_data_fp <- paste(fastr_fp,'WQ_Subteam/Processed_Data/Discrete/Discrete_Output_Lab.csv', sep = '')
+rel_dates_fp <- paste(fastr_fp,'Data Management/FlowDatesDesignations.csv', sep = '')
+
+# read in data
+df_wq <- read_in_data(rel_data_fp)
+df_dates <- read_in_data(rel_dates_fp)
+
+# --- Clean Data In Order To Create Timeseries Plots w/ RLs ---
+# create date column (character type)
+df_wq$Date <- format(strptime(df_wq$DateTime, '%m/%d/%Y'),'%Y-%m-%d')
+df_wq$Year <- format(strptime(df_wq$DateTime, '%m/%d/%Y'),'%Y')
+
+#df_wq$Date <- as.factor(df_wq$Date)
+df_wq$Date <- as.Date(df_wq$Date)
+
+# convert to date type (all days will be 1st for consistency)
+# df_wq$Date <- as.Date(as.yearmon(df_wq$Date))
+
+# --- Convert NDs to NA --- 
+df_wq$Result[df_wq$LabDetect == 'Non-detect'] <- NA
+```
+
+```{r}
+# --- Prep for Graphs ---
+# list of analytes/regions/years
+analytes <- unique(df_wq$Analyte)
+regions <- unique(df_wq$Region)
+years <- unique(df_wq$Year)
+
+# list of colors (to distinguish regions on facet graphs) -- based on ColorBrewer palletes
+colors <- c('Reds', 'Blues', 'Greens', 'Purples', 'Oranges', 'Greys')
+
+# --- Create Graphs ---
+source('timeseries_analysis_funcs.R')
+
+for (year in years){
+    for (analyte in analytes){
+    
+    plts <- create_plots(df_wq, regions, colors)
+
+     # plot as grid in 1 columns
+     p <- cowplot::plot_grid(
+         plotlist = plts,
+         ncol = 2,
+         nrow = 3,
+         align = 'v',
+         labels = levels(df_wq$StationCode)
+         )
+   break
+    }
+}
+p
+```
+
+```{r}
+x <- c(1,2,3)
+y <- c(x, c(2,3))
+y
+```
+
