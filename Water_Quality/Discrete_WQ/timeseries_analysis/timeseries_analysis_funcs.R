@@ -39,7 +39,6 @@ add_analyte_names <- function(df){
           Analyte == 'VSS' ~ 'Volatile Suspended Solids',
           Analyte == 'TDS' ~ 'Total Dissolved Solids',
           Analyte == 'TKN' ~ 'Total Kjeldahl Nitrogen'
-          
         )
     )
   
@@ -60,10 +59,7 @@ add_phase_actions <- function(df_wq, df_dates){
   cols_date <- c('Date','PreFlowStart','PreFlowEnd','PostFlowStart','PostFlowEnd')
   
   df_combined[cols_date] <- lapply(df_combined[cols_date], as.Date, format = '%m/%d/%Y')
-  
-  df_combined$Date <- as.Date(df_combined$Date, '%m/%d/%Y')
-  df_combined$PreFlowStart <- as.Date(df_combined$PreFlowStart, '%m/%d/%Y')
-  
+
   # add ActionPhase column and remove non-NDFA data
   df_combined <- df_combined %>%
     mutate(
@@ -89,7 +85,6 @@ create_seg_df <- function(df){
   any_data <- 'Non-detect' %in% df_subset$LabDetect
   
   if (any_data){
-    
     # create new df for the vertical and horizontal segments
     df_seg <- data.frame(
       x_vert = df_subset$Date,
@@ -116,7 +111,6 @@ create_seg_df <- function(df){
 blank_theme <- function(){
   theme_bw() +
     theme(
-     # panel.border = element_blank(),
       panel.grid.major.y = element_blank(),
       panel.grid.major.x = element_blank(),
       panel.grid.minor = element_blank(),
@@ -158,6 +152,7 @@ create_plots <- function(df, region, color_scheme){
   date_max <- max(df$Date[df$Year == year])+3
   date_min <- min(df$Date[df$Year == year])-3
   
+  # define flow action duration
   action_max <- unique(df_filt$PostFlowStart)
   action_min <- unique(df_filt$PreFlowEnd)
   
