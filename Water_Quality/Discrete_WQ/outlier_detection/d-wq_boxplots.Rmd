@@ -44,10 +44,11 @@ df_wq <- add_analyte_names(df_wq)
 df_wq <- add_phase_actions(df_wq, df_dates)
 
 #add 'full group' column (ie. station + year), set as factor type
-df_wq$FullGroup <- paste(df_wq$StationCode, df_wq$Year, sep = ' - ')
+df_wq$FullGroup <- paste(df_wq$StationCode, df_wq$Year, df_wq$Analyte, sep = ',')
 
 # change values in LabDetect column to boolean (censored = TRUE)
 df_wq$LabDetect <- ifelse(df_wq$LabDetect == 'Non-detect', TRUE, FALSE)
+# df_wq$Result[df_wq$LabDetect == TRUE] <- NA
 ```
 
 
@@ -62,33 +63,22 @@ stations <- unique(df_wq$StationCode)
 # create plots
 for (station in stations){
   for (analyte in analytes){
-    # filter df by analyte
-    df_filt <-
-      df_wq %>%
-      filter(
-        Analyte == analyte,
-        StationCode == station
-      )
-    print(station)
-    # # change FullGroup to factor type
-    # df_filt$FullGroup <- as.factor(df_filt$FullGroup)
     
     # define vectors for cenfit function
     obs <- df_filt$Result
     cen <- df_filt$LabDetect
-    group <- df_filt$Year
+    group <- df_filt$FullGroup
     
-    cen_boxplt(obs, cen, group)
-    
+    cen_boxplt(df_filt)
+
     # # create boxplot
-    # bp <- ggplot(df_filt, aes(x=Year, y=Result, group=FullGroup)) + 
+    # bp <- ggplot(df_filt, aes(x=FullGroup, y=Result, group=FullGroup)) +
     #   geom_boxplot(aes(fill=FullGroup))
+    # print(bp)
     break
   }
 }
-bp
 ```
-
 
 ```{r}
 source('d-wq_boxplots_funcs.R')
@@ -96,5 +86,24 @@ source('d-wq_boxplots_funcs.R')
 data(Golden)
 with(Golden, cen_boxplt(Blood, BloodCen, DosageGroup))
 
+unique(df_wq$StationCode)
+
+obs[group == "LIB,2019,Chla"]
+all(!cen[group == "LIB,2019,Chla"])
+
+length(cen[group == "LIB,2019,Chla"]) > 1
+```
+
+```{r}
+df_wq[df_wq$StationCode == 'BL5' & df_wq$Analyte == 'DOC' & df_wq$Year == 2018,]
+```
+```{r}
+any(cen[group == "LIS,2013,DisAmmonia"]) # if any are censored data (ie. are any/all TRUE)
+
+x <- c(TRUE, TRUE, TRUE)
+
+y <- !x
+x
+y
 ```
 
