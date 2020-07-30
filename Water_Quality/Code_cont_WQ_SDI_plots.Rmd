@@ -70,7 +70,7 @@ ph <- sdi_orig %>%
 print(ph)
 ```
 
-Focus in on pH data
+Zoom in on the pH data
 ```{r plot one param pH change x axis lim, warning = FALSE}
 ph + scale_x_datetime(limits = c(as_datetime("2017-01-01 00:00:00"), NA))
 ```
@@ -102,8 +102,8 @@ pd <- sdi_orig %>%
 print(pd)
 ```
 
-Zoom DO data
-```{r}
+Taking a closer look at DO data
+```{r plot one parm DO change x axis lim, warning = FALSE}
 pd + scale_x_datetime(limits = c(as_datetime("2017-01-01 00:00:00"), NA))
 ```
 
@@ -125,13 +125,20 @@ pc <- sdi_orig %>%
 print(pc)
 ```
 
-Edit x axis to zoom Chla data
-```{r}
-pc + scale_x_datetime(limits = c(as_datetime("2018-11-01 00:00:00"), NA))
+Edit x axis and y axis to zoom Chla data
+```{r plot one param Chla change x and y axis lim, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2018-11-01 00:00:00"), NA)) +
+  ylim(NA,25)
+```
+
+Further limit x axis to Aug 2019. Missing data? 
+```{r plot one param Chla change x and y axis lim again, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2019-08-07 00:00:00"), as_datetime("2019-09-15 00:00:00"))) +
+  ylim(NA,25)
 ```
 
 fDOM plot
-```{r}
+```{r plot one param fDOM, warning = FALSE}
 pf <- sdi_orig %>%
   ggplot(aes(x = DateTime, y = fDOM)) +
   geom_line()
@@ -140,12 +147,12 @@ print(pf)
 ```
 
 Edit x axis and y axis to zoom fDOM data
-```{r}
+```{r plot one param fDOM change x and y axis lim, warning = FALSE}
 pf + scale_x_datetime(limits = c(as_datetime("2017-01-01 00:00:00"), NA))
 ```
 
 NitrateNitrite plot
-```{r}
+```{r plot one param NitrateNitrite, warning = FALSE}
 pn <- sdi_orig %>%
   ggplot(aes(x = DateTime, y = NitrateNitrite)) +
   geom_line()
@@ -154,12 +161,12 @@ print(pn)
 ```
 
 Zoom in on NitrateNitrite data
-```{r}
+```{r plot one param NitrateNitrite change x axis lim, warning = FALSE}
 pn + scale_x_datetime(limits = c(as_datetime("2017-01-01 00:00:00"), NA))
 ```
 
 Flow plot -- FIND OUT IF WE STILL NEED THIS CODE --
-```{r}
+```{r plot one param Flow, warning = FALSE}
 pflo <- sdi_orig %>%
   ggplot(aes(x = DateTime, y = Flow)) +
   geom_line()
@@ -168,7 +175,7 @@ print(pflo)
 ```
 
 FlowTF plot
-```{r}
+```{r plot one param FlowTF, warning = FALSE}
 pft <- sdi_orig %>%
   ggplot(aes(x = DateTime, y = FlowTF)) +
   geom_line()
@@ -177,7 +184,7 @@ print(pft)
 ```
 
 Edit x axis to zoom FlowTF data
-```{r}
+```{r plot one param FlowTF change x axis, warning = FALSE}
 pft + scale_x_datetime(limits =  c(as_datetime("2018-06-01 00:00:00"), as_datetime("2019-07-01 00:00:00"))) +
   ylim(NA, 125000)
 ```
