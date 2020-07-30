@@ -1,0 +1,100 @@
+```{r}
+# FASTR - Discrete WQ Boxplots
+# purpose: boxplots discrete WQ data for outlier detection
+# author: Sarah Perry
+# contact: seperry83@gmail.com
+```
+
+```{r message=FALSE, warning=FALSE}
+# import packages
+library(ggplot2)
+library(tidyverse)
+library(NADA)
+
+# source functions
+source('d-wq_boxplots_funcs.R')
+```
+
+```{r message=FALSE, warning=FALSE}
+# --- Import Data ---
+# define main FASTR filepath (assumes sync'd with Sharepoint)
+fp_fastr <- 'California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/'
+
+# define relative filepaths 
+fp_rel_wq <- paste(fp_fastr,'WQ_Subteam/Processed_Data/Discrete/Discrete_Output_Lab.csv', sep = '')
+fp_rel_dates <- paste(fp_fastr,'Data Management/FlowDatesDesignations.csv', sep = '')
+
+# define absolute filepaths
+fp_abs_wq <- get_abs_path(fp_rel_wq)
+fp_abs_dates <- get_abs_path(fp_rel_dates)
+
+# read in data
+df_wq <- read_csv(fp_abs_wq)
+df_dates <- read_csv(fp_abs_dates)
+
+# --- Clean Data In Order To Create Boxplots w/ RLs ---
+# create date/year columns (character type)
+df_wq$Date <- format(strptime(df_wq$DateTime, '%m/%d/%Y'),'%m/%d/%Y')
+df_wq$Year <- format(strptime(df_wq$DateTime, '%m/%d/%Y'),'%Y')
+
+# add full analyte name column
+df_wq <- add_analyte_names(df_wq)
+
+# add in phase actions (will also convert 'Date' column to date type)
+df_wq <- add_phase_actions(df_wq, df_dates)
+
+#add 'full group' column (ie. station + year), set as factor type
+df_wq$FullGroup <- paste(df_wq$StationCode, df_wq$Year, sep = ' - ')
+
+# change values in LabDetect column to boolean (censored = TRUE)
+df_wq$LabDetect <- ifelse(df_wq$LabDetect == 'Non-detect', TRUE, FALSE)
+```
+
+
+```{r message=FALSE, warning=FALSE}
+# --- Create BoxPlot --
+source('d-wq_boxplots_funcs.R')
+
+# list of analytes
+analytes <- unique(df_wq$Analyte)
+stations <- unique(df_wq$StationCode)
+
+# create plots
+for (station in stations){
+  for (analyte in analytes){
+    # filter df by analyte
+    df_filt <-
+      df_wq %>%
+      filter(
+        Analyte == analyte,
+        StationCode == station
+      )
+    print(station)
+    # # change FullGroup to factor type
+    # df_filt$FullGroup <- as.factor(df_filt$FullGroup)
+    
+    # define vectors for cenfit function
+    obs <- df_filt$Result
+    cen <- df_filt$LabDetect
+    group <- df_filt$Year
+    
+    cen_boxplt(obs, cen, group)
+    
+    # # create boxplot
+    # bp <- ggplot(df_filt, aes(x=Year, y=Result, group=FullGroup)) + 
+    #   geom_boxplot(aes(fill=FullGroup))
+    break
+  }
+}
+bp
+```
+
+
+```{r}
+source('d-wq_boxplots_funcs.R')
+
+data(Golden)
+with(Golden, cen_boxplt(Blood, BloodCen, DosageGroup))
+
+```
+
