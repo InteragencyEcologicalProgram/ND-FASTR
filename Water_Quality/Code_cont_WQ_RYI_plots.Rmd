@@ -49,7 +49,7 @@ ryi_orig <-
   )
 ```
 
-Now, the data looks as we expect it to:
+The data looks as we expect it to:
 ```{r glimpse data}
 glimpse(ryi_orig)
 ```
@@ -112,7 +112,7 @@ print(pd)
 ```
 
 Edit x axis to zoom DO data
-```{r}
+```{r plot one param DO change x axis lim, warning = FALSE}
 pd + scale_x_datetime(limits = c(as_datetime("2017-01-01 00:00:00"), NA))
 ```
 
@@ -135,12 +135,20 @@ print(pc)
 ```
 
 Edit x axis to zoom Chla data
-```{r}
+```{r plot one param Chla change x axis lim, warning = FALSE}
 pc + scale_x_datetime(limits = c(as_datetime("2019-06-01 00:00:00"), NA))
+```
+Let's take a closer look at Nov 25 - 28
+```{r plot one param Chla change x axis lim to noisy data Nov 25, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2019-11-25 00:00:00"), (as_datetime("2019-11-29 00:00:00"))))
+```
+Now look at Nov 29 - 30
+```{r plot one param Chla change x axis lim to noisy data Nov 29, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2019-11-29 00:00:00"), (as_datetime("2019-11-30 06:00:00"))))
 ```
 
 Chla_RFU plot
-```{r}
+```{r plot one param Chla_RFU, warning = FALSE}
 pcr <- ryi_orig %>%
   ggplot(aes(x = DateTime, y = Chla_RFU)) +
   geom_line()
@@ -149,12 +157,16 @@ print(pcr)
 ```
 
 Edit x axis to zoom Chla_RFU data
-```{r}
-pcr + scale_x_datetime(limits = c(as_datetime("2017-01-01 00:00:00"), NA))
+```{r plot one param Chla_RFU change x axis lim, warning = FALSE}
+pcr + scale_x_datetime(limits = c(as_datetime("2017-05-01 00:00:00"), NA))
+```
+```{r plot one param Chla_RFU change y axis lim, warning = FALSE}
+pcr + scale_x_datetime(limits = c(as_datetime("2017-05-01 00:00:00"), NA)) + 
+  ylim(NA,6)
 ```
 
 fDOM plot
-```{r}
+```{r plot one param fDOM, warning = FALSE}
 pf <- ryi_orig %>%
   ggplot(aes(x = DateTime, y = fDOM)) +
   geom_line()
@@ -163,13 +175,13 @@ print(pf)
 ```
 
 Edit x axis and y axis to zoom fDOM data
-```{r}
+```{r plot one param fDOM change x and y axis lim, warning = FALSE}
 pf + scale_x_datetime(limits = c(as_datetime("2017-03-01 00:00:00"), NA)) +
   ylim(NA, 55)
 ```
 
 Phyco_RFU plot
-```{r}
+```{r plot one param Phyco_RFU, warning = FALSE}
 pbg <- ryi_orig %>%
   ggplot(aes(x = DateTime, y = Phyco_RFU)) +
   geom_line()
@@ -178,12 +190,20 @@ print(pbg)
 ```
 
 Zoom in on Phyco_RFU data
-```{r}
+```{r plot one param Phyco_RFU change x axis lim, warning = FALSE}
 pbg + scale_x_datetime(limits = c(as_datetime("2019-04-01 00:00:00"), NA))
+```
+```{r plot one param Phyco_RFU change x and y axis lim, warning = FALSE}
+pbg + scale_x_datetime(limits = c(as_datetime("2019-06-01 00:00:00"), 
+                                 (as_datetime("2019-11-20 00:00:00")))) + ylim(NA,30)
+```
+```{r plot one param Phyco_RFU change x and y axis lim to data major, warning = FALSE}
+pbg + scale_x_datetime(limits = c(as_datetime("2019-06-01 00:00:00"), 
+                                 (as_datetime("2019-11-20 00:00:00")))) + ylim(NA,5)
 ```
 
 NitrateNitrite plot
-```{r}
+```{r plot one param NitrateNitrite, warning = FALSE}
 pn <- ryi_orig %>%
   ggplot(aes(x = DateTime, y = NitrateNitrite)) +
   geom_line()
@@ -191,14 +211,14 @@ pn <- ryi_orig %>%
 print(pn)
 ```
 
-Zoom in on NitrateNitrite data
-```{r}
-pn + scale_x_datetime(limits = c(as_datetime("2018-12-01 00:00:00"), NA)) +
+Taking closer look at NitrateNitrite data
+```{r plot one param NitrateNitrire change x and y axis lim, warning = FALSE}
+pn + scale_x_datetime(limits = c(as_datetime("2019-04-01 00:00:00"), NA)) +
   ylim(NA, 1.0)
 ```
 
 Flow plot
-```{r}
+```{r plot one param Flow, warning = FALSE}
 pflo <- ryi_orig %>%
   ggplot(aes(x = DateTime, y = Flow)) +
   geom_line()
@@ -207,7 +227,7 @@ print(pflo)
 ```
 
 FlowTF plot
-```{r}
+```{r plot one param FlowTF, warning = FALSE}
 pft <- ryi_orig %>%
   ggplot(aes(x = DateTime, y = FlowTF)) +
   geom_line()
@@ -215,9 +235,9 @@ pft <- ryi_orig %>%
 print(pft)
 ```
 
-Edit x axis to zoom FlowTF data
-```{r}
-pft + scale_x_datetime(limits =  c(as_datetime("2018-06-01 00:00:00"), as_datetime("2019-07-01 00:00:00"))) +
+Edit x and y axis to zoom FlowTF data
+```{r plot one param FlowTF change x and y axis lim, warning = FALSE}
+pft + scale_x_datetime(limits =  c(as_datetime("2018-06-01 00:00:00"), as_datetime("2019-06-01 00:00:00"))) +
   ylim(NA, 125000)
 ```
 
