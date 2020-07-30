@@ -68,7 +68,7 @@ print(p)
 ```
 
 Zoom in on WaterTemp data
-```{r}
+```{r plot one param WaterTemp change x axis lim, warning = FALSE}
 p + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), NA))
 ```
 
@@ -82,7 +82,7 @@ print(ps)
 ```
 
 Zoom in on SpCnd data
-```{r}
+```{r plot one param SpCnd change x axis lim, warning = FALSE}
 ps + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), NA))
 ```
 
@@ -96,7 +96,7 @@ print(pt)
 ```
 
 Zoom in on Turbidity data 2014-2015
-```{r}
+```{r plot one param Turbidity change x and y axis lim, warning = FALSE}
 pt + scale_x_datetime(limits = c(as_datetime("2014-07-01 00:00:00"), 
                                  as_datetime("2016-01-01 00:00:00"))) +
   ylim (NA, 100)
@@ -108,7 +108,7 @@ pt + scale_x_datetime(limits = c(as_datetime("2019-07-01 00:00:00"), NA))
 ```
 
 Let's look closer at December 2019
-```{r}
+```{r plot one param Turbidity change x axis lim Dec, warning = FALSE}
 pt + scale_x_datetime(limits = c(as_datetime("2019-11-25 00:00:00"), 
                                  as_datetime("2019-12-04 00:00:00")))
 ```
@@ -123,7 +123,7 @@ print(pd)
 ```
 
 Zoom DO data
-```{r}
+```{r plot one param DO change x axis lim, warning = FALSE}
 pd + scale_x_datetime(limits = c(as_datetime("2014-01-10 00:00:00"), NA))
 ```
 
@@ -137,7 +137,7 @@ print(ph)
 ```
 
 Zoom pH data
-```{r}
+```{r plot one param pH change x axis lim, warning = FALSE}
 ph + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), NA))
 ```
 
@@ -151,7 +151,7 @@ print(pc)
 ```
 
 Zoom on Chla data
-```{r}
+```{r plot one param Chla change x axis lim, warning = FALSE}
 pc + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), NA))
 ```
 
