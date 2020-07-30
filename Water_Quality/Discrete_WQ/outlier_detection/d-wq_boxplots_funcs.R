@@ -4,7 +4,11 @@
 # contact: seperry83@gmail.com
 
 # import functions
+library(stats)
+library(NADA)
+library(scales)
 library(ggplot2)
+library(tidyverse)
 
 # --- Import Data from SharePoint ---
 get_abs_path <- function(fp_rel){
@@ -44,6 +48,11 @@ add_analyte_names <- function(df){
   
 }
 
+# --- Calculate Outliers ---
+is_outlier <- function(x) {
+  return(x < quantile(x, 0.25) - 1.5 * IQR(x) | x > quantile(x, 0.75) + 1.5 * IQR(x))
+}
+
 # --- Add Phase Actions ---
 # adapted from Cat Pien's code
 add_phase_actions <- function(df_wq, df_dates){
@@ -74,85 +83,117 @@ add_phase_actions <- function(df_wq, df_dates){
   
 }
 
-# --- Plot Boxplot ---
-# adapted from NADA package
+# --- Blank Theme for Timeseries Graphs ---
+blank_theme <- function(){
+  theme_bw() +
+    theme(
+      panel.grid.major.y = element_blank(),
+      # panel.grid.major.x = element_blank(),
+      panel.grid.minor.y = element_blank(),
+      axis.text = element_text(color = 'black', size = 10, family = 'sans'),
+      axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      plot.title = element_text(size=12, hjust = 0.5),
+      legend.position='top',
+      legend.title = element_blank(),
+      legend.box.margin=margin(-10,0,-10,0)
+    )
+}
 
-cen_boxplt <- function (df) {
+# --- Calculate Data for Boxplot ---
+# adapted from NADA function 'cenboxplot'
+calc_boxplt_data <- function(obs, cen, group) {
+  # change group to factor
+  group_factor <- as.factor(group)
+  
+  # initalize empty vectors to populate
+  data <- numeric()
+  groups <- character()
+  
+  if(length(levels(group_factor)) > 0) { # if there's any data for any group
+    
+    # for each level of the group
+    for (i in levels(group_factor)) { 
+      
+      # define the boolean where T = censored and F = uncensored for the group
+      uncen_data <- cen[group == i]
+      
+      if (length(uncen_data) > 0) { # if there's any data
+        
+        if (all(uncen_data)) { # if it's all censored data
+          # skip to next group
+          next
+        }
+        else if (all(!uncen_data)) { # if all uncensored data
+          # populate the vectors using all values
+          data <- c(data, obs[group == i])
+          grp <- rep(i, length(obs[group == i]))
+          groups <- c(groups, grp)
+        }
+        else { # if mix between censored/uncensored data
+          # populate the vectors using ROS model values
+          mod <- suppressWarnings(cenros(obs[group == i], cen[group == i])$modeled)
+          grp <- rep(i, length(mod))
+          data <- c(data, mod)
+          groups <- c(groups, grp)
+        }
+        
+      }
+    }
+    # define df to return with all data/groups
+    df <- data.frame(Data = data, FullGroup = groups)
+    
+    return(df)
+  }
+}
+
+
+# --- Plot Boxplot ---
+cen_boxplt <- function(df) {
+  #import blank theme
+  blank_theme <- blank_theme()
+  
+  # define range of years for plot
+  df$Year <- as.numeric(df$Year)
+  
+  max_year <- max(unique(df$Year))
+  min_year <- min(unique(df$Year))
   
   # filter df by analyte
   df_filt <-
-    df_wq %>%
+    df %>%
     filter(
       Analyte == analyte,
       StationCode == station
     )
   
   # define vectors for cenfit function
-  obs <- df$Result
-  cen <- df$LabDetect
-  group <- df$FullGroup
+  obs <- df_filt$Result
+  cen <- df_filt$LabDetect
+  group <- df_filt$FullGroup
   
-  
-  data = numeric()
-  groups = character()
-  group_factor <- as.factor(group)
-  
-if(length(levels(group_factor)) > 0) { # if there's any data for any group
+  # calculate values to use in boxplot
+  df_data <- calc_boxplt_data(obs, cen, group)
 
+  # combine the filtered and data df's
+  df_boxplt <- inner_join(df_filt, df_data, by  = 'FullGroup')
   
-  # for each level of the group
-  for (i in levels(group_factor)) { 
-    
-    # define the boolean where T = censored and F = uncensored for the group
-    uncen_data <- cen[group == i]
-    
-    if (length(uncen_data) > 0) { # if there's any data
-      
-      if (all(uncen_data)) { # if it's all censored data
-        # skip to next group
-        next
-      }
-      else if (all(!uncen_data)) { # if all uncensored data
-        # populate the vectors using all values
-        data = c(data, obs[group == i])
-        grp = rep(i, length(obs[group == i]))
-        groups = c(groups, grp)
-      }
-      else { # if mix between censored/uncensored data
-        # populate the vectors using ROS model values
-        mod = suppressWarnings(cenros(obs[group == i], cen[group == i])$modeled)
-        grp = rep(i, length(mod))
-        data = c(data, mod)
-        groups = c(groups, grp)
-      }
+  # add boolean outlier column
+  df_boxplt <- df_boxplt %>%
+    group_by(Year) %>%
+    mutate(Outlier = ifelse(is_outlier(Data), Data, as.numeric(NA)))
 
-      }
-  }
-      
-      # plot boxplots
-      # if (length(cen[group == i]) > 1) {   # if there's censored data
-        # boxplot(data ~ as.factor(groups), log = log, range = range,
-        #         ...)
-        ret = data.frame(data = data, group = groups)
-        # print(ret$group)
-        bp <- ggplot(ret, aes(x=group, y=data, group=group)) +
-          geom_boxplot(aes(fill=group))
-        print(bp)
-        # invisible(ret)
-        # return(bp)
-      # }
-      # } else{ #if there isn't
-      #   # print(i)
-      #   ret = data.frame(ros.model = obs, group = groups)
-      #   bp <- ggplot(ret, aes(x=group, y=ros.model, group=group)) +
-      #     geom_boxplot(aes(fill=group))
-      #   print(bp)
-      #   # boxplot(obs ~ as.factor(groups), log = log, range = range,
-      #   #         ...)
-      #   #ret = data.frame(data = obs, group = groups)
-      #   invisible(ret)
-      #   return(bp)
-      # }
-    }
-  }
+  # plot boxplots
+  bp <- ggplot() +
+    geom_boxplot(df_boxplt, mapping = aes(x = Year, y = Data, group = FullGroup)) +
+    geom_point(df_boxplt, mapping = aes(x = Year, y = Outlier, group = FullGroup, fill = ActionPhase), size = 3, shape = 21)
+  
+  bp <- bp +
+    blank_theme
+    #scale_x_date(labels = date_format('%Y'), breaks = 'years') +
+    #xlim(min_year, max_year)
+  
+  return(bp)
 }
+  
