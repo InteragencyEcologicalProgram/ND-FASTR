@@ -55,6 +55,8 @@ glimpse(rmb_orig)
 ## One parameter
 
 Simple line plot of the parameters collected at the RMB station. We'll use the `ggplot` function from the ggplot2 package.
+
+WaterTemp plot
 ```{r plot WaterTemp param, warning = FALSE}
 p <- rmb_orig %>% 
   ggplot(aes(x = DateTime, y = WaterTemp)) +
@@ -63,6 +65,7 @@ p <- rmb_orig %>%
 print(p)
 ```
 
+SpCnd plot
 ```{r plot SpCnd param, warning = FALSE}
 ps <- rmb_orig %>%
   ggplot(aes(x = DateTime, y = SpCnd)) +
@@ -71,6 +74,7 @@ ps <- rmb_orig %>%
 print(ps)
 ```
 
+Turbidity plot
 ```{r plot Turbidity param, warning = FALSE}
 pt <- rmb_orig %>%
   ggplot(aes(x = DateTime, y = Turbidity)) +
@@ -84,6 +88,7 @@ Let's take a closer look at the December 2019 sharp increase in Turbidity. The r
 pt + scale_x_datetime(limits = c(as_datetime("2019-11-25 00:00:00"), NA))
 ```
 
+DO plot
 ```{r plot DO param, warning = FALSE}
 pd <- rmb_orig %>%
   ggplot(aes(x = DateTime, y = DO)) +
@@ -92,6 +97,7 @@ pd <- rmb_orig %>%
 print(pd)
 ```
 
+pH plot
 ```{r plot pH param, warning = FALSE}
 ph <- rmb_orig %>%
   ggplot(aes(x = DateTime, y = pH)) +
@@ -100,6 +106,7 @@ ph <- rmb_orig %>%
 print(ph)
 ```
 
+Chla plot
 ```{r plot CHla param, warning = FALSE}
 pc <- rmb_orig %>%
   ggplot(aes(x = DateTime, y = Chla)) +
