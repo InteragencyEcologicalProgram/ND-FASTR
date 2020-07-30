@@ -61,12 +61,20 @@ stations <- unique(df_wq$StationCode)
 # --- Create BoxPlot --
 source('d-wq_boxplots_funcs.R')
 # create plots
-for (station in stations){
-  for (analyte in analytes){ 
-    bp <- cen_boxplt(df_wq)
-    print(bp)
-    break
-  }
+for (analyte in analytes){ 
+  bp <- cen_boxplt(df_wq)
+
+  # save graphs
+  fp_rel_save <- paste(fp_fastr,'WQ_Subteam/Raw_Plots/Discrete/Boxplots', sep = '')
+  fp_abs_save <- get_abs_path(fp_rel_save)
+  
+  ggsave(
+    paste(fp_abs_save,'/Boxplots_',analyte,'.png',sep = ''),
+    bp,
+    width = 10,
+    height = 11,
+    unit = 'in'
+     )
 }
 
 
@@ -86,10 +94,14 @@ for (station in stations){
     # break
 ```
 ```{r}
+fp_abs_save
+```
+
+```{r}
 library(stats)
 IQR(bp$Data, na.rm = TRUE)
 boop <- bp
-
+summary(boop$Data)
 #subset(bp, bp$Data < quantile(bp$Data, probs= 0.05) | quantile(bp$Data, probs=0.95) < bp$Data)
 ```
 

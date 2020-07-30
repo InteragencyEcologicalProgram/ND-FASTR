@@ -88,16 +88,18 @@ blank_theme <- function(){
   theme_bw() +
     theme(
       panel.grid.major.y = element_blank(),
-      # panel.grid.major.x = element_blank(),
+      panel.grid.major.x = element_blank(),
       panel.grid.minor.y = element_blank(),
-      axis.text = element_text(color = 'black', size = 10, family = 'sans'),
+      panel.grid.minor.x = element_blank(),
+      axis.text = element_text(color = 'black', size = 13, family = 'sans'),
       axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
       axis.title.x = element_blank(),
       axis.title.y = element_blank(),
-      plot.title = element_text(size=12, hjust = 0.5),
+      plot.title = element_text(size = 20, face = 'bold', hjust = 0.5),
       legend.position='top',
       legend.title = element_blank(),
-      legend.box.margin=margin(-10,0,-10,0)
+      legend.text=element_text(size=13),
+      legend.box.margin=margin(-5,0,-5,0)
     )
 }
 
@@ -155,7 +157,7 @@ cen_boxplt <- function(df) {
   blank_theme <- blank_theme()
   
   # define range of years for plot
-  df$Year <- as.numeric(df$Year)
+  # df$Year <- as.numeric(df$Year)
   
   max_year <- max(unique(df$Year))
   min_year <- min(unique(df$Year))
@@ -164,9 +166,10 @@ cen_boxplt <- function(df) {
   df_filt <-
     df %>%
     filter(
-      Analyte == analyte,
-      StationCode == station
+      Analyte == analyte
     )
+  
+  analyte_name <- df_filt$AnalyteFull[df_filt$Analyte == analyte]
   
   # define vectors for cenfit function
   obs <- df_filt$Result
@@ -175,25 +178,30 @@ cen_boxplt <- function(df) {
   
   # calculate values to use in boxplot
   df_data <- calc_boxplt_data(obs, cen, group)
-
+  
   # combine the filtered and data df's
-  df_boxplt <- inner_join(df_filt, df_data, by  = 'FullGroup')
-  
-  # add boolean outlier column
-  df_boxplt <- df_boxplt %>%
-    group_by(Year) %>%
-    mutate(Outlier = ifelse(is_outlier(Data), Data, as.numeric(NA)))
-
-  # plot boxplots
-  bp <- ggplot() +
-    geom_boxplot(df_boxplt, mapping = aes(x = Year, y = Data, group = FullGroup)) +
-    geom_point(df_boxplt, mapping = aes(x = Year, y = Outlier, group = FullGroup, fill = ActionPhase), size = 3, shape = 21)
-  
-  bp <- bp +
-    blank_theme
-    #scale_x_date(labels = date_format('%Y'), breaks = 'years') +
-    #xlim(min_year, max_year)
-  
-  return(bp)
+  if (is.null(df_data)){
+  }
+  else {
+    df_boxplt <- inner_join(df_filt, df_data, by  = 'FullGroup')
+    
+    # add boolean outlier column
+    df_boxplt <- df_boxplt %>%
+      group_by(Year, StationCode) %>%
+      mutate(Outlier = ifelse(is_outlier(Data), Data, as.numeric(NA)))
+    
+    # plot boxplots
+    bp <- ggplot(df_boxplt, facets = StationCode) +
+      geom_boxplot(df_boxplt, mapping = aes(x = Year, y = Data, group = FullGroup), fill = '#e6e6e6') +
+      geom_point(df_boxplt, mapping = aes(x = Year, y = Outlier, group = FullGroup, fill = ActionPhase), size = 3, shape = 21) +
+      facet_wrap(~ StationCode, ncol = 3, scales = 'free_y')
+    
+    bp <- bp +
+      blank_theme +
+      ggtitle(analyte_name) +
+      scale_fill_manual(values=c('red', 'blue', 'green'))
+    
+    return(bp)
+  }
 }
   
