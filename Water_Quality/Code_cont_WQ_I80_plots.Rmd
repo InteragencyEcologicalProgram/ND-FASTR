@@ -50,29 +50,73 @@ i80_orig <-
   )
 ```
 
-Now, the data looks as we expect it to:
+The data looks as we expect it to:
 ```{r glimpse data}
 glimpse(i80_orig)
 ```
 
-# Create Plots
-
 ## One parameter
 
-To start, let's make a simple line plot of one of the parameters collected at the I-80 station. We'll use the `ggplot` function from the ggplot2 package.
-```{r plot one param, warning = FALSE}
+Simple line plot of the parameters collected at the RMB station. We'll use the `ggplot` function from the ggplot2 package.
+
+WaterTemp plot
+```{r plot WaterTemp param, warning = FALSE}
 p <- i80_orig %>% 
-  ggplot(aes(x = DateTime, y = Turbidity)) +
+  ggplot(aes(x = DateTime, y = WaterTemp)) +
   geom_line()
 
 print(p)
 ```
 
-Hmm, it looks like there is some empty space on the left side of the plot without data. We can change the x-axis limits for the plot.
-```{r plot one param change x axis lim, warning = FALSE}
-p + scale_x_datetime(limits = c(as_datetime("2019-07-01 00:00:00"), NA))
+SpCnd plot
+```{r plot SpCnd param, warning = FALSE}
+ps <- i80_orig %>%
+  ggplot(aes(x = DateTime, y = SpCnd)) +
+  geom_line()
+
+print(ps)
 ```
 
+Turbidity plot
+```{r plot Turbidity param, warning = FALSE}
+pt <- i80_orig %>%
+  ggplot(aes(x = DateTime, y = Turbidity)) +
+  geom_line()
+
+print(pt)
+```
+
+Let's take a closer look Turbidity. 
+```{r plot Turb param change x axis lim, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2019-07-01 00:00:00"), NA))
+```
+
+DO plot
+```{r plot DO param, warning = FALSE}
+pd <- i80_orig %>%
+  ggplot(aes(x = DateTime, y = DO)) +
+  geom_line()
+
+print(pd)
+```
+
+pH plot
+```{r plot pH param, warning = FALSE}
+ph <- i80_orig %>%
+  ggplot(aes(x = DateTime, y = pH)) +
+  geom_line()
+
+print(ph)
+```
+
+Chla plot
+```{r plot CHla param, warning = FALSE}
+pc <- i80_orig %>%
+  ggplot(aes(x = DateTime, y = Chla)) +
+  geom_line()
+
+print(pc)
+```
 
 ## Multiple parameters
 
@@ -108,14 +152,4 @@ p2
 This is nice, but it would be even nicer to make the plot larger so we can see it better. This is done with the `fig.width` and `fig.height` options in the top of the code chunk.
 ```{r plot with facets larger, fig.width = 8.5, fig.height = 11}
 p2
-```
-
-If you would like to zoom in on one particular time period, we can use the `scale_x_datetime` function as we did above.
-```{r plot with facets change x axis lim, warning = FALSE, fig.height = 8}
-p2 + scale_x_datetime(
-  limits = c(
-    as_datetime("2019-07-01 00:00:00"), 
-    as_datetime("2020-01-01 00:00:00")
-  )
-)
 ```
