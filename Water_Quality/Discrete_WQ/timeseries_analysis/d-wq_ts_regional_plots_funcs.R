@@ -8,7 +8,7 @@ library(scales)
 library(ggplot2)
 library(tidyverse)
 
-# --- Import Data from Sharepoint ---
+# --- Import Data from SharePoint ---
 get_abs_path <- function(fp_rel){
   # define absolute filepath
   fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_rel))
@@ -130,7 +130,7 @@ create_plots <- function(df, region, color_scheme){
   # import blank theme
   blank_theme <- blank_theme()
   
-  # filter df by analyte and year
+  # filter df by analyte, year, and region
   df_filt <-
     df %>%
     filter(
