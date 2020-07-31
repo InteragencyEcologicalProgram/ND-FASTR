@@ -1,11 +1,8 @@
-```{r}
 # FASTR - Discrete WQ Timeseries Analysis
 # purpose: timeseries analysis of discrete WQ data for FASTR
 # author: Sarah Perry
 # contact: seperry83@gmail.com
-```
 
-```{r message=FALSE, warning=FALSE}
 # import packages
 library(zoo)
 library(grid)
@@ -15,10 +12,8 @@ library(gridExtra)
 library(RColorBrewer)
 
 # source functions
-source('d-wq_timeseries_plots_funcs.R')
-```
+source('d-wq_ts_regional_plots_funcs.R')
 
-```{r message=FALSE}
 # --- Import Data ---
 # define main FASTR filepath (assumes sync'd with Sharepoint)
 fp_fastr <- 'California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/'
@@ -48,9 +43,7 @@ df_wq <- add_phase_actions(df_wq, df_dates)
 
 # --- Convert NDs to NA --- 
 df_wq$Result[df_wq$LabDetect == 'Non-detect'] <- NA
-```
 
-```{r message=FALSE warning=FALSE}
 # --- Prep for Graphs ---
 # list of analytes/regions/years
 analytes <- unique(df_wq$Analyte)
@@ -64,47 +57,44 @@ colors <- c('Reds', 'Blues', 'Greens', 'Purples', 'Oranges', 'Greys')
 # --- Create Graphs ---
 # create separate facet graphs for each year/analyte combo
 for (year in years){
-    for (analyte in analytes){
-        # create plots to go on the facet graph
-        plts <- mapply(
-            region = regions,
-            color_scheme = colors,
-            FUN = function(x, region, color_scheme) create_plots(df_wq, region, color_scheme),
-            SIMPLIFY = FALSE
-            )
-        
-        # define relevant values for naming files
-        analyte_full <- unique(df_wq$AnalyteFull[df_wq$Analyte == analyte])
-        analyte_unit <- unique(df_wq$Units[df_wq$Analyte == analyte])
-        
-        # create common labels
-        y_grob <- textGrob(analyte_unit, gp = gpar(fontsize = 15, fontface = 'bold'), rot = 90)
-        x_grob <- textGrob('Date', gp = gpar(fontsize = 15, fontface = 'bold'))
-        top_grob <- textGrob(paste(analyte_full,'-',year), gp=gpar(fontsize = 17, fontface = 'bold'))
-        
-        # create facet graph
-        graph <- marrangeGrob(
-            plts,
-            ncol = 2,
-            nrow = 3,
-            top = top_grob,
-            left = y_grob,
-            bottom = x_grob)
-
-         # filepath to save to
-         fp_rel_save <- paste(fp_fastr,'WQ_Subteam/Raw_Plots/Discrete/Timeseries/',year, sep = '')
-         fp_abs_save <- get_abs_path(fp_rel_save)
-
-         # save plot
-         ggsave(
-             paste(fp_abs_save,'/Timeseries_',year,'_',analyte,'.png',sep = ''),
-             graph,
-             width = 8.5,
-             height = 11,
-             unit = 'in'
-             )
-     }
+  for (analyte in analytes){
+    # create plots to go on the facet graph
+    plts <- mapply(
+      region = regions,
+      color_scheme = colors,
+      FUN = function(x, region, color_scheme) create_plots(df_wq, region, color_scheme),
+      SIMPLIFY = FALSE
+    )
+    
+    # define relevant values for naming files
+    analyte_full <- unique(df_wq$AnalyteFull[df_wq$Analyte == analyte])
+    analyte_unit <- unique(df_wq$Units[df_wq$Analyte == analyte])
+    
+    # create common labels
+    y_grob <- textGrob(analyte_unit, gp = gpar(fontsize = 15, fontface = 'bold'), rot = 90)
+    x_grob <- textGrob('Date', gp = gpar(fontsize = 15, fontface = 'bold'))
+    top_grob <- textGrob(paste(analyte_full,'-',year), gp=gpar(fontsize = 17, fontface = 'bold'))
+    
+    # create facet graph
+    graph <- marrangeGrob(
+      plts,
+      ncol = 2,
+      nrow = 3,
+      top = top_grob,
+      left = y_grob,
+      bottom = x_grob)
+    
+    # filepath to save to
+    fp_rel_save <- paste(fp_fastr,'WQ_Subteam/Raw_Plots/Discrete/Timeseries_Regional/',year, sep = '')
+    fp_abs_save <- get_abs_path(fp_rel_save)
+    
+    # save plot
+    ggsave(
+      paste(fp_abs_save,'/Timeseries_',year,'_',analyte,'.png',sep = ''),
+      graph,
+      width = 8.5,
+      height = 11,
+      unit = 'in'
+    )
+  }
 }
-```
-
-
