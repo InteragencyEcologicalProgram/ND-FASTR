@@ -50,7 +50,9 @@ add_analyte_names <- function(df){
 
 # --- Calculate Outliers ---
 is_outlier <- function(x) {
-  return(x < quantile(x, 0.25) - 1.5 * IQR(x) | x > quantile(x, 0.75) + 1.5 * IQR(x))
+  outlier <- (x < quantile(x, 0.25) - 1.5 * IQR(x) | x > quantile(x, 0.75) + 1.5 * IQR(x))
+  
+  return(outlier)
 }
 
 # --- Add Phase Actions ---
@@ -140,9 +142,9 @@ calc_boxplt_data <- function(obs, cen, group) {
           data <- c(data, mod)
           groups <- c(groups, grp)
         }
-        
       }
     }
+    
     # define df to return with all data/groups
     df <- data.frame(Data = data, FullGroup = groups)
     
@@ -156,12 +158,6 @@ cen_boxplt <- function(df) {
   #import blank theme
   blank_theme <- blank_theme()
   
-  # define range of years for plot
-  # df$Year <- as.numeric(df$Year)
-  
-  max_year <- max(unique(df$Year))
-  min_year <- min(unique(df$Year))
-  
   # filter df by analyte
   df_filt <-
     df %>%
@@ -169,6 +165,7 @@ cen_boxplt <- function(df) {
       Analyte == analyte
     )
   
+  # define full analyte names for plotting
   analyte_name <- df_filt$AnalyteFull[df_filt$Analyte == analyte]
   
   # define vectors for cenfit function
@@ -176,11 +173,11 @@ cen_boxplt <- function(df) {
   cen <- df_filt$LabDetect
   group <- df_filt$FullGroup
   
-  # calculate values to use in boxplot
+  # calculate values to use in boxplot (ie. account for non-detects)
   df_data <- calc_boxplt_data(obs, cen, group)
   
   # combine the filtered and data df's
-  if (is.null(df_data)){
+  if (is.null(df_data)){ # skip if no data
   }
   else {
     df_boxplt <- inner_join(df_filt, df_data, by  = 'FullGroup')
@@ -192,8 +189,8 @@ cen_boxplt <- function(df) {
     
     # plot boxplots
     bp <- ggplot(df_boxplt, facets = StationCode) +
-      geom_boxplot(df_boxplt, mapping = aes(x = Year, y = Data, group = FullGroup), fill = '#e6e6e6') +
-      geom_point(df_boxplt, mapping = aes(x = Year, y = Outlier, group = FullGroup, fill = ActionPhase), size = 3, shape = 21) +
+      geom_boxplot(df_boxplt, mapping = aes(x = Year, y = Data, group = FullGroup), fill = '#e6e6e6') + # boxplots
+      geom_point(df_boxplt, mapping = aes(x = Year, y = Outlier, group = FullGroup, fill = ActionPhase), size = 3, shape = 21) + # outlier points
       facet_wrap(~ StationCode, ncol = 3, scales = 'free_y')
     
     bp <- bp +

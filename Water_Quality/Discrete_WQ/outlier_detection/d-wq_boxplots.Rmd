@@ -7,9 +7,7 @@
 
 ```{r message=FALSE, warning=FALSE}
 # import packages
-library(ggplot2)
 library(tidyverse)
-library(NADA)
 
 # source functions
 source('d-wq_boxplots_funcs.R')
@@ -48,9 +46,7 @@ df_wq$FullGroup <- paste(df_wq$StationCode, df_wq$Year, df_wq$Analyte, sep = ','
 
 # change values in LabDetect column to boolean (censored = TRUE)
 df_wq$LabDetect <- ifelse(df_wq$LabDetect == 'Non-detect', TRUE, FALSE)
-# df_wq$Result[df_wq$LabDetect == TRUE] <- NA
 ```
-
 
 ```{r message=FALSE, warning=FALSE}
 # --- Prep for Graphs ---
@@ -62,6 +58,7 @@ stations <- unique(df_wq$StationCode)
 source('d-wq_boxplots_funcs.R')
 # create plots
 for (analyte in analytes){ 
+  # create boxplots (accounts for non-detects)
   bp <- cen_boxplt(df_wq)
 
   # save graphs
@@ -76,60 +73,6 @@ for (analyte in analytes){
     unit = 'in'
      )
 }
-
-
-  # 
-  # # create boxplot
-  # plts <- mapply(
-  #   station = stations,
-  #   color_scheme = colors,
-  #   FUN = function(x, station, color_scheme) cen_boxplt(df_wq, station),
-  #   SIMPLIFY = FALSE
-  #   )
-
-    # # create boxplot
-    # bp <- ggplot(df_filt, aes(x=FullGroup, y=Result, group=FullGroup)) +
-    #   geom_boxplot(aes(fill=FullGroup))
-    # print(bp)
-    # break
-```
-```{r}
-fp_abs_save
 ```
 
-```{r}
-library(stats)
-IQR(bp$Data, na.rm = TRUE)
-boop <- bp
-summary(boop$Data)
-#subset(bp, bp$Data < quantile(bp$Data, probs= 0.05) | quantile(bp$Data, probs=0.95) < bp$Data)
-```
-
-
-```{r}
-source('d-wq_boxplots_funcs.R')
-
-data(Golden)
-with(Golden, cen_boxplt(Blood, BloodCen, DosageGroup))
-
-unique(df_wq$StationCode)
-
-obs[group == "LIB,2019,Chla"]
-all(!cen[group == "LIB,2019,Chla"])
-
-length(cen[group == "LIB,2019,Chla"]) > 1
-```
-
-```{r}
-df_wq[df_wq$StationCode == 'BL5' & df_wq$Analyte == 'DOC' & df_wq$Year == 2018,]
-```
-```{r}
-any(cen[group == "LIS,2013,DisAmmonia"]) # if any are censored data (ie. are any/all TRUE)
-
-x <- c(TRUE, TRUE, TRUE)
-
-y <- !x
-x
-y
-```
 
