@@ -41,7 +41,7 @@ df_wq <- add_analyte_names(df_wq)
 # add in phase actions (will also convert 'Date' column to date type)
 df_wq <- add_phase_actions(df_wq, df_dates)
 
-#add 'full group' column (ie. station + year), set as factor type
+#add 'full group' column (ie. station + year)
 df_wq$FullGroup <- paste(df_wq$StationCode, df_wq$Year, df_wq$Analyte, sep = ',')
 
 # change values in LabDetect column to boolean (censored = TRUE)
@@ -55,7 +55,6 @@ analytes <- unique(df_wq$Analyte)
 stations <- unique(df_wq$StationCode)
 
 # --- Create BoxPlot --
-source('d-wq_boxplots_funcs.R')
 # create plots
 for (analyte in analytes){ 
   # create boxplots (accounts for non-detects)
