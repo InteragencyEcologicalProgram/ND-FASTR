@@ -43,7 +43,6 @@ add_analyte_names <- function(df){
     )
   
   return(df)
-  
 }
 
 # --- Add Phase Actions ---
@@ -73,7 +72,6 @@ add_phase_actions <- function(df_wq, df_dates){
     filter(!is.na(ActionPhase))
   
   return(df_combined)
-  
 }
 
 # --- Create df for RL Segments ---
@@ -100,8 +98,8 @@ create_seg_df <- function(df){
     )
     
     return(df_seg)
-    
-  }else{
+  }
+  else{
     return(df_subset)
   }
   
@@ -159,16 +157,18 @@ create_plots <- function(df, region, color_scheme){
   # check if RL data exists
   RL_dat <- nrow(df_seg) > 0
   
-  # plot
+  # plot timseries
   p <- ggplot() +
     annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
   
+  # add RL segments
   if (RL_dat) {
     p <- p +
       geom_segment( # vertical segment
         data = df_seg,
         mapping = aes(x = x_vert, xend = xend_vert, y = y_vert, yend = yend_vert, color = station),
-        size = .8 ) +
+        size = .8
+      ) +
       geom_segment( # horizontal segment
         data = df_seg,
         mapping = aes(x = x_horz, xend = xend_horz, y = y_horz, yend = yend_horz, color = station),
@@ -177,6 +177,7 @@ create_plots <- function(df, region, color_scheme){
       )
   }
   
+  # add timeseries data
   p <- p +
     geom_point( # points
       df_filt,
@@ -188,7 +189,8 @@ create_plots <- function(df, region, color_scheme){
       mapping = aes(x = Date, y = Result, group = StationCode, color = StationCode),
       size = 1.3
     )
-      
+  
+  # fix asthetics
   p <- p +
     blank_theme +
     scale_x_date(labels = date_format('%b'), breaks = pretty_breaks(10)) +
