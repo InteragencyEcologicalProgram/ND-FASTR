@@ -82,7 +82,7 @@ p + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime(
 ```
 2016
 ```{r plot WaterTemp 2016 param, warning = FALSE}
-p + scale_x_datetime(limits = c(as_datetime("2016-06-14 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+p + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
 ```
 2017
 ```{r plot WaterTemp 2017 param, warning = FALSE}
@@ -120,7 +120,7 @@ ps + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime
 ```
 2016
 ```{r plot SpCnd 2016 param, warning = FALSE}
-ps + scale_x_datetime(limits = c(as_datetime("2016-06-14 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+ps + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
 ```
 2017
 ```{r plot SpCnd 2017 param, warning = FALSE}
@@ -169,7 +169,7 @@ pd + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime
 ```
 2016
 ```{r plot DO 2016 param, warning = FALSE}
-pd + scale_x_datetime(limits = c(as_datetime("2016-06-14 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+pd + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
 ```
 2017
 ```{r plot DO 2017 param, warning = FALSE}
@@ -203,7 +203,7 @@ ph + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime
 ```
 2016
 ```{r plot pH 2016 param, warning = FALSE}
-ph + scale_x_datetime(limits = c(as_datetime("2016-06-14 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+ph + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
 ```
 2017
 ```{r plot pH 2017 param, warning = FALSE}
@@ -242,7 +242,7 @@ pc + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime
 ```
 2016
 ```{r plot Chla 2016 param, warning = FALSE}
-pc + scale_x_datetime(limits = c(as_datetime("2016-06-14 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+pc + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
 ```
 2017
 ```{r plot Chla 2017 param, warning = FALSE}
