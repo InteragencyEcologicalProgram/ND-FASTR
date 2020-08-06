@@ -1,13 +1,30 @@
 # NDFA Water Quality
-# Purpose: Import, clean, and export continuous water quality data collected by USGS
+# Purpose: Import, clean, and export continuous water quality data collected by USGS, NCRO, and EMP
 # Authors: Amanda Maguire, Dave Bosworth, Traci Treleaven
 
 # Load packages
 library(tidyverse)
 library(lubridate)
 
+# Source global WQ functions
+source("Water_Quality/global_wq_funcs.R")
+
+# Source continuous WQ data cleaning functions
+source("Water_Quality/Continuous_WQ/Data_Cleaning/clean_rtm_data_funcs.R")
+
+# Define main NDFA file path (assumes synced with SharePoint)
+fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/"
+
+# Define relative file path for raw continuous WQ data files
+fp_rel_cont_wq <- paste0(fp_fastr, "WQ_Subteam/Raw_Data/Continuous")
+
+# Define absolute file path
+fp_abs_cont_wq <- get_abs_path(fp_rel_cont_wq)
+
 
 # Code for Entire Script --------------------------------------------------
+
+
 
 # Define path on SharePoint site for data
 sharepoint_path <- normalizePath(
@@ -85,34 +102,38 @@ standardize_param_vars <- function(df, param_var, var_type = c("data_values", "q
 obj_keep <- c("obj_keep", "sharepoint_path", "standardize_param_vars")
 
 
-# SDI ---------------------------------------------------------------------
+# USGS Data ---------------------------------------------------------------------
 
-# Define standardized station code for easier updating
-sta_code <- "SDI"
-
-# Define number of parameters collected at site
-num_params <- 11
-
-# Import data
-sdi_orig <- read_csv(
-  file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_", sta_code, ".csv"),
-  col_types = paste0("-cc", str_c(rep("dc", num_params), collapse = ""), "-")
+# Create a tibble of all USGS continuous data files
+usgs_cont_files <- tibble(
+  filename = dir(fp_abs_cont_wq, pattern = "USGS", full.names = T),
+  n_params = c(19, 11, 4, 6, 11, 12, 11, 7, 12, 3)
 )
 
-# Clean data
-sdi_clean <- sdi_orig %>% 
+# Import USGS data into a nested dataframe
+usgs_cont_orig <- usgs_cont_files %>% 
   mutate(
-    # Parse date time variable
-    DateTime = ymd_hms(dateTime),
-    # Convert Station name to NDFA standardized name
-    StationCode = sta_code
+    sta_code = str_sub(filename, start = 176, end = -5),
+    df = map2(filename, n_params, .f = import_usgs_data)
   ) %>% 
-  select(-dateTime)
+  select(sta_code, df)
 
-# Remove overlapping Specific Conductance and Water Temperature data
+# Parse date time variable
+usgs_cont_clean1 <- usgs_cont_orig %>% 
+  mutate(
+    df = map(
+      df, 
+      ~mutate(.x, DateTime = ymd_hms(dateTime)) %>% 
+        select(-dateTime)
+    )
+  )
+
+# Remove overlapping Specific Conductance and Water Temperature data for SDI station-
   # Keep the BGC project data when there was more than one study collecting 
   # data during the same time period
-sdi_hydro_wt_spc <- sdi_clean %>% 
+sdi_hydro_wt_spc <- usgs_cont_orig %>% 
+  filter(sta_code == "SDI") %>% 
+  pull(df) %>% 
   select(
     DateTime,
     X_.HYDRO.EXO._00010_00000,
@@ -132,6 +153,22 @@ sdi_clean <- sdi_clean %>%
     )
   ) %>% 
   left_join(sdi_hydro_wt_spc)
+
+
+# Clean data - Parse date time variable and add NDFA standardized Station names
+usgs_cont_clean <- usgs_cont_orig %>% 
+  mutate(
+    df_c1 = map(df, ~mutate(.x, DateTime = ymd_hms(dateTime))),
+    df_c2 = map2(df_c1, sta_code, ~mutate(.x, StationCode = .y))
+  )
+    # Parse date time variable
+    
+    # Convert Station name to NDFA standardized name
+    StationCode = sta_code
+  ) %>% 
+  select(-dateTime)
+
+
 
 # Standardize parameter variable names
   # Data values
