@@ -7,16 +7,15 @@
 library(tidyverse)
 
 
-# --- Import Data from SharePoint ---
+# Define absolute file path for SharePoint
 get_abs_path <- function(fp_rel){
-  # define absolute filepath
   fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_rel))
   
   return(fp_abs)
 }
 
 
-# --- Add Phase Actions ---
+# Add Phase Actions
 # adapted from Cat Pien's code
 add_phase_actions <- function(df_wq, df_dates){
   # change 'Year' column to character
