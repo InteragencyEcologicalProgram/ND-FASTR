@@ -1,0 +1,121 @@
+---
+  title: "Example RTM Plots"
+author: "Dave Bosworth"
+date: "7/14/2020"
+output: 
+  html_document: 
+  code_folding: show
+toc: yes
+toc_float:
+  collapsed: no
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+This document provides an example of how to use Rmarkdown to bring together text, code, and its output in way to communicate code and results to others. This document also introduces some useful code to use to create simple plots of continuous water quality data.
+
+Code is placed in code chunks like below:
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+```
+
+# Import Data
+
+To start plotting, first we need to import some data of course:
+```{r import data}
+# Define path on SharePoint site for data
+sharepoint_path <- normalizePath(
+  file.path(
+    Sys.getenv("USERPROFILE"),
+    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/Processed_Data/Continuous"
+  )
+)
+
+# Import SGG data
+sgg_orig <- read_csv(paste0(sharepoint_path, "/RTM_OUTPUT_SGG_formatted.csv"))
+```
+
+Shoot, we got some errors while importing the data. We will need to define the column types within the `read_csv` function.
+```{r import data with defined col types}
+# Import SGG data
+sgg_orig <- 
+  read_csv(
+    file = paste0(sharepoint_path, "/RTM_OUTPUT_SGG_formatted.csv"),
+    col_types = paste0("ccc", str_c(rep("dc", 7), collapse = ""))
+  )
+```
+
+
+```{r}
+#change dateTime from char to special DateTime
+sgg_clean <- sgg_orig %>% 
+  mutate(DateTime = ymd_hms(DateTime)) 
+
+```
+
+
+
+Now, the data looks as we expect it to:
+```{r glimpse data}
+glimpse(sgg_clean)
+```
+
+# Create Plots
+
+## One parameter
+
+To start, let's make a simple line plot of one of the parameters collected at the Lisbon station. We'll use the `ggplot` function from the ggplot2 package.
+```{r plot one param, warning = FALSE}
+p <- sgg_clean %>% 
+  ggplot(aes(x = DateTime, y = WaterTemp)) +
+  geom_line()
+
+print(p)
+```
+
+
+## Multiple parameters
+
+This is nice, but we can also plot multiple parameters at once on a single plot with `facet_grid`. But, first we have to remove the Quality Code variables and restructure the data to a long format using `pivot_longer`.
+```{r pivot data longer}
+sgg_long <- sgg_clean %>% 
+  select(!ends_with("_Qual")) %>% 
+  pivot_longer(
+    cols = Flow:pH,
+    names_to = "parameter",
+    values_to = "value"
+  )
+```
+
+Now the data is structured so that the parameter names are in the `parameter` variable and the data values are in the `value` variable. 
+```{r display data in long format}
+head(sgg_long)
+```
+
+Let's create a plot with facets. Use the `scales` argument set to `"free_y"` in `facet_grid` to adjust y-axis limits to the data of each parameter.
+```{r plot with facets, warning = FALSE}
+p2 <- sgg_long %>%
+  ggplot(aes(x = DateTime, y = value)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(parameter),
+    scales = "free_y"
+  )
+
+p2
+```
+
+This is nice, but it would be even nicer to make the plot larger so we can see it better. This is done with the `fig.width` and `fig.height` options in the top of the code chunk.
+```{r plot with facets larger, warning = FALSE, fig.width = 8.5, fig.height = 11}
+p2
+```
+
+#End of raw plots
+
