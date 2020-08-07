@@ -18,11 +18,13 @@ sharepoint_path <- normalizePath(
   )
 )
 
+print(paste(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_LIB.csv",sep=""))
+
 # Import data
 #  LIB station 
 lib_orig_1 <- read_csv(
-  file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_LIB.csv"),
-  col_types = paste0("-cc", str_c(rep("dc", 11), collapse = ""), "-")
+  file = paste(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_LIB.csv",sep=""),
+col_types = paste0("-cc", str_c(rep("dc", 41), collapse = ""), "-")
 ) 
 
 glimpse(lib_orig_1)
@@ -110,7 +112,7 @@ lib_qual <- lib_clean %>%
   pivot_wider(names_from = parameter, values_from = value)
 
 # Join two wide dataframes together
-lib_clean1 <- 
+lib_clean <- 
   left_join(lib_values, lib_qual) %>% 
   # Reorder variables
   select(
@@ -135,15 +137,16 @@ lib_clean1 <-
     starts_with("Ni")
   )
 
-glimpse(lib_clean1)
+glimpse(lib_clean)
 
+unique(cols(lib_clean))
 
 # Export Data -------------------------------------------------------------
 
 # Export formatted data as a .csv file 
-ryi_clean1 %>% 
+lib_clean %>% 
   write_excel_csv(
-    path = paste0(sharepoint_path, "/Processed_Data/Continuous/RTM_OUTPUT_RYI_formatted.csv"),
+    path = paste0(sharepoint_path, "/Processed_Data/Continuous/RTM_OUTPUT_LIB_formatted.csv"),
     na = ""
   )
 
