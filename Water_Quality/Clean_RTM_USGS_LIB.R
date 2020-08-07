@@ -18,17 +18,25 @@ sharepoint_path <- normalizePath(
   )
 )
 
-print(paste(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_LIB.csv",sep=""))
 
 # Import data
 #  LIB station 
-lib_orig_1 <- read_csv(
-  file = paste(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_LIB.csv",sep=""),
-col_types = paste0("-cc", str_c(rep("dc", 41), collapse = ""), "-")
+#- is skip, cc bring in as character, str_c is combing into a sting (rep is repeating) dc is numeric/character combo which is 38 columns divided by 2, final part gets rid of tz time zone column 
+  
+lib_orig <- read_csv(
+  file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_LIB.csv"),
+  col_types = paste0("-cc", str_c(rep("dc", 19), collapse = ""), "-")
 ) 
 
-glimpse(lib_orig_1)
+glimpse(lib_orig)
 
+
+
+# remove repeating column names 
+
+lib_clean <- lib_orig %>% select(!starts_with("X_CHLOR"))
+
+glimpse(lib_clean)
 
 # Clean Data --------------------------------------------------------------
 
@@ -47,7 +55,7 @@ glimpse(lib_orig_1)
 # 99133 - Nitrate plus nitrite (mg/L as N)
 
 # Clean data
-lib_clean <- lib_orig_1 %>% 
+lib_clean2 <- lib_clean %>% 
   mutate(
     # Parse date time variable
     DateTime = ymd_hms(dateTime),
@@ -56,9 +64,11 @@ lib_clean <- lib_orig_1 %>%
   ) %>% 
   select(-dateTime)
 
+glimpse(lib_clean2)
+
 # Standardize parameter variable names
 # Data values
-lib_values <- lib_clean %>% 
+lib_values <- lib_clean2 %>% 
   select(!ends_with("_cd")) %>% 
   pivot_longer(
     cols = -c(DateTime, StationCode, site_no),
@@ -85,7 +95,7 @@ lib_values <- lib_clean %>%
   pivot_wider(names_from = parameter, values_from = value)
 
 # Qual Codes
-lib_qual <- lib_clean %>% 
+lib_qual <- lib_clean2 %>% 
   select(site_no, DateTime, ends_with("_cd")) %>% 
   pivot_longer(
     cols = -c(site_no, DateTime),
@@ -111,8 +121,12 @@ lib_qual <- lib_clean %>%
   ) %>% 
   pivot_wider(names_from = parameter, values_from = value)
 
+glimpse(lib_clean2)
+glimpse(lib_qual)
+glimpse(lib_values)
+
 # Join two wide dataframes together
-lib_clean <- 
+lib_clean2 <- 
   left_join(lib_values, lib_qual) %>% 
   # Reorder variables
   select(
@@ -137,18 +151,22 @@ lib_clean <-
     starts_with("Ni")
   )
 
-glimpse(lib_clean)
 
-unique(cols(lib_clean))
+glimpse(lib_clean2)
+
 
 # Export Data -------------------------------------------------------------
 
+
 # Export formatted data as a .csv file 
-lib_clean %>% 
+
+
+lib_clean2 %>% 
   write_excel_csv(
     path = paste0(sharepoint_path, "/Processed_Data/Continuous/RTM_OUTPUT_LIB_formatted.csv"),
     na = ""
   )
+
 
 # For easier importing of this file in the future should either:
 # 1) convert file to .xlsx file after exporting, or
