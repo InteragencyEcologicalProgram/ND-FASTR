@@ -1,0 +1,238 @@
+---
+title: 'NDFA Continuous WQ Data: Cleaning'
+author: "Dave Bosworth, Amanda Maguire, Traci Treleaven"
+date: "8/7/2020"
+output: 
+  html_document: 
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+This document provides the code and decisions made to clean and standardize all continuous water quality data used for the North Delta Flow Action synthesis project. The data were collected by multiple groups including USGS, the WQES section within the NCRO office at DWR, and the EMP section within DES at DWR.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r load functions}
+# Source global WQ functions
+source("Water_Quality/global_wq_funcs.R")
+
+# Source continuous WQ data cleaning functions
+source("Water_Quality/Continuous_WQ/Data_Cleaning/clean_rtm_data_funcs.R")
+```
+
+```{r define file paths}
+# Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
+fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
+
+# Define relative file paths for raw and processed continuous WQ data files
+fp_rel_wq_raw <- paste0(fp_fastr, "Raw_Data/Continuous")
+fp_rel_wq_proc <- paste0(fp_fastr, "Processed_Data/Continuous")
+
+# Define absolute file paths
+fp_abs_wq_raw <- get_abs_path(fp_rel_wq_raw)
+fp_abs_wq_proc <- get_abs_path(fp_rel_wq_proc)
+
+# Clean up
+rm(fp_rel_wq_raw, fp_rel_wq_proc)
+
+# Create a vector of object names to keep throughout the script
+obj_keep <- append(objects(), "obj_keep")
+```
+
+# USGS Data
+
+## Import Data
+
+```{r import raw data}
+# Create a vector of all file paths for the raw USGS continuous data
+usgs_cont_fp <- dir(fp_abs_wq_raw, pattern = "USGS", full.names = T)
+
+# Remove the file with SDI flow data for now
+usgs_cont_fp_f <- discard(usgs_cont_fp, str_detect(usgs_cont_fp, "Flow_2011-2018"))
+
+# Create a tibble of all raw USGS continuous data files
+usgs_cont_files <- tibble(
+  filename = usgs_cont_fp_f,
+  n_params = c(19, 11, 4, 6, 11, 12, 11, 7, 12, 3)
+)
+
+# Import USGS data into a nested dataframe
+usgs_cont_orig <- usgs_cont_files %>% 
+  mutate(
+    sta_code = str_sub(filename, start = 176, end = -5),
+    df = map2(filename, n_params, .f = import_usgs_data)
+  ) %>% 
+  select(sta_code, df)
+```
+
+```{r parse date time var}
+# Parse date time variable from character to datetime object
+usgs_cont_dt_clean <- usgs_cont_orig %>% 
+  mutate(
+    df = map(
+      df, 
+      ~mutate(.x, DateTime = ymd_hms(dateTime)) %>% 
+        select(-dateTime)
+    )
+  )
+```
+
+## Data Inspection
+
+### Overlapping or duplicated data
+
+We need to look for any overlapping or duplicated data and clean it.
+
+```{r look for overlapping data}
+usgs_qc_check <- usgs_cont_dt_clean %>% 
+  mutate(
+    df_count = map(
+      df, 
+      ~select(.x, !ends_with("_cd")) %>% 
+        pivot_longer(
+          cols = -c(DateTime, site_no),
+          names_to = "parameter",
+          values_to = "value"
+        ) %>% 
+        filter(!is.na(value)) %>% 
+        std_param_vars_usgs(parameter, "data_values") %>% 
+        count(DateTime, parameter) %>% 
+        filter(n > 1)
+    )
+  )
+
+usgs_qc_check
+```
+
+The LIB and SDI stations have more than one value for a timestamp for portions of their periods of record. These two stations need to be investigated further.
+
+We'll look at LIB first:
+
+```{r investigate overlapping data lib}
+# Find parameters with overlapping data
+unique(usgs_qc_check$df_count[[1]]$parameter)
+
+# Summarize time period with overlapping data
+summary(usgs_qc_check$df_count[[1]])
+```
+
+There are multiple parameters (DO, fDOM, pH, SpCnd, Turbidity, WaterTemp, and Chla_RFU) that have overlapping data in duplicate at LIB from 9/27/2018 to 10/10/2018. After looking at LIB (`r unique(usgs_qc_check$df[[1]]$site_no)`) on the [USGS NWIS website](https://waterdata.usgs.gov/nwis/uv?site_no=11455315), the cause of the overlapping data is from a short-term Chlorophyll inter-calibration project. We will remove the data collected for this short-term project to avoid overlapping data in the dataset.
+
+```{r clean lib data}
+# LIB - remove data from the Chlorophyll inter-calibration project
+lib <- usgs_cont_dt_clean %>% 
+  filter(sta_code == "LIB") %>% 
+  pull(df) %>% 
+  chuck(1)
+
+lib_clean <- lib %>% select(!starts_with("X_CHLOR"))
+```
+
+Next, we'll look at SDI:
+
+```{r investigate overlapping data sdi}
+# Find parameters with overlapping data
+unique(usgs_qc_check$df_count[[7]]$parameter)
+
+# Summarize time period with overlapping data
+summary(usgs_qc_check$df_count[[7]])
+```
+
+There are two parameters (SpCnd and WaterTemp) that have overlapping data in duplicate at SDI from 1/25/2013 to 10/3/2013. After looking at SDI (`r unique(usgs_qc_check$df[[7]]$site_no)`) on the [USGS NWIS website](https://waterdata.usgs.gov/nwis/uv?site_no=11455478), the cause of the overlapping data is from two projects (Hydro Exo and BGC Project) collecting SpCnd and WaterTemp data during this time period. We will only keep the data collected for the BGC Project during this time period to avoid overlapping data in the dataset.
+
+```{r clean sdi data, message = FALSE}
+# SDI - remove data from the Hydro Exo project after 1/24/2013
+sdi <- usgs_cont_dt_clean %>% 
+    filter(sta_code == "SDI") %>% 
+    pull(df) %>% 
+    chuck(1)
+  
+sdi_hydro_wt_spc <- sdi %>% 
+  select(
+    DateTime,
+    X_.HYDRO.EXO._00010_00000,
+    X_.HYDRO.EXO._00010_00000_cd,
+    X_.HYDRO.EXO._00095_00000,
+    X_.HYDRO.EXO._00095_00000_cd
+  ) %>% 
+  filter(date(DateTime) <= "2013-01-24")
+
+sdi_clean <- sdi %>% 
+  select(
+    -c(
+      X_.HYDRO.EXO._00010_00000,
+      X_.HYDRO.EXO._00010_00000_cd,
+      X_.HYDRO.EXO._00095_00000,
+      X_.HYDRO.EXO._00095_00000_cd
+    )
+  ) %>% 
+  left_join(sdi_hydro_wt_spc)
+```
+
+Add back the cleaned data for LIB and SDI to the main dataframe for further analysis.
+
+```{r add clean lib and sdi data}
+lib_sdi_clean <- tibble(
+  sta_code = c("LIB", "SDI"),
+  df = list(lib_clean, sdi_clean)
+)
+
+usgs_cont_dt_clean_m <- usgs_cont_dt_clean %>% 
+  filter(!sta_code %in% c("LIB", "SDI")) %>% 
+  bind_rows(lib_sdi_clean)
+```
+
+### Days with too many timestamps
+
+For continuous data collected at 15 minute intervals, each day should have a maximum of 96 timestamps. We need to look for any instances where there are more than 96 timestamps in a day, and remove any duplicated or erroneous data.
+
+```{r look at num of timestamps per day}
+usgs_qc_check <- usgs_cont_dt_clean_m %>% 
+  mutate(
+    df_count = map(
+      df, 
+      ~select(.x, !ends_with("_cd")) %>% 
+        pivot_longer(
+          cols = -c(DateTime, site_no),
+          names_to = "parameter",
+          values_to = "value"
+        ) %>% 
+        filter(!is.na(value)) %>% 
+        std_param_vars_usgs(parameter, "data_values") %>% 
+        mutate(Date = as_date(DateTime)) %>% 
+        count(site_no, Date, parameter) %>% 
+        filter(n > 96)
+    )
+  )
+
+usgs_qc_check
+```
+
+The RYI_1 and LIB stations have more than 96 timestamps on a few days during their periods of record. These two stations need to be investigated further.
+
+We'll look at RYI_1 first:
+
+```{r investigate timestamp data ryi_1}
+# Find parameters with overlapping data
+unique(usgs_qc_check$df_count[[1]]$parameter)
+
+# Summarize time period with overlapping data
+summary(usgs_qc_check$df_count[[1]])
+
+usgs_qc_check$df_count[[4]]
+```
