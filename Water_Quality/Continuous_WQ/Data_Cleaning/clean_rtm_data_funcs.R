@@ -6,8 +6,7 @@
 # Load packages
 library(tidyverse)
 
-
-# --- Import continuous WQ Data from SharePoint collected by USGS ---
+# Import continuous WQ Data from SharePoint collected by USGS
 import_usgs_data <- function(file_name, num_params){
   df <- read_csv(
     file = file_name,
@@ -17,22 +16,21 @@ import_usgs_data <- function(file_name, num_params){
   return(df)
 }
 
-
-# --- Standardize parameter variable names for data collected by USGS ---
+# Standardize parameter variable names for data collected by USGS
 
 # USGS PARAMETER CODES:
-# 00060 - Discharge (cfs)
-# 72137 - Discharge, tidally-filtered (cfs)
-# 00010 - Water Temperature (Celsius)
-# 00300 - Dissolved Oxygen (mg/L)
-# 00095 - Specific Conductance at 25 C (uS/cm)
-# 00400 - pH
-# 63680 - Turbidity (FNU)
-# 32315 - Chlorophyll relative fluorescence (RFU)
-# 32316 - Chlorophyll concentration estimated from reference material (ug/L)
-# 32295 - Dissolved organic matter fluorescence (fDOM) (ug/L as QSE)
-# 32321 - Phycocyanin relative fluorescence (RFU)
-# 99133 - Nitrate plus nitrite (mg/L as N)
+  # 00060 - Discharge (cfs)
+  # 72137 - Discharge, tidally-filtered (cfs)
+  # 00010 - Water Temperature (Celsius)
+  # 00300 - Dissolved Oxygen (mg/L)
+  # 00095 - Specific Conductance at 25 C (uS/cm)
+  # 00400 - pH
+  # 63680 - Turbidity (FNU)
+  # 32315 - Chlorophyll relative fluorescence (RFU)
+  # 32316 - Chlorophyll concentration estimated from reference material (ug/L)
+  # 32295 - Dissolved organic matter fluorescence (fDOM) (ug/L as QSE)
+  # 32321 - Phycocyanin relative fluorescence (RFU)
+  # 99133 - Nitrate plus nitrite (mg/L as N)
 
 std_param_vars_usgs <- function(df, param_var, var_type = c("data_values", "qc_codes")) {
   # Evaluate choices for var_type
@@ -78,6 +76,57 @@ std_param_vars_usgs <- function(df, param_var, var_type = c("data_values", "qc_c
           str_detect(!!param_var_enquo, "32321") ~ "Phyco_RFU_Qual",
           str_detect(!!param_var_enquo, "99133") ~ "NitrateNitrite_Qual"
         )
+      )
+  }
+  
+  return(df1)
+}
+
+# Apply a consistent variable order
+apply_var_order <- function(df, collector = c("usgs", "other")) {
+  # Evaluate choices for collector
+  collector <- match.arg(collector, c("usgs", "other"))
+  
+  if (collector == "usgs") {
+    df1 <- df %>% 
+      select(
+        site_no,
+        DateTime,
+        StationCode,
+        matches("Flow$"),
+        matches("Flow_Qual$"),
+        starts_with("FlowTF"),
+        starts_with("Wa"),
+        starts_with("Tu"),
+        starts_with("Sp"),
+        starts_with("DO"),
+        starts_with("pH", ignore.case = FALSE),
+        matches("Chla$"),
+        matches("Chla_Qual$"),
+        starts_with("Chla_RFU"),
+        starts_with("fD"),
+        starts_with("Phy"),
+        starts_with("Ni")
+      )
+  } else {
+    df1 <- df %>% 
+      select(
+        DateTime,
+        StationCode,
+        matches("Flow$"),
+        matches("Flow_Qual$"),
+        starts_with("FlowTF"),
+        starts_with("Wa"),
+        starts_with("Tu"),
+        starts_with("Sp"),
+        starts_with("DO"),
+        starts_with("pH", ignore.case = FALSE),
+        matches("Chla$"),
+        matches("Chla_Qual$"),
+        starts_with("Chla_RFU"),
+        starts_with("fD"),
+        starts_with("Phy"),
+        starts_with("Ni")
       )
   }
   
