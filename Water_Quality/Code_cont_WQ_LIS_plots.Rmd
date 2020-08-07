@@ -155,7 +155,7 @@ ps <- lis_orig %>%
   ggplot(aes(x = DateTime, y = SpCnd)) +
   geom_line()
 
-print(pt)
+print(ps)
 ```
 
 2013
@@ -245,7 +245,7 @@ pd <- lis_orig %>%
   ggplot(aes(x = DateTime, y = DO)) +
   geom_line()
 
-print(po)
+print(pd)
 ```
 
 2013
