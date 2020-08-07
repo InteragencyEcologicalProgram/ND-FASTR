@@ -1,13 +1,13 @@
 ---
-  title: "Example RTM Plots"
-author: "Dave Bosworth"
-date: "7/14/2020"
+title: "SGG Raw Plots"
+author: "Traci Treleaven and Dave Bosworth"
+date: "08/07/2020"
 output: 
   html_document: 
-  code_folding: show
-toc: yes
-toc_float:
-  collapsed: no
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
 editor_options: 
   chunk_output_type: console
 ---
