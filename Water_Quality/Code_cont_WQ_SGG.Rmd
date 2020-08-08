@@ -75,12 +75,12 @@ print(p)
 
 
 Turbidity 2018 (About 4 months of data)
-```{r plot WaterTemp 2013 param, warning = FALSE}
+```{r plot WaterTemp 2018 param, warning = FALSE}
 p + scale_x_datetime(limits = c(as_datetime("2018-08-16 00:00:00"), as_datetime("2018-12-31 00:00:00")))
 ```
 
 Turbidity 2019
-```{r plot WaterTemp 2013 param, warning = FALSE}
+```{r plot WaterTemp 2019 param, warning = FALSE}
 p + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
 ```
 
@@ -89,7 +89,7 @@ p + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime(
 Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
 
 Turbidity
-```{r plot one param, warning = FALSE}
+```{r plot Turbidity param, warning = FALSE}
 pt <- sgg_clean %>% 
   ggplot(aes(x = DateTime, y = Turbidity)) +
   geom_line()
@@ -98,12 +98,12 @@ print(pt)
 ```
 
 Turbidity 2018 (About 4 months of data)
-```{r plot WaterTemp 2013 param, warning = FALSE}
+```{r plot Turbidity 2018 param, warning = FALSE}
 pt + scale_x_datetime(limits = c(as_datetime("2018-08-16 00:00:00"), as_datetime("2018-12-31 00:00:00")))
 ```
 
 Turbidity 2019
-```{r plot WaterTemp 2013 param, warning = FALSE}
+```{r plot Turbidity 2019 param, warning = FALSE}
 pt + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
 ```
 
@@ -113,7 +113,7 @@ pt + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime
 Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
 
 Specific Conductance (SpCnd)
-```{r plot one param, warning = FALSE}
+```{r plot SC param, warning = FALSE}
 ps <- sgg_clean %>% 
   ggplot(aes(x = DateTime, y = SpCnd)) +
   geom_line()
@@ -122,12 +122,12 @@ print(ps)
 ```
 
 SpCnd 2018 (About 4 months of data)
-```{r plot WaterTemp 2013 param, warning = FALSE}
+```{r plot SC 2018 param, warning = FALSE}
 ps + scale_x_datetime(limits = c(as_datetime("2018-08-16 00:00:00"), as_datetime("2018-12-31 00:00:00"))) 
 ```
 
 SpCnd 2019
-```{r plot WaterTemp 2013 param, warning = FALSE}
+```{r plot SC 2019 param, warning = FALSE}
 ps + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
 ```
 
@@ -137,7 +137,7 @@ ps + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime
 Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
 
 Dissolved Oxygen
-```{r plot one param, warning = FALSE}
+```{r plot DO param, warning = FALSE}
 pd <- sgg_clean %>% 
   ggplot(aes(x = DateTime, y = DO)) +
   geom_line()
@@ -146,7 +146,7 @@ print(pd)
 ```
 
 Zoomed in to remove space with no data (8/18/2018 to 02/11/2019)
-```{r plot WaterTemp 2013 param, warning = FALSE}
+```{r plot DO zoomed param, warning = FALSE}
 pd + scale_x_datetime(limits = c(as_datetime("2018-08-18 00:00:00"), as_datetime("2019-02-12 00:00:00"))) 
 ```
 
@@ -155,7 +155,7 @@ pd + scale_x_datetime(limits = c(as_datetime("2018-08-18 00:00:00"), as_datetime
 Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
 
 pH Total
-```{r plot one param, warning = FALSE}
+```{r plot pH param, warning = FALSE}
 pH <- sgg_clean %>% 
   ggplot(aes(x = DateTime, y = pH)) +
   geom_line()
@@ -164,7 +164,7 @@ print(pH)
 ```
 
 pH Zoomed in to remove space with no data (8/18/2018 to 12/12/2018)
-```{r plot WaterTemp 2013 param, warning = FALSE}
+```{r plot pH zoomed param, warning = FALSE}
 pH + scale_x_datetime(limits = c(as_datetime("2018-08-18 00:00:00"), as_datetime("2018-12-13 00:00:00"))) 
 ```
 
@@ -174,7 +174,7 @@ pH + scale_x_datetime(limits = c(as_datetime("2018-08-18 00:00:00"), as_datetime
 Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
 
 Flow Total
-```{r plot one param, warning = FALSE}
+```{r plot flow param, warning = FALSE}
 pf <- sgg_clean %>% 
   ggplot(aes(x = DateTime, y = Flow)) +
   geom_line()
@@ -185,12 +185,12 @@ print(pf)
 Flow 2018 (less than 4 month of data)
 
 A large gap in the data between 10/10/2018-11/7/2018
-```{r plot WaterTemp 2013 param, warning = FALSE}
+```{r plot flow 2018 param, warning = FALSE}
 pf + scale_x_datetime(limits = c(as_datetime("2018-09-19 00:00:00"), as_datetime("2018-12-31 00:00:00"))) 
 ```
 
 Flow 2018
-```{r plot WaterTemp 2013 param, warning = FALSE}
+```{r plot flow 2019 param, warning = FALSE}
 pf + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
 ```
 
