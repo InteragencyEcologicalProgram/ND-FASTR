@@ -1,5 +1,5 @@
 # NDFA Water Quality
-# Purpose: Example code to import, clean, and export continuous water quality data
+# Purpose: Script to clean LIB data
 # collected by USGS
 # Author: Dave Bosworth
 
