@@ -74,12 +74,12 @@ print(p)
 ```
 
 
-Turbidity 2018 (About 4 months of data)
+Water Temperature 2018 (About 4 months of data)
 ```{r plot WaterTemp 2018 param, warning = FALSE}
 p + scale_x_datetime(limits = c(as_datetime("2018-08-16 00:00:00"), as_datetime("2018-12-31 00:00:00")))
 ```
 
-Turbidity 2019
+Water Temperature 2019
 ```{r plot WaterTemp 2019 param, warning = FALSE}
 p + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
 ```
