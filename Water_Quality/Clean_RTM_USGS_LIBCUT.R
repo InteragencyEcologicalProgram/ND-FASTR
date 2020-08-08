@@ -1,7 +1,7 @@
 # NDFA Water Quality
-# Purpose: Example code to import, clean, and export continuous water quality data
+# Purpose: Script to clean LIBCUT data
 # collected by USGS
-# Author: Dave Bosworth
+# Author: Dave Bosworth & Traci Treleaven
 
 # Load packages
 library(tidyverse)
@@ -18,8 +18,11 @@ sharepoint_path <- normalizePath(
   )
 )
 
+
 # Import data
-#  LIBCUT station 
+#  LIB station 
+#- is skip, cc bring in column header as character, str_c is combing into a sting (rep is repeating) dc is numeric/character combo which is 38 columns divided by 2, final part gets rid of tz time zone column 
+
 libcut_orig <- read_csv(
   file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_LIBCUT.csv"),
   col_types = paste0("-cc", str_c(rep("dc", 11), collapse = ""), "-")
@@ -54,6 +57,8 @@ libcut_clean <- libcut_orig %>%
   ) %>% 
   select(-dateTime)
 
+glimpse(libcut_clean)
+
 # Standardize parameter variable names
 # Data values
 libcut_values <- libcut_clean %>% 
@@ -83,7 +88,7 @@ libcut_values <- libcut_clean %>%
   pivot_wider(names_from = parameter, values_from = value)
 
 # Qual Codes
-lib_qual <- lib_clean %>% 
+libcut_qual <- libcut_clean %>% 
   select(site_no, DateTime, ends_with("_cd")) %>% 
   pivot_longer(
     cols = -c(site_no, DateTime),
@@ -109,9 +114,13 @@ lib_qual <- lib_clean %>%
   ) %>% 
   pivot_wider(names_from = parameter, values_from = value)
 
+
+glimpse(libcut_qual)
+
+
 # Join two wide dataframes together
-lib_clean1 <- 
-  left_join(lib_values, lib_qual) %>% 
+libcut_clean <- 
+  left_join(libcut_values, libcut_qual) %>% 
   # Reorder variables
   select(
     site_no,
@@ -135,17 +144,22 @@ lib_clean1 <-
     starts_with("Ni")
   )
 
-glimpse(lib_clean1)
+
+glimpse(libcut_clean)
 
 
 # Export Data -------------------------------------------------------------
 
+
 # Export formatted data as a .csv file 
-ryi_clean1 %>% 
+
+
+libcut_clean %>% 
   write_excel_csv(
-    path = paste0(sharepoint_path, "/Processed_Data/Continuous/RTM_OUTPUT_RYI_formatted.csv"),
+    path = paste0(sharepoint_path, "/Processed_Data/Continuous/RTM_OUTPUT_LIBCUT_formatted.csv"),
     na = ""
   )
+
 
 # For easier importing of this file in the future should either:
 # 1) convert file to .xlsx file after exporting, or
