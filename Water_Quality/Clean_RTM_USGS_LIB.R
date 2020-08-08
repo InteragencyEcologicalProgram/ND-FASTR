@@ -1,7 +1,7 @@
 # NDFA Water Quality
 # Purpose: Script to clean LIB data
 # collected by USGS
-# Author: Dave Bosworth
+# Author: Dave Bosworth & Traci Treleaven
 
 # Load packages
 library(tidyverse)
