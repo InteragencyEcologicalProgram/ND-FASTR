@@ -1,0 +1,455 @@
+---
+title: "SRH Raw Plots"
+author: "Traci Treleaven and Dave Bosworth"
+date: "08/07/2020"
+output: 
+  html_document: 
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+editor_options: 
+  chunk_output_type: console
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+Code to plot continuous water quality data and check for missing data during the study period.
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+```
+
+# Import Data
+
+```{r import data}
+# Define path on SharePoint site for data
+sharepoint_path <- normalizePath(
+  file.path(
+    Sys.getenv("USERPROFILE"),
+    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/Processed_Data/Continuous"
+  )
+)
+
+# Import SRH data
+srh_orig <- 
+  read_csv(
+    file = paste0(sharepoint_path, "/RTM_OUTPUT_SRH_formatted.csv"),
+    col_types = paste0("cc", str_c(rep("dc", 6), collapse = ""))
+  )
+```
+
+```{r}
+#change dateTime from char to special DateTime
+srh_clean <- srh_orig %>% 
+  mutate(DateTime = ymd_hms(DateTime)) 
+
+```
+
+The data in the correct format:
+```{r glimpse data}
+glimpse(srh_clean)
+```
+
+
+
+# Create Plots
+
+## Water Temperature
+
+Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
+
+Water Temperature All Data 2011-2019
+```{r plot one param, warning = FALSE}
+p <- srh_clean %>% 
+  ggplot(aes(x = DateTime, y = WaterTemp)) +
+  geom_line()
+
+print(p)
+```
+
+
+Water Temperature 2011 
+```{r plot WaterTemp 2011 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2011-01-01 00:00:00"), as_datetime("2011-12-31 00:00:00")))
+```
+
+Water Temperature 2012
+```{r plot WaterTemp 2012 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2012-01-01 00:00:00"), as_datetime("2012-12-31 00:00:00"))) 
+```
+
+Water Temperature 2013
+```{r plot WaterTemp 2013 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2013-01-01 00:00:00"), as_datetime("2013-12-31 00:00:00"))) 
+```
+
+Water Temperature 2014
+```{r plot WaterTemp 2014 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), as_datetime("2014-12-31 00:00:00"))) 
+```
+
+Water Temperature 2015
+```{r plot WaterTemp 2015 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00"))) 
+```
+
+Water Temperature 2016
+```{r plot WaterTemp 2016 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
+```
+
+Water Temperature 2017
+```{r plot WaterTemp 2017 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2017-01-01 00:00:00"), as_datetime("2017-12-31 00:00:00"))) 
+```
+
+Water Temperature 2018
+```{r plot WaterTemp 2018 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2018-01-01 00:00:00"), as_datetime("2018-12-31 00:00:00"))) 
+```
+
+Water Temperature 2019
+```{r plot WaterTemp 2019 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
+```
+
+## Turbidity
+
+Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
+
+Turbidity
+```{r plot Turbidity param, warning = FALSE}
+pt <- srh_clean %>% 
+  ggplot(aes(x = DateTime, y = Turbidity)) +
+  geom_line()
+
+print(pt)
+```
+
+Turbidity 2011 
+```{r plot Turbidity 201 param, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2011-01-01 00:00:00"), as_datetime("2011-12-31 00:00:00")))
+```
+
+Turbidity 2012 
+```{r plot Turbidity 2012 param, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2012-01-01 00:00:00"), as_datetime("2012-12-31 00:00:00")))
+```
+
+Turbidity 2013 
+```{r plot Turbidity 2013 param, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2013-01-01 00:00:00"), as_datetime("2013-12-31 00:00:00")))
+```
+
+Turbidity 2014 
+```{r plot Turbidity 2014 param, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), as_datetime("2014-12-31 00:00:00")))
+```
+
+Turbidity 2015 
+```{r plot Turbidity 2015 param, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00")))
+```
+
+Turbidity 2016 
+```{r plot Turbidity 2016 param, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00")))
+```
+
+Turbidity 2017 
+```{r plot Turbidity 2017 param, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2017-01-01 00:00:00"), as_datetime("2017-12-31 00:00:00")))
+```
+
+Turbidity 2018 
+```{r plot Turbidity 2018 param, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2018-01-01 00:00:00"), as_datetime("2018-12-31 00:00:00")))
+```
+
+Turbidity 2019
+```{r plot Turbidity 2019 param, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00")))
+```
+
+
+## Specific Conductance
+
+Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
+
+Specific Conductance (SpCnd)
+```{r plot SC param, warning = FALSE}
+ps <- srh_clean %>% 
+  ggplot(aes(x = DateTime, y = SpCnd)) +
+  geom_line()
+
+print(ps)
+```
+
+SpCnd 2011 
+```{r plot SC 2011 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2011-01-01 00:00:00"), as_datetime("2011-12-31 00:00:00"))) 
+```
+
+SpCnd 2012 
+```{r plot SC 2012 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2012-01-01 00:00:00"), as_datetime("2012-12-31 00:00:00"))) 
+```
+
+SpCnd 2013 
+```{r plot SC 2013 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2013-01-01 00:00:00"), as_datetime("2013-12-31 00:00:00"))) 
+```
+
+SpCnd 2014 
+```{r plot SC 2014 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), as_datetime("2014-12-31 00:00:00"))) 
+```
+
+SpCnd 2015 
+```{r plot SC 2015 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00"))) 
+```
+
+SpCnd 2016 
+```{r plot SC 2016 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
+```
+
+SpCnd 2017 
+```{r plot SC 2017 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2017-01-01 00:00:00"), as_datetime("2017-12-31 00:00:00"))) 
+```
+
+SpCnd 2018 
+```{r plot SC 2018 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2018-01-01 00:00:00"), as_datetime("2018-12-31 00:00:00"))) 
+```
+
+SpCnd 2019
+```{r plot SC 2019 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
+```
+
+
+## Dissolved Oxygen
+
+Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
+
+Dissolved Oxygen
+```{r plot DO param, warning = FALSE}
+pd <- srh_clean %>% 
+  ggplot(aes(x = DateTime, y = DO)) +
+  geom_line()
+
+print(pd)
+```
+
+DO 2011
+```{r plot DO 2011 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2011-01-01 00:00:00"), as_datetime("2011-12-31 00:00:00"))) 
+```
+
+DO 2012
+```{r plot DO 2012 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2012-01-01 00:00:00"), as_datetime("2012-12-31 00:00:00"))) 
+```
+
+DO 2013
+```{r plot DO 2013 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2013-01-01 00:00:00"), as_datetime("2013-12-31 00:00:00"))) 
+```
+
+DO 2014
+```{r plot DO 2014 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), as_datetime("2014-12-31 00:00:00"))) 
+```
+
+DO 2015
+```{r plot DO 2015 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00"))) 
+```
+
+DO 2016
+```{r plot DO 201 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
+```
+
+DO 2017
+```{r plot DO 2017 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2017-01-01 00:00:00"), as_datetime("2017-12-31 00:00:00"))) 
+```
+
+DO 2018
+```{r plot DO 2018 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2018-01-01 00:00:00"), as_datetime("2018-12-31 00:00:00"))) 
+```
+
+DO 2019
+```{r plot DO 2019 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
+```
+
+
+## pH
+
+Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
+
+pH Total
+```{r plot pH param, warning = FALSE}
+pH <- srh_clean %>% 
+  ggplot(aes(x = DateTime, y = pH)) +
+  geom_line()
+
+print(pH)
+```
+
+pH 2011
+```{r plot pH 2011 param, warning = FALSE}
+pH + scale_x_datetime(limits = c(as_datetime("2011-01-01 00:00:00"), as_datetime("2011-12-31 00:00:00"))) 
+```
+
+pH 2012
+```{r plot pH 2012 param, warning = FALSE}
+pH + scale_x_datetime(limits = c(as_datetime("2012-01-01 00:00:00"), as_datetime("2012-12-31 00:00:00"))) 
+```
+
+pH 2013
+```{r plot pH 2013 param, warning = FALSE}
+pH + scale_x_datetime(limits = c(as_datetime("2013-01-01 00:00:00"), as_datetime("2013-12-31 00:00:00"))) 
+```
+
+pH 2014
+```{r plot pH 2014 param, warning = FALSE}
+pH + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), as_datetime("2014-12-31 00:00:00"))) 
+```
+
+pH 2015
+```{r plot pH 2015 param, warning = FALSE}
+pH + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00"))) 
+```
+
+pH 2016
+```{r plot pH 2016 param, warning = FALSE}
+pH + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
+```
+
+pH 2017
+```{r plot pH 2017 param, warning = FALSE}
+pH + scale_x_datetime(limits = c(as_datetime("2017-01-01 00:00:00"), as_datetime("2017-12-31 00:00:00"))) 
+```
+
+pH 2018
+```{r plot pH 2018 param, warning = FALSE}
+pH + scale_x_datetime(limits = c(as_datetime("2018-01-01 00:00:00"), as_datetime("2018-12-31 00:00:00"))) 
+```
+
+pH 2019
+```{r plot pH 2019 param, warning = FALSE}
+pH + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
+```
+
+
+
+## Chlorophyll-a
+
+Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
+
+Chlorophyll-a Total
+```{r plot Chla param, warning = FALSE}
+pc <- srh_clean %>% 
+  ggplot(aes(x = DateTime, y = Chla)) +
+  geom_line()
+
+print(pc)
+```
+
+Chlorophyll-a (Chla) 2011 
+```{r plot Chla 2011 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2011-01-01 00:00:00"), as_datetime("2011-12-31 00:00:00"))) 
+```
+
+Chlorophyll-a (Chla) 2012 
+```{r plot Chla 2012 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2012-01-01 00:00:00"), as_datetime("2012-12-31 00:00:00"))) 
+```
+
+Chlorophyll-a (Chla) 2013
+```{r plot Chla 2013 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2013-01-01 00:00:00"), as_datetime("2013-12-31 00:00:00"))) 
+```
+
+Chlorophyll-a (Chla) 2014 
+```{r plot Chla 2014 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), as_datetime("2014-12-31 00:00:00"))) 
+```
+
+Chlorophyll-a (Chla) 2015 
+```{r plot Chla 2015 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00"))) 
+```
+
+Chlorophyll-a (Chla) 2016 
+```{r plot Chla 2016 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
+```
+
+Chlorophyll-a (Chla) 2017 
+```{r plot Chla 2017 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2017-01-01 00:00:00"), as_datetime("2017-12-31 00:00:00"))) 
+```
+
+Chlorophyll-a (Chla) 2018 
+```{r plot Chla 2018 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2018-01-01 00:00:00"), as_datetime("2018-12-31 00:00:00"))) 
+```
+
+Chlorophyll-a (Chla) 2019 
+```{r plot Chla 2019 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
+```
+
+
+## Multiple parameters
+
+Multiple parameters at once on a single plot with `facet_grid`. We removed the Quality Code variables and restructure the data to a long format using `pivot_longer`.
+```{r pivot data longer}
+srh_long <- srh_clean %>% 
+  select(!ends_with("_Qual")) %>% 
+  pivot_longer(
+    cols = Chla:DO,
+    names_to = "parameter",
+    values_to = "value"
+  )
+```
+
+Now the data is structured so that the parameter names are in the `parameter` variable and the data values are in the `value` variable. 
+```{r display data in long format}
+head(srh_long)
+```
+
+A plot with facets. Use the `scales` argument set to `"free_y"` in `facet_grid` to adjust y-axis limits to the data of each parameter.
+```{r plot with facets, warning = FALSE}
+p2 <- srh_long %>%
+  ggplot(aes(x = DateTime, y = value)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(parameter),
+    scales = "free_y"
+  )
+
+p2
+```
+
+The plot larger so we can see it better. This is done with the `fig.width` and `fig.height` options in the top of the code chunk.
+```{r plot with facets larger, warning = FALSE, fig.width = 8.5, fig.height = 11}
+p2
+```
+
+
