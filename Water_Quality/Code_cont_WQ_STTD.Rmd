@@ -114,7 +114,7 @@ p + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime(
 
 Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
 
-Turbidity
+Turbidity All Data
 ```{r plot Turbidity param, warning = FALSE}
 pt <- sttd_clean %>% 
   ggplot(aes(x = DateTime, y = Turbidity)) +
@@ -148,7 +148,7 @@ pt + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime
 
 Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
 
-Specific Conductance (SpCnd)
+Specific Conductance (SpCnd) All Data
 ```{r plot SC param, warning = FALSE}
 ps <- sttd_clean %>% 
   ggplot(aes(x = DateTime, y = SpCnd)) +
@@ -197,7 +197,7 @@ ps + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime
 
 Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
 
-Dissolved Oxygen
+Dissolved Oxygen All Data
 ```{r plot DO param, warning = FALSE}
 pd <- sttd_clean %>% 
   ggplot(aes(x = DateTime, y = DO)) +
