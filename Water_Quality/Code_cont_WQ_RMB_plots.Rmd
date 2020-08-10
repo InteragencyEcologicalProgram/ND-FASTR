@@ -60,7 +60,8 @@ WaterTemp plot
 ```{r plot WaterTemp param, warning = FALSE}
 p <- rmb_orig %>% 
   ggplot(aes(x = DateTime, y = WaterTemp)) +
-  geom_line()
+  geom_line() +
+  scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
 
 print(p)
 ```
@@ -69,7 +70,8 @@ SpCnd plot
 ```{r plot SpCnd param, warning = FALSE}
 ps <- rmb_orig %>%
   ggplot(aes(x = DateTime, y = SpCnd)) +
-  geom_line()
+  geom_line() +
+  scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
 
 print(ps)
 ```
@@ -78,21 +80,19 @@ Turbidity plot
 ```{r plot Turbidity param, warning = FALSE}
 pt <- rmb_orig %>%
   ggplot(aes(x = DateTime, y = Turbidity)) +
-  geom_line()
+  geom_line() +
+  scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00"))) +
+  ylim(NA,100)
 
 print(pt)
-```
-
-Let's take a closer look at the December 2019 sharp increase in Turbidity. The result of a winter storm.
-```{r plot Turb param change x axis lim, warning = FALSE}
-pt + scale_x_datetime(limits = c(as_datetime("2019-11-25 00:00:00"), NA))
 ```
 
 DO plot
 ```{r plot DO param, warning = FALSE}
 pd <- rmb_orig %>%
   ggplot(aes(x = DateTime, y = DO)) +
-  geom_line()
+  geom_line() +
+  scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
 
 print(pd)
 ```
@@ -101,7 +101,8 @@ pH plot
 ```{r plot pH param, warning = FALSE}
 ph <- rmb_orig %>%
   ggplot(aes(x = DateTime, y = pH)) +
-  geom_line()
+  geom_line() +
+  scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
 
 print(ph)
 ```
@@ -110,7 +111,8 @@ Chla plot
 ```{r plot CHla param, warning = FALSE}
 pc <- rmb_orig %>%
   ggplot(aes(x = DateTime, y = Chla)) +
-  geom_line()
+  geom_line() +
+  scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
 
 print(pc)
 ```
@@ -141,7 +143,8 @@ p2 <- rmb_long %>%
   facet_grid(
     rows = vars(parameter),
     scales = "free_y"
-  )
+  ) +
+  scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
 
 p2
 ```
