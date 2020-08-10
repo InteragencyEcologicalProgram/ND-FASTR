@@ -48,7 +48,7 @@ sttd_orig <-
 ```{r}
 #change dateTime from char to special DateTime
 sttd_clean <- sttd_orig %>% 
-  mutate(DateTime = ymd_hms(DateTime)) 
+  mutate(DateTime = mdy_hm(DateTime)) 
 
 ```
 
@@ -77,22 +77,22 @@ print(p)
 
 Water Temperature 2013
 ```{r plot WaterTemp 2013 param, warning = FALSE}
-p + scale_x_datetime(limits = c(as_datetime("2013-08-12 00:00:00"), as_datetime("2013-12-31 00:00:00"))) 
+p + scale_x_datetime(limits = c(as_datetime("2013-08-12 00:00:00"), as_datetime("2013-11-29 00:00:00"))) 
 ```
 
 Water Temperature 2014
 ```{r plot WaterTemp 2014 param, warning = FALSE}
-p + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), as_datetime("2014-12-31 00:00:00"))) 
+p + scale_x_datetime(limits = c(as_datetime("2014-07-01 00:00:00"), as_datetime("2014-12-31 00:00:00"))) 
 ```
 
 Water Temperature 2015
 ```{r plot WaterTemp 2015 param, warning = FALSE}
-p + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00"))) 
+p + scale_x_datetime(limits = c(as_datetime("2015-07-01 00:00:00"), as_datetime("2015-11-30 00:00:00"))) 
 ```
 
 Water Temperature 2016
 ```{r plot WaterTemp 2016 param, warning = FALSE}
-p + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
+p + scale_x_datetime(limits = c(as_datetime("2016-06-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
 ```
 
 Water Temperature 2017
@@ -125,7 +125,7 @@ print(pt)
 
 Turbidity 2016 
 ```{r plot Turbidity 2016 param, warning = FALSE}
-pt + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00")))
+pt + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-12-31 00:00:00")))
 ```
 
 Turbidity 2017 
@@ -159,22 +159,22 @@ print(ps)
 
 SpCnd 2013 
 ```{r plot SC 2013 param, warning = FALSE}
-ps + scale_x_datetime(limits = c(as_datetime("2013-01-01 00:00:00"), as_datetime("2013-12-31 00:00:00"))) 
+ps + scale_x_datetime(limits = c(as_datetime("2013-08-01 00:00:00"), as_datetime("2013-11-01 00:00:00"))) 
 ```
 
 SpCnd 2014 
 ```{r plot SC 2014 param, warning = FALSE}
-ps + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), as_datetime("2014-12-31 00:00:00"))) 
+ps + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-01 00:00:00"))) 
 ```
 
 SpCnd 2015 
 ```{r plot SC 2015 param, warning = FALSE}
-ps + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00"))) 
+ps + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-30 00:00:00"))) 
 ```
 
 SpCnd 2016 
 ```{r plot SC 2016 param, warning = FALSE}
-ps + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
+ps + scale_x_datetime(limits = c(as_datetime("2016-06-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
 ```
 
 SpCnd 2017 
@@ -242,12 +242,12 @@ pH + scale_x_datetime(limits = c(as_datetime("2014-07-01 00:00:00"), as_datetime
 
 pH 2015
 ```{r plot pH 2015 param, warning = FALSE}
-pH + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00"))) 
+pH + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-30 00:00:00"))) 
 ```
 
 pH 2016
 ```{r plot pH 2016 param, warning = FALSE}
-pH + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
+pH + scale_x_datetime(limits = c(as_datetime("2016-06-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
 ```
 
 pH 2017
@@ -279,24 +279,24 @@ pc <- sttd_clean %>%
 print(pc)
 ```
 
-Chlorophyll-a (Chla) 2013 (4 months of data available)
+Chlorophyll-a (Chla) 2013 
 ```{r plot Chla 2013 param, warning = FALSE}
-pc + scale_x_datetime(limits = c(as_datetime("2013-08-01 00:00:00"), as_datetime("2013-12-31 00:00:00"))) 
+pc + scale_x_datetime(limits = c(as_datetime("2013-08-15 00:00:00"), as_datetime("2013-11-15 00:00:00"))) 
 ```
 
 Chlorophyll-a (Chla) 2014 
 ```{r plot Chla 2014 param, warning = FALSE}
-pc + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), as_datetime("2014-12-31 00:00:00"))) 
+pc + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-12-15 00:00:00"))) 
 ```
 
 Chlorophyll-a (Chla) 2015 
 ```{r plot Chla 2015 param, warning = FALSE}
-pc + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00"))) 
+pc + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-30 00:00:00"))) 
 ```
 
 Chlorophyll-a (Chla) 2016 
 ```{r plot Chla 2016 param, warning = FALSE}
-pc + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
+pc + scale_x_datetime(limits = c(as_datetime("2016-07-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
 ```
 
 Chlorophyll-a (Chla) 2017 
@@ -321,7 +321,7 @@ Multiple parameters at once on a single plot with `facet_grid`. We removed the Q
 sttd_long <- sttd_clean %>% 
   select(!ends_with("_Qual")) %>% 
   pivot_longer(
-    cols = Flow:pH,
+    cols = WaterTemp:Chla,
     names_to = "parameter",
     values_to = "value"
   )
