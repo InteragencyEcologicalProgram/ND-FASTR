@@ -183,13 +183,12 @@ print(pf)
 ```
 
 Flow 2018 (less than 4 month of data)
-
 A large gap in the data between 10/10/2018-11/7/2018
 ```{r plot flow 2018 param, warning = FALSE}
 pf + scale_x_datetime(limits = c(as_datetime("2018-09-19 00:00:00"), as_datetime("2018-12-31 00:00:00"))) 
 ```
 
-Flow 2018
+Flow 2019
 ```{r plot flow 2019 param, warning = FALSE}
 pf + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
 ```
