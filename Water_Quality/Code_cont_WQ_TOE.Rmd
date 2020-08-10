@@ -304,7 +304,7 @@ pc + scale_x_datetime(limits = c(as_datetime("2019-09-15 00:00:00"), as_datetime
 Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
 
 Chlorophyll-a RFU Total
-```{r plot Chla param, warning = FALSE}
+```{r plot ChlaRFU param, warning = FALSE}
 pcr <- toe_clean %>% 
   ggplot(aes(x = DateTime, y = Chla_RFU)) +
   geom_line()
@@ -314,17 +314,17 @@ print(pcr)
 
 
 Chlorophyll-a (RFU) 2017 
-```{r plot Chla 2017 param, warning = FALSE}
+```{r plot ChlaRFU 2017 param, warning = FALSE}
 pcr + scale_x_datetime(limits = c(as_datetime("2017-07-01 00:00:00"), as_datetime("2017-12-31 00:00:00"))) 
 ```
 
 Chlorophyll-a (RFU) 2018 
-```{r plot Chla 2018 param, warning = FALSE}
+```{r plot ChlaRFU 2018 param, warning = FALSE}
 pcr + scale_x_datetime(limits = c(as_datetime("2018-01-01 00:00:00"), as_datetime("2018-12-31 00:00:00"))) 
 ```
 
 Chlorophyll-a (RFU) 2019 
-```{r plot Chla 2019 param, warning = FALSE}
+```{r plot ChlaRFU 2019 param, warning = FALSE}
 pcr + scale_x_datetime(limits = c(as_datetime("2019-09-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
 ```
 
