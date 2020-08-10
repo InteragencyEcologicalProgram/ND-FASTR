@@ -64,7 +64,7 @@ glimpse(sgg_clean)
 
 Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
 
-Water Temperature
+Water Temperature All Data (8/17/2018-12/31/2019)
 ```{r plot one param, warning = FALSE}
 p <- sgg_clean %>% 
   ggplot(aes(x = DateTime, y = WaterTemp)) +
