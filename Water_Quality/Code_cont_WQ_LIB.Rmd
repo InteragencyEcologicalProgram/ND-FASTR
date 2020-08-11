@@ -112,7 +112,7 @@ p + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime(
 
 Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
 
-Turbidity
+Turbidity All Data (No 2016 data)
 ```{r plot Turbidity param, warning = FALSE}
 pt <- lib_clean %>% 
   ggplot(aes(x = DateTime, y = Turbidity)) +
@@ -131,10 +131,6 @@ Turbidity 2015
 pt + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00")))
 ```
 
-Turbidity 2016 (no data)
-```{r plot Turbidity 2016 param, warning = FALSE}
-pt + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00")))
-```
 
 Turbidity 2017 
 ```{r plot Turbidity 2017 param, warning = FALSE}
@@ -225,11 +221,6 @@ DO 2015
 pd + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00"))) 
 ```
 
-DO 2016 (NO DATA)
-```{r plot DO 201 param, warning = FALSE}
-pd + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-12-31 00:00:00"))) 
-```
-
 DO 2017
 ```{r plot DO 2017 param, warning = FALSE}
 pd + scale_x_datetime(limits = c(as_datetime("2017-06-01 00:00:00"), as_datetime("2017-12-31 00:00:00"))) 
@@ -253,7 +244,7 @@ pd + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime
 
 Simple line plots starting with a high level overview then going by year. We used the `ggplot` function from the ggplot2 package.
 
-pH Total
+pH Total (No 2016 data)
 ```{r plot pH param, warning = FALSE}
 pH <- lib_clean %>% 
   ggplot(aes(x = DateTime, y = pH)) +
@@ -272,11 +263,6 @@ pH 2015
 pH + scale_x_datetime(limits = c(as_datetime("2015-01-01 00:00:00"), as_datetime("2015-12-31 00:00:00"))) 
 ```
 
-pH 2016
-```{r plot pH 2016 param, warning = FALSE}
-pH + scale_x_datetime(limits = c(as_datetime("2016-01-01 00:00:00"), as_datetime("2016-11-31 00:00:00"))) 
-```
-
 pH 2017
 ```{r plot pH 2017 param, warning = FALSE}
 pH + scale_x_datetime(limits = c(as_datetime("2017-05-01 00:00:00"), as_datetime("2017-12-31 00:00:00"))) 
@@ -287,9 +273,9 @@ pH 2018
 pH + scale_x_datetime(limits = c(as_datetime("2018-01-01 00:00:00"), as_datetime("2018-12-31 00:00:00"))) 
 ```
 
-pH 2019
+pH 2019 (JAN Data only)
 ```{r plot pH 2019 param, warning = FALSE}
-pH + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-12-31 00:00:00"))) 
+pH + scale_x_datetime(limits = c(as_datetime("2019-01-01 00:00:00"), as_datetime("2019-01-22 00:00:00"))) 
 ```
 
 
