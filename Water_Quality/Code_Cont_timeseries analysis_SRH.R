@@ -5,6 +5,7 @@
 # import packages
 library(ggplot2)
 library(tidyverse)
+library(lubridate)
 
 # source functions
 source('C:/Repositories/ND-FASTR/Water_Quality/Code_cont_timeseries analysis_func.R')
@@ -36,9 +37,9 @@ df_wq_long <- df_wq %>%
 
 # --- Clean Data In Order To Create Timeseries Plots w/ RLs ---
 # create date/year columns (character type)
-df_wq_long$Date <- format(strptime(df_wq_long$DateTime, '%Y/%m/%d'),'%m/%d/%Y')
+df_wq_long$Date <- format(strptime(as.character(df_wq_long$DateTime), '%Y/%m/%d'),'%m/%d/%Y')
 df_wq_long$Year <- format(strptime(df_wq_long$DateTime, '%Y/%m/%d'),'%Y')
-df_wq_long$DateTime <- as.Date(df_wq_long$DateTime)
+df_wq_long$Test <- as.POSIXct(df_wq_long$DateTime)
 
 
 # add full analyte name column
@@ -57,21 +58,22 @@ years <- unique(df_wq_long$Year)
 for (year in years){
   for (analyte in analytes){ 
     # create timeseries 
-    p <- create_facet(df_wq_long)
+    p <- create_facet(df_wq_long[1:15])
     
-    print(p)
+    # print(p)    
+  
     
     # save graphs
-    # fp_rel_save <- paste(fp_fastr,'WQ_Subteam/Raw_Plots/Discrete/Timeseries_Stations/',year,sep = '')
-    # fp_abs_save <- get_abs_path(fp_rel_save)
-    # 
-    # ggsave(
-    #   paste(fp_abs_save,'/Timeseries_',year,'_',analyte,'.png',sep = ''),
-    #   p,
-    #   width = 7,
-    #   height = 15,
-    #   unit = 'in'
-    # )
+    fp_rel_save <- paste(fp_fastr,'WQ_Subteam/Raw_Plots/Continuous/time_series/',year,sep = '')
+    fp_abs_save <- get_abs_path(fp_rel_save)
+
+    ggsave(
+      paste(fp_abs_save,'/Timeseries_',year,'_',analyte,'.png',sep = ''),
+      p,
+      width = 10,
+      height = 10,
+      unit = 'in'
+    )
   break
     }
   break
