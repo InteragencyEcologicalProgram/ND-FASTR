@@ -56,7 +56,7 @@ add_phase_actions <- function(df_wq, df_dates){
   # convert date columns to date type
   cols_date <- c('Date','PreFlowStart','PreFlowEnd','PostFlowStart','PostFlowEnd')
 
-  df_combined[cols_date] <- lapply(df_combined[cols_date], as.Date, format = '%Y/%m/%d')
+  df_combined[cols_date] <- lapply(df_combined[cols_date], as.Date, format = '%m/%d/%Y')
 
   # add ActionPhase column and remove non-NDFA data
   df_combined <- df_combined %>%
@@ -107,7 +107,9 @@ create_facet <- function(df){
   
   # define flow action duration
   action_max <- unique(df_filt$PostFlowStart)
+  action_max <- as.character(ymd_hm(paste(action_max,"00:00")))
   action_min <- unique(df_filt$PreFlowEnd)
+  action_min <- as.character(ymd_hm(paste(action_min,"00:00")))
   
   
   # define relevant values for naming
@@ -116,9 +118,10 @@ create_facet <- function(df){
   
   # plot timeseries
   p <- ggplot() +
-    facet_grid(StationCode ~ ., scales = 'free_x') +
-    annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
-  
+    facet_grid(StationCode ~ ., scales = 'free_x') 
+  # +
+  # annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
+  # 
   # add timeseries data
   p <- p +
     geom_point( # points
@@ -135,8 +138,8 @@ create_facet <- function(df){
   # fix asthetics
   p <- p +
     blank_theme + # theme
-    # scale_x_date(labels = date_format('%d-%b'), breaks = pretty_breaks(10)) +
-    xlab('Date') +
+    # scale_x_datetime(breaks = date_breaks("15 min")) +
+    # xlab('Date') +
     # ylab(analyte_unit) +
     ggtitle(paste(analyte_full,'-',year))
   
