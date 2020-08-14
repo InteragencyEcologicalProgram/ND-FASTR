@@ -5,16 +5,144 @@
 
 # Load packages
 library(tidyverse)
+library(readxl)
+
+# --- Data Import Functions ---
 
 # Import continuous WQ Data from SharePoint collected by USGS
-import_usgs_data <- function(file_name, num_params){
+import_usgs_data <- function(file_path, num_params){
   df <- read_csv(
-    file = file_name,
+    file = file_path,
     col_types = paste0("-cc", str_dup("dc", num_params), "-")
   )
   
   return(df)
 }
+
+# Import continuous WQ Data from SharePoint collected by DWR-NCRO-WQES
+import_wqes_data_wq <- function(file_path){
+  df <- read_csv(
+    file = file_path,
+    col_names = FALSE,
+    skip = 3,
+    col_types = "cdd-------dd-dd-dd-dd-dd-"
+  )
+  
+  return(df)
+}
+
+# Import continuous flow Data from SharePoint collected by DWR-NCRO
+import_wqes_data_flow <- function(file_path, sheet_name){
+  df <- read_excel(
+    path = file_path,
+    sheet = sheet_name,
+    col_names = c("DateTime", "Flow", "Flow_Qual"),
+    skip = 3,
+    col_types = c("date", "numeric", "numeric")
+  ) 
+  
+  return(df)
+}
+
+
+# names(i80_orig) <- c(
+#   "DateTime",
+#   "WaterTemp",
+#   "WaterTemp_Qual",
+#   "Turbidity",
+#   "Turbidity_Qual",
+#   "SpCnd",
+#   "SpCnd_Qual",
+#   "pH",
+#   "pH_Qual",
+#   "DO",
+#   "DO_Qual",
+#   "Chla",
+#   "Chla_Qual"
+# )
+# 
+# names(rcs_wq_orig) <- c(
+#   "DateTime",
+#   "WaterTemp",
+#   "WaterTemp_Qual",
+#   "Turbidity",
+#   "Turbidity_Qual",
+#   "SpCnd",
+#   "SpCnd_Qual",
+#   "pH",
+#   "pH_Qual",
+#   "DO",
+#   "DO_Qual",
+#   "Chla",
+#   "Chla_Qual"
+# )
+# 
+# names(rd22_orig) <- c(
+#   "DateTime",
+#   "WaterTemp",
+#   "WaterTemp_Qual",
+#   "Turbidity",
+#   "Turbidity_Qual",
+#   "SpCnd",
+#   "SpCnd_Qual",
+#   "pH",
+#   "pH_Qual",
+#   "DO",
+#   "DO_Qual",
+#   "Chla",
+#   "Chla_Qual"
+# )
+# 
+# names(sttd_orig) <- c(
+#   "DateTime",
+#   "WaterTemp",
+#   "WaterTemp_Qual",
+#   "Turbidity",
+#   "Turbidity_Qual",
+#   "SpCnd",
+#   "SpCnd_Qual",
+#   "pH",
+#   "pH_Qual",
+#   "DO",
+#   "DO_Qual",
+#   "Chla",
+#   "Chla_Qual"
+# )
+# 
+# names(rmb_orig) <- c(
+#   "DateTime",
+#   "WaterTemp",
+#   "WaterTemp_Qual",
+#   "Turbidity",
+#   "Turbidity_Qual",
+#   "SpCnd",
+#   "SpCnd_Qual",
+#   "pH",
+#   "pH_Qual",
+#   "DO",
+#   "DO_Qual",
+#   "Chla",
+#   "Chla_Qual"
+# )
+# 
+# names(lis_wq_orig) <- c(
+#   "DateTime",
+#   "WaterTemp",
+#   "WaterTemp_Qual",
+#   "Turbidity",
+#   "Turbidity_Qual",
+#   "SpCnd",
+#   "SpCnd_Qual",
+#   "pH",
+#   "pH_Qual",
+#   "DO",
+#   "DO_Qual",
+#   "Chla",
+#   "Chla_Qual"
+# )
+
+
+# --- Standardizing functions ---
 
 # Standardize parameter variable names for data collected by USGS
 

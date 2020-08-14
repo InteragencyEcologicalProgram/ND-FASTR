@@ -69,19 +69,19 @@ Sys.setenv(TZ = "Etc/GMT+8")
 usgs_cont_fp <- dir(fp_abs_wq_raw, pattern = "USGS", full.names = T)
 
 # Remove the .xlsx file with SDI flow data since we will need to import that separately (all other files are .csv)
-usgs_cont_fp_f <- discard(usgs_cont_fp, str_detect(usgs_cont_fp, "Flow_2011-2018"))
+usgs_cont_fp_f <- discard(usgs_cont_fp, str_detect(usgs_cont_fp, ".xlsx$"))
 
-# Create a tibble of all raw USGS continuous data files
+# Create a tibble of all raw USGS continuous data file paths
 usgs_cont_files <- tibble(
-  filename = usgs_cont_fp_f,
+  filepath = usgs_cont_fp_f,
   n_params = c(18, 10, 4, 6, 11, 10, 11, 7, 10, 3)
 )
 
 # Import USGS data into a nested dataframe
 usgs_cont_orig <- usgs_cont_files %>% 
   mutate(
-    sta_code = str_sub(filename, start = 176, end = -5),
-    df = map2(filename, n_params, .f = import_usgs_data)
+    sta_code = str_sub(filepath, start = 176, end = -5),
+    df = map2(filepath, n_params, .f = import_usgs_data)
   ) %>% 
   select(sta_code, df)
 
@@ -636,5 +636,80 @@ rm(list = ls()[!(ls() %in% obj_keep)])
 
 
 # DWR-NRCO-WQES Data
+
+## Import Data
+
+```{r import raw wqes data}
+# Create a vector of all file paths for the raw DWR-NCRO-WQES continuous data
+wqes_cont_fp <- dir(fp_abs_wq_raw, pattern = "DWR", full.names = T)
+
+# Remove the RVB and SRH data which were collected by DWR-DES-EMP and will be processed later
+wqes_cont_fp_1 <- discard(wqes_cont_fp, str_detect(wqes_cont_fp, "DWR RVB|DWR SRH"))
+
+# Remove the .xlsx file with the LIS and RCS flow data since we will need to import that data separately (all other files are .csv)
+wqes_cont_fp_f <- discard(wqes_cont_fp_1, str_detect(wqes_cont_fp_1, ".xlsx$"))
+
+# Create a tibble of all raw DWR-DES-EMP continuous data file paths
+wqes_cont_files_wq <- tibble(
+  filepath = wqes_cont_fp_f,
+  sta_code = c("I80", "LIS", "RCS", "RD22", "RMB", "STTD")
+)
+
+# Import raw DWR-DES-EMP data into a nested dataframe
+wqes_cont_wq_orig <- wqes_cont_files_wq %>% 
+  mutate(df_wq = map(filepath, .f = import_wqes_data_wq)) %>% 
+  select(sta_code, df_wq)
+
+# Import flow data for LIS and RCS
+lis_rcs_flow_fp <- paste0(fp_abs_wq_raw, "/RTM_RAW_DWR RCS LIS Flow_2011-2019.xlsx")
+
+wqes_cont_files_flow <- tibble(
+  filepath = rep(lis_rcs_flow_fp, 2),
+  sta_code = c("LIS", "RCS")
+)
+
+lis_rcs_flow_orig <- wqes_cont_files_flow %>% 
+  mutate(df_flow = map2(filepath, sta_code, .f = import_wqes_data_flow)) %>% 
+  select(sta_code, df_flow)
+
+```
+
+```{r parse date time var usgs}
+# Parse date time variable from character to datetime object
+usgs_cont_dt_clean <- usgs_cont_orig %>% 
+  mutate(
+    df = map(
+      df, 
+      ~mutate(.x, DateTime = ymd_hms(dateTime, tz = "Etc/GMT+8")) %>% 
+        select(-dateTime)
+    )
+  )
+```
+
+## Data Inspection
+
+### Duplicated timestamps after rounding
+
+We need to look for any duplicated timestamps after rounding them to the nearest 15-minute interval.
+
+
+
+## Clean Data
+
+### Standardize parameter names
+
+All DWR-NRCO-WQES data is now ready to have the timestamps rounded to their nearest 15-minute intervals and the parameter names to be standardized.
+
+
+### Add flow data
+
+
+
+### Finish Cleaning
+
+
+
+## Export Data
+
 
 
