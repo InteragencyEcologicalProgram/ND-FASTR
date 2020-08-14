@@ -24,6 +24,7 @@ This document provides the code and decisions made to clean and standardize all 
 
 ```{r load packages, message = FALSE, warning = FALSE}
 library(tidyverse)
+library(readxl)
 library(lubridate)
 ```
 
@@ -54,21 +55,26 @@ rm(fp_rel_wq_raw, fp_rel_wq_proc)
 obj_keep <- append(objects(), "obj_keep")
 ```
 
+```{r set system tz as PST}
+# Set System Timezone as "Etc/GMT+8" (PST) to make it consistent with all df's 
+Sys.setenv(TZ = "Etc/GMT+8")
+```
+
 # USGS Data
 
 ## Import Data
 
-```{r import raw data}
+```{r import raw usgs data}
 # Create a vector of all file paths for the raw USGS continuous data
 usgs_cont_fp <- dir(fp_abs_wq_raw, pattern = "USGS", full.names = T)
 
-# Remove the file with SDI flow data for now
+# Remove the .xlsx file with SDI flow data since we will need to import that separately (all other files are .csv)
 usgs_cont_fp_f <- discard(usgs_cont_fp, str_detect(usgs_cont_fp, "Flow_2011-2018"))
 
 # Create a tibble of all raw USGS continuous data files
 usgs_cont_files <- tibble(
   filename = usgs_cont_fp_f,
-  n_params = c(19, 11, 4, 6, 11, 12, 11, 7, 12, 3)
+  n_params = c(18, 10, 4, 6, 11, 10, 11, 7, 10, 3)
 )
 
 # Import USGS data into a nested dataframe
@@ -78,15 +84,28 @@ usgs_cont_orig <- usgs_cont_files %>%
     df = map2(filename, n_params, .f = import_usgs_data)
   ) %>% 
   select(sta_code, df)
+
+# Import flow data for SDI
+sdi_flow_orig <- read_excel(paste0(fp_abs_wq_raw, "/RTM_RAW_USGS_SDI Flow_2011-2018.xlsx"))
+
+# Prepare flow data for SDI to add to other USGS data
+sdi_flow_clean <- sdi_flow_orig %>% 
+  select(
+    DateTime = Timestamp,
+    Flow = "Q (cfs)",
+    FlowTF = "Q Tidal Filt (cfs)"
+  ) %>%
+  # Define timezone of DateTime as PST
+  mutate(DateTime = force_tz(DateTime, tzone = "Etc/GMT+8"))
 ```
 
-```{r parse date time var}
+```{r parse date time var usgs}
 # Parse date time variable from character to datetime object
 usgs_cont_dt_clean <- usgs_cont_orig %>% 
   mutate(
     df = map(
       df, 
-      ~mutate(.x, DateTime = ymd_hms(dateTime)) %>% 
+      ~mutate(.x, DateTime = ymd_hms(dateTime, tz = "Etc/GMT+8")) %>% 
         select(-dateTime)
     )
   )
@@ -98,12 +117,12 @@ usgs_cont_dt_clean <- usgs_cont_orig %>%
 
 We need to look for any overlapping or duplicated data and clean it.
 
-```{r look for overlapping data}
+```{r look for overlapping data usgs}
 usgs_qc_check <- usgs_cont_dt_clean %>% 
   mutate(
     df_count = map(
       df, 
-      ~select(.x, !ends_with("_cd")) %>% 
+      ~select(.x, -ends_with("_cd")) %>% 
         pivot_longer(
           cols = -c(DateTime, site_no),
           names_to = "parameter",
@@ -119,7 +138,7 @@ usgs_qc_check <- usgs_cont_dt_clean %>%
 usgs_qc_check
 ```
 
-The LIB and SDI stations have more than one value for a timestamp for portions of their periods of record. These two stations need to be investigated further.
+The LIB, RYI_1, and SDI stations have more than one value for a timestamp for portions of their periods of record. These three stations need to be investigated further.
 
 We'll look at LIB first:
 
@@ -131,7 +150,7 @@ unique(usgs_qc_check$df_count[[1]]$parameter)
 summary(usgs_qc_check$df_count[[1]])
 ```
 
-There are multiple parameters (DO, fDOM, pH, SpCnd, Turbidity, WaterTemp, and Chla_RFU) that have overlapping data in duplicate at LIB from 9/27/2018 to 10/10/2018. After looking at LIB (`r unique(usgs_qc_check$df[[1]]$site_no)`) on the [USGS NWIS website](https://waterdata.usgs.gov/nwis/uv?site_no=11455315), the cause of the overlapping data is from a short-term Chlorophyll inter-calibration project. We will remove the data collected for this short-term project to avoid overlapping data in the dataset.
+There are multiple parameters (DO, fDOM, pH, SpCnd, Turbidity, WaterTemp, and Chla) that have overlapping data in duplicate at LIB from 9/27/2018 to 10/10/2018. After looking at LIB (`r unique(usgs_qc_check$df[[1]]$site_no)`) on the [USGS NWIS website](https://waterdata.usgs.gov/nwis/uv?site_no=11455315), the cause of the overlapping data is from a short-term Chlorophyll inter-calibration project. We will remove the data collected for this short-term project to avoid overlapping data in the dataset.
 
 ```{r clean lib data}
 # LIB - remove data from the Chlorophyll inter-calibration project
@@ -140,10 +159,41 @@ lib <- usgs_cont_dt_clean %>%
   pull(df) %>% 
   chuck(1)
 
-lib_clean <- lib %>% select(!starts_with("X_CHLOR"))
+lib_clean <- lib %>% select(-starts_with("X_CHLOR"))
 ```
 
-Next, we'll look at SDI:
+Next, we'll look at RYI_1:
+
+```{r investigate overlapping data ryi_1}
+# Find parameters with overlapping data
+unique(usgs_qc_check$df_count[[5]]$parameter)
+
+# Summarize time period with overlapping data
+summary(usgs_qc_check$df_count[[5]])
+```
+
+Turbidity has overlapping data in duplicate at RYI_1 from 2/1/2013 to 7/9/2013. After looking at RYI_1 (`r unique(usgs_qc_check$df[[5]]$site_no)`) on the [USGS NWIS website](https://waterdata.usgs.gov/nwis/uv?site_no=11455350), the cause of the overlapping data is from two projects (MEDIAN TS087 YSI model 6136 and BGC Project) collecting Turbidity data during this time period. We will only keep the data collected for the BGC Project during this time period to avoid overlapping data in the dataset.
+
+```{r clean ryi_1 data, message = FALSE}
+# RYI_1 - remove data from the MEDIAN TS087 YSI model 6136 project after 2/1/2013 12:30 PST
+ryi1 <- usgs_cont_dt_clean %>% 
+    filter(sta_code == "RYI_1") %>% 
+    pull(df) %>% 
+    chuck(1)
+  
+ryi1_ts087_turb <- ryi1 %>% 
+  select(
+    DateTime,
+    starts_with("X_MEDIAN")
+  ) %>% 
+  filter(DateTime < "2013-02-01 12:30:00")
+
+ryi1_clean <- ryi1 %>% 
+  select(-starts_with("X_MEDIAN")) %>% 
+  left_join(ryi1_ts087_turb)
+```
+
+Last, we'll look at SDI:
 
 ```{r investigate overlapping data sdi}
 # Find parameters with overlapping data
@@ -165,48 +215,36 @@ sdi <- usgs_cont_dt_clean %>%
 sdi_hydro_wt_spc <- sdi %>% 
   select(
     DateTime,
-    X_.HYDRO.EXO._00010_00000,
-    X_.HYDRO.EXO._00010_00000_cd,
-    X_.HYDRO.EXO._00095_00000,
-    X_.HYDRO.EXO._00095_00000_cd
+    starts_with("X_.HYDRO")
   ) %>% 
   filter(date(DateTime) <= "2013-01-24")
 
 sdi_clean <- sdi %>% 
-  select(
-    -c(
-      X_.HYDRO.EXO._00010_00000,
-      X_.HYDRO.EXO._00010_00000_cd,
-      X_.HYDRO.EXO._00095_00000,
-      X_.HYDRO.EXO._00095_00000_cd
-    )
-  ) %>% 
+  select(-starts_with("X_.HYDRO")) %>% 
   left_join(sdi_hydro_wt_spc)
 ```
 
-Add back the cleaned data for LIB and SDI to the main dataframe for further analysis.
+Add back the cleaned data for LIB, RYI_1, and SDI to the main dataframe for further analysis.
 
-```{r add clean lib and sdi data}
-lib_sdi_clean <- tibble(
-  sta_code = c("LIB", "SDI"),
-  df = list(lib_clean, sdi_clean)
+```{r add clean lib ryi and sdi data}
+lib_ryi1_sdi_clean <- tibble(
+  sta_code = c("LIB", "RYI_1", "SDI"),
+  df = list(lib_clean, ryi1_clean, sdi_clean)
 )
 
-usgs_cont_dt_clean_m <- usgs_cont_dt_clean %>% 
-  filter(!sta_code %in% c("LIB", "SDI")) %>% 
-  bind_rows(lib_sdi_clean)
+usgs_cont_clean_v1 <- usgs_cont_dt_clean %>% 
+  filter(!sta_code %in% c("LIB", "RYI_1", "SDI")) %>% 
+  bind_rows(lib_ryi1_sdi_clean)
 ```
 
-### Days with too many timestamps
+Check to see if the overlapping data was removed properly.
 
-For continuous data collected at 15 minute intervals, each day should have a maximum of 96 timestamps. We need to look for any instances where there are more than 96 timestamps in a day, and remove any duplicated or erroneous data.
-
-```{r look at num of timestamps per day}
-usgs_qc_check <- usgs_cont_dt_clean_m %>% 
+```{r check if removed overlapping data}
+usgs_qc_check <- usgs_cont_clean_v1 %>% 
   mutate(
     df_count = map(
       df, 
-      ~select(.x, !ends_with("_cd")) %>% 
+      ~select(.x, -ends_with("_cd")) %>% 
         pivot_longer(
           cols = -c(DateTime, site_no),
           names_to = "parameter",
@@ -214,25 +252,389 @@ usgs_qc_check <- usgs_cont_dt_clean_m %>%
         ) %>% 
         filter(!is.na(value)) %>% 
         std_param_vars_usgs(parameter, "data_values") %>% 
-        mutate(Date = as_date(DateTime)) %>% 
-        count(site_no, Date, parameter) %>% 
-        filter(n > 96)
+        count(DateTime, parameter) %>% 
+        filter(n > 1)
     )
   )
 
 usgs_qc_check
 ```
 
-The RYI_1 and LIB stations have more than 96 timestamps on a few days during their periods of record. These two stations need to be investigated further.
+It looks like all of the overlapping data was removed.
 
-We'll look at RYI_1 first:
+### Duplicated timestamps after rounding
 
-```{r investigate timestamp data ryi_1}
-# Find parameters with overlapping data
-unique(usgs_qc_check$df_count[[1]]$parameter)
+We need to look for any duplicated timestamps after rounding them to the nearest 15-minute interval.
 
-# Summarize time period with overlapping data
-summary(usgs_qc_check$df_count[[1]])
+```{r look for dup timestamps after rounding usgs}
+usgs_qc_check <- usgs_cont_clean_v1 %>% 
+  mutate(
+    df_count = map(
+      df, 
+      ~select(.x, -ends_with("_cd")) %>% 
+        pivot_longer(
+          cols = -c(DateTime, site_no),
+          names_to = "parameter",
+          values_to = "value"
+        ) %>% 
+        filter(!is.na(value)) %>% 
+        std_param_vars_usgs(parameter, "data_values") %>% 
+        mutate(DateTime = round_date(DateTime, unit = "15 minute")) %>% 
+        count(DateTime, parameter) %>% 
+        filter(n > 1)
+    )
+  )
 
-usgs_qc_check$df_count[[4]]
+sdi_flow_qc_check <- sdi_flow_clean %>% 
+  mutate(DateTime = round_date(DateTime, unit = "15 minute")) %>% 
+  count(DateTime) %>% 
+  filter(n > 1)
+
+usgs_qc_check
+sdi_flow_qc_check
 ```
+
+The LIB station has 7 duplicated timestamps after rounding them to the nearest 15-minute interval. This needs to be investigated further.
+
+```{r investigate timestamp data lib}
+# Look at duplicated data points for LIB station in df_count
+usgs_qc_check$df_count[[8]]
+```
+
+There were extra Chla values recorded on:
+
+* 8/8/2017 8:31
+* 8/8/2017 10:31
+* 8/8/2017 12:46
+* 6/3/2018 14:31
+* 6/3/2018 14:46
+* 6/3/2018 15:01
+* 8/28/2018 18:31
+
+We will remove all of these values.
+
+```{r clean lib data 2}
+# LIB - remove extra Chlorophyll values after rounding timestamps to nearest 15-minute interval
+lib <- usgs_cont_clean_v1 %>% 
+  filter(sta_code == "LIB") %>% 
+  pull(df) %>% 
+  chuck(1)
+
+lib_extra_ts <- pull(usgs_qc_check$df_count[[8]], DateTime) + minutes(1)
+
+lib_clean <- lib %>% filter(!DateTime %in% lib_extra_ts)
+
+# Add back the cleaned data for LIB to the main dataframe
+usgs_cont_clean_v2 <- usgs_cont_clean_v1 %>% 
+  filter(sta_code != "LIB") %>% 
+  add_row(sta_code = "LIB", df = list(lib_clean))
+```
+
+## Clean Data
+
+### Standardize parameter names
+
+All USGS data is now ready to have the timestamps rounded to their nearest 15-minute intervals and the parameter names to be standardized.
+
+```{r std parameter names usgs, message = FALSE}
+# Continue to clean the continuous USGS data
+usgs_cont_clean_v3 <- usgs_cont_clean_v2 %>% 
+  mutate(
+    # Round all timestamps to the nearest 15-minute interval
+    df_dt_round = map(df, ~mutate(.x, DateTime = round_date(DateTime, unit = "15 minute"))),
+    # Standardize parameter names for data values
+    df_dv = map(
+      df_dt_round, 
+      ~select(.x, -ends_with("_cd")) %>% 
+        pivot_longer(
+          cols = -c(DateTime, site_no),
+          names_to = "parameter",
+          values_to = "value"
+        ) %>% 
+        filter(!is.na(value)) %>% 
+        std_param_vars_usgs(parameter, "data_values") %>% 
+        pivot_wider(names_from = parameter, values_from = value)
+    ),
+    # Standardize parameter names for quality codes
+    df_qc = map(
+      df_dt_round, 
+      ~select(.x, site_no, DateTime, ends_with("_cd")) %>% 
+        pivot_longer(
+          cols = -c(DateTime, site_no),
+          names_to = "parameter",
+          values_to = "value"
+        ) %>% 
+        filter(!is.na(value)) %>% 
+        std_param_vars_usgs(parameter, "qc_codes") %>% 
+        pivot_wider(names_from = parameter, values_from = value)
+    ),
+    # Join df_dv and df_qc together
+    df_join = map2(df_dv, df_qc, left_join)
+  )
+```
+
+### Combine RYI and TOE data
+
+The two RYI stations (RYI_1: [11455350](https://waterdata.usgs.gov/nwis/uv?site_no=11455350) and RYI_2: [11455385](https://waterdata.usgs.gov/nwis/uv?site_no=11455385)) are located nearby each other and will need to be combined into one dataset. There was a period of time in 2018-2019 when data was being collected at both stations. Before combining the data for these two stations, we'll need to plot the period of time when there was an overlap to investigate how similar they were.
+
+```{r plot ryi stations, warning = FALSE, fig.height = 9, fig.width = 9}
+# Combine data for RYI_1 and RYI_2
+ryi_c <- usgs_cont_clean_v3 %>% 
+  filter(str_detect(sta_code, "^RYI")) %>% 
+  select(df_join) %>% 
+  unnest(df_join)
+
+# Pivot data values for RYI stations to long format
+ryi_c_dv_long <- ryi_c %>% 
+  select(-ends_with("_Qual")) %>% 
+  pivot_longer(
+    cols = -c(DateTime, site_no),
+    names_to = "parameter",
+    values_to = "value"
+  )
+
+# Plot all parameters except for FlowTF focusing on period of overlapping data
+ryi_c_dv_long %>% 
+  filter(
+    parameter != "FlowTF",
+    DateTime >= "2017-08-11 00:00:00" & DateTime <= "2019-07-01 00:00:00"
+  ) %>%
+  ggplot(aes(x = DateTime, y = value, color = site_no)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(parameter),
+    scales = "free_y"
+  )
+```
+
+```{r plot ryi stations flowtf}
+# Plot FlowTF focusing on period of overlapping data
+ryi_c_dv_long %>% 
+  filter(
+    parameter == "FlowTF",
+    DateTime >= "2017-08-11 00:00:00" & DateTime <= "2019-07-01 00:00:00"
+  ) %>% 
+  filter(!is.na(value)) %>% 
+  ggplot(aes(x = DateTime, y = value, color = site_no)) +
+  geom_line() +
+  ylab("FlowTF")
+```
+
+The two RYI stations appear to be very similar during the period of overlapping data. We'll keep all data from RYI_1 (11455350) through the end of its period of record for the water quality parameters (9/5/2018) and switch to all data (including flow) from RYI_2 (11455385) from that point moving forward with the exception of Chla and NitrateNitrite. NitrateNitrite was collected at both RYI stations but their periods of record don't overlap. Chla was only collected at RYI_2.
+
+```{r combine ryi stations, message = FALSE}
+# Pivot quality codes for RYI stations to long format and prepare to join with data values
+ryi_c_qc_long <- ryi_c %>% 
+  select(site_no, DateTime, ends_with("_Qual")) %>% 
+  rename_at(vars(ends_with("_Qual")), ~str_remove(.x, "_Qual")) %>% 
+  pivot_longer(
+    cols = -c(DateTime, site_no),
+    names_to = "parameter",
+    values_to = "qual"
+  )
+
+# Join quality codes to the data values in long format
+ryi_c_long <- left_join(ryi_c_dv_long, ryi_c_qc_long)
+
+# Filter RYI data
+ryi_c_long_filt <- ryi_c_long %>% 
+  # remove NA values which cause problems with overlapping data in the wide format
+  filter(!is.na(value)) %>% 
+  # Trim RYI_1 and RYI_2 data so that they don't overlap with 9/5/2018 as the cutoff date
+  filter(!(
+    !str_detect(parameter, "^Chla|^Nitr") & 
+    site_no == "11455350" & 
+    date(DateTime) >= "2018-09-05"
+  )) %>% 
+  filter(!(
+    !str_detect(parameter, "^Chla|^Nitr") & 
+    site_no == "11455385" & 
+    date(DateTime) < "2018-09-05"
+  ))
+
+# Pivot filtered RYI data back to the wide format
+ryi_c_f <- ryi_c_long_filt %>% 
+  pivot_wider(
+    id_cols = -site_no,
+    names_from = parameter,
+    values_from = c(value, qual)
+  ) %>% 
+  # rename parameter variables to standardized names
+  rename_at(vars(starts_with("qual_")), ~str_c(str_remove(.x, "qual_"), "_Qual")) %>% 
+  rename_at(vars(starts_with("value_")), ~str_remove(.x, "value_"))
+```
+
+The two TOE stations (TOE_1: [11455140](https://waterdata.usgs.gov/nwis/uv?site_no=11455140) and TOE_2: [11455139](https://waterdata.usgs.gov/nwis/uv?site_no=11455139)) are located nearby each other and will need to be combined into one dataset. There was a period of time in 2015-2016 when flow data was being collected at both stations. Before combining the data for these two stations, we'll need to plot the period of time when there was an overlap to investigate how similar the flow data was.
+
+```{r plot flow at toe stations, warning = FALSE}
+# Combine data for TOE_1 and TOE_2
+toe_c <- usgs_cont_clean_v3 %>% 
+  filter(str_detect(sta_code, "^TOE")) %>% 
+  select(df_join) %>% 
+  unnest(df_join)
+
+# Plot the flow data
+toe_c %>% 
+  select(site_no, DateTime, Flow) %>% 
+  filter(DateTime >= "2015-11-01 00:00:00" & DateTime <= "2016-12-31 00:00:00") %>% 
+  ggplot(aes(x = DateTime, y = Flow, color = site_no)) +
+  geom_line()
+```
+
+The flow data collected at the two TOE stations appear to be very similar during the period of overlapping data. We'll keep all data from TOE_1 (11455140) and add the flow data from TOE_2 (11455139) during the 2 month period (3/30/2016 - 6/10/2016) where they don't overlap. We will also add the turbidity data from TOE_2 collected from August 2014 to December 2016 to the TOE_1 data.
+
+```{r combine toe stations, message = FALSE}
+# Pivot data values for TOE stations to long format
+toe_c_dv_long <- toe_c %>% 
+  select(-ends_with("_Qual")) %>% 
+  pivot_longer(
+    cols = -c(DateTime, site_no),
+    names_to = "parameter",
+    values_to = "value"
+  )
+
+# Pivot quality codes for TOE stations to long format and prepare to join with data values
+toe_c_qc_long <- toe_c %>% 
+  select(site_no, DateTime, ends_with("_Qual")) %>% 
+  rename_at(vars(ends_with("_Qual")), ~str_remove(.x, "_Qual")) %>% 
+  pivot_longer(
+    cols = -c(DateTime, site_no),
+    names_to = "parameter",
+    values_to = "qual"
+  )
+
+# Join quality codes to the data values in long format
+toe_c_long <- left_join(toe_c_dv_long, toe_c_qc_long)
+
+# Filter TOE data
+toe_c_long_filt <- toe_c_long %>% 
+  # remove NA values which cause problems with overlapping data in the wide format
+  filter(!is.na(value)) %>%
+  # only keep TOE_2 flow data during the period of no overlap (3/30/2016 - 6/10/2016)
+  filter(!(
+    parameter == "Flow" & 
+    site_no == "11455139" & 
+    (date(DateTime) < "2016-03-30" | DateTime > "2016-06-10 08:30:00")
+  )) %>% 
+  # remove all FlowTF data from TOE_2
+  filter(!(parameter == "FlowTF" & site_no == "11455139"))
+
+# Pivot filtered TOE data back to the wide format
+toe_c_f <- toe_c_long_filt %>% 
+  pivot_wider(
+    id_cols = -site_no,
+    names_from = parameter,
+    values_from = c(value, qual)
+  ) %>% 
+  # rename parameter variables to standardized names
+  rename_at(vars(starts_with("qual_")), ~str_c(str_remove(.x, "qual_"), "_Qual")) %>% 
+  rename_at(vars(starts_with("value_")), ~str_remove(.x, "value_"))
+```
+
+Add back the combined data for RYI and TOE to the main dataframe for further cleaning.
+
+```{r add combined ryi and toe data}
+ryi_toe_c <- tibble(
+  sta_code = c("RYI", "TOE"),
+  df = list(ryi_c_f, toe_c_f)
+)
+
+usgs_cont_clean_v4 <- usgs_cont_clean_v3 %>% 
+  filter(!str_detect(sta_code, "^RYI|^TOE")) %>% 
+  select(
+    sta_code,
+    df = df_join
+  ) %>% 
+  # remove site_no variable from all other stations
+  mutate(df = map(df, ~select(.x, -site_no))) %>% 
+  bind_rows(ryi_toe_c)
+```
+
+### Add SDI flow data
+
+We have flow data for SDI that was provided separately and isn't available for download on the USGS NWIS website. We'll add the flow data to the water quality data for SDI.
+
+```{r add sdi flow data, message = FALSE}
+# Pull out WQ data for SDI
+sdi_wq <- usgs_cont_clean_v4 %>% 
+  filter(sta_code == "SDI") %>% 
+  pull(df) %>% 
+  chuck(1)
+
+# Join flow data to the WQ data, DateTime variable for the flow data doesn't need to be rounded to the nearest 15-minute interval since it already is
+sdi_wq_flow_c <- full_join(sdi_wq, sdi_flow_clean)
+
+# Add back the SDI WQ and flow data to the main dataframe
+usgs_cont_clean_v5 <- usgs_cont_clean_v4 %>% 
+  filter(sta_code != "SDI") %>% 
+  add_row(sta_code = "SDI", df = list(sdi_wq_flow_c))
+```
+
+### Finish Cleaning
+
+Now, we can finish cleaning the continuous USGS data by adding a standardized StationName variable and reordering each dataframe to a consistent pattern.
+
+```{r finish cleaning usgs data}
+usgs_cont_clean_f <- usgs_cont_clean_v5 %>% 
+  mutate(
+    # Add NDFA standardized station names to each dataframe
+    df_names = map2(df, sta_code, ~mutate(.x, StationCode = .y)),
+    # Reorder variables in a consistent pattern and sort by DateTime
+    df_f = map(
+      df_names, 
+      ~apply_var_order(.x) %>% 
+        arrange(DateTime)
+    )
+  )
+```
+
+## Export Data
+
+We need to pull out and save the data for RD22 and RVB to be joined with other continuous data later in this process.
+
+```{r pull and save rd22 and rvb data}
+# Save RD22 and RVB data to be joined with other data later
+rd22_usgs <- usgs_cont_clean_f %>% 
+  filter(sta_code == "RD22") %>% 
+  pull(df_f) %>% 
+  chuck(1)
+
+rvb_usgs <- usgs_cont_clean_f %>% 
+  filter(sta_code == "RVB") %>% 
+  pull(df_f) %>% 
+  chuck(1)
+
+# Remove RD22 and RVB data from dataframe so they won't be exported at this point
+usgs_cont_clean_f_exp <- usgs_cont_clean_f %>% 
+  filter(!sta_code %in% c("RD22", "RVB"))
+```
+
+Export remaining continuous USGS data as .csv files to the Processed_Data/Continuous folder on SharePoint. This data will go through further QA/QC checks and cleaning in another script.
+
+```{r export usgs data as csv}
+# This only needs to be run when you want to export the data
+# walk2(
+#   usgs_cont_clean_f_exp$df_f, 
+#   usgs_cont_clean_f_exp$sta_code,
+#   .f = ~write_excel_csv(
+#     .x,
+#     path = paste0(fp_abs_wq_proc, "/RTM_OUTPUT_", .y, "_formatted.csv"),
+#     na = ""
+#   )
+# )
+```
+
+Clean up objects in the global environment to only keep necessary objects at this point.
+
+```{r clean obj from global env usgs}
+# Add rd22_usgs and rvb_usgs to obj_keep to keep them in the global environment
+obj_keep <- append(obj_keep, c("rd22_usgs", "rvb_usgs"))
+
+# Clean up
+rm(list = ls()[!(ls() %in% obj_keep)])
+```
+
+
+# DWR-NRCO-WQES Data
+
+

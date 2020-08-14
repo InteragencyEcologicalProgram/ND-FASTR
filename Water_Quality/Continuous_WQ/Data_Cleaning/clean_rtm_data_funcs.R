@@ -10,7 +10,7 @@ library(tidyverse)
 import_usgs_data <- function(file_name, num_params){
   df <- read_csv(
     file = file_name,
-    col_types = paste0("-cc", str_c(rep("dc", num_params), collapse = ""), "-")
+    col_types = paste0("-cc", str_dup("dc", num_params), "-")
   )
   
   return(df)
@@ -83,52 +83,26 @@ std_param_vars_usgs <- function(df, param_var, var_type = c("data_values", "qc_c
 }
 
 # Apply a consistent variable order
-apply_var_order <- function(df, collector = c("usgs", "other")) {
-  # Evaluate choices for collector
-  collector <- match.arg(collector, c("usgs", "other"))
-  
-  if (collector == "usgs") {
-    df1 <- df %>% 
-      select(
-        site_no,
-        DateTime,
-        StationCode,
-        matches("Flow$"),
-        matches("Flow_Qual$"),
-        starts_with("FlowTF"),
-        starts_with("Wa"),
-        starts_with("Tu"),
-        starts_with("Sp"),
-        starts_with("DO"),
-        starts_with("pH", ignore.case = FALSE),
-        matches("Chla$"),
-        matches("Chla_Qual$"),
-        starts_with("Chla_RFU"),
-        starts_with("fD"),
-        starts_with("Phy"),
-        starts_with("Ni")
-      )
-  } else {
-    df1 <- df %>% 
-      select(
-        DateTime,
-        StationCode,
-        matches("Flow$"),
-        matches("Flow_Qual$"),
-        starts_with("FlowTF"),
-        starts_with("Wa"),
-        starts_with("Tu"),
-        starts_with("Sp"),
-        starts_with("DO"),
-        starts_with("pH", ignore.case = FALSE),
-        matches("Chla$"),
-        matches("Chla_Qual$"),
-        starts_with("Chla_RFU"),
-        starts_with("fD"),
-        starts_with("Phy"),
-        starts_with("Ni")
-      )
-  }
+apply_var_order <- function(df) {
+  df1 <- df %>% 
+    select(
+      DateTime,
+      StationCode,
+      matches("Flow$"),
+      matches("Flow_Qual$"),
+      starts_with("FlowTF"),
+      starts_with("Wa"),
+      starts_with("Tu"),
+      starts_with("Sp"),
+      starts_with("DO"),
+      starts_with("pH", ignore.case = FALSE),
+      matches("Chla$"),
+      matches("Chla_Qual$"),
+      starts_with("Chla_RFU"),
+      starts_with("fD"),
+      starts_with("Phy"),
+      starts_with("Ni")
+    )
   
   return(df1)
 }
