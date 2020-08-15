@@ -87,6 +87,22 @@ usgs_cont_orig <- usgs_cont_files %>%
 
 # Import flow data for SDI
 sdi_flow_orig <- read_excel(paste0(fp_abs_wq_raw, "/RTM_RAW_USGS_SDI Flow_2011-2018.xlsx"))
+```
+
+## Parse date-time variables
+
+The date-time variables of the USGS water quality data need to be converted from character to datetime objects. The date-time variable of the SDI flow data already is a datetime object upon import of the data. All datetimes need to be forced as PST.
+
+```{r clean date time var usgs}
+# Parse DateTime variables of the USGS water quality data as datetime objects
+usgs_cont_dt_clean <- usgs_cont_orig %>% 
+  mutate(
+    df = map(
+      df, 
+      ~mutate(.x, DateTime = ymd_hms(dateTime, tz = "Etc/GMT+8")) %>% 
+        select(-dateTime)
+    )
+  )
 
 # Prepare flow data for SDI to add to other USGS data
 sdi_flow_clean <- sdi_flow_orig %>% 
@@ -99,23 +115,11 @@ sdi_flow_clean <- sdi_flow_orig %>%
   mutate(DateTime = force_tz(DateTime, tzone = "Etc/GMT+8"))
 ```
 
-```{r parse date time var usgs}
-# Parse date time variable from character to datetime object
-usgs_cont_dt_clean <- usgs_cont_orig %>% 
-  mutate(
-    df = map(
-      df, 
-      ~mutate(.x, DateTime = ymd_hms(dateTime, tz = "Etc/GMT+8")) %>% 
-        select(-dateTime)
-    )
-  )
-```
-
 ## Data Inspection
 
 ### Overlapping or duplicated data
 
-We need to look for any overlapping or duplicated data and clean it.
+Some continuous USGS stations had more than one project collecting data at the same location and time. Because of this, we need to look for any overlapping or duplicated data and clean it.
 
 ```{r look for overlapping data usgs}
 usgs_qc_check <- usgs_cont_dt_clean %>% 
@@ -264,9 +268,56 @@ It looks like all of the overlapping data was removed.
 
 ### Duplicated timestamps after rounding
 
-We need to look for any duplicated timestamps after rounding them to the nearest 15-minute interval.
+First, we need to check if the timestamps of all datetimes of the USGS water quality data and SDI flow data are rounded to the nearest 15-minute interval.
+
+```{r look for unrounded timestamps usgs}
+# Create lists of unique values for minutes and seconds for each USGS water quality station
+usgs_qc_check <- usgs_cont_clean_v1 %>% 
+  mutate(
+    df = map(
+      df, 
+      ~mutate(
+        .x, 
+        m = minute(DateTime),
+        s = second(DateTime)
+      )
+    ),
+    m_summ = map(
+      df,
+      ~unique(.x$m)
+    ),
+    s_summ = map(
+      df,
+      ~unique(.x$s)
+    )
+  )
+
+# WQ stations - Unique values for minutes:
+usgs_qc_check$m_summ
+
+# WQ stations - Unique values for seconds:
+usgs_qc_check$s_summ
+
+# Look at unique values for minutes and seconds for the SDI flow data
+sdi_flow_qc_check <- sdi_flow_clean %>%
+  mutate(
+    m = minute(DateTime),
+    s = second(DateTime)
+  )
+
+# SDI flow - Unique values for minutes:
+unique(sdi_flow_qc_check$m)
+
+# SDI flow - Unique values for seconds:
+unique(sdi_flow_qc_check$s)
+```
+
+Some of the USGS water quality stations had timestamps with minutes that are not rounded to the nearest 15-minute interval. All of the timestamps of the SDI flow data were collected at 15-minute intervals. 
+
+Next, we need to look for any duplicated timestamps after rounding them to the nearest 15-minute interval.
 
 ```{r look for dup timestamps after rounding usgs}
+# USGS water quality stations
 usgs_qc_check <- usgs_cont_clean_v1 %>% 
   mutate(
     df_count = map(
@@ -285,31 +336,35 @@ usgs_qc_check <- usgs_cont_clean_v1 %>%
     )
   )
 
+# WQ stations - Look for duplicated timestamps
+usgs_qc_check
+
+# SDI flow data
 sdi_flow_qc_check <- sdi_flow_clean %>% 
   mutate(DateTime = round_date(DateTime, unit = "15 minute")) %>% 
   count(DateTime) %>% 
   filter(n > 1)
 
-usgs_qc_check
+# SDI flow - Look for duplicated timestamps
 sdi_flow_qc_check
 ```
 
-The LIB station has 7 duplicated timestamps after rounding them to the nearest 15-minute interval. This needs to be investigated further.
+The LIB station has 7 duplicated timestamps after rounding them to the nearest 15-minute interval. This needs to be investigated further. All other stations were okay.
 
 ```{r investigate timestamp data lib}
 # Look at duplicated data points for LIB station in df_count
 usgs_qc_check$df_count[[8]]
 ```
 
-There were extra Chla values recorded on:
+LIB has extra Chla values recorded on:
 
-* 8/8/2017 8:31
-* 8/8/2017 10:31
-* 8/8/2017 12:46
-* 6/3/2018 14:31
-* 6/3/2018 14:46
-* 6/3/2018 15:01
-* 8/28/2018 18:31
+* 2017-08-08 8:31:00
+* 2017-08-08 10:31:00
+* 2017-08-08 12:46:00
+* 2018-06-03 14:31:00
+* 2018-06-03 14:46:00
+* 2018-06-03 15:01:00
+* 2018-08-28 18:31:00
 
 We will remove all of these values.
 
@@ -334,7 +389,7 @@ usgs_cont_clean_v2 <- usgs_cont_clean_v1 %>%
 
 ### Standardize parameter names
 
-All USGS data is now ready to have the timestamps rounded to their nearest 15-minute intervals and the parameter names to be standardized.
+All USGS water quality data is now ready to have the timestamps rounded to their nearest 15-minute intervals and the parameter names to be standardized. The SDI flow data already has standardized parameter names and rounded timestamps.
 
 ```{r std parameter names usgs, message = FALSE}
 # Continue to clean the continuous USGS data
@@ -375,7 +430,7 @@ usgs_cont_clean_v3 <- usgs_cont_clean_v2 %>%
 
 ### Combine RYI and TOE data
 
-The two RYI stations (RYI_1: [11455350](https://waterdata.usgs.gov/nwis/uv?site_no=11455350) and RYI_2: [11455385](https://waterdata.usgs.gov/nwis/uv?site_no=11455385)) are located nearby each other and will need to be combined into one dataset. There was a period of time in 2018-2019 when data was being collected at both stations. Before combining the data for these two stations, we'll need to plot the period of time when there was an overlap to investigate how similar they were.
+The two RYI stations (RYI_1: [11455350](https://waterdata.usgs.gov/nwis/uv?site_no=11455350) and RYI_2: [11455385](https://waterdata.usgs.gov/nwis/uv?site_no=11455385)) are located nearby each other and for the purpose of this study will need to be combined into one dataset. There was a period of time in 2018-2019 when data was being collected at both stations. Before combining the data for these two stations, we'll need to plot the period of time when there was an overlap to investigate how similar they were.
 
 ```{r plot ryi stations, warning = FALSE, fig.height = 9, fig.width = 9}
 # Combine data for RYI_1 and RYI_2
@@ -464,7 +519,7 @@ ryi_c_f <- ryi_c_long_filt %>%
   rename_at(vars(starts_with("value_")), ~str_remove(.x, "value_"))
 ```
 
-The two TOE stations (TOE_1: [11455140](https://waterdata.usgs.gov/nwis/uv?site_no=11455140) and TOE_2: [11455139](https://waterdata.usgs.gov/nwis/uv?site_no=11455139)) are located nearby each other and will need to be combined into one dataset. There was a period of time in 2015-2016 when flow data was being collected at both stations. Before combining the data for these two stations, we'll need to plot the period of time when there was an overlap to investigate how similar the flow data was.
+The two TOE stations (TOE_1: [11455140](https://waterdata.usgs.gov/nwis/uv?site_no=11455140) and TOE_2: [11455139](https://waterdata.usgs.gov/nwis/uv?site_no=11455139)) are located nearby each other and for the purpose of this study will need to be combined into one dataset. There was a period of time in 2015-2016 when flow data was being collected at both stations. Before combining the data for these two stations, we'll need to plot the period of time when there was an overlap to investigate how similar the flow data was.
 
 ```{r plot flow at toe stations, warning = FALSE}
 # Combine data for TOE_1 and TOE_2
@@ -669,19 +724,32 @@ wqes_cont_files_flow <- tibble(
 )
 
 lis_rcs_flow_orig <- wqes_cont_files_flow %>% 
-  mutate(df_flow = map2(filepath, sta_code, .f = import_wqes_data_flow)) %>% 
+  mutate(df_flow = map2(filepath, sta_code, .f = import_ncro_data_flow)) %>% 
   select(sta_code, df_flow)
-
 ```
 
-```{r parse date time var usgs}
-# Parse date time variable from character to datetime object
-usgs_cont_dt_clean <- usgs_cont_orig %>% 
+All water quality and flow data collected by NCRO already have standardized parameter names upon import of the data as specified within their import functions.
+
+## Parse date-time variables
+
+The date-time variables of the DWR-NCRO-WQES water quality data need to be converted from character to datetime objects. The date-time variables of the NCRO flow data are already datetime objects upon import of the data as specified within the import function. All datetimes need to be forced as PST.
+
+```{r clean date time var ncro}
+# Parse DateTime variables of the WQES water quality data as datetime objects
+wqes_cont_wq_dt_clean <- wqes_cont_wq_orig %>% 
   mutate(
-    df = map(
-      df, 
-      ~mutate(.x, DateTime = ymd_hms(dateTime, tz = "Etc/GMT+8")) %>% 
-        select(-dateTime)
+    df_wq = map(
+      df_wq, 
+      ~mutate(.x, DateTime = mdy_hm(DateTime, tz = "Etc/GMT+8"))
+    )
+  )
+
+# Define timezone of DateTime variables of the NCRO flow data as PST
+lis_rcs_flow_dt_clean <- lis_rcs_flow_orig %>% 
+  mutate(
+    df_flow = map(
+      df_flow,
+      ~mutate(.x, DateTime = force_tz(DateTime, tzone = "Etc/GMT+8"))
     )
   )
 ```
@@ -690,15 +758,155 @@ usgs_cont_dt_clean <- usgs_cont_orig %>%
 
 ### Duplicated timestamps after rounding
 
-We need to look for any duplicated timestamps after rounding them to the nearest 15-minute interval.
+First, we need to check if the timestamps of all datetimes of the DWR-NCRO-WQES water quality data and NCRO flow data are rounded to the nearest 15-minute interval.
 
+```{r look for unrounded timestamps ncro}
+# Create lists of unique values for minutes and seconds for each DWR-NCRO-WQES water quality station
+wqes_wq_qc_check <- wqes_cont_wq_dt_clean %>% 
+  mutate(
+    df_wq = map(
+      df_wq, 
+      ~mutate(
+        .x, 
+        m = minute(DateTime),
+        s = second(DateTime)
+      )
+    ),
+    m_summ = map(
+      df_wq,
+      ~unique(.x$m)
+    ),
+    s_summ = map(
+      df_wq,
+      ~unique(.x$s)
+    )
+  )
 
+# WQ stations - Unique values for minutes:
+wqes_wq_qc_check$m_summ
+
+# WQ stations - Unique values for seconds:
+wqes_wq_qc_check$s_summ
+
+# Look at unique values for minutes and seconds for the NCRO flow data
+ncro_flow_qc_check <- lis_rcs_flow_dt_clean %>% 
+  mutate(
+    df_flow = map(
+      df_flow, 
+      ~mutate(
+        .x, 
+        m = minute(DateTime),
+        s = second(DateTime)
+      )
+    ),
+    m_summ = map(
+      df_flow,
+      ~unique(.x$m)
+    ),
+    s_summ = map(
+      df_flow,
+      ~unique(.x$s)
+    )
+  )
+
+# NCRO flow - Unique values for minutes:
+unique(ncro_flow_qc_check$m_summ)
+
+# NCRO flow - Unique values for seconds:
+unique(ncro_flow_qc_check$s_summ)
+```
+
+All DWR-NCRO-WQES water quality stations and NCRO flow stations had timestamps with minutes that are not rounded to the nearest 15-minute interval.
+
+Next, we need to look for any duplicated timestamps after rounding them to the nearest 15-minute interval.
+
+```{r look for dup timestamps after rounding ncro}
+# DWR-NCRO-WQES water quality stations
+wqes_wq_qc_check <- wqes_cont_wq_dt_clean %>% 
+  mutate(
+    df_count = map(
+      df_wq, 
+      ~select(.x, -ends_with("_Qual")) %>% 
+        pivot_longer(
+          cols = -DateTime,
+          names_to = "parameter",
+          values_to = "value"
+        ) %>% 
+        filter(!is.na(value)) %>% 
+        mutate(DateTime = round_date(DateTime, unit = "15 minute")) %>% 
+        count(DateTime, parameter) %>% 
+        filter(n > 1)
+    )
+  )
+
+# WQ stations - Look for duplicated timestamps
+wqes_wq_qc_check
+
+# NCRO flow data
+ncro_flow_qc_check <- lis_rcs_flow_dt_clean %>% 
+  mutate(
+    df_count = map(
+      df_flow, 
+      ~filter(.x, !is.na(Flow)) %>% 
+        mutate(DateTime = round_date(DateTime, unit = "15 minute")) %>% 
+        count(DateTime) %>% 
+        filter(n > 1)
+    )
+  )
+
+# NCRO flow - Look for duplicated timestamps
+ncro_flow_qc_check
+```
+
+The LIS and RCS flow data both had duplicated timestamps after rounding them to the nearest 15-minute interval. This needs to be investigated further. All DWR-NCRO-WQES water quality stations were okay.
+
+```{r investigate timestamp data lis}
+# Look at duplicated data points for flow data at LIS station in df_count
+ncro_flow_qc_check$df_count[[1]]
+```
+
+LIS has extra flow values recorded on:
+
+* 2012-01-26 11:35:26
+* 2012-01-26 12:05:26
+* 2012-01-26 12:35:26
+* 2012-01-26 13:05:26
+* 2012-01-26 13:35:26
+* 2012-01-26 14:05:26
+* 2012-01-26 14:35:26
+
+We will remove all of these values.
+
+```{r clean lis flow data}
+
+```
+
+```{r investigate timestamp data rcs}
+# Look at duplicated data points for flow data at RCS station in df_count
+ncro_flow_qc_check$df_count[[2]]
+```
+
+RCS has extra flow values recorded on:
+
+* 2013-01-07 00:00:00
+* 2013-01-08 00:00:00
+
+We will remove these two values.
+
+```{r clean rcs flow data}
+
+```
+
+Create a new nested dataframe with the cleaned flow data for LIS and RCS for further cleaning.
+
+```{r new df clean lis rcs flow data}
+
+```
 
 ## Clean Data
 
-### Standardize parameter names
+All DWR-NCRO-WQES water quality and NCRO flow data is now ready to have the timestamps rounded to their nearest 15-minute intervals.
 
-All DWR-NRCO-WQES data is now ready to have the timestamps rounded to their nearest 15-minute intervals and the parameter names to be standardized.
 
 
 ### Add flow data
