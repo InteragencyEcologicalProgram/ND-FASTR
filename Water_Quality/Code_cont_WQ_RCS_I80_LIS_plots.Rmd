@@ -304,7 +304,7 @@ p5 + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime
 ```
 
 ##Water Temperature
-```{r Turb plot with facets, warning = FALSE}
+```{r WT plot with facets, warning = FALSE}
 p6 <-  filter(all_long, parameter == "WaterTemp") %>%
   ggplot(aes(x = DateTime, y = value)) +
   geom_line() +
@@ -317,37 +317,37 @@ print(p6)
 ```
 
 Water Temp 2016 - managed Sac River flow - positive Rio Vista plankton response
-```{r plot 2016 Turb parameters}
+```{r plot 2016 WT parameters}
 p6 + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
 ```
 
 Water Temp 2018 - managed Ag flow - negative Rio Vista plankton response
-```{r plot 2018 Turb parameters}
+```{r plot 2018 WT parameters}
 p6 + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
 ```
 
 Water Temp 2019 - managed Ag flow - negative Rio Vista plankton response
-```{r plot 2019 Turb parameters}
+```{r plot 2019 WT parameters}
 p6 + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
 ```
 
 Water Temp 2013 - natural flow - negative Rio Vista plankton response
-```{r plot 2013 Turb parameters}
+```{r plot 2013 WT parameters}
 p6 + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00")))
 ```
 
 Water Temp 2014 - natural flow - negative Rio Vista plankton response
-```{r plot 2014 Turb parameters}
+```{r plot 2014 WT parameters}
 p6 + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
 ```
 
 Water Temp 2015 - natural flow - negative Rio Vista plankton response
-```{r plot 2015 Turb parameters}
+```{r plot 2015 WT parameters}
 p6 + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
 ```
 
 ##Flow
-```{r Turb plot with facets, warning = FALSE}
+```{r Flow plot with facets, warning = FALSE}
 p7 <-  filter(all_long, parameter == "Flow") %>%
   ggplot(aes(x = DateTime, y = value)) +
   geom_line() +
@@ -360,32 +360,32 @@ print(p7)
 ```
 
 Flow 2016 - managed Sac River flow - positive Rio Vista plankton response
-```{r plot 2016 Turb parameters}
+```{r plot 2016 Flow parameters}
 p7 + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
 ```
 
 Flow 2018 - managed Ag flow - negative Rio Vista plankton response
-```{r plot 2018 Turb parameters}
+```{r plot 2018 Flow parameters}
 p7 + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
 ```
 
 Flow 2019 - managed Ag flow - negative Rio Vista plankton response
-```{r plot 2019 Turb parameters}
+```{r plot 2019 Flow parameters}
 p7 + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
 ```
 
 Flow 2013 - natural flow - negative Rio Vista plankton response
-```{r plot 2013 Turb parameters}
+```{r plot 2013 Flow parameters}
 p7 + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00")))
 ```
 
 Flow 2014 - natural flow - negative Rio Vista plankton response
-```{r plot 2014 Turb parameters}
+```{r plot 2014 Flow parameters}
 p7 + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
 ```
 
 Flow 2015 - natural flow - negative Rio Vista plankton response
-```{r plot 2015 Turb parameters}
+```{r plot 2015 Flow parameters}
 p7 + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
 ```
 
