@@ -20,7 +20,7 @@ import_usgs_data <- function(file_path, num_params){
 }
 
 # Import continuous WQ Data from SharePoint collected by DWR-NCRO-WQES
-import_wqes_data_wq <- function(file_path){
+import_ncro_data_wq <- function(file_path){
   # Create vector of col_names for the WQES WQ data
   wqes_col_names <- c(
     "DateTime",
