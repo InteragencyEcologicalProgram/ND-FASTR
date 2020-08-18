@@ -39,6 +39,60 @@ add_analyte_names <- function(df){
   return(df)
 }
 
+# --- Add Analyte Units ---
+add_analyte_units <- function(df){
+  # add AnalyteFull column
+  df <- df %>%
+    mutate(
+      Units =
+        case_when(
+          Analyte == 'Chla' ~ 'ug/L',
+          Analyte == 'SpCnd' ~ 'Unit',
+          Analyte == 'WaterTemp' ~ 'Unit',
+          Analyte == 'Turbidity' ~ 'Unit',
+          Analyte == 'pH' ~ 'pH',
+          Analyte == 'DO' ~ 'Unit',
+          Analyte == 'Flow' ~ 'Unit',
+          Analyte == 'FlowTF' ~ 'Unit',
+          Analyte == 'Chla_RFU' ~ 'RFU',
+          Analyte == 'fDOM' ~ 'Unit',
+          Analyte == 'NitrateNitrite' ~ 'mg/L'
+        )
+    )
+  return(df)
+}
+
+# --- Add Regions ---
+add_region <- function(df){
+  # add AnalyteFull column
+  df <- df %>%
+    mutate(
+      Region =
+        case_when(
+          StationCode == 'BL5' ~ 'Cache Slough Complex',
+          StationCode == 'LIB' ~ 'Cache Slough Complex',
+          StationCode == 'LIBCUT' ~ 'Cache Slough Complex',
+          StationCode == 'SGG' ~ 'Cache Slough Complex', # check
+          StationCode == 'RYI' ~ 'Cache Slough Complex',
+          StationCode == 'LIS' ~ 'Lower Yolo Bypass',
+          StationCode == 'STTD' ~ 'Lower Yolo Bypass',
+          StationCode == 'SHR' ~ 'Middle Sacramento River',
+          StationCode == 'SRH' ~ 'Middle Sacramento River',
+          StationCode == 'SRV' ~ 'Middle Sacramento River',
+          StationCode == 'RVB' ~ 'Lower Sacramento River',
+          StationCode == 'SDI' ~ 'Lower Sacramento River',
+          StationCode == 'TOE' ~ 'Lower Sacramento River', # check
+          StationCode == 'RCS' ~ 'Colusa Basin/Ridge Cut Slough',
+          StationCode == 'RMB' ~ 'Colusa Basin/Ridge Cut Slough',
+          StationCode == 'WWT' ~ 'Central Yolo Bypass',
+          StationCode == 'DWT' ~ 'Central Yolo Bypass',
+          StationCode == 'RD22' ~ 'Central Yolo Bypass',
+          StationCode == 'I80' ~ 'Central Yolo Bypass',
+        )
+    )
+  return(df)
+}
+
 # --- Add Phase Actions ---
 # adapted from Cat Pien's code
 add_phase_actions <- function(df_wq, df_dates){
@@ -82,7 +136,11 @@ blank_theme <- function(){
       strip.text.y = element_text(size = 14),
       axis.title = element_text(size = 18, face = 'bold'),
       plot.title = element_text(size = 20, hjust = 0.5, face = 'bold'),
-      legend.position = 'none'
+      legend.position = 'top',
+      legend.title = element_blank(),
+      legend.box.margin = margin(-5,0,-5,0),
+      legend.margin = margin(),
+      legend.text = element_text(size = 13)
     )
 }
 
@@ -101,42 +159,52 @@ create_facet <- function(df){
       Year == year
     )
 
-  
-  # define flow action duration
-  action_max <- paste(unique(df_filt$PostFlowStart), '00:00:00')
-  action_max <- as.POSIXct(action_max, '%Y/%m/%d %H:%M:%S')
-  action_min <- paste(unique(df_filt$PreFlowEnd), '23:45:00')
-  action_min <- as.POSIXct(action_min, '%Y/%m/%d %H:%M:%S')
-  
-  # define relevant values for naming
-  analyte_full <- unique(df_filt$AnalyteFull[df_filt$Analyte == analyte])
-  # analyte_unit <- unique(df_filt$Units[df_filt$Analyte == analyte])
-  
-  # plot timeseries
-  p <- ggplot() +
-    facet_grid(StationCode ~ ., scales = 'free_y') +
-    annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
-  # 
-  # add timeseries data
-  p <- p +
-    # geom_point( # points
-    #   df_filt,
-    #   mapping = aes(x = DateTime, y = Result, group = StationCode, color = StationCode),
-    #   size = 2
-    # ) +
-    geom_line( # line
-      df_filt[complete.cases(df_filt),],
-      mapping = aes(x = DateTime, y = Result, group = StationCode, color = StationCode),
-      size = 1
-    )
-  
-  # fix asthetics
-  p <- p +
-    blank_theme + # theme
-    # scale_x_datetime(breaks = date_breaks("15 min")) +
-    # xlab('Date') +
-    # ylab(analyte_unit) +
-    ggtitle(paste(analyte_full,'-',year))
-  
-  return(p)
+  if(!analyte %in% unique(df_filt$Analyte)) {
+  }
+  else{
+    # define flow action duration
+    action_max <- paste(unique(df_filt$PostFlowStart), '00:00:00')
+    action_max <- as.POSIXct(action_max, '%Y/%m/%d %H:%M:%S')
+    action_min <- paste(unique(df_filt$PreFlowEnd), '23:45:00')
+    action_min <- as.POSIXct(action_min, '%Y/%m/%d %H:%M:%S')
+    
+    # define relevant values for naming
+    analyte_full <- unique(df_filt$AnalyteFull[df_filt$Analyte == analyte])
+    analyte_unit <- unique(df_filt$Units[df_filt$Analyte == analyte])
+    cmap_colors <- c('#999999', '#f781bf', '#B79F00', '#984ea3', '#377eb8', '#e41a1c') # #ffff33
+    
+    # plot timeseries
+    p <- ggplot() +
+      facet_grid(StationCode ~ ., scales = 'free_y', drop = TRUE) +
+      annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
+    # 
+    # add timeseries data
+    p <- p +
+      geom_line( # line
+        df_filt[complete.cases(df_filt['Result']),],
+        mapping = aes(x = DateTime, y = Result, group = StationCode, color = Region),
+        size = 1
+      )
+    
+    # fix asthetics
+    p <- p +
+      blank_theme + # theme
+      # scale_x_datetime(breaks = date_breaks("15 min")) +
+      scale_fill_manual(values = cmap_colors) +
+      scale_color_manual(
+        values = c('Cache Slough Complex' = cmap_colors[1],
+                   'Central Yolo Bypass' = cmap_colors[2],
+                   'Colusa Basin/Ridge Cut Slough' = cmap_colors[3],
+                   'Lower Sacramento River' = cmap_colors[4],
+                   'Lower Yolo Bypass' = cmap_colors[5],
+                   'Middle Sacramento River' = cmap_colors[6]
+        )
+      ) +
+      guides(color = guide_legend(nrow = 2, byrow = TRUE)) +
+      xlab('Date') +
+      ylab(analyte_unit) +
+      ggtitle(paste(analyte_full,'-',year))
+    
+    return(p)
+  }
 }
