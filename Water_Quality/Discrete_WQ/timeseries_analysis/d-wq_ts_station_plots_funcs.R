@@ -93,7 +93,7 @@ create_seg_df <- function(df){
       y_horz = df_subset$RptLimit,
       yend_horz = df_subset$RptLimit,
       StationCode = df_subset$StationCode,
-      region = df_subset$Region
+      Region = df_subset$Region
     )
     return(df_seg)
   }
@@ -114,7 +114,10 @@ blank_theme <- function(){
       strip.text.y = element_text(size = 14),
       axis.title = element_text(size = 18, face = 'bold'),
       plot.title = element_text(size = 20, hjust = 0.5, face = 'bold'),
-      legend.position = 'none'
+      legend.position = 'top',
+      legend.title = element_blank(),
+      legend.box.margin = margin(-10,0,-10,0),
+      legend.text = element_text(size = 13)
     )
 }
 
@@ -141,9 +144,10 @@ create_facet <- function(df){
   # check if RL data exists
   RL_dat <- nrow(df_seg) > 0
   
-  # define relevant values for naming
+  # define relevant values
   analyte_full <- unique(df_filt$AnalyteFull[df_filt$Analyte == analyte])
   analyte_unit <- unique(df_filt$Units[df_filt$Analyte == analyte])
+  cmap_colors <- c('#999999', '#f781bf', '#B79F00', '#984ea3', '#377eb8', '#e41a1c') # #ffff33
   
   # plot timeseries
   p <- ggplot() +
@@ -155,13 +159,13 @@ create_facet <- function(df){
     p <- p +
       geom_segment( # vertical segment
         data = df_seg,
-        mapping = aes(x = x_vert, xend = xend_vert, y = y_vert, yend = yend_vert, group = StationCode, color = StationCode),
-        size = 1.2
+        mapping = aes(x = x_vert, xend = xend_vert, y = y_vert, yend = yend_vert, group = StationCode, color = Region),
+        size = 1.9
         ) +
       geom_segment( # horizontal segment
         data = df_seg,
-        mapping = aes(x = x_horz, xend = xend_horz, y = y_horz, yend = yend_horz, group = StationCode, color = StationCode),
-        size = 1.2,
+        mapping = aes(x = x_horz, xend = xend_horz, y = y_horz, yend = yend_horz, group = StationCode, color = Region),
+        size = 1.6,
         lineend = 'square'
       )
   }
@@ -170,19 +174,21 @@ create_facet <- function(df){
   p <- p +
     geom_point( # points
       df_filt,
-      mapping = aes(x = Date, y = Result, group = StationCode, color = StationCode),
-      size = 3.3
+      mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
+      size = 4.7
     ) +
     geom_line( # line
       df_filt,
-      mapping = aes(x = Date, y = Result, group = StationCode, color = StationCode),
-      size = 1.6
+      mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
+      size = 2.1
     )
 
   # fix asthetics
   p <- p +
     blank_theme + # theme
     scale_x_date(labels = date_format('%d-%b'), breaks = pretty_breaks(10)) +
+    scale_fill_manual(values = cmap_colors) +
+    scale_color_manual(values = cmap_colors) +
     xlab('Date') +
     ylab(analyte_unit) +
     ggtitle(paste(analyte_full,'-',year))

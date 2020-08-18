@@ -1,0 +1,84 @@
+```{r}
+# Combine Station Files
+# combine all the station files and subset out relevant dates
+# questions: seperry83@gmail.com
+```
+
+```{r}
+# --- Setup ---
+# import packages
+library(plyr)
+library(tidyverse)
+library(reticulate)
+
+# set wd
+setwd('Water_Quality')
+
+# source functions
+source('Code_cont_timeseries analysis_func.R')
+
+#initialize conda env for python use
+use_condaenv('rStudio')
+
+# define main FASTR filepath (assumes sync'd with Sharepoint)
+fp_fastr <- 'California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/'
+```
+
+```{python}
+# --- Create Concat df ---
+# import packages
+import pandas as pd
+import glob
+import os
+
+# assign R variable to python
+fp_fastr = r.fp_fastr
+
+# set path
+path = os.getenv('USERPROFILE')+'/'+fp_fastr+'WQ_Subteam/Processed_Data/Continuous/'
+
+# grab file paths
+all_files = glob.glob(os.path.join(path, '*.csv'))
+
+# import/concat files
+df_each_file = (pd.read_csv(f, dtype = str) for f in all_files)
+df_concat = pd.concat(df_each_file, ignore_index = True)
+
+print(df_concat['StationCode'].unique())
+
+# export
+df_concat.to_csv(path+'combined_files/combined_all.csv', index = False)
+```
+
+```{r}
+# --- Import Data ---
+# define relative filepaths 
+fp_rel_wq <- paste(fp_fastr,'WQ_Subteam/Processed_Data/Continuous/Combined_Files/combined_all.csv', sep = '')
+fp_rel_dates <- paste(fp_fastr,'Data Management/FlowDatesDesignations.csv', sep = '')
+
+# define absolute filepaths
+fp_abs_dates <- get_abs_path(fp_rel_dates)
+fp_abs_wq <- get_abs_path(fp_rel_wq)
+
+# import dfs (technically importing qual cols incorrectly but it doesn't matter)
+df_wq <- read_csv(fp_abs_wq, col_types = cols(.default = 'n', DateTime = 'c', StationCode = 'c'))
+df_dates <- read_csv(fp_abs_dates)
+
+# --- Clean Data ---
+# convert DateTime col to POSIXct
+df_wq$DateTime <- str_replace_all(df_wq$DateTime, '/', '-')
+df_wq$DateTime <- as.POSIXct(df_wq$DateTime, '%Y-%m-%d %H:%M:%S', tz = '')
+
+# add date and time cols
+df_wq$Date <- as.Date(df_wq$DateTime, '%Y-%m-%d %H:%M:%S', tz = '')
+df_wq$Year <- format(df_wq$Date,'%Y')
+
+# combine dfs
+df_flow <- add_phase_actions(df_wq, df_dates)
+
+# export csv
+fp_rel_flow <- paste(fp_fastr,'WQ_Subteam/Processed_Data/Continuous/Combined_Files/combined_flow.csv', sep = '')
+fp_abs_flow <- get_abs_path(fp_rel_flow)
+
+write_csv(df_flow, fp_abs_flow)
+```

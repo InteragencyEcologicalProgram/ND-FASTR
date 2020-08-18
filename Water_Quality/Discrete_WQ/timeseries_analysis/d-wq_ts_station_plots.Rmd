@@ -5,7 +5,7 @@
 # contact: seperry83@gmail.com
 ```
 
-```{r message=FALSE}
+```{r message=FALSE, warning=FALSE}
 # import packages
 library(ggplot2)
 library(tidyverse)
@@ -47,10 +47,17 @@ df_wq$Result[df_wq$LabDetect == 'Non-detect'] <- NA
 ```
 
 ```{r message=FALSE}
-# --- Prep for Graphs ---
+# source functions
+source('d-wq_ts_station_plots_funcs.R')
+
+# --- Prep for Graphs ---
 # list of analytes/stations
 analytes <- unique(df_wq$Analyte)
 years <- unique(df_wq$Year)
+
+# change station col to factor type and order it
+stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','SHR','LIS','SRH','STTD','BL5','LIB','RYI','SRV','RVB','SDI')
+df_wq$StationCode <- factor(df_wq$StationCode, levels = stat_lvls)
 
 # --- Create BoxPlot --
 # create plots
@@ -58,7 +65,7 @@ for (year in years){
   for (analyte in analytes){ 
     # create boxplots (accounts for non-detects)
     p <- create_facet(df_wq)
-  
+    
     # save graphs
     fp_rel_save <- paste(fp_fastr,'WQ_Subteam/Raw_Plots/Discrete/Timeseries_Stations/',year,sep = '')
     fp_abs_save <- get_abs_path(fp_rel_save)
@@ -66,7 +73,7 @@ for (year in years){
     ggsave(
       paste(fp_abs_save,'/Timeseries_',year,'_',analyte,'.png',sep = ''),
       p,
-      width = 7,
+      width = 8,
       height = 15,
       unit = 'in'
        )
