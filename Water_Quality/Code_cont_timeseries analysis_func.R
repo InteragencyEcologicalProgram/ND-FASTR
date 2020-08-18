@@ -23,22 +23,17 @@ add_analyte_names <- function(df){
     mutate(
       AnalyteFull =
         case_when(
-          Analyte == 'DisAmmonia' ~ 'Dissolved Ammonia',
-          Analyte == 'DisCalcium' ~ 'Dissolved Calcium',
-          Analyte == 'DisChloride' ~ 'Dissolved Chloride',
           Analyte == 'Chla' ~ 'Chlorophyll a',
-          Analyte == 'DisNitrateNitrite' ~ 'Dissolved Nitrate Nitrite',
-          Analyte == 'DOC' ~ 'Dissolved Oraganic Carbon',
-          Analyte == 'TOC' ~ 'Total Organic Carbon',
-          Analyte == 'DON' ~ 'Dissolved Organic Nitrogen',
-          Analyte == 'DOP' ~ 'Dissolved Organic Phosphate',
-          Analyte == 'Pheo' ~ 'Pheophytin',
-          Analyte == 'TOP' ~ 'Total Organic Phosphate',
-          Analyte == 'DisSilica' ~ 'Dissolved Silica',
-          Analyte == 'TSS' ~ 'Total Suspended Solids',
-          Analyte == 'VSS' ~ 'Volatile Suspended Solids',
-          Analyte == 'TDS' ~ 'Total Dissolved Solids',
-          Analyte == 'TKN' ~ 'Total Kjeldahl Nitrogen'
+          Analyte == 'SpCnd' ~ 'Specific Conductance',
+          Analyte == 'WaterTemp' ~ 'Water Temperature',
+          Analyte == 'Turbidity' ~ 'Turbidity',
+          Analyte == 'pH' ~ 'pH',
+          Analyte == 'DO' ~ 'Dissolved Oxygen',
+          Analyte == 'Flow' ~ 'Flow',
+          Analyte == 'FlowTF' ~ 'Flow TF',
+          Analyte == 'Chla_RFU' ~ 'Chla RFU',
+          Analyte == 'fDOM' ~ 'fDOM',
+          Analyte == 'NitrateNitrite' ~ 'Nitrate Nitrite'
         )
     )
   return(df)
@@ -52,7 +47,7 @@ add_phase_actions <- function(df_wq, df_dates){
   
   # combine the two dfs
   df_combined <- inner_join(df_wq, df_dates, by  = 'Year')
-  
+
   # convert date columns to date type
   cols_date <- c('Date','PreFlowStart','PreFlowEnd','PostFlowStart','PostFlowEnd')
 
@@ -96,6 +91,8 @@ create_facet <- function(df){
   # import blank theme
   blank_theme <- blank_theme()
   
+
+  
   # filter df by analyte
   df_filt <-
     df %>%
@@ -103,14 +100,13 @@ create_facet <- function(df){
       Analyte == analyte,
       Year == year
     )
-  
+
   
   # define flow action duration
-  action_max <- unique(df_filt$PostFlowStart)
-  action_max <- as.character(ymd_hm(paste(action_max,"00:00")))
-  action_min <- unique(df_filt$PreFlowEnd)
-  action_min <- as.character(ymd_hm(paste(action_min,"00:00")))
-  
+  action_max <- paste(unique(df_filt$PostFlowStart), '00:00:00')
+  action_max <- as.POSIXct(action_max, '%Y/%m/%d %H:%M:%S')
+  action_min <- paste(unique(df_filt$PreFlowEnd), '23:45:00')
+  action_min <- as.POSIXct(action_min, '%Y/%m/%d %H:%M:%S')
   
   # define relevant values for naming
   analyte_full <- unique(df_filt$AnalyteFull[df_filt$Analyte == analyte])
@@ -118,21 +114,20 @@ create_facet <- function(df){
   
   # plot timeseries
   p <- ggplot() +
-    facet_grid(StationCode ~ ., scales = 'free_x') 
-  # +
-  # annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
+    facet_grid(StationCode ~ ., scales = 'free_y') +
+    annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
   # 
   # add timeseries data
   p <- p +
-    geom_point( # points
-      df_filt,
-      mapping = aes(x = DateTime, y = Result, group = StationCode, color = StationCode),
-      size = 3.3
-    ) +
+    # geom_point( # points
+    #   df_filt,
+    #   mapping = aes(x = DateTime, y = Result, group = StationCode, color = StationCode),
+    #   size = 2
+    # ) +
     geom_line( # line
-      df_filt,
+      df_filt[complete.cases(df_filt),],
       mapping = aes(x = DateTime, y = Result, group = StationCode, color = StationCode),
-      size = 1.6
+      size = 1
     )
   
   # fix asthetics
