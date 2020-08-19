@@ -1,7 +1,7 @@
 # FASTR - Discrete WQ Timeseries Analysis
 # purpose: timeseries analysis of discrete WQ data for FASTR
 # author: Sarah Perry
-# contact: seperry83@gmail.com
+# contact: seperry83@gmail.com 
 
 # import packages
 library(zoo)
