@@ -2,7 +2,7 @@
 # purpose: qualitatively determine relationship b/w chla and NH3
 # author: Sarah Perry
 # contact: seperry83@gmail.com
-
+ 
 # import packages
 library(ggplot2)
 library(tidyverse)
@@ -37,7 +37,7 @@ df_wq_long <- select(df_wq, c('StationCode','Region','DateTime','Result','Analyt
 df_wq_long$Date <- format(strptime(df_wq_long$DateTime, '%m/%d/%Y'),'%m/%d/%Y')
 df_wq_long$Year <- format(strptime(df_wq_long$DateTime, '%m/%d/%Y'),'%Y')
 
-# add full analyte name column
+# add full analyte name column  
 # df_wq <- add_analyte_names(df_wq)
 
 # add in phase actions (will also convert 'Date' column to date type)
