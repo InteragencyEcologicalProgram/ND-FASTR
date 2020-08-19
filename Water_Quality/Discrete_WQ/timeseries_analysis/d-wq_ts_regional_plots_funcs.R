@@ -9,7 +9,7 @@ library(ggplot2)
 library(tidyverse)
 
 # --- Import Data from SharePoint ---
-get_abs_path <- function(fp_rel){
+get_abs_path <- function(fp_rel){ 
   # define absolute filepath
   fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_rel))
   
