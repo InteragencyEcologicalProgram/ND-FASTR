@@ -111,7 +111,7 @@ blank_theme <- function(){
       panel.grid.minor = element_blank(),
       axis.text = element_text(color = 'black', size = 14, family = 'sans'),
       axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
-      strip.text.y = element_text(size = 14),
+      strip.text = element_text(size = 14),
       axis.title = element_text(size = 18, face = 'bold'),
       plot.title = element_text(size = 20, hjust = 0.5, face = 'bold'),
       legend.position = 'top',
@@ -151,7 +151,7 @@ create_facet <- function(df){
   
   # plot timeseries
   p <- ggplot() +
-    facet_grid(StationCode ~ ., scales = 'free_x') +
+    facet_grid(StationCode ~ ., scales = 'free') +
     annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
 
   # add RL segments
@@ -160,12 +160,12 @@ create_facet <- function(df){
       geom_segment( # vertical segment
         data = df_seg,
         mapping = aes(x = x_vert, xend = xend_vert, y = y_vert, yend = yend_vert, group = StationCode, color = Region),
-        size = 1.9
+        size = 1.6
         ) +
       geom_segment( # horizontal segment
         data = df_seg,
         mapping = aes(x = x_horz, xend = xend_horz, y = y_horz, yend = yend_horz, group = StationCode, color = Region),
-        size = 1.6,
+        size = 1.3,
         lineend = 'square'
       )
   }
@@ -175,12 +175,12 @@ create_facet <- function(df){
     geom_point( # points
       df_filt,
       mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
-      size = 4.7
+      size = 4.3
     ) +
     geom_line( # line
       df_filt,
       mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
-      size = 2.1
+      size = 1.8
     )
 
   # fix asthetics

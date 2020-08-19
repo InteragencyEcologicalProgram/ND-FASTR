@@ -1,20 +1,15 @@
-```{r}
-# FASTR - Discrete WQ Timeseries Analysis
-# purpose: timeseries analysis of discrete WQ data for FASTR
+# FASTR - Discrete WQ Time Series Analysis
+# purpose: time series analysis of discrete WQ data for FASTR
 # author: Sarah Perry
 # contact: seperry83@gmail.com
-```
 
-```{r message=FALSE, warning=FALSE}
 # import packages
 library(ggplot2)
 library(tidyverse)
 
 # source functions
 source('d-wq_ts_station_plots_funcs.R')
-```
 
-```{r message=FALSE}
 # --- Import Data ---
 # define main FASTR filepath (assumes sync'd with Sharepoint)
 fp_fastr <- 'California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/'
@@ -44,11 +39,6 @@ df_wq <- add_phase_actions(df_wq, df_dates)
 
 # --- Convert NDs to NA --- 
 df_wq$Result[df_wq$LabDetect == 'Non-detect'] <- NA
-```
-
-```{r message=FALSE}
-# source functions
-source('d-wq_ts_station_plots_funcs.R')
 
 # --- Prep for Graphs ---
 # list of analytes/stations
@@ -59,25 +49,23 @@ years <- unique(df_wq$Year)
 stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','SHR','LIS','SRH','STTD','BL5','LIB','RYI','SRV','RVB','SDI')
 df_wq$StationCode <- factor(df_wq$StationCode, levels = stat_lvls)
 
-# --- Create BoxPlot --
+# --- Create Time Series --
 # create plots
 for (year in years){
   for (analyte in analytes){ 
-    # create boxplots (accounts for non-detects)
+    # create time series graphs
     p <- create_facet(df_wq)
     
     # save graphs
     fp_rel_save <- paste(fp_fastr,'WQ_Subteam/Raw_Plots/Discrete/Timeseries_Stations/',year,sep = '')
     fp_abs_save <- get_abs_path(fp_rel_save)
-
+    
     ggsave(
       paste(fp_abs_save,'/Timeseries_',year,'_',analyte,'.png',sep = ''),
       p,
       width = 8,
       height = 15,
       unit = 'in'
-       )
+    )
   }
 }
-```
-

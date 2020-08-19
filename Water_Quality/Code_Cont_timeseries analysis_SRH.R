@@ -7,9 +7,11 @@ library(ggplot2)
 library(tidyverse)
 library(lubridate)
 
-# source functions
-source('C:/Repositories/ND-FASTR/Water_Quality/Code_cont_timeseries analysis_func.R')
+# set wd
+# setwd('Water_Quality')
 
+# source functions
+source('Code_cont_timeseries analysis_func.R')
 
 # --- Import Data ---
 # define main FASTR filepath (assumes sync'd with Sharepoint)
@@ -24,7 +26,8 @@ fp_abs_wq <- get_abs_path(fp_rel_wq)
 fp_abs_dates <- get_abs_path(fp_rel_dates)
 
 # read in data
-df_wq <- read_csv(fp_abs_wq)
+# df_raw <- read_csv(fp_abs_wq)
+df_wq <- read_csv('C:/Users/sperry/Downloads/RTM_OUTPUT_SRH_formatted.csv')
 df_dates <- read_csv(fp_abs_dates)
 
 # Pivot longer
@@ -39,11 +42,13 @@ df_wq_long <- df_wq %>%
 # create date/year columns (character type)
 df_wq_long$Date <- format(strptime(as.character(df_wq_long$DateTime), '%Y/%m/%d'),'%m/%d/%Y')
 df_wq_long$Year <- format(strptime(df_wq_long$DateTime, '%Y/%m/%d'),'%Y')
-df_wq_long$Test <- as.POSIXct(df_wq_long$DateTime)
+df_wq_long$DateTime <- as.POSIXct(df_wq_long$DateTime)
 
 
 # add full analyte name column
 df_wq_long <- add_analyte_names(df_wq_long)
+
+source('Code_cont_timeseries analysis_func.R')
 
 # add in phase actions (will also convert 'Date' column to date type)
 df_wq_long <- add_phase_actions(df_wq_long, df_dates)
