@@ -1,7 +1,7 @@
 # FASTR - Discrete WQ Boxplots
 # purpose: boxplots discrete WQ data for outlier detection
 # author: Sarah Perry
-# contact: seperry83@gmail.com
+# contact: seperry83@gmail.com 
 
 # import packages
 library(tidyverse)
