@@ -33,4 +33,6 @@ vignettes/*.pdf
 *.knit.md
 # R Environment Variables
 .Renviron
+# specific files
 test_code.Rmd
+
