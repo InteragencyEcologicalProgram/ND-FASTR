@@ -173,7 +173,7 @@ dis_lab_reps_f <- dis_lab_rep_pairs %>%
   mutate(RPD = round(abs(Result_1 - Result_2)/((Result_1 + Result_2)/2), 3))
 
 # Are there any lab replicate pairs with RPD values greater than 25%?
-dis_lab_reps_f %>% filter(RPD > 0.25)  
+dis_lab_reps_f %>% filter(RPD > 0.2)  
 # yes, 12 pairs, all but one pair are close to the RL
 
 # Export lab replicate data as a .csv file
@@ -234,8 +234,8 @@ dis_field_dup_pairs_f <- dis_field_dup_pairs %>%
   )
 
 # Are there any Field Duplicate pairs with RPD values greater than 25%?
-dis_field_dup_pairs_f %>% filter(RPD > 0.25)  
-# yes, 11 pairs, but values are small and the differences aren't alarming
+dis_field_dup_pairs_f %>% filter(RPD > 0.2)  
+# yes, 12 pairs, but values are small and the differences aren't alarming
 
 # Export Field Duplicate data as a .csv file
 dis_field_dup_pairs_f %>% write_excel_csv("Discrete_Lab_Data_Field_Dups.csv", na = "")
