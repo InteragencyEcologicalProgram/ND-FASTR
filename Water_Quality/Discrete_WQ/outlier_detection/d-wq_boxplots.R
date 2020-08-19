@@ -22,7 +22,7 @@ fp_abs_wq <- get_abs_path(fp_rel_wq)
 fp_abs_dates <- get_abs_path(fp_rel_dates)
 
 # read in data
-df_wq <- read_csv(fp_abs_wq)
+df_wq <- read_csv(fp_abs_wq) 
 df_dates <- read_csv(fp_abs_dates)
 
 # --- Clean Data In Order To Create Boxplots w/ RLs ---
