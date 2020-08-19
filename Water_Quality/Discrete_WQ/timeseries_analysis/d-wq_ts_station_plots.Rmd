@@ -47,9 +47,6 @@ df_wq$Result[df_wq$LabDetect == 'Non-detect'] <- NA
 ```
 
 ```{r message=FALSE}
-# source functions
-source('d-wq_ts_station_plots_funcs.R')
-
 # --- Prep for Graphs ---
 # list of analytes/stations
 analytes <- unique(df_wq$Analyte)
@@ -59,7 +56,7 @@ years <- unique(df_wq$Year)
 stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','SHR','LIS','SRH','STTD','BL5','LIB','RYI','SRV','RVB','SDI')
 df_wq$StationCode <- factor(df_wq$StationCode, levels = stat_lvls)
 
-# --- Create BoxPlot --
+# --- Create Time Series --
 # create plots
 for (year in years){
   for (analyte in analytes){ 
