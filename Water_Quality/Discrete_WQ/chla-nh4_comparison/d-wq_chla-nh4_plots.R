@@ -8,7 +8,7 @@ library(ggplot2)
 library(tidyverse)
 
 # source functions
-source('d-wq_chl-nh3_plots_funcs.R')
+source('d-wq_chla-nh4_plots_funcs.R')
 
 # --- Import Data ---
 # define main FASTR filepath (assumes sync'd with Sharepoint)
@@ -65,11 +65,11 @@ for (i in seq(varis)) {
   p <- create_graph(df_wq_wide, vari)
   
   # save graphs
-  fp_rel_save <- paste(fp_fastr,'WQ_Subteam/Raw_Plots/Discrete/Chla-NH3',sep = '')
+  fp_rel_save <- paste(fp_fastr,'WQ_Subteam/Raw_Plots/Discrete/Chla-NH4',sep = '')
   fp_abs_save <- get_abs_path(fp_rel_save)
   
   ggsave(
-    paste(fp_abs_save,'/Chla-NH3_',varis[i],'.png',sep = ''),
+    paste(fp_abs_save,'/Chla-NH4_',varis[i],'.png',sep = ''),
     p,
     width = width[i],
     height = height[i],
