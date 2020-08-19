@@ -65,8 +65,6 @@ df_wq_long <- add_region(df_wq_long)
 analytes <- unique(df_wq_long$Analyte)
 years <- unique(df_wq_long$Year)
 
-df_wq_long <- df_wq_long[complete.cases(df_wq_long['Result']),]
-
 # change station col to factor type and order it
 stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','SHR','LIS','SRH','STTD','BL5','LIB','LIBCUT','SGG','RYI','SRV','RVB','SDI','TOE')
 df_wq_long$StationCode <- factor(df_wq_long$StationCode, levels = stat_lvls)
