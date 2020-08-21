@@ -47,15 +47,15 @@ add_analyte_units <- function(df){
       Units =
         case_when(
           Analyte == 'Chla' ~ 'ug/L',
-          Analyte == 'SpCnd' ~ 'Unit',
-          Analyte == 'WaterTemp' ~ 'Unit',
-          Analyte == 'Turbidity' ~ 'Unit',
+          Analyte == 'SpCnd' ~ 'uS/cm',
+          Analyte == 'WaterTemp' ~ 'degrees C',
+          Analyte == 'Turbidity' ~ 'NTU',
           Analyte == 'pH' ~ 'pH',
-          Analyte == 'DO' ~ 'Unit',
-          Analyte == 'Flow' ~ 'Unit',
-          Analyte == 'FlowTF' ~ 'Unit',
+          Analyte == 'DO' ~ 'mg/L',
+          Analyte == 'Flow' ~ 'cfs',
+          Analyte == 'FlowTF' ~ 'cfs',
           Analyte == 'Chla_RFU' ~ 'RFU',
-          Analyte == 'fDOM' ~ 'Unit',
+          Analyte == 'fDOM' ~ 'ug/L as QSE',
           Analyte == 'NitrateNitrite' ~ 'mg/L'
         )
     )
@@ -72,16 +72,16 @@ add_region <- function(df){
           StationCode == 'BL5' ~ 'Cache Slough Complex',
           StationCode == 'LIB' ~ 'Cache Slough Complex',
           StationCode == 'LIBCUT' ~ 'Cache Slough Complex',
-          StationCode == 'SGG' ~ 'Cache Slough Complex', # check
+          StationCode == 'SGG' ~ 'Cache Slough Complex',
           StationCode == 'RYI' ~ 'Cache Slough Complex',
           StationCode == 'LIS' ~ 'Lower Yolo Bypass',
           StationCode == 'STTD' ~ 'Lower Yolo Bypass',
+          StationCode == 'TOE' ~ 'Lower Yolo Bypass',
           StationCode == 'SHR' ~ 'Middle Sacramento River',
           StationCode == 'SRH' ~ 'Middle Sacramento River',
           StationCode == 'SRV' ~ 'Middle Sacramento River',
           StationCode == 'RVB' ~ 'Lower Sacramento River',
           StationCode == 'SDI' ~ 'Lower Sacramento River',
-          StationCode == 'TOE' ~ 'Lower Sacramento River', # check
           StationCode == 'RCS' ~ 'Colusa Basin/Ridge Cut Slough',
           StationCode == 'RMB' ~ 'Colusa Basin/Ridge Cut Slough',
           StationCode == 'WWT' ~ 'Central Yolo Bypass',
@@ -101,12 +101,12 @@ add_phase_actions <- function(df_wq, df_dates){
   
   # combine the two dfs
   df_combined <- inner_join(df_wq, df_dates, by  = 'Year')
-
+  
   # convert date columns to date type
   cols_date <- c('Date','PreFlowStart','PreFlowEnd','PostFlowStart','PostFlowEnd')
-
+  
   df_combined[cols_date] <- lapply(df_combined[cols_date], as.Date, format = '%m/%d/%Y')
-
+  
   # add ActionPhase column and remove non-NDFA data
   df_combined <- df_combined %>%
     mutate(
@@ -122,7 +122,25 @@ add_phase_actions <- function(df_wq, df_dates){
   return(df_combined)
 }
 
-
+# --- Check for all NA's per Station ---
+check_station_nas <- function(df){
+  # initiate empty vector
+  remove_stations <- NULL
+  
+  # loop over stations
+  for (station in unique(df$StationCode)) {
+    df_w_nas <- df[df$StationCode == station,]
+    all_na <- all(is.na(unique(df_w_nas$Result)))
+    # determine stations w/ all NAs
+    if (all_na) {
+      remove_stations <- c(remove_stations, station)
+    }
+  
+    # remove those stations
+    df_no_nas <- filter(df, !StationCode %in% remove_stations)
+  }
+  return(df_no_nas)
+}
 
 # --- Blank Theme for Timeseries Graphs ---
 blank_theme <- function(){
@@ -131,7 +149,7 @@ blank_theme <- function(){
       panel.grid.major.y = element_blank(),
       panel.grid.major.x = element_blank(),
       panel.grid.minor = element_blank(),
-      axis.text = element_text(color = 'black', size = 14, family = 'sans'),
+      axis.text = element_text(color = 'black', size = 13.5, family = 'sans'),
       axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
       strip.text.y = element_text(size = 14),
       axis.title = element_text(size = 18, face = 'bold'),
@@ -149,8 +167,6 @@ create_facet <- function(df){
   # import blank theme
   blank_theme <- blank_theme()
   
-
-  
   # filter df by analyte
   df_filt <-
     df %>%
@@ -158,8 +174,14 @@ create_facet <- function(df){
       Analyte == analyte,
       Year == year
     )
-
-  if(!analyte %in% unique(df_filt$Analyte)) {
+  
+  # remove stations w/ NA values
+  df_filt <- check_station_nas(df_filt)
+  
+  # check if all values are NA
+  all_na <- all(is.na(unique(df_filt$Result)))
+  
+  if(all_na) {
   }
   else{
     # define flow action duration
@@ -177,11 +199,12 @@ create_facet <- function(df){
     p <- ggplot() +
       facet_grid(StationCode ~ ., scales = 'free_y', drop = TRUE) +
       annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
+
     # 
     # add timeseries data
     p <- p +
       geom_line( # line
-        df_filt[complete.cases(df_filt['Result']),],
+        df_filt,
         mapping = aes(x = DateTime, y = Result, group = StationCode, color = Region),
         size = 1
       )
@@ -200,7 +223,7 @@ create_facet <- function(df){
                    'Middle Sacramento River' = cmap_colors[6]
         )
       ) +
-      guides(color = guide_legend(nrow = 2, byrow = TRUE)) +
+      guides(color = guide_legend(ncol = 3, byrow = TRUE)) +
       xlab('Date') +
       ylab(analyte_unit) +
       ggtitle(paste(analyte_full,'-',year))

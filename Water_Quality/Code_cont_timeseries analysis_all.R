@@ -66,16 +66,17 @@ analytes <- unique(df_wq_long$Analyte)
 years <- unique(df_wq_long$Year)
 
 # change station col to factor type and order it
-stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','SHR','LIS','SRH','STTD','BL5','LIB','LIBCUT','SGG','RYI','SRV','RVB','SDI','TOE')
+stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','SHR','LIS','SRH','STTD','TOE','LIBCUT','SGG','BL5','LIB','RYI','SRV','RVB','SDI')
 df_wq_long$StationCode <- factor(df_wq_long$StationCode, levels = stat_lvls)
 
 # --- Create Timeseries --
 # create plots
 for (year in years){
   for (analyte in analytes){ 
+
     # create timeseries 
     p <- create_facet(df_wq_long)
-    
+
     # save graphs
     fp_rel_save <- paste(fp_fastr,'WQ_Subteam/Raw_Plots/Continuous/time_series/',year,sep = '')
     fp_abs_save <- get_abs_path(fp_rel_save)
