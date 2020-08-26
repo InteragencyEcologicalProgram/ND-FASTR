@@ -7,7 +7,8 @@
 library(tidyverse)
 library(readxl)
 
-# --- Data Import Functions ---
+
+# Data Import Functions ---------------------------------------------------
 
 # Import continuous WQ Data from SharePoint collected by USGS
 import_usgs_data <- function(file_path, num_params){
@@ -61,24 +62,33 @@ import_ncro_data_flow <- function(file_path, sheet_name){
   return(df)
 }
 
+# Import continuous WQ Data from SharePoint collected by DWR-DES-EMP
+import_emp_data <- function(file_path){
+  df <- read_csv(
+    file = file_path,
+    skip = 4
+  ) 
+      
+  return(df)
+}
 
-# --- Standardizing functions ---
+
+# Standardizing functions -------------------------------------------------
 
 # Standardize parameter variable names for data collected by USGS
-
-# USGS PARAMETER CODES:
-  # 00060 - Discharge (cfs)
-  # 72137 - Discharge, tidally-filtered (cfs)
-  # 00010 - Water Temperature (Celsius)
-  # 00300 - Dissolved Oxygen (mg/L)
-  # 00095 - Specific Conductance at 25 C (uS/cm)
-  # 00400 - pH
-  # 63680 - Turbidity (FNU)
-  # 32315 - Chlorophyll relative fluorescence (RFU)
-  # 32316 - Chlorophyll concentration estimated from reference material (ug/L)
-  # 32295 - Dissolved organic matter fluorescence (fDOM) (ug/L as QSE)
-  # 32321 - Phycocyanin relative fluorescence (RFU)
-  # 99133 - Nitrate plus nitrite (mg/L as N)
+  # USGS PARAMETER CODES:
+    # 00060 - Discharge (cfs)
+    # 72137 - Discharge, tidally-filtered (cfs)
+    # 00010 - Water Temperature (Celsius)
+    # 00300 - Dissolved Oxygen (mg/L)
+    # 00095 - Specific Conductance at 25 C (uS/cm)
+    # 00400 - pH
+    # 63680 - Turbidity (FNU)
+    # 32315 - Chlorophyll relative fluorescence (RFU)
+    # 32316 - Chlorophyll concentration estimated from reference material (ug/L)
+    # 32295 - Dissolved organic matter fluorescence (fDOM) (ug/L as QSE)
+    # 32321 - Phycocyanin relative fluorescence (RFU)
+    # 99133 - Nitrate plus nitrite (mg/L as N)
 
 std_param_vars_usgs <- function(df, param_var, var_type = c("data_values", "qc_codes")) {
   # Evaluate choices for var_type
@@ -126,6 +136,28 @@ std_param_vars_usgs <- function(df, param_var, var_type = c("data_values", "qc_c
         )
       )
   }
+  
+  return(df1)
+}
+
+# Standardize parameter variable names for data collected by DWR-DES-EMP
+std_param_vars_emp <- function(df, param_var) {
+  # Convert param_var to symbol and quosure for tidy evaluation
+  param_var_ensym <- ensym(param_var)
+  param_var_enquo <- enquo(param_var)
+  
+  # Standardize parameter names
+  df1 <- df %>% 
+    mutate(
+      !!param_var_ensym := case_when(
+        str_detect(!!param_var_enquo, ".{9}Diss") ~ "DO",
+        str_detect(!!param_var_enquo, ".{9}Fluor") ~ "Chla",
+        str_detect(!!param_var_enquo, ".{9}pH") ~ "pH",
+        str_detect(!!param_var_enquo, ".{9}SpC") ~ "SpCnd",
+        str_detect(!!param_var_enquo, ".{9}Temp") ~ "WaterTemp",
+        str_detect(!!param_var_enquo, ".{9}Turb") ~ "Turbidity"
+      )
+    )
   
   return(df1)
 }

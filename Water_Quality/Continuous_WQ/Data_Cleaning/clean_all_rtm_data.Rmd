@@ -1,13 +1,13 @@
 ---
 title: 'NDFA Continuous WQ Data: Cleaning'
 author: "Dave Bosworth, Amanda Maguire, Traci Treleaven"
-date: "8/7/2020"
+date: "8/26/2020"
 output: 
   html_document: 
     code_folding: show
-    toc: yes
-    toc_float:
-      collapsed: no
+    toc: true
+    toc_depth: 4
+    toc_float: true
 editor_options: 
   chunk_output_type: console
 ---
@@ -316,7 +316,7 @@ Some of the USGS water quality stations had timestamps with minutes that were no
 
 Since not all timestamps were collected on a 15-minute interval, we need to round them to the nearest 15-minute interval and then look for any duplicated timestamps.
 
-```{r look for dup timestamps after rounding usgs}
+```{r look for dup timestamps after rounding usgs, message = FALSE}
 # USGS water quality stations
 usgs_qc_check <- usgs_clean_v1 %>% 
   mutate(
@@ -824,7 +824,7 @@ ncro_flow_qc_check$m_summ
 ncro_flow_qc_check$s_summ
 ```
 
-All DWR-NCRO-WQES water quality stations and NCRO flow stations have some timestamps with minutes that were not collected on a 15-minute interval (0, 15, 30, 45).
+All DWR-NCRO-WQES water quality stations and NCRO flow stations have some timestamps with minutes that were not collected on a 15-minute interval (0, 15, 30, 45) and seconds not collected at zero.
 
 Since not all timestamps were collected on a 15-minute interval, we need to round them to the nearest 15-minute interval and then look for any duplicated timestamps.
 
@@ -1085,15 +1085,15 @@ Export continuous NCRO data as .csv files to the Processed_Data/Continuous folde
 
 ```{r export ncro data as csv}
 # This only needs to be run when you want to export the data
-walk2(
-  ncro_clean_f$df_f,
-  ncro_clean_f$sta_code,
-  .f = ~write_excel_csv(
-    .x,
-    path = paste0(fp_abs_wq_proc, "/RTM_OUTPUT_", .y, "_formatted.csv"),
-    na = ""
-  )
-)
+# walk2(
+#   ncro_clean_f$df_f,
+#   ncro_clean_f$sta_code,
+#   .f = ~write_excel_csv(
+#     .x,
+#     path = paste0(fp_abs_wq_proc, "/RTM_OUTPUT_", .y, "_formatted.csv"),
+#     na = ""
+#   )
+# )
 ```
 
 Clean up objects in the global environment to only keep necessary objects at this point.
@@ -1105,4 +1105,273 @@ obj_keep <- discard(obj_keep, str_detect(obj_keep, "^rd22"))
 # Clean up
 rm(list = ls()[!(ls() %in% obj_keep)])
 ```
+
+
+# DWR-DES-EMP Data
+
+## Import Data
+
+```{r import raw emp data, message = FALSE}
+# RVB data
+  # Create a vector of all file paths for the raw RVB continuous data
+  rvb_fp <- dir(fp_abs_wq_raw, pattern = "DWR RVB", full.names = T)
+  
+  # Remove file paths for the .xlsx file containing Chla data collected at RVB and the "RTM_RAW_DWR RVB noChla_2011-2012.csv" file
+  rvb_fp_f <- discard(rvb_fp, str_detect(rvb_fp, "xlsx$|noChla"))
+  
+  # Import raw RVB continuous data into a dataframe
+  rvb_orig <- map_dfr(rvb_fp_f, .f = import_emp_data)
+  
+# SRH data
+  # Create a vector of all file paths for the raw SRH continuous data
+  srh_fp <- dir(fp_abs_wq_raw, pattern = "DWR SRH", full.names = T)
+  
+  # Import raw SRH continuous data into a dataframe
+  srh_orig <- map_dfr(srh_fp, .f = import_emp_data)
+
+# Create a nested dataframe of the RVB and SRH data for more efficient code
+emp_orig <- tibble(
+  sta_code = c("RVB", "SRH"),
+  df = list(rvb_orig, srh_orig)
+)
+```
+
+## Parse date-time variables
+
+The date-time variables of the DWR-DES-EMP water quality data need to be converted from character to datetime objects forced as PST. 
+
+```{r clean date time var emp}
+emp_dt_clean <- emp_orig %>% 
+  mutate(
+    df = map(
+      df, 
+      # rename and remove a couple of variables
+      ~select(
+        .x, 
+        DateTime = DATE,
+        value = VALUE,
+        qual = "QAQC Flag",
+        parameter = READING_TYPE
+      ) %>% 
+        mutate(DateTime = mdy_hm(DateTime, tz = "Etc/GMT+8"))
+    )
+  )
+```
+
+## Data Inspection
+
+Unlike with the USGS and NCRO data, EMP data flagged as "bad" or "unreliable" have values provided. We need to remove all data from both RVB and SRH stations that is flagged "X" before proceeding.
+
+```{r remove bad flagged data emp}
+emp_clean_v1 <- emp_dt_clean %>% 
+  mutate(
+    df = map(
+      df,
+      ~filter(.x, qual != "X")
+    )
+  )
+```
+
+### Duplicated timestamps
+
+First, we need to check if the timestamps of all datetimes of the DWR-DES-EMP water quality data were collected on a 15-minute interval (00:00, 15:00, 30:00, and 45:00 for each hour).
+
+```{r look for unrounded timestamps emp}
+# Create lists of unique values for minutes and seconds for each DWR-DES-EMP water quality station
+emp_qc_check <- emp_clean_v1 %>% 
+  mutate(
+    df = map(
+      df, 
+      ~mutate(
+        .x, 
+        m = minute(DateTime),
+        s = second(DateTime)
+      )
+    ),
+    m_summ = map(
+      df,
+      ~unique(.x$m)
+    ),
+    s_summ = map(
+      df,
+      ~unique(.x$s)
+    )
+  )
+
+# Unique values for minutes:
+emp_qc_check$m_summ
+
+# Unique values for seconds:
+emp_qc_check$s_summ
+```
+
+Both DWR-DES-EMP water quality stations have some timestamps with minutes that were not collected on a 15-minute interval (0, 15, 30, 45).
+
+Since not all timestamps were collected on a 15-minute interval, we need to round them to the nearest 15-minute interval and then look for any duplicated timestamps.
+
+```{r look for dup timestamps after rounding emp, message = FALSE}
+emp_qc_check <- emp_clean_v1 %>% 
+  mutate(
+    df_dt_round = map(
+      df, 
+      ~mutate(.x, DateTime = round_date(DateTime, unit = "15 minute"))
+    ),
+    df_dup = map(
+      df_dt_round,
+      ~count(.x, DateTime, parameter) %>% 
+        filter(n > 1)
+    ),
+    df_dup_join = map2(df_dup, df_dt_round, left_join)
+  )
+
+emp_qc_check
+```
+
+Both RVB and SRH stations have some duplicated timestamps after rounding them to the nearest 15-minute interval. This needs to be investigated further. We'll start with the RVB data first.
+
+```{r investigate dup timestamp data rvb}
+emp_qc_check$df_dup_join[[1]]
+```
+
+RVB has an extra Water Temperature value that was collected on 2011-01-03 13:59:00. We'll remove this value.
+
+```{r clean duplicates rvb}
+rvb_clean <- emp_clean_v1 %>% 
+  filter(sta_code == "RVB") %>% 
+  pull(df) %>% 
+  chuck(1) %>% 
+  filter(DateTime != "2011-01-03 13:59:00")
+```
+
+Next, we'll look at the duplicated timestamps in SRH.
+
+```{r investigate dup timestamp data srh}
+emp_qc_check$df_dup_join[[2]]
+```
+
+It looks like SRH has a lot of duplicated records. We'll remove these and then look for additional duplicated rounded timestamps.
+
+```{r clean duplicates srh 1}
+srh_clean_v1 <- emp_clean_v1 %>% 
+  filter(sta_code == "SRH") %>% 
+  pull(df) %>% 
+  chuck(1) %>% 
+  distinct()
+
+srh_clean_v1 %>% 
+  mutate(DateTime = round_date(DateTime, unit = "15 minute")) %>% 
+  count(DateTime, parameter) %>% 
+  filter(n > 1)
+```
+
+SRH has the following extra values:
+
+* pH collected on 2011-02-03 03:44:00
+* DO, Chla, pH, SpC, and WaterTemp collected on 2011-03-15 11:21:00
+* DO, Chla, pH, SpC, and WaterTemp collected on 2011-03-15 11:22:00
+* DO, Chla, pH, SpC, and WaterTemp collected on 2011-03-15 11:24:00
+
+We will remove all of these values from SRH.
+
+```{r clean duplicates srh 2}
+srh_clean_v2 <- srh_clean_v1 %>% 
+  filter(DateTime != "2011-02-03 03:44:00") %>% 
+  filter(!(DateTime > "2011-03-15 11:15:00" & DateTime < "2011-03-15 11:30:00"))
+```
+
+Now we'll create a new nested dataframe with the cleaned data for RVB and SRH to continue our work on.
+
+```{r new rvb srh df}
+emp_clean_v2 <- tibble(
+  sta_code = c("RVB", "SRH"),
+  df = list(rvb_clean, srh_clean_v2)
+)
+```
+
+## Clean Data
+
+### Standardize parameter names
+
+Both RVB and SRH are now ready to have their timestamps rounded to their nearest 15-minute intervals and their parameter names to be standardized. 
+
+```{r std parameter names emp, message = FALSE}
+# Continue to clean the continuous EMP data
+emp_clean_v3 <- emp_clean_v2 %>% 
+  mutate(
+    # Round all timestamps to the nearest 15-minute interval
+    df_dt_round = map(
+      df, 
+      ~mutate(.x, DateTime = round_date(DateTime, unit = "15 minute"))
+    ),
+    # Standardize parameter names
+    df_std_param = map(df_dt_round, ~std_param_vars_emp(.x, parameter)),
+    # Pivot dataframes wider
+    df_wide = map(
+      df_std_param,
+      ~pivot_wider(.x, names_from = parameter, values_from = c(value, qual)) %>% 
+        # rename parameter variables to standardized names
+        rename_at(vars(starts_with("qual_")), ~str_c(str_remove(.x, "qual_"), "_Qual")) %>% 
+        rename_at(vars(starts_with("value_")), ~str_remove(.x, "value_"))
+    )
+  ) %>% 
+  select(sta_code, df = df_wide)
+```
+
+### Add RVB flow data
+
+Now we can join the RVB flow data collected by USGS to the RVB water quality data. The USGS also collected Specific Conductance, Water Temperature, and Turbidity data at RVB; however, their periods of record overlap with the data collected by DWR-DES-EMP. We will only join the flow data collected by USGS at RVB, and will exclude the water quality data since we already have those parameters from DWR.
+
+```{r add rvb flow data, message = FALSE}
+# Modify the rvb_usgs dataframe to only include flow data
+rvb_usgs_mod <- rvb_usgs %>% select(DateTime, starts_with("Flow"))
+
+# Join USGS flow data to the EMP water quality data for RVB
+rvb_wq_flow <- emp_clean_v3 %>% 
+  filter(sta_code == "RVB") %>% 
+  pull(df) %>% 
+  chuck(1) %>% 
+  full_join(rvb_usgs_mod)
+
+# Add back the RVB WQ and flow data to the main nested dataframe
+emp_clean_v4 <- emp_clean_v3 %>% 
+  filter(sta_code != "RVB") %>% 
+  add_row(sta_code = "RVB", df = list(rvb_wq_flow))
+```
+
+### Finish Cleaning
+
+Now, we can finish cleaning the continuous DWR-DES-EMP data by adding a standardized StationName variable and reordering each dataframe to a consistent pattern.
+
+```{r finish cleaning emp data}
+emp_clean_f <- emp_clean_v4 %>% 
+  mutate(
+    # Add NDFA standardized station names to each dataframe
+    df_names = map2(df, sta_code, ~mutate(.x, StationCode = .y)),
+    # Reorder variables in a consistent pattern and sort by DateTime
+    df_f = map(
+      df_names, 
+      ~apply_var_order(.x) %>% 
+        arrange(DateTime)
+    )
+  )
+```
+
+## Export Data
+
+Export continuous DWR-DES-EMP data as .csv files to the Processed_Data/Continuous folder on SharePoint. This data will go through further QA/QC checks and cleaning in another script.
+
+```{r export emp data as csv}
+# This only needs to be run when you want to export the data
+# walk2(
+#   emp_clean_f$df_f,
+#   emp_clean_f$sta_code,
+#   .f = ~write_excel_csv(
+#     .x,
+#     path = paste0(fp_abs_wq_proc, "/RTM_OUTPUT_", .y, "_formatted.csv"),
+#     na = ""
+#   )
+# )
+```
+
+End of script
 
