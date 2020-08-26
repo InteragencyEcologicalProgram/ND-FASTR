@@ -67,10 +67,36 @@ p <- rcs_orig %>%
 print(p)
 ```
 
-Zoom in on WaterTemp data
-```{r plot one param WaterTemp change x axis lim, warning = FALSE}
-p + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), NA))
+2014
+```{r plot WaterTemp 2014 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
 ```
+
+2015
+```{r plot WaterTemp 2015 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+2016
+```{r plot WaterTemp 2016 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+2017
+```{r plot WaterTemp 2017 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2017-07-15 00:00:00"), as_datetime("2017-11-05 00:00:00")))
+```
+
+2018
+```{r plot WaterTemp 2018 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+2019
+```{r plot WaterTemp 2019 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
 
 SpCnd plot
 ```{r plot SpCnd param, warning = FALSE}
@@ -81,9 +107,35 @@ ps <- rcs_orig %>%
 print(ps)
 ```
 
-Zoom in on SpCnd data
-```{r plot one param SpCnd change x axis lim, warning = FALSE}
-ps + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), NA))
+
+2014
+```{r plot SpCnd 2014 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+2015
+```{r plot SpCnd 2015 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+2016
+```{r plot SpCnd 2016 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+2017
+```{r plot SpCnd 2017 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2017-07-15 00:00:00"), as_datetime("2017-11-05 00:00:00")))
+```
+
+2018
+```{r plot SpCnd 2018 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+2019
+```{r plot SpCnd 2019 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
 ```
 
 Turbidity plot
@@ -95,25 +147,23 @@ pt <- rcs_orig %>%
 print(pt)
 ```
 
-Zoom in on Turbidity data 2014-2015
-```{r plot one param Turbidity change x and y axis lim, warning = FALSE}
-pt + scale_x_datetime(limits = c(as_datetime("2014-07-01 00:00:00"), 
-                                 as_datetime("2016-01-01 00:00:00"))) +
-  ylim (NA, 100)
+
+2014
+```{r plot Turbidity 2014 param, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
 ```
 
-Zoom on Turbidity data 2019
-```{r plot Turb param change x axis lim, warning = FALSE}
-pt + scale_x_datetime(limits = c(as_datetime("2019-07-01 00:00:00"), NA))
+2015
+```{r plot Turbidity 2015 param, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
 ```
 
-Let's look closer at December 2019
-```{r plot one param Turbidity change x axis lim Dec, warning = FALSE}
-pt + scale_x_datetime(limits = c(as_datetime("2019-11-25 00:00:00"), 
-                                 as_datetime("2019-12-04 00:00:00")))
+2019
+```{r plot Turbidity 2019 param, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
 ```
 
-DO plot
+DO plots
 ```{r plot DO param, warning = FALSE}
 pd <- rcs_orig %>%
   ggplot(aes(x = DateTime, y = DO)) +
@@ -122,12 +172,37 @@ pd <- rcs_orig %>%
 print(pd)
 ```
 
-Zoom DO data
-```{r plot one param DO change x axis lim, warning = FALSE}
-pd + scale_x_datetime(limits = c(as_datetime("2014-01-10 00:00:00"), NA))
+2014
+```{r plot DO 2014 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
 ```
 
-pH plot
+2015
+```{r plot DO 2015 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+2016
+```{r plot DO 2016 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+2017
+```{r plot DO 2017 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2017-07-15 00:00:00"), as_datetime("2017-11-05 00:00:00")))
+```
+
+2018
+```{r plot DO 2018 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+2019
+```{r plot DO 2019 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+pH plots
 ```{r plot pH param, warning = FALSE}
 ph <- rcs_orig %>%
   ggplot(aes(x = DateTime, y = pH)) +
@@ -136,12 +211,37 @@ ph <- rcs_orig %>%
 print(ph)
 ```
 
-Zoom pH data
-```{r plot one param pH change x axis lim, warning = FALSE}
-ph + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), NA))
+2014
+```{r plot pH 2014 param, warning = FALSE}
+ph + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
 ```
 
-Chla plot
+2015
+```{r plot pH 2015 param, warning = FALSE}
+ph + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+2016
+```{r plot pH 2016 param, warning = FALSE}
+ph + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+2017
+```{r plot pH 2017 param, warning = FALSE}
+ph + scale_x_datetime(limits = c(as_datetime("2017-07-15 00:00:00"), as_datetime("2017-11-05 00:00:00")))
+```
+
+2018
+```{r plot pH 2018 param, warning = FALSE}
+ph + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+2019
+```{r plot pH 2019 param, warning = FALSE}
+ph + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+Chla plots
 ```{r plot CHla param, warning = FALSE}
 pc <- rcs_orig %>%
   ggplot(aes(x = DateTime, y = Chla)) +
@@ -150,9 +250,78 @@ pc <- rcs_orig %>%
 print(pc)
 ```
 
-Zoom on Chla data
-```{r plot one param Chla change x axis lim, warning = FALSE}
-pc + scale_x_datetime(limits = c(as_datetime("2014-01-01 00:00:00"), NA))
+2014
+```{r plot Chla 2014 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+2015
+```{r plot Chla 2015 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+2016
+```{r plot Chla 2016 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+2017
+```{r plot Chla 2017 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2017-07-15 00:00:00"), as_datetime("2017-11-05 00:00:00")))
+```
+
+2018
+```{r plot Chla 2018 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+2019
+```{r plot Chla 2019 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+Flow plots
+```{r plot Flow param, warning = FALSE}
+pflo <- rcs_orig %>% 
+  ggplot(aes(x = DateTime, y = Flow)) +
+  geom_line() + ylim(NA, 1000)
+
+print(pflo)
+```
+
+2013
+```{r plot Flow 2013 param, warning = FALSE}
+pflo + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00"))) 
+```
+
+2014
+```{r plot Flow 2014 param, warning = FALSE}
+pflo + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+2015
+```{r plot Flow 2015 param, warning = FALSE}
+pflo + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+2016
+```{r plot Flow 2016 param, warning = FALSE}
+pflo + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+2017
+```{r plot Flow 2017 param, warning = FALSE}
+pflo + scale_x_datetime(limits = c(as_datetime("2017-07-15 00:00:00"), as_datetime("2017-11-05 00:00:00")))
+```
+
+2018
+```{r plot Flow 2018 param, warning = FALSE}
+pflo + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+2019
+```{r plot Flow 2019 param, warning = FALSE}
+pflo + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
 ```
 
 

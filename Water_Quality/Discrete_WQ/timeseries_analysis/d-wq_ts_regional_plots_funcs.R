@@ -9,7 +9,7 @@ library(ggplot2)
 library(tidyverse)
 
 # --- Import Data from SharePoint ---
-get_abs_path <- function(fp_rel){
+get_abs_path <- function(fp_rel){ 
   # define absolute filepath
   fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_rel))
   
@@ -117,7 +117,7 @@ blank_theme <- function(){
       axis.title.x = element_blank(),
       axis.title.y = element_blank(),
       plot.title = element_text(size=12, hjust = 0.5),
-      legend.position='top',
+      legend.position = 'top',
       legend.title = element_blank(),
       legend.box.margin=margin(-10,0,-10,0)
     )

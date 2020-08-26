@@ -1,5 +1,5 @@
 # NDFA Water Quality
-# Purpose: Script to clean LIB data
+# Purpose: Script to clean LIBCUT data
 # collected by USGS
 # Author: Dave Bosworth & Traci Treleaven
 
@@ -21,22 +21,15 @@ sharepoint_path <- normalizePath(
 
 # Import data
 #  LIB station 
-#- is skip, cc bring in as character, str_c is combing into a sting (rep is repeating) dc is numeric/character combo which is 38 columns divided by 2, final part gets rid of tz time zone column 
-  
-lib_orig <- read_csv(
-  file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_LIB.csv"),
-  col_types = paste0("-cc", str_c(rep("dc", 19), collapse = ""), "-")
+#- is skip, cc bring in column header as character, str_c is combing into a sting (rep is repeating) dc is numeric/character combo which is 38 columns divided by 2, final part gets rid of tz time zone column 
+
+libcut_orig <- read_csv(
+  file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_LIBCUT.csv"),
+  col_types = paste0("-cc", str_c(rep("dc", 11), collapse = ""), "-")
 ) 
 
-glimpse(lib_orig)
+glimpse(libcut_orig)
 
-
-
-# remove repeating column names 
-
-lib_clean <- lib_orig %>% select(!starts_with("X_CHLOR"))
-
-glimpse(lib_clean)
 
 # Clean Data --------------------------------------------------------------
 
@@ -55,20 +48,20 @@ glimpse(lib_clean)
 # 99133 - Nitrate plus nitrite (mg/L as N)
 
 # Clean data
-lib_clean2 <- lib_clean %>% 
+libcut_clean <- libcut_orig %>% 
   mutate(
     # Parse date time variable
     DateTime = ymd_hms(dateTime),
     # Convert Station name to NDFA standardized name
-    StationCode = "LIB"
+    StationCode = "LIBCUT"
   ) %>% 
   select(-dateTime)
 
-glimpse(lib_clean2)
+glimpse(libcut_clean)
 
 # Standardize parameter variable names
 # Data values
-lib_values <- lib_clean2 %>% 
+libcut_values <- libcut_clean %>% 
   select(!ends_with("_cd")) %>% 
   pivot_longer(
     cols = -c(DateTime, StationCode, site_no),
@@ -95,7 +88,7 @@ lib_values <- lib_clean2 %>%
   pivot_wider(names_from = parameter, values_from = value)
 
 # Qual Codes
-lib_qual <- lib_clean2 %>% 
+libcut_qual <- libcut_clean %>% 
   select(site_no, DateTime, ends_with("_cd")) %>% 
   pivot_longer(
     cols = -c(site_no, DateTime),
@@ -121,13 +114,13 @@ lib_qual <- lib_clean2 %>%
   ) %>% 
   pivot_wider(names_from = parameter, values_from = value)
 
-glimpse(lib_clean2)
-glimpse(lib_qual)
-glimpse(lib_values)
+
+glimpse(libcut_qual)
+
 
 # Join two wide dataframes together
-lib_clean2 <- 
-  left_join(lib_values, lib_qual) %>% 
+libcut_clean <- 
+  left_join(libcut_values, libcut_qual) %>% 
   # Reorder variables
   select(
     site_no,
@@ -152,7 +145,7 @@ lib_clean2 <-
   )
 
 
-glimpse(lib_clean2)
+glimpse(libcut_clean)
 
 
 # Export Data -------------------------------------------------------------
@@ -161,9 +154,9 @@ glimpse(lib_clean2)
 # Export formatted data as a .csv file 
 
 
-lib_clean2 %>% 
+libcut_clean %>% 
   write_excel_csv(
-    path = paste0(sharepoint_path, "/Processed_Data/Continuous/RTM_OUTPUT_LIB_formatted.csv"),
+    path = paste0(sharepoint_path, "/Processed_Data/Continuous/RTM_OUTPUT_LIBCUT_formatted.csv"),
     na = ""
   )
 

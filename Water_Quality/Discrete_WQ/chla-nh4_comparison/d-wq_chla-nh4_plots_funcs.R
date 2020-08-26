@@ -1,5 +1,5 @@
-# FASTR - Fuctions for Discrete WQ Timeseries Analysis
-# purpose: functions for timeseries analysis of discrete WQ data for FASTR
+# FASTR - Functions Chlorophyll and Ammonia Comparison
+# purpose: functions for qualitatively determining relationship b/w chla and NH3
 # author: Sarah Perry
 # contact: seperry83@gmail.com
 
@@ -73,35 +73,6 @@ add_phase_actions <- function(df_wq, df_dates){
   return(df_combined)
 }
 
-# --- Create df for RL Segments ---
-create_seg_df <- function(df){
-  # subset out the ND data into own df (based on NA values in 'values' column)
-  df_subset <- subset(df, is.na(df$Result))
-  
-  # check if any non-detect data
-  any_data <- 'Non-detect' %in% df_subset$LabDetect
-  
-  if (any_data){
-    # create new df for the vertical and horizontal segments
-    df_seg <- data.frame(
-      x_vert = df_subset$Date,
-      xend_vert = df_subset$Date,
-      y_vert = 0,
-      yend_vert = df_subset$RptLimit,
-      x_horz = df_subset$Date-1.7, # 1.7 is arbitrary, change this to change the length of the line
-      xend_horz = df_subset$Date+1.7,
-      y_horz = df_subset$RptLimit,
-      yend_horz = df_subset$RptLimit,
-      StationCode = df_subset$StationCode,
-      Region = df_subset$Region
-    )
-    return(df_seg)
-  }
-  else{
-    return(df_subset)
-  }
-}
-
 # --- Blank Theme for Timeseries Graphs ---
 blank_theme <- function(){
   theme_bw() +
@@ -111,87 +82,63 @@ blank_theme <- function(){
       panel.grid.minor = element_blank(),
       axis.text = element_text(color = 'black', size = 14, family = 'sans'),
       axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
-      strip.text = element_text(size = 14),
+      strip.text.x = element_text(size = 14),
       axis.title = element_text(size = 18, face = 'bold'),
       plot.title = element_text(size = 20, hjust = 0.5, face = 'bold'),
       legend.position = 'top',
+      legend.box = 'vertical',
       legend.title = element_blank(),
-      legend.box.margin = margin(-10,0,-10,0),
+      legend.title.align = 0,
+      legend.box.margin = margin(-5,0,0,0),
+      legend.spacing.y = unit(-0.2, 'cm'),
       legend.text = element_text(size = 13)
     )
 }
 
 # --- Create Facet Scatterplots  ---
-create_facet <- function(df){
+create_graph <- function(df, vari){
   # import blank theme
   blank_theme <- blank_theme()
   
-  # filter df by analyte
-  df_filt <-
-    df %>%
-    filter(
-      Analyte == analyte,
-      Year == year
-    )
-  
-  # create segment (RL) df
-  df_seg <- create_seg_df(df_filt)
-  
-  # define flow action duration
-  action_max <- unique(df_filt$PostFlowStart)
-  action_min <- unique(df_filt$PreFlowEnd)
-  
-  # check if RL data exists
-  RL_dat <- nrow(df_seg) > 0
-  
   # define relevant values
-  analyte_full <- unique(df_filt$AnalyteFull[df_filt$Analyte == analyte])
-  analyte_unit <- unique(df_filt$Units[df_filt$Analyte == analyte])
-  cmap_colors <- c('#999999', '#f781bf', '#B79F00', '#984ea3', '#377eb8', '#e41a1c') # #ffff33
-  
-  # plot timeseries
-  p <- ggplot() +
-    facet_grid(StationCode ~ ., scales = 'free') +
-    annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
-
-  # add RL segments
-  if (RL_dat) {
-    p <- p +
-      geom_segment( # vertical segment
-        data = df_seg,
-        mapping = aes(x = x_vert, xend = xend_vert, y = y_vert, yend = yend_vert, group = StationCode, color = Region),
-        size = 1.6
-        ) +
-      geom_segment( # horizontal segment
-        data = df_seg,
-        mapping = aes(x = x_horz, xend = xend_horz, y = y_horz, yend = yend_horz, group = StationCode, color = Region),
-        size = 1.3,
-        lineend = 'square'
-      )
+  if(varis[i] == 'Year') {
+    fill <- 'Region'
+    cmap_colors <- c('#999999', '#f781bf', '#B79F00', '#984ea3', '#377eb8', '#e41a1c')
+  }
+  else {
+    fill <- 'Year'
   }
 
-  # add timeseries data
-  p <- p +
-    geom_point( # points
-      df_filt,
-      mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
-      size = 4.3
-    ) +
-    geom_line( # line
-      df_filt,
-      mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
-      size = 1.8
-    )
+  # create base plot
+  p <- ggplot() +
+   facet_wrap(df[varis[i]][[1]] ~ ., ncol = 2, scales = 'free_y')
 
+  # add scatter plot
+  p <- p +
+    geom_segment(data = df,
+                 mapping = aes(x = 5, xend = 5, y = -Inf, yend = Inf),
+                 color = '#2b2b2b',
+                 linetype = 2,
+                 size = 1) +
+    geom_point(data = df,
+             mapping = aes(x = DisAmmonia_umolL, y = Chla, fill = !!sym(fill), shape = ActionPhase),
+             color = 'black',
+             size = 4,
+             stroke = 1.2
+             ) 
+  
   # fix asthetics
+  if (varis[i] == 'Year') {
+    p <- p +
+      scale_fill_manual(values = cmap_colors)
+  }
+  
   p <- p +
-    blank_theme + # theme
-    scale_x_date(labels = date_format('%d-%b'), breaks = pretty_breaks(10)) +
-    scale_fill_manual(values = cmap_colors) +
-    scale_color_manual(values = cmap_colors) +
-    xlab('Date') +
-    ylab(analyte_unit) +
-    ggtitle(paste(analyte_full,'-',year))
-
-  return(p)
+    blank_theme +
+    xlab(expression(bold(paste('NH'[4],' (\u03BCmol/L)',sep = '')))) +
+    ylab(expression(bold(paste('Chlorophyll ', bolditalic('a'),' (\u03BCg/L)', sep = '')))) +
+    xlim(0,20) +
+    scale_shape_manual(values = c('During' = 21, 'Pre' = 22, 'Post' = 24)) +
+    guides(fill = guide_legend(override.aes=list(shape=21))) +
+    ggtitle(expression(bold(Chlorophyll~bolditalic(a)~vs.~NH[4])))
 }

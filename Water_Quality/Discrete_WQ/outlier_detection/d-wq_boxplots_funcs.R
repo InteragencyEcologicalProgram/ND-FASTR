@@ -95,8 +95,8 @@ blank_theme <- function(){
       panel.grid.minor.x = element_blank(),
       axis.text = element_text(color = 'black', size = 13, family = 'sans'),
       axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
-      axis.title.x = element_blank(),
-      axis.title.y = element_blank(),
+      axis.title = element_text(size = 15, face = 'bold'),
+      strip.text = element_text(size = 11),
       plot.title = element_text(size = 20, face = 'bold', hjust = 0.5),
       legend.position='top',
       legend.title = element_blank(),
@@ -165,8 +165,22 @@ cen_boxplt <- function(df) {
       Analyte == analyte
     )
   
+  # create RL df
+  df_rl <- df_filt %>%
+    group_by(Year, StationCode) %>%
+    summarise(RptLimit = max(RptLimit, na.rm = TRUE), LabDetect = all(LabDetect))
+  
+  df_rl <- df_rl[!df_rl$LabDetect,]
+  
+  # check if RL data exists
+  RL_dat <- nrow(df_rl) > 0
+  
   # define full analyte names for plotting
   analyte_name <- df_filt$AnalyteFull[df_filt$Analyte == analyte]
+  analyte_unit <- unique(df_filt$Units[df_filt$Analyte == analyte])
+  
+  # define color palette
+  c_map <- RColorBrewer::brewer.pal(n = 3, name = 'Accent')
   
   # define vectors for cenfit function
   obs <- df_filt$Result
@@ -188,17 +202,50 @@ cen_boxplt <- function(df) {
       mutate(Outlier = ifelse(is_outlier(Data), Data, as.numeric(NA)))
     
     # plot boxplots
-    bp <- ggplot(df_boxplt, facets = StationCode) +
-      geom_boxplot(df_boxplt, mapping = aes(x = Year, y = Data, group = FullGroup), fill = '#e6e6e6') + # boxplots
-      geom_point(df_boxplt, mapping = aes(x = Year, y = Outlier, group = FullGroup, fill = ActionPhase), size = 3, shape = 21) + # outlier points
+    bp <- ggplot() +
       facet_wrap(~ StationCode, ncol = 3, scales = 'free_y')
+      
+    # add box plot data
+    bp <- bp +
+      geom_boxplot( # box plot
+        df_boxplt,
+        mapping = aes(x = Year, y = Data, group = FullGroup),
+        fill = '#ededed',
+        lwd = 0.8,
+        fatten = 1.5
+        ) +
+      geom_point( # outlier points
+        df_boxplt,
+        mapping = aes(x = Year, y = Outlier, group = FullGroup, fill = ActionPhase),
+        size = 2.8,
+        shape = 21,
+        stroke = 1.15
+        )
+    
+    # add RL aesthetics
+    if (RL_dat) { # shaded region below RL
+      bp <- bp +
+        geom_rect(
+          data = df_rl,
+          aes(xmin = Year-0.5, xmax = Year+0.5, ymin = 0, ymax = RptLimit, group = StationCode),
+          fill = 'white',
+          alpha = 0.9
+        ) +
+        geom_segment( # line at RL
+          data = df_rl,
+          aes(x = Year-0.5, xend = Year+0.5, y = RptLimit, yend = RptLimit),
+          size = 0.75,
+          color = '#b85656'
+        )
+    }
     
     bp <- bp +
       blank_theme +
       ggtitle(analyte_name) +
-      scale_fill_manual(values=c('red', 'blue', 'green'))
-    
-    return(bp)
+      xlab('Date') +
+      ylab(analyte_unit) +
+      scale_x_continuous(breaks = round(seq(min(df_boxplt$Year), max(df_boxplt$Year), by = 1),1)) +
+      scale_fill_manual(values = c_map)
   }
 }
   
