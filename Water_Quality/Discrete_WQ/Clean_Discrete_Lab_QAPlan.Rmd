@@ -7,6 +7,8 @@ output:
     toc: true
     toc_float: true
     code_folding: hide
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -26,7 +28,7 @@ library(readxl)
 library(lubridate)
 ```
 
-```{r eval=FALSE}
+```{r}
 # 1. Global Code ----------------------------------------------------------
 # Source global WQ functions
 source("Water_Quality/global_wq_funcs.R")
@@ -49,8 +51,8 @@ obj_keep <- c("fp_abs_wq_raw", "fp_abs_wq_proc", "obj_keep")
 rm(list = ls()[!(ls() %in% obj_keep)])
 ```
 
-```{r eval=FALSE}
-# 2. Import Data -------------------------------------------------------------
+```{r}
+# Import Data 
 
 # Create a character vector of all raw discrete lab data files
 dis_lab_files <- dir(fp_abs_wq_raw, pattern = "\\.xlsx$", full.names = T)
@@ -69,7 +71,7 @@ dis_lab_col_types <- c(
 dis_lab_data_orig <- map_dfr(dis_lab_files, ~read_excel(.x, col_types = dis_lab_col_types))
 ```
 
-```{r eval=FALSE}
+```{r}
 # 3. Clean Data --------------------------------------------------------------
 
 # Clean up variable names in dis_lab_data_orig
@@ -150,7 +152,7 @@ dis_lab_data_clean <- dis_lab_data_orig %>%
 
 ### Data Replicates and Duplicates (is specifying "data" giving it a new meaning? It says lab reps & field dupes but that's a clunky subtitle. I could just call it 'Replicates and Duplicates' but IDK)
 
-```{r eval=FALSE}
+```{r}
 # Remove the unusual lab replicates for DOC collected at SRH in 2019 
   # which have different Sample codes
 srh_doc_19_orig <- dis_lab_data_clean %>% 
@@ -210,24 +212,24 @@ dis_lab_reps_f %>% filter(RPD > 0.2)
 # yes, 12 pairs, all but one pair are close to the RL
 
 # Export lab replicate data as a .csv file
-dis_lab_reps_f %>% 
-  select(
-    SampleCode,
-    StationName,
-    CollectionDate,
-    Analyte,
-    Result_1,
-    Result_2,
-    LabDetect_1,
-    LabDetect_2,
-    RPD,
-    RptLimit,
-    Units,
-    Method,
-    Purpose, 
-    ParentSample
-  ) %>% 
-  write_excel_csv(paste0(fp_abs_wq_proc, "/Discrete_Lab_Data_Replicates.csv"), na = "")
+# dis_lab_reps_f %>% 
+#   select(
+#     SampleCode,
+#     StationName,
+#     CollectionDate,
+#     Analyte,
+#     Result_1,
+#     Result_2,
+#     LabDetect_1,
+#     LabDetect_2,
+#     RPD,
+#     RptLimit,
+#     Units,
+#     Method,
+#     Purpose, 
+#     ParentSample
+#   ) %>% 
+#   write_excel_csv(paste0(fp_abs_wq_proc, "/Discrete_Lab_Data_Replicates.csv"), na = "")
 
 # Only include one of the two lab replicate pairs for the final dataset
 dis_lab_reps_1r <- dis_lab_reps_f %>% 
@@ -245,7 +247,8 @@ dis_lab_data_clean2 <- dis_lab_data_clean1 %>%
 obj_keep <- append(obj_keep, "dis_lab_data_clean2")
 rm(list = ls()[!(ls() %in% obj_keep)])
 ```
-```{r eval=FALSE}
+
+```{r}
 # Pull out Field Duplicates
 dis_field_dups <- dis_lab_data_clean2 %>% filter(Purpose != "Normal Sample")
 
@@ -286,7 +289,7 @@ dis_field_dup_pairs_f %>% filter(RPD > 0.2)
 # yes, 12 pairs, but values are small and the differences aren't alarming
 
 # Export Field Duplicate data as a .csv file
-dis_field_dup_pairs_f %>% write_excel_csv(paste0(fp_abs_wq_proc, "/Discrete_Lab_Data_Field_Dups.csv"), na = "")
+# dis_field_dup_pairs_f %>% write_excel_csv(paste0(fp_abs_wq_proc, "/Discrete_Lab_Data_Field_Dups.csv"), na = "")
 
 # Only keep the Normal Samples for the final dataset
 dis_lab_data_clean3 <- dis_lab_data_clean2 %>% filter(Purpose == "Normal Sample")
@@ -310,5 +313,5 @@ dis_lab_data_clean3 <- dis_lab_data_clean3 %>%
   select(-c(Purpose, ParentSample))
 
 # Export cleaned discrete lab data as a .csv file
-dis_lab_data_clean3 %>% write_excel_csv(paste0(fp_abs_wq_proc, "/WQ_OUTPUT_Discrete_Lab_formatted.csv"), na = "")
+# dis_lab_data_clean3 %>% write_excel_csv(paste0(fp_abs_wq_proc, "/WQ_OUTPUT_Discrete_Lab_formatted.csv"), na = "")
 ```
