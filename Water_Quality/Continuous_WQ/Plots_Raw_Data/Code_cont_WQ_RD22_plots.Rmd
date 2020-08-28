@@ -1,0 +1,59 @@
+---
+title: "Raw Data Plots - RD22"
+author: "Dave Bosworth"
+date: "8/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+Create plots of the raw continuous water quality data for the RD22 station. The data in these plots has been cleaned and formatted, but not inspected for suspect values. The purpose of these plots is to allow for us to visually inspect the data for suspect or unreliable values during the study period (2011-2019). The final QA/QC steps for this data can be found in the xxx.Rmd file.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r load functions}
+# Source global WQ functions
+source("Water_Quality/global_wq_funcs.R")
+
+# Source continuous WQ raw data plot functions
+source("")
+```
+
+```{r define file paths}
+# Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
+fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
+
+# Define relative file paths for raw and processed continuous WQ data files
+fp_rel_wq_raw <- paste0(fp_fastr, "Raw_Data/Continuous")
+fp_rel_wq_proc <- paste0(fp_fastr, "Processed_Data/Continuous")
+
+# Define absolute file paths
+fp_abs_wq_raw <- get_abs_path(fp_rel_wq_raw)
+fp_abs_wq_proc <- get_abs_path(fp_rel_wq_proc)
+
+# Clean up
+rm(fp_rel_wq_raw, fp_rel_wq_proc)
+
+# Create a vector of object names to keep throughout the script
+obj_keep <- append(objects(), "obj_keep")
+```
+
+
+
+```{r}
+
+```
+
+```{r}
+
+```
+
