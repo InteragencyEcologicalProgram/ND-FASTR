@@ -33,7 +33,7 @@ library(lubridate)
 source("Water_Quality/global_wq_funcs.R")
 
 # Source continuous WQ data cleaning functions
-source("Water_Quality/Continuous_WQ/Data_Cleaning/clean_rtm_data_funcs.R")
+source("Water_Quality/Continuous_WQ/Data_Cleaning/rtm_clean_data_funcs.R")
 ```
 
 ```{r define file paths}
