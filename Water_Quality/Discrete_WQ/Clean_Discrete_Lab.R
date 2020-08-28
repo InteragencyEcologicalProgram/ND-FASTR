@@ -2,26 +2,39 @@
 # Purpose: Code to import, clean, and export discrete laboratory water quality data from Bryte Lab
 # Author: Jenna Rinde, Dave Bosworth
 
+
+# 1. Global Code ----------------------------------------------------------
+
 # Load packages
 library(tidyverse)
 library(readxl)
 library(lubridate)
-library(dplyr)
+
+# Source global WQ functions
+source("Water_Quality/global_wq_funcs.R")
+
+# Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
+fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
+
+# Define relative file paths for raw and processed discrete lab WQ data files
+fp_rel_wq_raw <- paste0(fp_fastr, "Raw_Data/Discrete/Raw_WDL_export_June2020")
+fp_rel_wq_proc <- paste0(fp_fastr, "Processed_Data/Discrete")
+
+# Define absolute file paths
+fp_abs_wq_raw <- get_abs_path(fp_rel_wq_raw)
+fp_abs_wq_proc <- get_abs_path(fp_rel_wq_proc)
+
+# Create a vector of object names to keep throughout the script
+obj_keep <- c("fp_abs_wq_raw", "fp_abs_wq_proc", "obj_keep")
+
+# Clean up working environment
+rm(list = ls()[!(ls() %in% obj_keep)])
 
 
-# 1. Import Data -------------------------------------------------------------
+# 2. Import Data -------------------------------------------------------------
 
-# Define path on SharePoint site for data - this works if you have the SharePoint site synced
-  # to your computer
-sharepoint_path <- normalizePath(
-  file.path(
-    Sys.getenv("USERPROFILE"),
-    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/Raw_Data/Discrete/Raw_WDL_export_June2020"
-  )
-)
-
-# Create a character vectors of all discrete lab data files in sharepoint_path
-dis_lab_files <- dir(sharepoint_path, pattern = "\\.xlsx$", full.names = T)
+# Create a character vector of all raw discrete lab data files
+dis_lab_files <- dir(fp_abs_wq_raw, pattern = "\\.xlsx$", full.names = T)
 
 # Define column types for data to be imported with read_excel
 dis_lab_col_types <- c(
@@ -33,11 +46,11 @@ dis_lab_col_types <- c(
   rep("text", 8)
 )
 
-# Import and combine all of the discrete lab data
+# Import and combine all of the raw discrete lab data
 dis_lab_data_orig <- map_dfr(dis_lab_files, ~read_excel(.x, col_types = dis_lab_col_types))
 
 
-# 2. Clean Data --------------------------------------------------------------
+# 3. Clean Data --------------------------------------------------------------
 
 # Clean up variable names in dis_lab_data_orig
 names(dis_lab_data_orig) <- str_replace_all(names(dis_lab_data_orig), "[:space:]", "")
@@ -110,13 +123,12 @@ dis_lab_data_clean <- dis_lab_data_orig %>%
     RptLimit, 
     Units,
     Method,
-    Depth,
     Purpose,
     ParentSample
   )
 
 
-# 3. Lab Replicates ----------------------------------------------------------
+# 4. Lab Replicates ----------------------------------------------------------
 
 # Remove the unusual lab replicates for DOC collected at SRH in 2019 
   # which have different Sample codes
@@ -177,7 +189,24 @@ dis_lab_reps_f %>% filter(RPD > 0.2)
 # yes, 12 pairs, all but one pair are close to the RL
 
 # Export lab replicate data as a .csv file
-dis_lab_reps_f %>% write_excel_csv("Discrete_Lab_Data_Replicates.csv", na = "")
+dis_lab_reps_f %>% 
+  select(
+    SampleCode,
+    StationName,
+    CollectionDate,
+    Analyte,
+    Result_1,
+    Result_2,
+    LabDetect_1,
+    LabDetect_2,
+    RPD,
+    RptLimit,
+    Units,
+    Method,
+    Purpose, 
+    ParentSample
+  ) %>% 
+  write_excel_csv(paste0(fp_abs_wq_proc, "/Discrete_Lab_Data_Replicates.csv"), na = "")
 
 # Only include one of the two lab replicate pairs for the final dataset
 dis_lab_reps_1r <- dis_lab_reps_f %>% 
@@ -192,15 +221,16 @@ dis_lab_data_clean2 <- dis_lab_data_clean1 %>%
   bind_rows(dis_lab_reps_1r)
 
 # Clean up working environment
-rm(list = ls()[(ls() != "dis_lab_data_clean2")])
+obj_keep <- append(obj_keep, "dis_lab_data_clean2")
+rm(list = ls()[!(ls() %in% obj_keep)])
 
 
-# 4. Field Duplicates -----------------------------------------------------
+# 5. Field Duplicates -----------------------------------------------------
 
 # Pull out Field Duplicates
 dis_field_dups <- dis_lab_data_clean2 %>% filter(Purpose != "Normal Sample")
 
-# Pull out all parent samples from dis_lab_data_clean2 and join withwr Field Duplicate data
+# Pull out all parent samples from dis_lab_data_clean2 and join with Field Duplicate data
 dis_field_dup_pairs <- 
   inner_join(
     dis_lab_data_clean2, 
@@ -229,8 +259,7 @@ dis_field_dup_pairs_f <- dis_field_dup_pairs %>%
     RPD,
     RptLimit,
     Units,
-    Method,
-    starts_with("Dep")
+    Method
   )
 
 # Are there any Field Duplicate pairs with RPD values greater than 25%?
@@ -238,25 +267,27 @@ dis_field_dup_pairs_f %>% filter(RPD > 0.2)
 # yes, 12 pairs, but values are small and the differences aren't alarming
 
 # Export Field Duplicate data as a .csv file
-dis_field_dup_pairs_f %>% write_excel_csv("Discrete_Lab_Data_Field_Dups.csv", na = "")
+dis_field_dup_pairs_f %>% write_excel_csv(paste0(fp_abs_wq_proc, "/Discrete_Lab_Data_Field_Dups.csv"), na = "")
 
 # Only keep the Normal Samples for the final dataset
 dis_lab_data_clean3 <- dis_lab_data_clean2 %>% filter(Purpose == "Normal Sample")
 
 # Clean up working environment
-rm(list = ls()[(ls() != "dis_lab_data_clean3")])
+obj_keep <- append(obj_keep, "dis_lab_data_clean3")
+obj_keep <- discard(obj_keep, str_detect(obj_keep, "clean2$"))
+rm(list = ls()[!(ls() %in% obj_keep)])
 
 
-# 5. Final Cleaning and Export --------------------------------------------
-dis_lab_data_clean3<- dis_lab_data_clean3 %>%
-  rename(StationCode=StationName) %>%
-  rename(DateTime=CollectionDate)
+# 6. Final Cleaning and Export --------------------------------------------
 
-dis_lab_data_clean3<- 
-  select (dis_lab_data_clean3, -c(Depth, Purpose, ParentSample))
+# Rename and remove a few variables
+dis_lab_data_clean3 <- dis_lab_data_clean3 %>%
+  rename(
+    StationCode = StationName,
+    DateTime = CollectionDate
+  ) %>%
+  select(-c(Purpose, ParentSample))
 
-write.csv(dis_lab_data_clean3, 'Discrete_Output_Lab.csv')
-
-
-
+# Export cleaned discrete lab data as a .csv file
+dis_lab_data_clean3 %>% write_excel_csv(paste0(fp_abs_wq_proc, "/WQ_OUTPUT_Discrete_Lab_formatted.csv"), na = "")
 
