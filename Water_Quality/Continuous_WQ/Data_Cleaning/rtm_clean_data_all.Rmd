@@ -674,17 +674,18 @@ usgs_clean_f_exp <- usgs_clean_f %>%
 
 Export remaining continuous USGS data as .csv files to the Processed_Data/Continuous folder on SharePoint. This data will go through further QA/QC checks and cleaning in another script.
 
-```{r export usgs data as csv}
-# This only needs to be run when you want to export the data
-# walk2(
-#   usgs_clean_f_exp$df_f,
-#   usgs_clean_f_exp$sta_code,
-#   .f = ~write_excel_csv(
-#     .x,
-#     path = paste0(fp_abs_wq_proc, "/RTM_OUTPUT_", .y, "_formatted.csv"),
-#     na = ""
-#   )
-# )
+```{r export usgs data as csv, eval = FALSE}
+# Code chunk is set to eval = FALSE, so this code is not executed when this file is knitted
+# change eval option to TRUE when you want to export the data when knitting this file
+walk2(
+  usgs_clean_f_exp$df_f,
+  usgs_clean_f_exp$sta_code,
+  .f = ~write_excel_csv(
+    .x,
+    path = paste0(fp_abs_wq_proc, "/RTM_OUTPUT_", .y, "_formatted.csv"),
+    na = ""
+  )
+)
 ```
 
 Clean up objects in the global environment to only keep necessary objects at this point.
@@ -1083,17 +1084,18 @@ ncro_clean_f <- ncro_clean_v1 %>%
 
 Export continuous NCRO data as .csv files to the Processed_Data/Continuous folder on SharePoint. This data will go through further QA/QC checks and cleaning in another script.
 
-```{r export ncro data as csv}
-# This only needs to be run when you want to export the data
-# walk2(
-#   ncro_clean_f$df_f,
-#   ncro_clean_f$sta_code,
-#   .f = ~write_excel_csv(
-#     .x,
-#     path = paste0(fp_abs_wq_proc, "/RTM_OUTPUT_", .y, "_formatted.csv"),
-#     na = ""
-#   )
-# )
+```{r export ncro data as csv, eval = FALSE}
+# Code chunk is set to eval = FALSE, so this code is not executed when this file is knitted
+# change eval option to TRUE when you want to export the data when knitting this file
+walk2(
+  ncro_clean_f$df_f,
+  ncro_clean_f$sta_code,
+  .f = ~write_excel_csv(
+    .x,
+    path = paste0(fp_abs_wq_proc, "/RTM_OUTPUT_", .y, "_formatted.csv"),
+    na = ""
+  )
+)
 ```
 
 Clean up objects in the global environment to only keep necessary objects at this point.
@@ -1360,17 +1362,18 @@ emp_clean_f <- emp_clean_v4 %>%
 
 Export continuous DWR-DES-EMP data as .csv files to the Processed_Data/Continuous folder on SharePoint. This data will go through further QA/QC checks and cleaning in another script.
 
-```{r export emp data as csv}
-# This only needs to be run when you want to export the data
-# walk2(
-#   emp_clean_f$df_f,
-#   emp_clean_f$sta_code,
-#   .f = ~write_excel_csv(
-#     .x,
-#     path = paste0(fp_abs_wq_proc, "/RTM_OUTPUT_", .y, "_formatted.csv"),
-#     na = ""
-#   )
-# )
+```{r export emp data as csv, eval = FALSE}
+# Code chunk is set to eval = FALSE, so this code is not executed when this file is knitted
+# change eval option to TRUE when you want to export the data when knitting this file
+walk2(
+  emp_clean_f$df_f,
+  emp_clean_f$sta_code,
+  .f = ~write_excel_csv(
+    .x,
+    path = paste0(fp_abs_wq_proc, "/RTM_OUTPUT_", .y, "_formatted.csv"),
+    na = ""
+  )
+)
 ```
 
 End of script
