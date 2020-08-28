@@ -1,0 +1,71 @@
+---
+title: "Quality Assurance Plan for Discrete Laboratory Data for FASTR"
+author: "Caitlin Miller, Jenna Rinde, and Dave Bosworth"
+date: "8/28/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Purpose
+
+## Methods
+
+### Data Import and Preparation
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(readxl)
+library(lubridate)
+```
+
+```{r eval=FALSE}
+# 1. Global Code ----------------------------------------------------------
+# Source global WQ functions
+source("Water_Quality/global_wq_funcs.R")
+
+# Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
+fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
+
+# Define relative file paths for raw and processed discrete lab WQ data files
+fp_rel_wq_raw <- paste0(fp_fastr, "Raw_Data/Discrete/Raw_WDL_export_June2020")
+fp_rel_wq_proc <- paste0(fp_fastr, "Processed_Data/Discrete")
+
+# Define absolute file paths
+fp_abs_wq_raw <- get_abs_path(fp_rel_wq_raw)
+fp_abs_wq_proc <- get_abs_path(fp_rel_wq_proc)
+
+# Create a vector of object names to keep throughout the script
+obj_keep <- c("fp_abs_wq_raw", "fp_abs_wq_proc", "obj_keep")
+
+# Clean up working environment
+rm(list = ls()[!(ls() %in% obj_keep)])
+```
+
+```{r eval=FALSE}
+# 2. Import Data -------------------------------------------------------------
+
+# Create a character vector of all raw discrete lab data files
+dis_lab_files <- dir(fp_abs_wq_raw, pattern = "\\.xlsx$", full.names = T)
+
+# Define column types for data to be imported with read_excel
+dis_lab_col_types <- c(
+  rep("numeric", 2),
+  rep("text", 3),
+  "date",
+  rep("text", 2),
+  "numeric",
+  rep("text", 8)
+)
+
+# Import and combine all of the raw discrete lab data
+dis_lab_data_orig <- map_dfr(dis_lab_files, ~read_excel(.x, col_types = dis_lab_col_types))
+```
+
