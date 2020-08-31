@@ -30,6 +30,7 @@ add_yaxis_var <- function(df, param_var) {
         !!param_var_enquo == "Chla" ~ "Chlorophyll (ug/L)",
         !!param_var_enquo == "DO" ~ "Dissolved Oxygen (mg/L)",
         !!param_var_enquo == "Flow" ~ "Flow (cfs)",
+        !!param_var_enquo == "FlowTF" ~ "Tidally-filtered Flow (cfs)",
         !!param_var_enquo == "pH" ~ "pH (pH units)",
         !!param_var_enquo == "SpCnd" ~ "Specific Conductance (uS/cm)",
         !!param_var_enquo == "Turbidity" ~ "Turbidity (FNU)",
