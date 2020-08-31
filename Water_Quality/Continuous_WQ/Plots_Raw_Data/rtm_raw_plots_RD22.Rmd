@@ -40,10 +40,10 @@ source("Water_Quality/Continuous_WQ/Plots_Raw_Data/rtm_raw_plots_funcs.R")
 fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
 
 # Define relative file path for processed continuous WQ data file for RD22
-fp_rel_rtm_rd22 <- paste0(fp_fastr, "Processed_Data/Continuous/RTM_OUTPUT_RD22_formatted.csv")
+fp_rel_rtm_data <- paste0(fp_fastr, "Processed_Data/Continuous/RTM_OUTPUT_RD22_formatted.csv")
 
 # Define absolute file path
-fp_abs_rtm_rd22 <- get_abs_path(fp_rel_rtm_rd22)
+fp_abs_rtm_data <- get_abs_path(fp_rel_rtm_data)
 ```
 
 ```{r set system tz as PST}
@@ -54,12 +54,12 @@ Sys.setenv(TZ = "Etc/GMT+8")
 # Import and Prepare Data
 
 ```{r import data}
-rd22_orig <- import_rtm_data(fp_abs_rtm_rd22, 7)
+data_orig <- import_rtm_data(fp_abs_rtm_data, 7)
 ```
 
 ```{r prepare data, message = FALSE}
 # Clean original data
-rd22_clean <- rd22_orig %>% 
+data_clean <- data_orig %>% 
   # parse date-time variable and define tz as PST
   mutate(DateTime = ymd_hms(DateTime, tz = "Etc/GMT+8")) %>% 
   # pivot data longer for easier plotting
@@ -73,16 +73,16 @@ rd22_clean <- rd22_orig %>%
   mutate(yr = year(DateTime))
 
 # Find the first year with data for each parameter
-rd_first_yr <- rd22_clean %>% 
+data_first_yr <- data_clean %>% 
   filter(!is.na(value)) %>% 
   group_by(parameter) %>% 
   summarize(min_yr = min(yr))
 
 # Create a nested dataframe grouped by parameter- including all years of data
-rd22_all_yrs <- rd22_clean %>% 
+data_all_yrs <- data_clean %>% 
   group_nest(parameter) %>%
   # remove data before the first year data was collected for each parameter
-  left_join(rd_first_yr) %>% 
+  left_join(data_first_yr) %>% 
   mutate(
     data = map2(data, min_yr, ~filter(.x, yr >= .y)),
     yr = "All Years"
@@ -90,21 +90,21 @@ rd22_all_yrs <- rd22_clean %>%
   select(parameter, yr, data)
 
 # Create a nested dataframe grouped by parameter and year
-rd22_indiv_yrs <- rd22_clean %>% 
+data_indiv_yrs <- data_clean %>% 
   filter(!is.na(value)) %>% 
   mutate(yr = as.character(yr)) %>% 
   group_nest(parameter, yr)
 
 # Combine nested dataframes and add variable for y-axis label
-rd22_yrs_c <- 
-  bind_rows(rd22_all_yrs, rd22_indiv_yrs) %>% 
+data_yrs_c <- 
+  bind_rows(data_all_yrs, data_indiv_yrs) %>% 
   add_yaxis_var(parameter)
 ```
 
 # Create Plots
 
 ```{r create plots}
-rd22_plots <- rd22_yrs_c %>% 
+plots <- data_yrs_c %>% 
   mutate(plot = map2(data, yaxis_lab, .f = create_ts_plot)) %>% 
   select(parameter, yr, plot) %>% 
   group_nest(parameter)
@@ -113,14 +113,14 @@ rd22_plots <- rd22_yrs_c %>%
 # Raw Data Plots {.tabset .tabset-pills}
 
 ```{r print plots, echo = FALSE, warning = FALSE, results = "asis"}
-for (i in 1:nrow(rd22_plots)) {
+for (i in 1:nrow(plots)) {
   # Create heading for each parameter
-  cat("## ", as.character(rd22_plots$parameter[i]), " {.tabset .tabset-pills}\n\n")
-  for (j in 1:nrow(rd22_plots$data[[i]])) {
+  cat("## ", as.character(plots$parameter[i]), " {.tabset .tabset-pills}\n\n")
+  for (j in 1:nrow(plots$data[[i]])) {
     # Create subheadings for each yr
-    cat("### ", as.character(rd22_plots$data[[i]]$yr[j]), "\n\n") 
+    cat("### ", as.character(plots$data[[i]]$yr[j]), "\n\n") 
     # Display plot
-    print(rd22_plots$data[[i]]$plot[[j]])
+    print(plots$data[[i]]$plot[[j]])
     cat("\n\n")  
   }
 }
