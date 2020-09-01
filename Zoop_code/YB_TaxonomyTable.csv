@@ -1,0 +1,124 @@
+OrganismID,Kingdom,Phylum,Subphylum,Class,Subclass,Infraclass,Superorder,Order,Suborder,Infraorder,Superfamily,Family,Genus,Species,TaxonName,TaxonRank,LifeStage,CommonName,Classification,Organism
+1,Animalia,Rotifera,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Rotifera,Phylum,NA,Rotifer,Microzooplankton & Nauplii,Rotifers
+2,Animalia,Arthropoda,Crustacea,Hexanauplia,Thecostraca,Cirripedia,NA,NA,NA,NA,NA,NA,NA,NA,Cirripedia,Infraclass,NA,Unidentified barnacle,Microzooplankton & Nauplii,Barnacles
+3,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,NA,NA,NA,NA,NA,NA,NA,NA,NA,Copepoda,Subclass,nauplius,Copepod,Microzooplankton & Nauplii,Copepod nauplii
+4,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,NA,NA,NA,NA,NA,Cladocera,Suborder,nauplius,Cladoceran,Microzooplankton & Nauplii,Cladocera nauplii
+5,Animalia,Arthropoda,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Arthropoda,Phylum,nauplius,Unidentified arthropod,Microzooplankton & Nauplii,Unid nauplii
+6,Animalia,Arthropoda,Crustacea,Ostracoda,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ostracoda,Class,NA,Ostracod,Microzooplankton & Nauplii,Ostracods
+7,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,NA,NA,NA,Cyclopoida,Order,adult,Cyclopoid,Cyclopoids,Cyclopoid adult
+8,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,NA,NA,NA,Cyclopoida,Order,copepodid,Cyclopoid,Cyclopoids,Cyclopoid copepodid
+9,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Acanthocyclops,vernalis,Acanthocyclops vernalis,Species,copepodid,Acanthocyclops vernalis,Cyclopoids,Acanthocyclops vernalis copepodid
+10,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Acanthocyclops,vernalis,Acanthocyclops vernalis,Species,adult,Acanthocyclops vernalis,Cyclopoids,Acanthocyclops vernalis adult
+11,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Oithonidae,Oithona,NA,Oithona sp.,Genus,NA,Oithona sp.,Cyclopoids,Oithona Spp.
+12,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Oithonidae,Oithona,similis,Oithona similis,Species,NA,Oithona similis,Cyclopoids,Oithona similis
+13,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Oithonidae,Oithona,davisae,Oithona davisae,Species,NA,Oithona davisae,Cyclopoids,Oithona davisae
+14,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Oithonidae,Oithona,NA,Oithona sp.,Genus,copepodid,Oithona sp.,Cyclopoids,Oithona copepodid
+15,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopettidae,Limnoithona,NA,Limnothoina sp.,Genus,NA,Limnothoina sp.,Cyclopoids,Limnoithona spp.
+16,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopettidae,Limnoithona,tetraspina,Limnothoina tetraspina,Species,NA,Limnothoina tetraspina,Cyclopoids,Limnoithona tetraspina
+17,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopettidae,Limnoithona,sinensis,Limnothoina sinensis,Species,NA,Limnothoina sinensis,Cyclopoids,Limnoithona sinensis
+18,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopettidae,Limnoithona,NA,Limnothoina sp.,Genus,copepodid,Limnothoina sp.,Cyclopoids,Limnoithona copepodid
+19,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Acartiidae,Acartia,NA,Acartia sp.,Genus,NA,Acartia sp.,Calanoids,Acartia spp.
+20,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Acartiidae,Acartia,NA,Acartia sp.,Genus,copepodid,Acartia sp.,Calanoids,Acartia copepodid
+21,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Diaptomidae,Diaptomus,NA,Diaptomus sp.,Genus,NA,Diaptomus sp.,Calanoids,Diaptomus spp.
+22,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Diaptomidae,Diaptomus,NA,Diaptomus sp.,Genus,copepodid,Diaptomus sp.,Calanoids,Diaptomus copepodid
+23,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Pseudodiaptomidae,Pseudodiaptomus,forbesi,Pseudodiaptomus forbesi,Species,adult,Pseudodiaptomus forbesi,Calanoids,Pseudodiaptomus forbesi adult
+24,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Pseudodiaptomidae,Pseudodiaptomus,forbesi,Pseudodiaptomus forbesi,Species,copepodid,Pseudodiaptomus forbesi,Calanoids,Pseudodiaptomus forbesi copepodid
+25,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Temoridae,Eurytemora,affinis,Eurytemora affinis,Species,adult,Eurytemora affinis,Calanoids,Eurytemora affinis adult
+26,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Temoridae,Eurytemora,affinis,Eurytemora affinis,Species,copepodid,Eurytemora affinis,Calanoids,Eurytemora affinis copepodid
+27,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Centropagidae,Sinocalanus,doerrii,Sinocalanus doerrii,Species,adult,Sinocalanus doerrii,Calanoids,Sinocalanus doerrii adult
+28,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Centropagidae,Sinocalanus,doerrii,Sinocalanus doerrii,Species,copepodid,Sinocalanus doerrii,Calanoids,Sinocalanus doerrii copepodid
+29,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Acartiidae,Acartiella,sinensis,Acartiella sinensis,Species,NA,Acartiella sinensis,Calanoids,Acartiella sinensis
+30,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Acartiidae,Acartiella,NA,Acartiella sp.,Species,copepodid,Acartiella sp.,Calanoids,Acartiella copepodid
+31,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Tortanidae,Tortanus,NA,Tortanus sp.,Genus,NA,Tortanus sp.,Calanoids,Tortanus spp.
+32,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Tortanidae,Tortanus,NA,Tortanus sp.,Genus,copepodid,Tortanus sp.,Calanoids,Tortanus copepodid
+33,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Centropagidae,Osphranticum,labronectum,Osphranticum labronectum,Species,NA,Osphranticum labronectum,Calanoids,Osphranticum labronectum
+34,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Centropagidae,Osphranticum,NA,Osphranticum sp.,Genus,copepodid,Osphranticum sp.,Calanoids,Osphranticum copepodid
+35,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Bosminidae,Bosmina,longirostris,Bosmina longirostris,Species,NA,Bosmina longirostris,Cladocera,Bosmina
+36,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Daphniidae,Ceriodaphnia,NA,Ceriodaphnia sp.,Genus,NA,Ceriodaphnia sp.,Cladocera,Ceriodaphnia
+37,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Daphniidae,Daphnia,NA,Daphnia sp.,Genus,NA,Daphnia,Cladocera,Daphnia
+38,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Chydorus,NA,Chydorus sp.,Genus,NA,Chydorus sp.,Cladocera,Chydorus
+39,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Eurycercidae,Camptocercus,NA,Camptocercus sp.,Genus,NA,Camptocercus sp.,Cladocera,Camptocercus
+40,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Daphniidae,Scapholeberis,NA,Scapholeberis sp.,Genus,NA,Scapholeberis sp.,Cladocera,Scapholeberis
+41,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Ctenopoda,NA,Sididae,Diaphanosoma,NA,Diaphanosoma sp.,Genus,NA,Diaphanosoma sp.,Cladocera,Diaphanosoma
+42,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Daphniidae,Daphnia,NA,Daphnia sp.,Genus,juvenile,Daphnia,Cladocera,Juvenile Daphnia
+43,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Alona,NA,Alona sp.,Genus,NA,Alona sp.,Cladocera,Alona
+44,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Ilyocryptidae,Ilyocryptus,NA,Ilyocryptus sp.,Genus,NA,Ilyocryptus sp.,Cladocera,Ilyocryptus
+45,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Macrothricidae,Macrothrix,NA,Macrothrix sp.,Genus,NA,Macrothrix sp.,Cladocera,Macrothrix
+46,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,NA,NA,NA,Harpacticoida,Order,NA,Harpacticoid,Harpacticoids,Harpacticoids
+47,Animalia,Arthropoda,Crustacea,Malacostraca,Eumalacostraca,NA,Peracarida,Mysida,NA,NA,NA,Mysidae,NA,NA,Mysidae,Family,NA,Mysidae,Macrozooplankton,Mysids
+48,Animalia,Chordata,Vertebrata,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Vertebrata,Subphylum,larva,Fish,Macrozooplankton,Larval Fish
+49,Animalia,Chordata,Vertebrata,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Vertebrata,Subphylum,eggs,Fish,Macrozooplankton,Fish eggs
+50,Animalia,Arthropoda,Crustacea,Malacostraca,Eumalacostraca,NA,Peracarida,Amphipoda,Gammaridea,NA,NA,Corophiidae,Corophium,NA,Corophium sp.,Genus,NA,Corophium sp.,Macrozooplankton,Corophium spp.
+51,Animalia,Arthropoda,Crustacea,Malacostraca,Eumalacostraca,NA,Peracarida,Amphipoda,Gammaridea,NA,NA,Gammaridae,Gammarus,NA,Gammarus sp.,Genus,NA,Gammarus sp.,Macrozooplankton,Gammarus spp.
+52,Animalia,Mollusca,NA,Bivalvia,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Bivalvia,Class,NA,Clam,Macrozooplankton,Clam
+53,Animalia,Arthropoda,Crustacea,Malacostraca,Eumalacostraca,NA,NA,Cumacea,NA,NA,NA,NA,NA,NA,Cumacea,Order,NA,Cumacean,Macrozooplankton,Cumacean
+54,Animalia,Mollusca,NA,Bivalvia,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Bivalvia,Class,NA,Clam,Macrozooplankton,Baby clam
+55,Animalia,Mollusca,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mollusca,Phylum,NA,Snail,Macrozooplankton,Snail
+56,Animalia,Mollusca,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mollusca,Phylum,NA,Snail,Macrozooplankton,Baby snail
+57,Animalia,Arthropoda,Crustacea,Malacostraca,Eumalacostraca,NA,Peracarida,Amphipoda,Gammaridea,NA,NA,Corophiidae,Americorophium,NA,Americorophium sp.,Genus,NA,Americorophium sp.,Macrozooplankton,Americorophium
+58,Animalia,Arthropoda,Hexapoda,Insecta,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Insecta,Class,larva,Unidentified insect,Macrozooplankton,Insect larvae
+59,Animalia,Arthropoda,Crustacea,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Crustacea,Subphylum,NA,Shrimp,Macrozooplankton,Shrimp
+60,Animalia,Annelida,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Annelida,Phylum,NA,Annelid,Macrozooplankton,Annelid
+61,Animalia,Chordata,Vertebrata,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Vertebrata,Subphylum,NA,Fish,Macrozooplankton,Fish
+62,Animalia,Arthropoda,Crustacea,Malacostraca,Eumalacostraca,NA,Peracarida,Isopoda,NA,NA,NA,NA,NA,NA,Isopoda,Order,NA,Isopoda,Macrozooplankton,Isopod
+63,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Acanthocyclops,vernalis,Acanthocyclops vernalis,Species,NA,Acanthocyclops vernalis,Cyclopoids,Acanthocyclops Vernalis
+64,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,NA,NA,NA,Calanoida,Order,copepodid,Calanoid,Calanoids,Calanoid copepodids
+65,Animalia,Arthropoda,Hexapoda,Insecta,NA,NA,NA,Diptera,Nematocera,NA,NA,Chironomidae,NA,NA,Chironomidae,Family,larva,Chironomidae,Diptera,Chironomidae Larvae
+68,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,NA,NA,NA,Calanoida,Order,NA,Other Calanoid,Calanoids,Other Calanoids
+69,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,NA,NA,NA,NA,NA,Cladocera,Suborder,NA,Cladoceran,Cladocera,Other Cladocera
+70,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,NA,NA,NA,Cyclopoida,Order,NA,Cyclopoid,Cyclopoids,Other Cyclopoids
+72,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Centropagidae,Sinocalanus,doerrii,Sinocalanus doerrii,Species,NA,Sinocalanus doerrii,Calanoids,Sinoclanus doerii
+73,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Pseudodiaptomidae,Pseudodiaptomus,NA,Pseudodiaptomus sp.,Genus,NA,Pseudodiaptomus sp.,Calanoids,Pseudodiaptomus spp.
+74,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Temoridae,Eurytemora,NA,Eurytemora sp.,Genus,NA,Eurytemora sp.,Calanoids,Eurytemora spp.
+78,unidentified,unidentified,unidentified,unidentified,unidentified,unidentified,unidentified,unidentified,unidentified,unidentified,unidentified,unidentified,unidentified,unidentified,Unidentified,unidentified,NA,Unidentified,Macrozooplankton,UNIDENTIFIED
+80,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Diaptomidae,Skistodiaptomus,pallidus,Skistodiaptomus pallidus,Species,adult,Skistodiaptomus pallidus,Calanoids,Skistodiaptomus pallidus adult
+81,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Diaptomidae,Leptodiaptomus,siciloides,Leptodiaptomus siciloides,Species,NA,Leptodiaptomus siciloides,Calanoids,Leptodiaptomus siciloides
+82,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Diaptomidae,Hesperodiaptomus,NA,Hesperodiaptomus sp.,Genus,adult,Hesperodiaptomus sp.,Calanoids,Hesperodiaptomus spp. adult
+83,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Eucyclops,elegans,Eucyclops elegans,Species,NA,Eucyclops elegans,Cyclopoids,Eucyclops elegans
+84,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Microcyclops,rubellus,Microcyclops rubellus,Species,NA,Microcyclops rubellus,Cyclopoids,Microcyclops rubellus
+85,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Diaptomidae,Arctodiaptomus,dorsalis,Arctodiaptomus dorsalis,Species,NA,Arctodiaptomus dorsalis,Calanoids,Arctodiaptomus dorsalis
+86,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Kurzia,NA,Kurzia sp.,Genus,NA,Kurzia sp.,Cladocera,Kurzia
+87,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Leydigia,NA,Leydigia sp.,Genus,NA,Leydigia sp.,Cladocera,Leydigia
+88,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Picripleuroxus,NA,Picripleuroxus sp.,Genus,NA,Picripleuroxus sp.,Cladocera,Picripleuroxus
+89,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Pleuroxus,NA,Pleuroxus sp.,Genus,NA,Pleuroxus sp.,Cladocera,Pleuroxus
+90,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Eucyclops,NA,Eucyclops sp.,Genus,NA,Eucyclops sp.,Cyclopoids,Eucyclops spp.
+91,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Macrocyclops,NA,Macrocyclops sp.,Genus,NA,Macrocyclops sp.,Cyclopoids,Macrocyclops spp.
+92,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Alonella,NA,Alonella sp.,Genus,NA,Alonella sp.,Cladocera,Alonella
+93,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Eurycercus,NA,Eurycercus sp.,Genus,NA,Eurycercus sp.,Cladocera,Eurycercus
+94,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Graptoleberis,NA,Graptoleberis sp.,Genus,NA,Graptoleberis sp.,Cladocera,Graptoleberis
+95,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Monospilus,NA,Monospilus sp.,Genus,NA,Monospilus sp.,Cladocera,Monospilus
+96,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Eucyclops,prionophorus,Eucyclops prionophorus,Species,NA,Eucyclops prionophorus,Cyclopoids,Eucyclops prionophorus
+97,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Monospilus,dispar,Monospilus dispar,Species,NA,Monospilus dispar,Cladocera,Monospilus dispar
+98,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Ergasilidae,Ergasilus,NA,Ergasilus sp.,Genus,copepodid,Ergasilus sp.,Cyclopoids,Ergasilus copepodid
+99,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Moinidae,Moina,NA,Moina sp.,Genus,NA,Moina sp.,Cladocera,Moina
+100,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Ctenopoda,NA,Sididae,Sida,NA,Sida sp.,Genus,NA,Sida sp.,Cladocera,Sida
+101,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Microcyclops,NA,Microcyclops sp.,Genus,NA,Microcyclops sp.,Cyclopoids,Microcyclops
+102,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Disparalona,NA,Disparalona sp.,Genus,NA,Disparalona sp.,Cladocera,Disparalona
+103,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Daphniidae,Simocephalus,NA,Simocephalus sp.,Genus,NA,Simocephalus sp.,Cladocera,Simocephalus
+104,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Mesocyclops,edax,Mesocyclops edax,Species,NA,Mesocyclops edax,Cyclopoids,Mesocyclops edax
+105,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Eucyclops,phaleratus,Eucyclops phaleratus,Species,NA,Eucyclops phaleratus,Cyclopoids,Eucyclops phaleratus
+106,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Eucyclops,pectinifer,Eucyclops pectinifer,Species,NA,Eucyclops pectinifer,Cyclopoids,Eucyclops pectinifer
+107,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Paracyclops,NA,Paracyclops sp.,Genus,NA,Paracyclops sp.,Cyclopoids,Paracyclops spp.
+108,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Diacyclops,thomasi,Diacyclops thomasi,Species,NA,Diacyclops thomasi,Cyclopoids,Diacyclops thomasi
+109,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Ectocyclops,phaleratus,Ectocyclops phaleratus,Species,copepodid,Ectocyclops phaleratus,Cyclopoids,Ectocyclops phaleratus copepodid
+110,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Diaptomidae,Skistodiaptomus,NA,Skistodiaptomus sp.,Genus,NA,Skistodiaptomus sp.,Calanoids,Skistodiaptomus sp.
+111,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Diacyclops,NA,Diacyclops sp.,Species,NA,Diacyclops sp.,Cyclopoids,Diacyclops
+112,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Diaptomidae,Hesperodiaptomus,franciscanus,Hesperodiaptomus franciscanus,Species,NA,Hesperodiaptomus franciscanus,Calanoids,Hesperodiaptomus franciscanus
+115,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Pseudochydorus,globosus,Pseudochydorus globosus,Species,NA,Pseudochydorus globosus,Cladocera,Pseudochydorus globosus
+116,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Paracyclops,chiltoni,Paracyclops chiltoni,Species,NA,Paracyclops chiltoni,Cyclopoids,Paracyclops chiltoni
+118,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Ectocyclops,phaleratus,Ectocyclops phaleratus,Species,NA,Ectocyclops phaleratus,Cyclopoids,Ectocyclops phaleratus
+119,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Paracyclops,fimbriatus,Paracyclops fimbriatus,Species,NA,Paracyclops fimbriatus,Cyclopoids,Paracyclops fimbriatus
+120,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Acanthocyclops,NA,Acanthocyclops sp.,Genus,NA,Acanthocyclops sp.,Cyclopoids,Acanthocyclops sp.
+121,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Eucyclops,agilis,Eucyclops agilis,Species,NA,Eucyclops agilis,Cyclopoids,Eucyclops agilis
+122,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Paracyclops,poppei,Paracyclops poppei,Species,NA,Paracyclops poppei,Cyclopoids,Paracyclops poppei
+123,Animalia,Arthropoda,Crustacea,Branchiopoda,Phyllopoda,NA,NA,Diplostraca,Cladocera,Anomopoda,NA,Chydoridae,Pseudochydorus,NA,Pseudochydorus sp.,Genus,NA,Pseudochydorus sp.,Cladocera,Pseudochydorus sp.
+124,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,NA,NA,NA,Calanoida,Order,adult,Calanoid,Calanoids,Calanoid adult
+125,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Macrocyclops,albidus,Macrocyclops albidus,Species,NA,Macrocyclops albidus,Cyclopoids,Macrocyclops albidus
+126,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Diaptomidae,Hesperodiaptomus,cf. californiensis,Hesperodiaptomus cf. californiensis,Species,NA,Hesperodiaptomus cf. californiensis,Calanoids,Hesperodiaptomus cf. californiensis
+127,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Tropocyclops,NA,Tropocyclops sp.,Genus,NA,Tropocyclops sp.,Cyclopoids,Tropocyclops sp.
+128,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Ergasilidae,Ergasilus,NA,Ergasilus sp.,Genus,NA,Ergasilus sp.,Cyclopoids,Ergasilus sp.
+129,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Diaptomidae,Diaptomus,dorsalis,Diaptomus dorsalis,Species,NA,Diaptomus dorsalis,Calanoids,Diaptomus dorsalis
+130,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Gymnoplea,Calanoida,NA,NA,NA,Diaptomidae,Diaptomus,siciloides,Diaptomus siciloides,Species,NA,Diaptomus siciloides,Calanoids,Diaptomus siciloides
+131,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Cyclopidae,Tropocyclops,prasinus,Tropocyclops prasinus,Species,NA,Tropocyclops prasinus,Cyclopoids,Tropocyclops prasinus
+132,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,NA,NA,NA,Chydoridae,Anchistropus,NA,Anchistropus sp.,Species,NA,Anchistropus sp.,Cladocera,Anchistropus sp.
+133,Animalia,Arthropoda,Crustacea,Hexanauplia,Copepoda,Neocopepoda,Podoplea,Cyclopoida,Cyclopida,NA,NA,Lernaeidae,Lernaea,NA,Lernaea sp.,Species,NA,Lernaea sp.,Cyclopoids,Lernaea sp.

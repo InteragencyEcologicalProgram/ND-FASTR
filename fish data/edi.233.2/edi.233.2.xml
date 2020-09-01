@@ -1,0 +1,2445 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<eml:eml packageId="edi.233.2" system="https://pasta.edirepository.org"
+  xmlns:eml="eml://ecoinformatics.org/eml-2.1.1"
+  xmlns:stmml="http://www.xml-cml.org/schema/stmml-1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="eml://ecoinformatics.org/eml-2.1.1  http://nis.lternet.edu/schemas/EML/eml-2.1.1/eml.xsd">
+  <access authSystem="https://pasta.edirepository.org/authentication"
+    order="allowFirst" scope="document" system="https://pasta.edirepository.org">
+    <allow>
+      <principal>uid=EDI,o=EDI,dc=edirepository,dc=org</principal>
+      <permission>all</permission>
+    </allow>
+    <allow>
+      <principal>uid=iep,o=EDI,dc=edirepository,dc=org</principal>
+      <permission>all</permission>
+    </allow>
+    <allow>
+      <principal>uid=EDI,o=LTER,dc=ecoinformatics,dc=org</principal>
+      <permission>all</permission>
+    </allow>
+    <allow>
+      <principal>public</principal>
+      <permission>read</permission>
+    </allow>
+  </access>
+  <dataset>
+    <alternateIdentifier system="https://doi.org">doi:10.6073/pasta/b0b15aef7f3b52d2c5adc10004c05a6f</alternateIdentifier>
+    <title>Interagency Ecological Program: Fish catch and water quality data from the Sacramento River floodplain and tidal slough, collected by the Yolo Bypass Fish Monitoring Program, 1998-2018.</title>
+    <creator>
+      <individualName>
+        <surName>Interagency Ecological Program (IEP)</surName>
+      </individualName>
+    </creator>
+    <creator>
+      <individualName>
+        <givenName>Brian</givenName>
+        <surName>Schreier</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+      <electronicMailAddress>Brian.Schreier@water.ca.gov</electronicMailAddress>
+      <userId directory="https://orcid.org">https://orcid.org/0000-0002-5075-3946</userId>
+    </creator>
+    <creator>
+      <individualName>
+        <givenName>Brittany</givenName>
+        <surName>Davis</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+      <electronicMailAddress>Brittany.e.Davis@water.ca.gov</electronicMailAddress>
+      <userId directory="https://orcid.org">https://orcid.org/0000-0003-3752-1830</userId>
+    </creator>
+    <creator>
+      <individualName>
+        <givenName>Naoaki</givenName>
+        <surName>Ikemiyagi</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+    </creator>
+    <associatedParty>
+      <individualName>
+        <givenName>Jared</givenName>
+        <surName>Frantzich</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+      <role>Contributor</role>
+    </associatedParty>
+    <associatedParty>
+      <individualName>
+        <givenName>Ted</givenName>
+        <surName>Sommer</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+      <role>Program Founder</role>
+    </associatedParty>
+    <associatedParty>
+      <individualName>
+        <givenName>Nicole</givenName>
+        <surName>Kwan</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+      <userId directory="https://orcid.org">https://orcid.org/0000-0003-1178-7788</userId>
+      <role>Contributor</role>
+    </associatedParty>
+    <associatedParty>
+      <individualName>
+        <givenName>Mallory</givenName>
+        <surName>Bedwell</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+      <userId directory="https://orcid.org">https://orcid.org/0000-0001-9553-6032</userId>
+      <role>Contributor</role>
+    </associatedParty>
+    <associatedParty>
+      <individualName>
+        <givenName>Anjali</givenName>
+        <surName>Shakya</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+      <role>Contributor</role>
+    </associatedParty>
+    <associatedParty>
+      <individualName>
+        <givenName>Jeff</givenName>
+        <surName>Jenkins</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+      <role>Contributor</role>
+    </associatedParty>
+    <associatedParty>
+      <individualName>
+        <givenName>Craig</givenName>
+        <surName>Stuart</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+      <role>Contributor</role>
+    </associatedParty>
+    <associatedParty>
+      <individualName>
+        <givenName>Pascale</givenName>
+        <surName>Goertler</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+      <userId directory="https://orcid.org">https://orcid.org/0000-0001-6259-5108</userId>
+      <role>Contributor</role>
+    </associatedParty>
+    <pubDate>2019-02-13</pubDate>
+    <abstract>
+      <para>
+  Largely supported by the Interagency Ecological Program (IEP),
+  California Department of Water Resources (DWR) has operated a
+  fisheries monitoring program in the Yolo Bypass, a seasonal floodplain
+  and tidal slough, since 1998. The objectives of the Yolo Bypass Fish
+  Monitoring Program (YBFMP) are to: (1) collect baseline data on lower
+  trophic levels (phytoplankton, zooplankton, and aquatic insects),
+  juvenile fish and adult fish, hydrology, and water quality parameters;
+  2) investigation of the temporal and seasonal patterns in
+  chlorophyll-a concentrations, including whether high concentrations
+  are exported from the Bypass during agricultural and natural flow
+  events and the possibility of manipulating bypass flows to benefit
+  listed species like Delta Smelt (<emphasis>Hypomesus
+  transpacificus</emphasis>) and Chinook salmon (<emphasis>Oncorhynchus
+  tshawytscha</emphasis>). The YBFMP operates a rotary screw trap and
+  fyke trap, and conducts biweekly beach seine and lower trophic surveys
+  in addition to maintaining water quality instrumentation in the
+  bypass. The YBFMP serves to fill information gaps regarding
+  environmental conditions in the bypass that trigger migrations and
+  enhanced survival and growth of native fishes, as well as provide data
+  for IEP synthesis efforts. YBFMP staff also conduct analyses of our
+  monitoring data to address pertinent management related questions as
+  identified by IEP. The Yolo Bypass has been identified as a high
+  restoration priority by the National Marine Fisheries Service and US
+  Fish and Wildlife Service Biological Opinions for Delta Smelt, Winter
+  and Spring-run Chinook salmon and by California EcoRestore. The YBFMP
+  informs the restoration actions that are mandated or recommended in
+  these plans, and provides critical baseline data on the ecology of the
+  bypass and how it interacts with the broader San Francisco Estuary.
+  Only juvenile and adult fish catch with associated water quality are
+  presented in this dataset.
+</para>
+    </abstract>
+    <keywordSet>
+      <keyword>aquatic ecosystems</keyword>
+      <keyword>ecology</keyword>
+      <keyword>estuaries</keyword>
+      <keyword>rivers</keyword>
+      <keyword>floodplain</keyword>
+      <keyword>fishes</keyword>
+      <keyword>abundance</keyword>
+      <keyword>endangered species</keyword>
+      <keyword>invasive species</keyword>
+      <keywordThesaurus>LTER controlled vocabulary</keywordThesaurus>
+    </keywordSet>
+    <keywordSet>
+      <keyword>screw trap</keyword>
+      <keyword>fyke</keyword>
+      <keyword>beach seine</keyword>
+      <keyword>Interagency Ecological Program for the San Francisco Bay Delta Estuary</keyword>
+      <keyword>California Department of Water Resources</keyword>
+      <keyword>Yolo Bypass</keyword>
+      <keyword>tidal slough</keyword>
+      <keyword>Chinook salmon</keyword>
+      <keyword>Delta Smelt</keyword>
+      <keyword>Sacramento Splittail</keyword>
+      <keyword>sturgeon</keyword>
+    </keywordSet>
+    <keywordSet>
+      <keyword>water quality</keyword>
+      <keyword>temperature</keyword>
+      <keyword>turbidity</keyword>
+      <keywordThesaurus>LTER Controlled Vocabulary</keywordThesaurus>
+    </keywordSet>
+    <additionalInfo>
+      <para>
+        <emphasis>Peer reviewed articles derived from this dataset</emphasis>:
+</para>
+      <para>
+  Mahardja B, Hobbs JA, Ikemiyagi N, Benjamin A, Finger AJ (2019) Role
+  of freshwater floodplain-tidal slough complex in the persistence of
+  the endangered delta smelt. PloS one, 14(1):e0208084.
+</para>
+      <para>
+  Goertler P, Jones K, Cordell J, Schreier B, Sommer T (2018) Effects of
+  Extreme Hydrologic Regimes on Juvenile Chinook Salmon Prey Resources
+  and Diet Composition in a Large River Floodplain. Transactions of the
+  American Fisheries Society, 147:287-299.
+</para>
+      <para>
+  Goertler PA, Sommer TR, Satterthwaite WH, Schreier BM (2018) Seasonal
+  floodplain-tidal slough complex supports size variation for juvenile
+  Chinook salmon (Oncorhynchus tshawytscha). Ecology of Freshwater Fish,
+  27:580-593.
+</para>
+      <para>
+  Takata L, Sommer TR, Conrad JL, Schreier BM (2017) Rearing and
+  migration of juvenile Chinook salmon (Oncorhynchus tshawytscha) in a
+  large river floodplain. Environmental Biology of Fishes,
+  100:1105-1120.
+</para>
+      <para>
+  Sommer T, Harrell WC, Feyrer F (2014) Large-bodied fish migration and
+  residency in a flood basin of the Sacramento River, CA, USA. Ecology
+  of Freshwater Fish, 23:414-423.
+</para>
+      <para>
+  Feyrer F, Sommer T, Harrell W (2006) Importance of flood dynamics
+  versus intrinsic physical habitat in structuring fish communities:
+  evidence from two adjacent engineered floodplains on the Sacramento
+  River, California. North American Journal of Fisheries Management,
+  26:408-417.
+</para>
+      <para>
+  Feyrer F, Sommer T, Harrell W (2006) Managing floodplain inundation
+  for native fish: production dynamics of age-0 splittail (Pogonichthys
+  macrolepidotus) in California's Yolo Bypass. Hydrobiologia,
+  573:213-226.
+</para>
+      <para>
+  Sommer TR, Harrell WC, Nobriga ML (2005) Habitat use and stranding
+  risk of juvenile Chinook Salmon on a seasonal floodplain. North
+  American Journal of Fisheries Management, 25:1493-1504
+</para>
+      <para>
+  Sommer TR, Conrad L, O'Leary G, Feyrer F, Harrell WC (2002) Spawning
+  and rearing of splittail in a model floodplain wetland. Transactions
+  of the American Fisheries Society, 131:966-974.
+</para>
+      <para>
+  Sommer TR, Harrell B, Nobriga M, Brown R, Moyle P, Kimmerer W, Schemel
+  L (2001a) California's Yolo Bypass: evidence that flood control can be
+  compatible with fisheries, wetlands, wildlife, and agriculture.
+  Fisheries, 26:6-16.
+</para>
+      <para>
+  Sommer, TR, Nobriga ML, Harrell WC, Batham W, Kimmerer WJ (2001b)
+  Floodplain rearing of juvenile Chinook Salmon: evidence of enhanced
+  growth and survival. Canadian Journal of Fisheries and Aquatic
+  Sciences, 58:325-333.
+</para>
+    </additionalInfo>
+    <intellectualRights>
+      <para>
+  This information is released under the Creative Commons license -
+  Attribution - CC BY (https://creativecommons.org/licenses/by/4.0/).
+  The consumer of these data ("Data User" herein) is required
+  to cite it appropriately in any publication that results from its use.
+  The Data User should realize that these data may be actively used by
+  others for ongoing research and that coordination may be necessary to
+  prevent duplicate publication. The Data User is urged to contact the
+  authors of these data if any questions about methodology or results
+  occur. Where appropriate, the Data User is encouraged to consider
+  collaboration or co-authorship with the authors. The Data User should
+  realize that misinterpretation of data may occur if used out of
+  context of the original study. While substantial efforts are made to
+  ensure the accuracy of data and associated documentation, complete
+  accuracy of data sets cannot be guaranteed. All data are made
+  available "as is." The Data User should be aware, however,
+  that data are updated periodically and it is the responsibility of the
+  Data User to check for new versions of the data. The data authors and
+  the repository where these data were obtained shall not be liable for
+  damages resulting from any use or misinterpretation of the data. Thank
+  you.
+</para>
+    </intellectualRights>
+    <coverage>
+      <geographicCoverage>
+        <geographicDescription>Yolo Bypass tidal slough and seasonal floodplain in Sacramento California USA</geographicDescription>
+        <boundingCoordinates>
+          <westBoundingCoordinate>-121.8073699</westBoundingCoordinate>
+          <eastBoundingCoordinate>-121.5368316</eastBoundingCoordinate>
+          <northBoundingCoordinate>38.79395205</northBoundingCoordinate>
+          <southBoundingCoordinate>38.23466149</southBoundingCoordinate>
+        </boundingCoordinates>
+      </geographicCoverage>
+      <temporalCoverage>
+        <rangeOfDates>
+          <beginDate>
+            <calendarDate>1998-01-01</calendarDate>
+          </beginDate>
+          <endDate>
+            <calendarDate>2018-07-13</calendarDate>
+          </endDate>
+        </rangeOfDates>
+      </temporalCoverage>
+    </coverage>
+    <maintenance>
+      <description>ongoing</description>
+    </maintenance>
+    <contact>
+      <individualName>
+        <givenName>Brian Schreier</givenName>
+        <surName>Yolo Bypass Fish Monitoring Program Supervisor</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+      <electronicMailAddress>Brian.Schreier@water.ca.gov</electronicMailAddress>
+    </contact>
+    <contact>
+      <individualName>
+        <givenName>Brittany Davis</givenName>
+        <surName>Data Manager</surName>
+      </individualName>
+      <organizationName>California Department of Water Resources</organizationName>
+      <electronicMailAddress>Brittany.e.Davis@water.ca.gov</electronicMailAddress>
+    </contact>
+    <methods>
+      <methodStep>
+        <description>
+          <para>
+  Detailed methodolgy for the Yolo Bypass Fish Monitoring Program is as
+  follows.
+</para>
+          <para>
+            <emphasis>(1.) Data collection methods</emphasis>:
+</para>
+          <para>
+  SCREW TRAP: A single rotary screw trap is deployed at levee mile 14.5
+  near the base of the Yolo Bypass Toe Drain and is typically operated
+  from January 1st through June. If the first flush of the system occurs
+  earlier, the screw trap will be deployed in December to capture
+  out-migrating fishes. The trap site has been selected based on the
+  following criteria for installation, operation, and maintenance: (1)
+  suitable depth: greater than six feet at minimum flow and low tide;
+  (2) suitable velocity: greater than two feet per second (fps) at
+  minimum flow on an ebb tide (though during extremely low flow
+  conditions, the trap may only make a handful of revolutions in a
+  24-hour period); (3) suitable anchoring points; and, (4) limited
+  public access. Once installed, the trap is reached by truck via the
+  Sacramento Deep Water Ship Channel/East Yolo Bypass levee. The trap is
+  accessed daily using a small boat with an outboard motor during high
+  flow or paddles during lower flow periods. During high flows and
+  periods of high debris, the trap may be set intermittently through-out
+  the day, or not set if the high flow becomes a safety concern. The
+  screw trap operates using downstream flow as water strikes the angled
+  baffles on the inside of the trapping cone. This force causes the cone
+  to rotate and fish enter the upstream end of the rotating trapping
+  cone, becoming trapped inside the trapping cone, and then fish are
+  carried rearward into the livebox. Upon checking or pulling the trap
+  fish are then collected using dipnets and transferred to separate
+  buckets. Once all fish have been removed from the livebox, fish are
+  measured to fork length on a wetted measuring board, and then released
+  back into the Toe Drain. Chinook salmon, Smelt species, and other
+  native species are sampled first followed by non-native species. Each
+  fish is identified and counted, and then fork length to the nearest
+  millimeter will be measured for up to 20-50 each species.
+</para>
+          <para>
+  FYKE TRAP: The fyke trap is deployed in the Yolo Bypass Toe Drain just
+  below Lisbon Weir at levee mile six and is typically operated from
+  October through June. The trap site has been selected based on ease of
+  installation, operation, and maintenance, including: (1) suitable
+  depth: greater than ten feet at high tide during low flow; (2)
+  suitable anchoring point; (3) suitable bank: absent of large woody
+  debris; and (4) limited public access. Fyke trap sampling is operated
+  in conjunction with our screw trap and beach seine sampling. The fyke
+  trap is typically fished and checked daily during the months of
+  October/November through June. There has been some variability in
+  sampling frequency in the earlier sampling years, with the trap being
+  fished up to seven days a week and checked every two to three days,
+  but was generally not checked on weekends unless the Bypass floods
+  (see additional information section). Since early 2010, the trap has
+  been consistently fished during weekdays and has been checked daily.
+  When the fyke trap is deployed and operational, fish enter the
+  downstream opening of the trap (10 ft. diameter), pass through the
+  first funnel (3 ft. diameter), and enter a central chamber, then move
+  further through the second funnel (1 ft. 8 in. diameter), and become
+  trapped inside the upstream (terminal) compartment. The fyke trap is
+  installed with one warning float attached to the downstream end of the
+  trap and one float rigged to the upstream anchoring (nose) cable, trap
+  guide and anchor cables are anchored to t-posts on the levee
+  shoreline, and two guide ropes are also set to help guide the trap
+  when it is rolled up the bank during the retrieval process. The fyke
+  trap doesn't cover the entire channel as wings are not used, and
+  should not be viewed as a traditional fyke net. The fish handling and
+  sub-sampling protocol follows DFG (1997) to minimize impacts to salmon
+  and splittal. The trap is rolled using a truck-operated winch to the
+  edge of the Toe Drain channel in about 0.5 to 1.5 meters of water
+  depending on the number of fish in the trap. The trap door is then
+  opened and the fish are netted out using a long handled dip net. All
+  fish are netted individually, transferred to a wetted measuring board,
+  and then released back into the Toe Drain. Chinook salmon and
+  splittail will be sorted from other species and processed first. Each
+  fish is identified and counted, and then fork length to the nearest
+  millimeter will be measured for up to 20-50 each species.
+</para>
+          <para>
+  BEACH SEINE: Currently, beach seine sites are sampled every-other week
+  with a single haul from a 25 ft by 4 ft (8 x 1.2 meters) pole seine
+  (1/8" sq. mesh). These are modified beach seine hauls; because
+  the levee banks are generally steep, the seine is towed parallel to
+  the shoreline as opposed to netting straight toward the shoreline. The
+  seine sites include one perennial pond (YB), nine sites along the Toe
+  Drain (AL# [above Lisbon Weir] and BL# [below Lisbon Weir]) and four
+  high flow sites to capture floodplain inundation periods (CCS7, FW1,
+  LIHF, and YB180; only sampled during floodplain inundation).
+  Generally, during flood events, we begin sampling in the northern
+  Bypass and then gradually work southward as the basin drains. Captured
+  fish are identified to species, counted, and fork length is measured
+  to the nearest millimeter for up to 20-50 individuals of each species,
+  except for native species of special concern, where all fish are
+  counted and processed.
+</para>
+          <para>
+  FISH HANDLING OF SPECIES OF SPECIAL CONCERN: The handling and
+  sub-sampling protocol for special species caught in the rotary screw
+  trap and beach seines follows California Department of Fish and
+  Wildlife (CDFW) (1997) to minimize impacts to salmon, particularly
+  endangered winter-run Chinook. Juvenile Chinook salmon are visually
+  sorted between winter-run and juveniles of other races based on the
+  Delta Model of daily length-at-date criteria of salvage facility
+  catches (USFWS 1994; modified from Fisher 1992). Any winter and
+  spring-run sized salmon with a present adipose fin will be immediately
+  transferred to a separate bucket and processed, recording length,
+  sampling a fin-clip for later genetic identification, and released.
+  Fall-run will a present adipose fin will be processed after
+  winter-and-spring run. Any adipose fin-clipped salmon are euthanized
+  in a kill dose of buffered tricaine methanesulfonate (MS-222), bagged
+  individually (whirl-pack bags) and marked with information on sampling
+  location, date, gear type, fork length, and time. Fish are then kept
+  on ice in a cooler until transferred to our West Sacramento, CA office
+  to be weighed, have their coded wire tag (CWT) read, and frozen at
+  -20C. During periods of Delta Smelt presence, all Delta Smelt are
+  prioritized and carefully identified to differentiate between Delta
+  and Wakasagi Smelt (<emphasis>Hypomesus nipponensis</emphasis>).
+  Following the processing of special species (salmon and smelt) all
+  other fish are identified and counted: fork length is measured to the
+  nearest millimeter on a wetted measuring board for up to 20-50 of each
+  species. Any juvenile fish that cannot be field identified are
+  preserved on ice with respective labels for individual identification
+  and examined at our West Sacramento, CA office. Captured salmonids are
+  inspected for characters such as presence of yolk sac, parr marks,
+  silvery appearance, and deciduous scales to determine life stage
+  and/or degree of smolting. A simple life stage designation (P, X, or
+  S) is determined for each fish measured: 1) clearly parr (P) = a
+  darkly pigmented fish with characteristic dark, oval- to round-shaped
+  parr marks on its sides, 2) between parr and smolt (X, for
+  transitional) = the fish is not clearly parr, but is not yet clearly a
+  smolt either, 3) clearly a smolt (S) = highly faded parr marks, or
+  lacking them completely, bright silver or nearly white color, and
+  deciduous scales.
+</para>
+          <para>
+  WATER QUALITY: In addition to fish catch, water quality parameters are
+  recorded when a fish catch sample is collected. Tide stage, weather,
+  and trap condition are observed and temperature (C), electrical
+  conductivity (uS/cm), dissolved oxygen (mg/L), turbidity (NTU), pH,
+  and Secchi depth (cm) are measured.
+</para>
+          <para>
+  Fish catch data and water quality is recorded using data sheets based
+  on a modified version of "standard" Interagency Ecological
+  Program (IEP) forms.
+</para>
+          <para>
+            <emphasis>(2.) Datasheet available upon request (email data
+  contact)</emphasis>:
+</para>
+          <para>
+            <emphasis>(3.) Instruments and equipment</emphasis>:
+</para>
+          <para>
+  SCREW TRAP: The screw trap cone is 8 feet in diameter and designed by
+  EG Solutions (Corvallis, Oregon). The trap configuration is as
+  follows: Length: 22.5 ft, Width: 12 ft, Weight: 1300 lbs, Cone: 8 ft
+  diameter and 9 ft length with 2 ft on each end for shaft (total of 13
+  ft), Livebox: 4 ft by 5 ft with a 25 ft3 volume, Pontoons: 22.5 ft
+  length and 20 in. width, with 9 ft between pontoons. During operation
+  the trap is attached to an overhead cable originally installed
+  December 2003 (replaced in 2011 after damage during a flood) with two
+  cables attached to each pontoon to align the trap in the center of the
+  channel. The overhead cable is strung between two large trees, each
+  with two guide cables connected to concrete T anchors. The trap has a
+  rear anchor to maintain the traps position during low flow periods and
+  strong flood tides. A revolution counter was installed on the main
+  shaft of the screw trap in March 2013.
+</para>
+          <para>
+  FYKE TRAP: The fyke trap is 10 feet in diameter and 24 feet long with
+  a modified design based on fyke traps operated by the California
+  Department of Fish and Wildlife (CDFW). It is constructed out of
+  square stainless steel tubing with galvanized chain link fencing for
+  the main structural netting and black 0.5" square polypropylene
+  fencing lining the terminal compartment to aid in retention and fish
+  safety. The fyke trap is operated with a 12,000 lb winch system
+  attached to a truck.
+</para>
+          <para>
+  BEACH SEINE: Depending on the time period, a 50 ft by 4 ft beach seine
+  or a 25 ft by 4 ft beach seine (starting October 2012 to current) was
+  used to sample during all hydrologic phases, both with a 4 ft bag. The
+  net opening area (avg. depth between two poles x distance between
+  poles) is recorded for each seine. The volume sampled is then recorded
+  as the measured length of set (e.g. distance walked with the seine,
+  commonly 30 m) multiplied by the net opening area. During pilot years
+  of the Yolo Bypass Monitoring program, alternate beach seines,
+  including sizes up to 100 ft, were used, in addition to seine
+  enclosures and cove sets (see project history for more information).
+</para>
+          <para>
+  WATER QUALITY: Water quality measures are taken with a YSI ProDSS
+  handheld meter. YSIs are calibrated for pH, turbidity, DO, and EC
+  bi-monthly, and calibrated for DO daily before using in the field.
+</para>
+          <para>
+            <emphasis>(4.) Analysis and methods (standard operating
+  procedures)</emphasis>: Data is in its original form and no catch per
+  effort calculations have been made. SOPs for methods and quality
+  checks are available upon request.
+</para>
+          <para>
+            <emphasis>(5.) Project history (change in methods and
+  locations)</emphasis>:
+</para>
+          <para>
+  All fish sampling (screw trap, fyke trap, and beach seines) must be
+  adjusted under different velocity and flooding levels because of
+  debris, permitting, and safety issues. However, the influence of flows
+  and flooding is not straightforward because discharge, tidal
+  inundation, and seasonal short-duration flooding impact the
+  feasibility of sampling at any one site. Additionally, because
+  sampling is meant to be repeatable, all sampling methods are
+  proportionally sampling less when available habitat increases with
+  over-bank flows. For example, it is likely that screw trap efficiency
+  may be quite low during drought conditions because tidal velocities
+  are correspondingly low, so the rotary screw trap only samples
+  efficiently during a small portion of the day. Generally, during low
+  flow, the screw trap only operates on an ebb tide. In wetter years,
+  analyses of rotary screw trap data do not support the hypothesis that
+  trap efficiency is a primary driver of Chinook salmon catch trends in
+  Yolo Bypass (Sommer et al. 2005), however during flooding events the
+  trap samples proportionally less of the available habitat. During
+  periods of flooding/high flows (e.g. 2006 and 2011) in the Yolo
+  bypass, the fyke trap is often times not fished due to heavy debris
+  loads, equipment limitations, and staff safety. Additionally, during
+  periods of high flows and receding floodplain stages, seining at AL#
+  and BL# sites may become too deep to seine for extended periods of
+  time until conditions stabilize. It should also be noted that during
+  the first two years of the monitoring program (1998-1999) additional
+  exploratory fishing methods were used including a Fyke Net (FNET),
+  Purse seine (PSEIN), a 30 and 100 ft beach seines (SEINE30 and
+  SEINE100), enclosed and cove seines (SEINENCL and SEINCOVE) and a 5 ft
+  rotary screw trap (RSTR5). These data are provided in this dataset to
+  provide insight into special species presence in the Yolo Bypass such
+  as Chinook salmon and showing the importance of monitoring in the
+  Bypass; however, these extra methods were not continued in the core
+  monitoring program. Core monitoring includes the screw trap (RSTR, 8'
+  cone), fyke trap (FKTR) and beach seines (SEINE50) and have been
+  continued to the present (2018).
+</para>
+          <para>
+  Specific considerations for each fishing method/gear type are as
+  follows and should be considered in analyses:
+</para>
+          <para>
+  SCREW TRAP: Rotary screw trap (RSTR8) operation began in 1998,
+  deployment generally occurs from December/January through June, and
+  that period of months has been sampled relatively consistently every
+  year of the monitoring program. Throughout the history of the program
+  there have sometimes been two rotary screw traps in place (1998 and
+  1999), the screw trap has been installed one month early to capture
+  winter flooding events (December 2012), and operational challenges
+  have augmented its sampling frequency (see explanation below). When
+  ESA listed fish are caught, some operational flexibility is required,
+  for example shorter day-time only sets are fished when we near the
+  lethal take limit for Delta Smelt, winter-run Chinook salmon, and
+  Steelhead/Rainbow Trout (<emphasis>Oncorhynchus mykiss</emphasis>).
+  High debris loads can also mandate shorter sets, which have been as
+  short as one hour in some instances. Volume cannot be measured because
+  there has not always been a flow-meter in place; effort is generally
+  reported in trap operation hours. However, "set",
+  "check" and "pull" dates and times were not always
+  reported, and therefore operation hours must be calculated as an
+  estimate using the fish capture events in some years. Best estimated
+  hours for effort calculation are provided in a separate table. As of
+  March 2013, catch per unit effort can be reported as catch per
+  rotation with the revolution counter data.
+</para>
+          <para>
+  Screw trap effort alterations:
+</para>
+          <para>
+  1998: a 5 ft rotary screw trap (RTSR5) was used for one less than
+  month in January and February during high flows after which the 8 ft
+  screw trap (RSTR8) was used to current, 2018.
+</para>
+          <para>
+  2000-2009: the rotary screw trap was often set over weekends and
+  checked every 1-2 days.
+</para>
+          <para>
+  2010: the operation of the trap was changed to daily checks and only
+  set on weekends during some flooding events.
+</para>
+          <para>
+  2011: Damage due to high debris loads resulted in several weeks of no
+  operation in late March and April.
+</para>
+          <para>
+  2012: High catches of ESA listed species resulted in shorter daytime
+  only sets intermittently from January through March.
+</para>
+          <para>
+  2016: High catches of ESA listed species resulted in shorter daytime
+  only sets intermittently for one month (March 29th through April
+  26th).
+</para>
+          <para>
+  2017: Short day-time only sets intermittently from January to May due
+  to high floods.
+</para>
+          <para>
+  FYKE TRAP: There have been several changes in sampling frequency, the
+  number of traps and trap location throughout this monitoring effort:
+  (1) in 1998 and 1999 there were two traps fishing four months a year
+  and seven days a week, (2) in 2001 a second trap was deployed, (3) in
+  2002 there was a design change in the fyke trap and three fyke traps
+  were deployed, (4) between 2003 and 2006 the trap was check
+  every-other day instead of daily, and (5) in 2014 and 2015 clogging by
+  water hyacinth rendered the trap likely ineffective for some period
+  and the trap was out of operation and then relocated (from October to
+  December). See Additional Information for more data analyses
+  considerations and alterations in trapping hours. Catch of certain
+  species may be affected by fish already present in the trap. For
+  example, white sturgeon catch increases dramatically when a female is
+  present in the trap as multiple males attempt to gain access to her.
+  Similarly, it is important to remember that predation can occur in the
+  trap, especially on days where exceptionally large piscivorous fish
+  are caught. The fyke trap doesn't cover the entire channel and wings
+  are not used, and hence the fyke trap should not be viewed as a
+  traditional fyke net. The data is most appropriate for presence and
+  timing.
+</para>
+          <para>
+  Fyke trap effort alterations:
+</para>
+          <para>
+  1998: During the first year of the program and a high flow year, a
+  Fyke net was deployed intermittently off the Yolo Bypass Causeway
+  bridge from January to February. This method was removed from the
+  program after 1998, after which only the Fyke trap was used,
+  1999-2018.
+</para>
+          <para>
+  2000-2009: the high number of sampling hours were due to the fyke trap
+  often being fished over weekends and checked every 1-2 days.
+</para>
+          <para>
+  2010: operation of the fyke trap changed to daily checks with no
+  weekend fishing in 2010.
+</para>
+          <para>
+  2014: clogging by water hyacinth likely reduced trap efficiency for
+  some period and the trap was out of operation and then temporarily
+  relocated to a downstream location (Alt_Fyke). Trap was not operated
+  October 10th to November 13th.
+</para>
+          <para>
+  2015: clogging by water hyacinth likely reduced trap efficiency for
+  some period and the trap was out of operation and then temporarily
+  relocated to a downstream location (Alt_Fyke). Trap not operated from
+  December 1st to 10th.
+</para>
+          <para>
+  2016: trap was not operated in November for bank reconstruction.
+</para>
+          <para>
+  2017: trap was operated intermittently during high flood times.
+</para>
+          <para>
+  BEACH SEINE: Throughout the history of the program there have been
+  three perennial pond sites: (1) Yolo Basin Wetlands "study
+  pond", located next the tree grove at I-80 Causeway (YB), (2) a
+  Fremont Weir wetlands pond, located approximately 1 mile south of the
+  weir along the east levee (FW), and (3) Sacramento Bypass (scour pond
+  and large earthen pond at south levee) (SB). Historically, depending
+  on pond size, 1-3 three standard "U.S. Fish and
+  Wildlife-style" (e.g. perpendicular) beach seine hauls would be
+  performed at random coordinates around the perimeter of each pond
+  site. In 1998, inundated floodplain sites were established at Fremont
+  Weir (FW1), I-5 (CCS7), Yolo Causeway (YBI80), Lisbon Weir (LIHF or
+  LI), and the screw trap site (BL4). In 2010, an additional four sites
+  Above Lisbon Weir (AL 1-4) and five site Below Lisbon (BL 1-5) were
+  added as year-round sampling to provide better spatial and temporal
+  data on fish assemblages within the Yolo Bypass Toe Drain. All but the
+  Yolo Causeway site (YB) are located along the east levee as this is
+  the direction the bypass drains and remains wetted the longest. As
+  many of these stations as possible are sampled weekly during
+  floodplain inundation of the Bypass. However, sites such as the Yolo
+  Causeway ramp cannot be sampled except at high flows (eg greater than
+  30,000 cfs). Finally, BL6 was added in 2015 because water hyacinth
+  obstructed much of the Toe Drain and made BL5 too difficult to seine
+  properly. In early years, beach seining only occurred consistently in
+  the winter-spring (Dec - Jun) at sites YB, BL4, and LI (i.e. those
+  sites and months are the target of comparisons across the entire beach
+  seine monitoring time series); however, since the inclusion of Above
+  (AL 1-4) and Below Lisbon (BL 1-4) sites seining has been conducted
+  bi-weekly, year-round, across sites when possible, and the high flow
+  sites: FW1, CCS7, SB, LIHF, and YBI80 were also only sampled during
+  flooding events.
+</para>
+          <para>
+  There are several sampling frequency changes to the beach seine
+  sampling:
+</para>
+          <para>
+  1998-1999: additional seining efforts during a high flood year were
+  conducted in addition to the 50 ft seine (SEINE50), such as SEIN30 (30
+  ft), SEINE100 (100 ft), SEINCOVE (beach seine cove set), SEINENCL
+  (beach seine enclosure), and PSEIN100 (100 ft purse seine).
+</para>
+          <para>
+  1998 to 2006: additional sampling was conducted during floodplain
+  inundation and drainage events.
+</para>
+          <para>
+  2007: additional sites were sampled in the Cache Slough complex.
+</para>
+          <para>
+  2008: additional sampling was conducted during floodplain inundation
+  and drainage events, not including sites in the Cache Slough complex.
+</para>
+          <para>
+  2010: fall, the additional above Lisbon Weir (AL 1-4) and below Lisbon
+  (BL 1-5) were added as year-round sampling to provide better spatial
+  and temporal data on fish assemblages within the Yolo Bypass Toe
+  Drain.
+</para>
+          <para>
+  2011 to 2012: additional sampling was conducted during floodplain
+  inundation and drainage events.
+</para>
+          <para>
+  2015: Site BL6 was added because of difficulty sampling BL5 in 2012,
+  2013, and 2014 due to clogging from water hyacinth (e.g. complete site
+  coverage).
+</para>
+          <para>
+  2018: AL-2 was removed based on analyses of AL sites showing
+  homogenous fish catches across sites during both wet and dry years
+  (report available upon request), and AL1 was moved 30 m upstream due
+  to erosion during the 2017 flood.
+</para>
+          <para>
+            <emphasis>(6.) QA/QC</emphasis>:
+</para>
+          <para>
+  METHODS: All field staff have taken a fish identification course for
+  California freshwater and anadromous fishes. Fish identification
+  resources and dichotomous keys are carried with the field crew if
+  needed, and the field lead always checks fish identification if in
+  question. For special species including Osmerids (Delta Smelt,
+  Wakasagi and Longfin Smelt) and Chinook salmon (Winter, Spring, and
+  Fall/Late-Fall run) fin clips are sampled for genetic identifications
+  and take reporting purposes.
+</para>
+          <para>
+  DATA: Date QA/QC is a four-stage process. First, the data sheets are
+  error checked at the end of each sampling collection by the field
+  lead. Data is then entered in a Microsoft Access form with customized
+  error-checking and data validation checks. Third, a separate person
+  compares the original field data sheets to the values in electronic
+  database. Finally, each data field is sorted and/or summarized based
+  on unique records to highlight erroneous outliers. In addition to data
+  sorting, qualitative analyses are conducted on the water quality data
+  by creating multi-layered visualizations of data in R-studio
+  including; boxplots, histograms, and regressions of correlated water
+  quality parameters from sampling sites across time, as well as
+  overlaying a real-time monitoring data from a sonde deployed at
+  Lisbon, a centrally located station between the traps, and beach seine
+  sites for a final check for inaccurate data entry errors.
+</para>
+          <para>
+            <emphasis>(7.) Contractor information</emphasis>: All fish
+  identification and water quality measures are conducted by the field
+  staff in the Aquatic Ecology Section, Division of Environmental
+  Services, California Department of Water Resources. Genetic
+  identification of Osmerids and Chinook salmon run-type is conducted by
+  the Genomic Variation Laboratory at the University of California
+  Davis.
+</para>
+          <para>
+            <emphasis>(8.) External review process</emphasis>: There is no
+  external review process.
+</para>
+          <para>
+            <emphasis>(9.) Methods references</emphasis>:
+</para>
+          <para>
+  Fisher FW (1992) Chinook salmon, Oncorhynchus tshawytscha, growth and
+  occurrence in the Sacramento-San Joaquin River system. California
+  Department Fish and Game, Inland Fisheries Division, Draft Office
+  Report, June 1.
+</para>
+          <para>
+  [USFWS] United States Fish and Wildlife Service (1994) Use of
+  Tehama-Colusa Fish Facility (TCFF) data for modeling winter Chinook
+  salmon growth in the upper Sacramento River, California. Unpublished
+  Report prepared for Interagency Size Criteria Group.
+</para>
+          <para>
+  See Additional Information for a list of peer-reviewed publications
+  and more detailed information on methodology references listed in this
+  dataset.
+</para>
+        </description>
+      </methodStep>
+      <sampling>
+        <studyExtent>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>AL1</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.586639</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.586639</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.5445</northBoundingCoordinate>
+                <southBoundingCoordinate>38.5445</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>AL2</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.588639</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.588639</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.52806</northBoundingCoordinate>
+                <southBoundingCoordinate>38.52806</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>AL3</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.588623</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.588623</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.5185</northBoundingCoordinate>
+                <southBoundingCoordinate>38.5185</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>AL4</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.588583</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.588583</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.49439</northBoundingCoordinate>
+                <southBoundingCoordinate>38.49439</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>BL1</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.590851</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.590851</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.46681</northBoundingCoordinate>
+                <southBoundingCoordinate>38.46681</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>BL2</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.607053</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.607053</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.43189</northBoundingCoordinate>
+                <southBoundingCoordinate>38.43189</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>BL3</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.626278</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.626278</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.38939</northBoundingCoordinate>
+                <southBoundingCoordinate>38.38939</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>BL4</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.6422</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.6422</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.35496</northBoundingCoordinate>
+                <southBoundingCoordinate>38.35496</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>BL5</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.664178</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.664178</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.27428</northBoundingCoordinate>
+                <southBoundingCoordinate>38.27428</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>BL6</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.663182</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.663182</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.282465</northBoundingCoordinate>
+                <southBoundingCoordinate>38.282465</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>LI</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.588541</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.588541</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.47621</northBoundingCoordinate>
+                <southBoundingCoordinate>38.47621</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>YB</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.630989</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.630989</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.56538</northBoundingCoordinate>
+                <southBoundingCoordinate>38.56538</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>CCS7</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.643436</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.643436</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.67592</northBoundingCoordinate>
+                <southBoundingCoordinate>38.67592</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>FW1</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.635232</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.635232</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.74979</northBoundingCoordinate>
+                <southBoundingCoordinate>38.74979</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>SB</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.564176</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.564176</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.605219</northBoundingCoordinate>
+                <southBoundingCoordinate>38.605219</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>LIHF</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.588083</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.588083</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.47417</northBoundingCoordinate>
+                <southBoundingCoordinate>38.47417</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>YBI80</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.638005</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.638005</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.56531</northBoundingCoordinate>
+                <southBoundingCoordinate>38.56531</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>PCS</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.590934</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.590934</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.466958</northBoundingCoordinate>
+                <southBoundingCoordinate>38.466958</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>Alt_Fyke</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.604878</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.604878</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.436971</northBoundingCoordinate>
+                <southBoundingCoordinate>38.436971</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>STTD</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.643181</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.643181</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.353383</northBoundingCoordinate>
+                <southBoundingCoordinate>38.353383</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+          <coverage>
+            <geographicCoverage>
+              <geographicDescription>LIHFS</geographicDescription>
+              <boundingCoordinates>
+                <westBoundingCoordinate>-121.588083</westBoundingCoordinate>
+                <eastBoundingCoordinate>-121.588083</eastBoundingCoordinate>
+                <northBoundingCoordinate>38.47417</northBoundingCoordinate>
+                <southBoundingCoordinate>38.47417</southBoundingCoordinate>
+              </boundingCoordinates>
+            </geographicCoverage>
+          </coverage>
+        </studyExtent>
+        <samplingDescription>Geographic coordinates of sampling sites</samplingDescription>
+      </sampling>
+    </methods>
+    <dataTable>
+      <entityName>YBFMP_Fish_Catch_and_Water_Quality.csv</entityName>
+      <entityDescription>Fish catch and water quality data from the Yolo Bypass Fish Monitoring Program</entityDescription>
+      <physical>
+        <objectName>YBFMP_Fish_Catch_and_Water_Quality.csv</objectName>
+        <size unit="byte">33277563</size>
+        <authentication method="MD5">4f9c46f9cb9f8af2b5e37fa2c7cd46a7</authentication>
+        <dataFormat>
+          <textFormat>
+            <numHeaderLines>1</numHeaderLines>
+            <recordDelimiter>\r\n</recordDelimiter>
+            <attributeOrientation>column</attributeOrientation>
+            <simpleDelimited>
+              <fieldDelimiter>,</fieldDelimiter>
+              <quoteCharacter>"</quoteCharacter>
+            </simpleDelimited>
+          </textFormat>
+        </dataFormat>
+        <distribution>
+          <online>
+            <url>https://pasta.lternet.edu/package/data/eml/edi/233/2/015e494911cf35c90089ced5a3127334</url>
+          </online>
+        </distribution>
+      </physical>
+      <attributeList>
+        <attribute>
+          <attributeName>SampleDate</attributeName>
+          <attributeDefinition>Date of sample</attributeDefinition>
+          <storageType>date</storageType>
+          <measurementScale>
+            <dateTime>
+              <formatString>MM/DD/YYYY</formatString>
+            </dateTime>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>SampleTime</attributeName>
+          <attributeDefinition>Time of sample</attributeDefinition>
+          <storageType>date</storageType>
+          <measurementScale>
+            <dateTime>
+              <formatString>hh:mm:ss</formatString>
+            </dateTime>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Time of sampling not recorded</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>StationCode</attributeName>
+          <attributeDefinition>Sampling locations in the Yolo Bypass.</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>STTD</code>
+                    <definition>Screw Trap in Toe Drain, below the Lisbon Weir, in between BL5 and BL6</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>FW1</code>
+                    <definition>Fremont Weir</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>CCS7</code>
+                    <definition>Cache Creek Sink site 7</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>SB</code>
+                    <definition>Sacramento Bypass</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BL4</code>
+                    <definition>Below Lisbon Weir site 4  in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BL3</code>
+                    <definition>Below Lisbon Weir site 3 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>AL4</code>
+                    <definition>Above Lisbon Weir site 4 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BL1</code>
+                    <definition>Below Lisbon Weir site 1 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>LIHFS</code>
+                    <definition>Lisbon Weir High Flow Site South</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>AL1</code>
+                    <definition>Above Lisbon Weir site 1 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BL5</code>
+                    <definition>Below Lisbon Weir site 5 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>AL3</code>
+                    <definition>Above Lisbon Weir site 3 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BL2</code>
+                    <definition>Below Lisbon Weir site 2 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>PCS</code>
+                    <definition>Putah Creek Sink location of fyke trap in Toe Drain, below Lisbon Weir, near BL1</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>LIHF</code>
+                    <definition>Lisbon Weir High Flow Site</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>AL2</code>
+                    <definition>Above Lisbon Weir site 2 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>YBI80</code>
+                    <definition>Yolo Bypass west side near highway I80 an Inundation site</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BL6</code>
+                    <definition>Below Lisbon Weir site 6 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>YB</code>
+                    <definition>Yolo Basin Pond</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>LI</code>
+                    <definition>Lisbon Weir in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>Alt_Fyke</code>
+                    <definition>Alternate fyke trap loction</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>MethodCode</attributeName>
+          <attributeDefinition>Sampling collection method including a fyke trap, screw trap, seines.</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>RSTR</code>
+                    <definition>rotary screw trap</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BSEIN</code>
+                    <definition>beach seine</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>FKTR</code>
+                    <definition>fyke trap</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>FNET</code>
+                    <definition>fyke net</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>PSEIN</code>
+                    <definition>purse seine</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>GearID</attributeName>
+          <attributeDefinition>Gear used for sampling method</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>RSTR8</code>
+                    <definition>8 ft cone screw trap</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>SEIN50</code>
+                    <definition>50 ft seine net</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>FKTR</code>
+                    <definition>fyke trap</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>SEIN30</code>
+                    <definition>30 ft seine net</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>FKNT</code>
+                    <definition>fyke net</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>PSEIN100</code>
+                    <definition>100 ft purse seine net</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>SEINENCL</code>
+                    <definition>seine enclosure</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>RSTR5</code>
+                    <definition>5 ft cone screw trap</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>SEINCOVE</code>
+                    <definition>seine cove set</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>SEIN100</code>
+                    <definition>100 ft seine net</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>CommonName</attributeName>
+          <attributeDefinition>Fish species catch with genetic identifications corrected for when appropriate</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Fish species catch with genetic identifications corrected for when appropriate</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>GeneticallyConfirmed</attributeName>
+          <attributeDefinition>Indicator if the species was genetically identified. Only Osmerids are currently corrected for with genetic identifications</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Indicator if the species was genetically identified. Only Osmerids are currently corrected for with genetic identifications</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>GeneticID</attributeName>
+          <attributeDefinition>Genetic identification of Osmerids</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Genetic identification of Osmerids</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>No genetics done or unknown</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Field_ID_CommonName</attributeName>
+          <attributeDefinition>Original identification of fish species in the field. Not corrected for with genetics.</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Original identification of fish species in the field. Not corrected for with genetics.</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>ForkLength</attributeName>
+          <attributeDefinition>Length of sampled fish measured from the point of the mouth to the fork of the caudal fin</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>millimeter</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">10</minimum>
+                  <maximum exclusive="false">2600</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Fork Length of the fish was not taken</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Count</attributeName>
+          <attributeDefinition>Number of fish sampled with the measured fork length (or unmeasured plus count)</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>dimensionless</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>whole</numberType>
+                <bounds>
+                  <minimum exclusive="false">0</minimum>
+                  <maximum exclusive="false">26800</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>FishSex</attributeName>
+          <attributeDefinition>Estimated sex of fish, applied mostly to chinook salmon</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Estimated sex of fish, applied mostly to chinook salmon</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Sex of fish unknown or not recorded</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Race</attributeName>
+          <attributeDefinition>Estimated race of chinook salmon based on the length to date guide</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>F</code>
+                    <definition>Fall run</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>NP</code>
+                    <definition>Not provided</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>S</code>
+                    <definition>Spring run</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>W</code>
+                    <definition>Winter run</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>LF</code>
+                    <definition>Late Fall run</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>U</code>
+                    <definition>Unknown run</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Only chinook salmon are assigned Race</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>MarkCode</attributeName>
+          <attributeDefinition>Indicator if fish has been marked or tagged that may distinguish hatchery or wild fish, or agency study, applied mostly to chinook salmon</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>A</code>
+                    <definition>Adipose fin clipped (hatchery marking)</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>B</code>
+                    <definition>Bismark Brown Mark</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>C</code>
+                    <definition>Code Wire Tag (CWT)</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>CDFW</code>
+                    <definition>CA. Department of Fish and Wildlife marking or tag</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>n/p</code>
+                    <definition>Mark information not provided by the data collector</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>None</code>
+                    <definition>No mark</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>O</code>
+                    <definition>Other</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>CWTSample</attributeName>
+          <attributeDefinition>True or False statement if Chinook salmon had Code Wire Tags (CWT) detected</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>True or False statement if Chinook salmon had Code Wire Tags (CWT) detected</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Only chinook salmon have Code Wire Tags</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>FishTagID</attributeName>
+          <attributeDefinition>Specific ID given to fish if genetic samples were taken or if tags were observed or read on the fish</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Specific ID given to fish if genetic samples were taken or if tags were observed or read on the fish</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>No fish ID was assigned or recorded</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>StageCode</attributeName>
+          <attributeDefinition>Life stage designation of chinook salmon</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>NP</code>
+                    <definition>Not provided</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>CHN_S</code>
+                    <definition>salmon Smolt</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>CHN_X</code>
+                    <definition>salmon Transitional</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>CHN_P</code>
+                    <definition>salmon Parr</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NP</code>
+            <codeExplanation>Only chinook salmon are assigned a StageCode</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Dead</attributeName>
+          <attributeDefinition>Recording if fish was dead at time of catch</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>No</code>
+                    <definition>Fish alive at time of catch</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>Yes</code>
+                    <definition>Fish dead at time of sample</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>GearConditionCode</attributeName>
+          <attributeDefinition>Condition of gear during sample such as seine twisted or trap not spinning due to debris</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>dimensionless</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">1</minimum>
+                  <maximum exclusive="false">4</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>No condition code assigned or not applicable</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>WeatherCode</attributeName>
+          <attributeDefinition>Weather at time of sample such as clear or direct sunlight, rain, cloudy, night, fog</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>CLD</code>
+                    <definition>Cloudy overcast</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>RAN</code>
+                    <definition>Rain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>CLR</code>
+                    <definition>Clear</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>FOG</code>
+                    <definition>Fog</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>NA</code>
+                    <definition>Not recorded</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>NIT</code>
+                    <definition>Night</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Weather data not recorded</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>WaterTemperature</attributeName>
+          <attributeDefinition>Temperature of water</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>celsius</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">3.33</minimum>
+                  <maximum exclusive="false">31.8</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Sample not recorded or collected</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Secchi</attributeName>
+          <attributeDefinition>Secchi depth sample collected at traps or seine sites</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>meter</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">0.02</minimum>
+                  <maximum exclusive="false">1.41</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Sample not recorded or collected</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Conductivity</attributeName>
+          <attributeDefinition>Electrical conductivity of water</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <customUnit>microSeimenPerCentimeter</customUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">41</minimum>
+                  <maximum exclusive="false">1882</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Sample not recorded or collected</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>SpCnd</attributeName>
+          <attributeDefinition>Specific conductivity of water</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <customUnit>microSeimenPerCentimeter</customUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">54</minimum>
+                  <maximum exclusive="false">2003</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Sample not recorded or collected</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>DO</attributeName>
+          <attributeDefinition>Dissolved oxygen concentration</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>milligramsPerLiter</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">0.45</minimum>
+                  <maximum exclusive="false">14.71</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Sample not recorded or collected</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>pH</attributeName>
+          <attributeDefinition>Total pH of water</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>dimensionless</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">2.56</minimum>
+                  <maximum exclusive="false">13.32</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Sample not recorded or collected</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Turbidity</attributeName>
+          <attributeDefinition>Turbidity of water</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <customUnit>nephelometricTurbidityUnit</customUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">2.2</minimum>
+                  <maximum exclusive="false">893</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Sample not recorded or collected</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>SubstrateCode</attributeName>
+          <attributeDefinition>Substrate at beach seine site</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>NA</code>
+                    <definition>Not recorded</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>GR</code>
+                    <definition>Gravel or on a boat ramp</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>MD</code>
+                    <definition>Mud</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>VG</code>
+                    <definition>Vegitation</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>PV</code>
+                    <definition>Pavement</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>SN</code>
+                    <definition>Sand</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Sample not recorded or collected</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Tide</attributeName>
+          <attributeDefinition>Tide at sample</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Tide at sample</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Sample not recorded or collected</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>VolumeSeined</attributeName>
+          <attributeDefinition>Calculated volume of water seined using the width (extension out from shore) multiplied by the depth of water (average from two ends) multiplied by the length (distance seined). Volume seined can be used to calculate the catch per unit effort (CPUE)</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>cubicMeter</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">2.2</minimum>
+                  <maximum exclusive="false">1200</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Value applicable only to seine methods, if seine value missing sample not recorded or collected</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Latitude</attributeName>
+          <attributeDefinition>Latitude location of the site</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>degree</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">38.27</minimum>
+                  <maximum exclusive="false">38.75</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Location not available for early methods of PSEIN and FKNT</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Longitude</attributeName>
+          <attributeDefinition>Longitude location of the site</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>degree</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">-121.66</minimum>
+                  <maximum exclusive="false">-121.56</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>Location not available for early methods of PSEIN and FKNT</codeExplanation>
+          </missingValueCode>
+        </attribute>
+      </attributeList>
+      <numberOfRecords>182414</numberOfRecords>
+    </dataTable>
+    <dataTable>
+      <entityName>YBFMP_Fish_Taxonomy.csv</entityName>
+      <entityDescription>Taxon table for species including native or invasive classification</entityDescription>
+      <physical>
+        <objectName>YBFMP_Fish_Taxonomy.csv</objectName>
+        <size unit="byte">6225</size>
+        <authentication method="MD5">29ca5e75ff87ec34e3bcf2cc731f29a8</authentication>
+        <dataFormat>
+          <textFormat>
+            <numHeaderLines>1</numHeaderLines>
+            <recordDelimiter>\r\n</recordDelimiter>
+            <attributeOrientation>column</attributeOrientation>
+            <simpleDelimited>
+              <fieldDelimiter>,</fieldDelimiter>
+              <quoteCharacter>"</quoteCharacter>
+            </simpleDelimited>
+          </textFormat>
+        </dataFormat>
+        <distribution>
+          <online>
+            <url>https://pasta.lternet.edu/package/data/eml/edi/233/2/0532048e856d4bd07deea11583b893dd</url>
+          </online>
+        </distribution>
+      </physical>
+      <attributeList>
+        <attribute>
+          <attributeName>OrganismCode</attributeName>
+          <attributeDefinition>A 1 to 4 letter character unique to each species</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>A 1 to 4 letter character unique to each species</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>CommonName</attributeName>
+          <attributeDefinition>Common name used for species</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Common name used for species</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>Native</attributeName>
+          <attributeDefinition>Indicator if the species is native or invasive in the San Francisco Estuary</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>N</code>
+                    <definition>Native species to the San Francisco Estuary</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>I</code>
+                    <definition>Nonnative invasive species to the San Francisco Estuary</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>NA</code>
+                    <definition>Unknown species</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>Phylum</attributeName>
+          <attributeDefinition>Taxonomic Phylum</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Taxonomic Phylum</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>unknown identification or not applicable</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Class</attributeName>
+          <attributeDefinition>Taxonomic Class</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Taxonomic Class</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>unknown identification or not applicable</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Order</attributeName>
+          <attributeDefinition>Taxonomic Order</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Taxonomic Order</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>unknown identification or not applicable</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Family</attributeName>
+          <attributeDefinition>Taxonomic Family</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Taxonomic Family</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>unknown identification or not applicable</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Genus</attributeName>
+          <attributeDefinition>Taxonomic Genus</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Taxonomic Genus</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>unknown identification or not applicable</codeExplanation>
+          </missingValueCode>
+        </attribute>
+        <attribute>
+          <attributeName>Species</attributeName>
+          <attributeDefinition>Taxonomic Species</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Taxonomic Species</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+          <missingValueCode>
+            <code>NA</code>
+            <codeExplanation>unknown identification or not applicable</codeExplanation>
+          </missingValueCode>
+        </attribute>
+      </attributeList>
+      <numberOfRecords>70</numberOfRecords>
+    </dataTable>
+    <dataTable>
+      <entityName>YBFMP_Trap_Effort.csv</entityName>
+      <entityDescription>Table of hours fished for effort estimations</entityDescription>
+      <physical>
+        <objectName>YBFMP_Trap_Effort.csv</objectName>
+        <size unit="byte">8594</size>
+        <authentication method="MD5">a641d938d505f681b0ddb025f39e3422</authentication>
+        <dataFormat>
+          <textFormat>
+            <numHeaderLines>1</numHeaderLines>
+            <recordDelimiter>\r\n</recordDelimiter>
+            <attributeOrientation>column</attributeOrientation>
+            <simpleDelimited>
+              <fieldDelimiter>,</fieldDelimiter>
+              <quoteCharacter>"</quoteCharacter>
+            </simpleDelimited>
+          </textFormat>
+        </dataFormat>
+        <distribution>
+          <online>
+            <url>https://pasta.lternet.edu/package/data/eml/edi/233/2/ace1ef25f940866865d24109b7250955</url>
+          </online>
+        </distribution>
+      </physical>
+      <attributeList>
+        <attribute>
+          <attributeName>MethodCode</attributeName>
+          <attributeDefinition>Type of trap fyke or screw trap</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>FKTR</code>
+                    <definition>Fyke trap</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>RSTR</code>
+                    <definition>Rotary screw trap</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>Year</attributeName>
+          <attributeDefinition>Calendar year</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Calendar year</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>Month</attributeName>
+          <attributeDefinition>Calendar month</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Calendar month</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>OperationTimeHRS</attributeName>
+          <attributeDefinition>Hours the trap was set or hours fished</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>hour</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">9.45</minimum>
+                  <maximum exclusive="false">744</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>Comments</attributeName>
+          <attributeDefinition>Notes about environmental or physical circumstances that may have altered the hours the trap could be fished</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <textDomain>
+                  <definition>Notes about environmental or physical circumstances that may have altered the hours the trap could be fished</definition>
+                </textDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+      </attributeList>
+      <numberOfRecords>313</numberOfRecords>
+    </dataTable>
+    <dataTable>
+      <entityName>YBFMP_Site_locations_latitude_and_longitude.csv</entityName>
+      <entityDescription>Site location table including coordinates</entityDescription>
+      <physical>
+        <objectName>YBFMP_Site_locations_latitude_and_longitude.csv</objectName>
+        <size unit="byte">772</size>
+        <authentication method="MD5">1f7c4b4c98c46420a26ed7b456bcbe44</authentication>
+        <dataFormat>
+          <textFormat>
+            <numHeaderLines>1</numHeaderLines>
+            <recordDelimiter>\r\n</recordDelimiter>
+            <attributeOrientation>column</attributeOrientation>
+            <simpleDelimited>
+              <fieldDelimiter>,</fieldDelimiter>
+              <quoteCharacter>"</quoteCharacter>
+            </simpleDelimited>
+          </textFormat>
+        </dataFormat>
+        <distribution>
+          <online>
+            <url>https://pasta.lternet.edu/package/data/eml/edi/233/2/6a82451e84be1fe82c9821f30ffc2d7d</url>
+          </online>
+        </distribution>
+      </physical>
+      <attributeList>
+        <attribute>
+          <attributeName>MethodCode</attributeName>
+          <attributeDefinition>A specific type of sampling collection method including a fyke trap, screw trap, beach seine, or water quality</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>BSEIN</code>
+                    <definition>beach seine</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>FKTR</code>
+                    <definition>fyke trap</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>RSTR</code>
+                    <definition>rotary screw trap</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>StationCode</attributeName>
+          <attributeDefinition>A specific location unique to the Yolo Bypass Monitoring Program at which fish and water quality samples was collected</attributeDefinition>
+          <storageType>string</storageType>
+          <measurementScale>
+            <nominal>
+              <nonNumericDomain>
+                <enumeratedDomain>
+                  <codeDefinition>
+                    <code>AL1</code>
+                    <definition>Above Lisbon Weir site 1 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>AL2</code>
+                    <definition>Above Lisbon Weir site 2 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>AL3</code>
+                    <definition>Above Lisbon Weir site 3 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>AL4</code>
+                    <definition>Above Lisbon Weir site 4 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BL1</code>
+                    <definition>Below Lisbon Weir site 1 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BL2</code>
+                    <definition>Below Lisbon Weir site 2 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BL3</code>
+                    <definition>Below Lisbon Weir site 3 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BL4</code>
+                    <definition>Below Lisbon Weir site 4 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BL5</code>
+                    <definition>Below Lisbon Weir site 5 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>BL6</code>
+                    <definition>Below Lisbon Weir site 6 in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>LI</code>
+                    <definition>Lisbon Weir in Toe Drain</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>YB</code>
+                    <definition>Yolo Basin Pond</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>CCS7</code>
+                    <definition>Cache Creek Sink site 7</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>FW1</code>
+                    <definition>Fremont Weir</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>SB</code>
+                    <definition>Sacramento Bypass</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>LIHF</code>
+                    <definition>Lisbon Weir High Flow Site</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>YBI80</code>
+                    <definition>Yolo Bypass west side near highway I80 an Inundation site</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>PCS</code>
+                    <definition>Putah Creek Sink location of fyke trap in Toe Drain, below Lisbon Weir, near BL1</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>Alt_Fyke</code>
+                    <definition>Alternate fyke trap loction</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>STTD</code>
+                    <definition>Screw Trap in Toe Drain, below the Lisbon Weir, in between BL5 and BL6</definition>
+                  </codeDefinition>
+                  <codeDefinition>
+                    <code>LIHFS</code>
+                    <definition>Lisbon Weir High Flow Site South</definition>
+                  </codeDefinition>
+                </enumeratedDomain>
+              </nonNumericDomain>
+            </nominal>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>LatitudeLocation</attributeName>
+          <attributeDefinition>Latitude of sample location</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>degree</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">38.27</minimum>
+                  <maximum exclusive="false">38.75</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+        </attribute>
+        <attribute>
+          <attributeName>LongitudeLocation</attributeName>
+          <attributeDefinition>Longitude of sample location</attributeDefinition>
+          <storageType>float</storageType>
+          <measurementScale>
+            <ratio>
+              <unit>
+                <standardUnit>degree</standardUnit>
+              </unit>
+              <numericDomain>
+                <numberType>real</numberType>
+                <bounds>
+                  <minimum exclusive="false">-121.66</minimum>
+                  <maximum exclusive="false">-121.56</maximum>
+                </bounds>
+              </numericDomain>
+            </ratio>
+          </measurementScale>
+        </attribute>
+      </attributeList>
+      <numberOfRecords>22</numberOfRecords>
+    </dataTable>
+  </dataset>
+  <additionalMetadata>
+    <metadata>
+      <unitList xmlns:eml="eml://ecoinformatics.org/eml-2.1.1"
+        xmlns:stmml="http://www.xml-cml.org/schema/stmml-1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <unit id="microSeimenPerCentimeter" multiplierToSI="0.0001"
+          name="microSeimenPerCentimeter" parentSI="seimenPerMeter" unitType="conductance">
+          <description>conductivity unit</description>
+        </unit>
+        <unit id="nephelometricTurbidityUnit"
+          multiplierToSI="dimensionless"
+          name="nephelometricTurbidityUnit" parentSI="dimensionless" unitType="dimensionless">
+          <description>NTU- ratio of the amount of light transmitted through a water sample with the amount scattered at an angle of 90 degrees to one side</description>
+        </unit>
+      </unitList>
+    </metadata>
+  </additionalMetadata>
+</eml:eml>

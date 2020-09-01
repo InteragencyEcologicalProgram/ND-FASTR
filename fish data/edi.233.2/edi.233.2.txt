@@ -1,0 +1,2394 @@
+
+  
+    
+      uid=EDI,o=EDI,dc=edirepository,dc=org
+      all
+    
+    
+      uid=iep,o=EDI,dc=edirepository,dc=org
+      all
+    
+    
+      uid=EDI,o=LTER,dc=ecoinformatics,dc=org
+      all
+    
+    
+      public
+      read
+    
+  
+  
+    doi:10.6073/pasta/b0b15aef7f3b52d2c5adc10004c05a6f
+    Interagency Ecological Program: Fish catch and water quality data from the Sacramento River floodplain and tidal slough, collected by the Yolo Bypass Fish Monitoring Program, 1998-2018.
+    
+       Interagency Ecological Program (IEP)
+    
+    
+      Brian Schreier
+      California Department of Water Resources
+      Brian.Schreier@water.ca.gov
+      https://orcid.org/0000-0002-5075-3946
+    
+    
+      Brittany Davis
+      California Department of Water Resources
+      Brittany.e.Davis@water.ca.gov
+      https://orcid.org/0000-0003-3752-1830
+    
+    
+      Naoaki Ikemiyagi
+      California Department of Water Resources
+    
+    
+      Jared Frantzich
+      California Department of Water Resources
+      Contributor
+    
+    
+      Ted Sommer
+      California Department of Water Resources
+      Program Founder
+    
+    
+      Nicole Kwan
+      California Department of Water Resources
+      https://orcid.org/0000-0003-1178-7788
+      Contributor
+    
+    
+      Mallory Bedwell
+      California Department of Water Resources
+      https://orcid.org/0000-0001-9553-6032
+      Contributor
+    
+    
+      Anjali Shakya
+      California Department of Water Resources
+      Contributor
+    
+    
+      Jeff Jenkins
+      California Department of Water Resources
+      Contributor
+    
+    
+      Craig Stuart
+      California Department of Water Resources
+      Contributor
+    
+    
+      Pascale Goertler
+      California Department of Water Resources
+      https://orcid.org/0000-0001-6259-5108
+      Contributor
+    
+    2019-02-13
+    
+      
+  Largely supported by the Interagency Ecological Program (IEP),
+  California Department of Water Resources (DWR) has operated a
+  fisheries monitoring program in the Yolo Bypass, a seasonal floodplain
+  and tidal slough, since 1998. The objectives of the Yolo Bypass Fish
+  Monitoring Program (YBFMP) are to: (1) collect baseline data on lower
+  trophic levels (phytoplankton, zooplankton, and aquatic insects),
+  juvenile fish and adult fish, hydrology, and water quality parameters;
+  2) investigation of the temporal and seasonal patterns in
+  chlorophyll-a concentrations, including whether high concentrations
+  are exported from the Bypass during agricultural and natural flow
+  events and the possibility of manipulating bypass flows to benefit
+  listed species like Delta Smelt (Hypomesus
+  transpacificus) and Chinook salmon (Oncorhynchus
+  tshawytscha). The YBFMP operates a rotary screw trap and
+  fyke trap, and conducts biweekly beach seine and lower trophic surveys
+  in addition to maintaining water quality instrumentation in the
+  bypass. The YBFMP serves to fill information gaps regarding
+  environmental conditions in the bypass that trigger migrations and
+  enhanced survival and growth of native fishes, as well as provide data
+  for IEP synthesis efforts. YBFMP staff also conduct analyses of our
+  monitoring data to address pertinent management related questions as
+  identified by IEP. The Yolo Bypass has been identified as a high
+  restoration priority by the National Marine Fisheries Service and US
+  Fish and Wildlife Service Biological Opinions for Delta Smelt, Winter
+  and Spring-run Chinook salmon and by California EcoRestore. The YBFMP
+  informs the restoration actions that are mandated or recommended in
+  these plans, and provides critical baseline data on the ecology of the
+  bypass and how it interacts with the broader San Francisco Estuary.
+  Only juvenile and adult fish catch with associated water quality are
+  presented in this dataset.
+
+    
+    
+      aquatic ecosystems
+      ecology
+      estuaries
+      rivers
+      floodplain
+      fishes
+      abundance
+      endangered species
+      invasive species
+      LTER controlled vocabulary
+    
+    
+      screw trap
+      fyke
+      beach seine
+      Interagency Ecological Program for the San Francisco Bay Delta Estuary
+      California Department of Water Resources
+      Yolo Bypass
+      tidal slough
+      Chinook salmon
+      Delta Smelt
+      Sacramento Splittail
+      sturgeon
+    
+    
+      water quality
+      temperature
+      turbidity
+      LTER Controlled Vocabulary
+    
+    
+      
+        Peer reviewed articles derived from this dataset:
+
+      
+  Mahardja B, Hobbs JA, Ikemiyagi N, Benjamin A, Finger AJ (2019) Role
+  of freshwater floodplain-tidal slough complex in the persistence of
+  the endangered delta smelt. PloS one, 14(1):e0208084.
+
+      
+  Goertler P, Jones K, Cordell J, Schreier B, Sommer T (2018) Effects of
+  Extreme Hydrologic Regimes on Juvenile Chinook Salmon Prey Resources
+  and Diet Composition in a Large River Floodplain. Transactions of the
+  American Fisheries Society, 147:287-299.
+
+      
+  Goertler PA, Sommer TR, Satterthwaite WH, Schreier BM (2018) Seasonal
+  floodplain-tidal slough complex supports size variation for juvenile
+  Chinook salmon (Oncorhynchus tshawytscha). Ecology of Freshwater Fish,
+  27:580-593.
+
+      
+  Takata L, Sommer TR, Conrad JL, Schreier BM (2017) Rearing and
+  migration of juvenile Chinook salmon (Oncorhynchus tshawytscha) in a
+  large river floodplain. Environmental Biology of Fishes,
+  100:1105-1120.
+
+      
+  Sommer T, Harrell WC, Feyrer F (2014) Large-bodied fish migration and
+  residency in a flood basin of the Sacramento River, CA, USA. Ecology
+  of Freshwater Fish, 23:414-423.
+
+      
+  Feyrer F, Sommer T, Harrell W (2006) Importance of flood dynamics
+  versus intrinsic physical habitat in structuring fish communities:
+  evidence from two adjacent engineered floodplains on the Sacramento
+  River, California. North American Journal of Fisheries Management,
+  26:408-417.
+
+      
+  Feyrer F, Sommer T, Harrell W (2006) Managing floodplain inundation
+  for native fish: production dynamics of age-0 splittail (Pogonichthys
+  macrolepidotus) in California's Yolo Bypass. Hydrobiologia,
+  573:213-226.
+
+      
+  Sommer TR, Harrell WC, Nobriga ML (2005) Habitat use and stranding
+  risk of juvenile Chinook Salmon on a seasonal floodplain. North
+  American Journal of Fisheries Management, 25:1493-1504
+
+      
+  Sommer TR, Conrad L, O'Leary G, Feyrer F, Harrell WC (2002) Spawning
+  and rearing of splittail in a model floodplain wetland. Transactions
+  of the American Fisheries Society, 131:966-974.
+
+      
+  Sommer TR, Harrell B, Nobriga M, Brown R, Moyle P, Kimmerer W, Schemel
+  L (2001a) California's Yolo Bypass: evidence that flood control can be
+  compatible with fisheries, wetlands, wildlife, and agriculture.
+  Fisheries, 26:6-16.
+
+      
+  Sommer, TR, Nobriga ML, Harrell WC, Batham W, Kimmerer WJ (2001b)
+  Floodplain rearing of juvenile Chinook Salmon: evidence of enhanced
+  growth and survival. Canadian Journal of Fisheries and Aquatic
+  Sciences, 58:325-333.
+
+    
+    
+      
+  This information is released under the Creative Commons license -
+  Attribution - CC BY (https://creativecommons.org/licenses/by/4.0/).
+  The consumer of these data ("Data User" herein) is required
+  to cite it appropriately in any publication that results from its use.
+  The Data User should realize that these data may be actively used by
+  others for ongoing research and that coordination may be necessary to
+  prevent duplicate publication. The Data User is urged to contact the
+  authors of these data if any questions about methodology or results
+  occur. Where appropriate, the Data User is encouraged to consider
+  collaboration or co-authorship with the authors. The Data User should
+  realize that misinterpretation of data may occur if used out of
+  context of the original study. While substantial efforts are made to
+  ensure the accuracy of data and associated documentation, complete
+  accuracy of data sets cannot be guaranteed. All data are made
+  available "as is." The Data User should be aware, however,
+  that data are updated periodically and it is the responsibility of the
+  Data User to check for new versions of the data. The data authors and
+  the repository where these data were obtained shall not be liable for
+  damages resulting from any use or misinterpretation of the data. Thank
+  you.
+
+    
+    
+      
+        Yolo Bypass tidal slough and seasonal floodplain in Sacramento California USA
+        
+          -121.8073699
+          -121.5368316
+          38.79395205
+          38.23466149
+        
+      
+      
+        
+          
+            1998-01-01
+          
+          
+            2018-07-13
+          
+        
+      
+    
+    
+      ongoing
+    
+    
+      Brian Schreier Yolo Bypass Fish Monitoring Program Supervisor
+      California Department of Water Resources
+      Brian.Schreier@water.ca.gov
+    
+    
+      Brittany Davis Data Manager
+      California Department of Water Resources
+      Brittany.e.Davis@water.ca.gov
+    
+    
+      
+        
+          
+  Detailed methodolgy for the Yolo Bypass Fish Monitoring Program is as
+  follows.
+
+          
+            (1.) Data collection methods:
+
+          
+  SCREW TRAP: A single rotary screw trap is deployed at levee mile 14.5
+  near the base of the Yolo Bypass Toe Drain and is typically operated
+  from January 1st through June. If the first flush of the system occurs
+  earlier, the screw trap will be deployed in December to capture
+  out-migrating fishes. The trap site has been selected based on the
+  following criteria for installation, operation, and maintenance: (1)
+  suitable depth: greater than six feet at minimum flow and low tide;
+  (2) suitable velocity: greater than two feet per second (fps) at
+  minimum flow on an ebb tide (though during extremely low flow
+  conditions, the trap may only make a handful of revolutions in a
+  24-hour period); (3) suitable anchoring points; and, (4) limited
+  public access. Once installed, the trap is reached by truck via the
+  Sacramento Deep Water Ship Channel/East Yolo Bypass levee. The trap is
+  accessed daily using a small boat with an outboard motor during high
+  flow or paddles during lower flow periods. During high flows and
+  periods of high debris, the trap may be set intermittently through-out
+  the day, or not set if the high flow becomes a safety concern. The
+  screw trap operates using downstream flow as water strikes the angled
+  baffles on the inside of the trapping cone. This force causes the cone
+  to rotate and fish enter the upstream end of the rotating trapping
+  cone, becoming trapped inside the trapping cone, and then fish are
+  carried rearward into the livebox. Upon checking or pulling the trap
+  fish are then collected using dipnets and transferred to separate
+  buckets. Once all fish have been removed from the livebox, fish are
+  measured to fork length on a wetted measuring board, and then released
+  back into the Toe Drain. Chinook salmon, Smelt species, and other
+  native species are sampled first followed by non-native species. Each
+  fish is identified and counted, and then fork length to the nearest
+  millimeter will be measured for up to 20-50 each species.
+
+          
+  FYKE TRAP: The fyke trap is deployed in the Yolo Bypass Toe Drain just
+  below Lisbon Weir at levee mile six and is typically operated from
+  October through June. The trap site has been selected based on ease of
+  installation, operation, and maintenance, including: (1) suitable
+  depth: greater than ten feet at high tide during low flow; (2)
+  suitable anchoring point; (3) suitable bank: absent of large woody
+  debris; and (4) limited public access. Fyke trap sampling is operated
+  in conjunction with our screw trap and beach seine sampling. The fyke
+  trap is typically fished and checked daily during the months of
+  October/November through June. There has been some variability in
+  sampling frequency in the earlier sampling years, with the trap being
+  fished up to seven days a week and checked every two to three days,
+  but was generally not checked on weekends unless the Bypass floods
+  (see additional information section). Since early 2010, the trap has
+  been consistently fished during weekdays and has been checked daily.
+  When the fyke trap is deployed and operational, fish enter the
+  downstream opening of the trap (10 ft. diameter), pass through the
+  first funnel (3 ft. diameter), and enter a central chamber, then move
+  further through the second funnel (1 ft. 8 in. diameter), and become
+  trapped inside the upstream (terminal) compartment. The fyke trap is
+  installed with one warning float attached to the downstream end of the
+  trap and one float rigged to the upstream anchoring (nose) cable, trap
+  guide and anchor cables are anchored to t-posts on the levee
+  shoreline, and two guide ropes are also set to help guide the trap
+  when it is rolled up the bank during the retrieval process. The fyke
+  trap doesn't cover the entire channel as wings are not used, and
+  should not be viewed as a traditional fyke net. The fish handling and
+  sub-sampling protocol follows DFG (1997) to minimize impacts to salmon
+  and splittal. The trap is rolled using a truck-operated winch to the
+  edge of the Toe Drain channel in about 0.5 to 1.5 meters of water
+  depending on the number of fish in the trap. The trap door is then
+  opened and the fish are netted out using a long handled dip net. All
+  fish are netted individually, transferred to a wetted measuring board,
+  and then released back into the Toe Drain. Chinook salmon and
+  splittail will be sorted from other species and processed first. Each
+  fish is identified and counted, and then fork length to the nearest
+  millimeter will be measured for up to 20-50 each species.
+
+          
+  BEACH SEINE: Currently, beach seine sites are sampled every-other week
+  with a single haul from a 25 ft by 4 ft (8 x 1.2 meters) pole seine
+  (1/8" sq. mesh). These are modified beach seine hauls; because
+  the levee banks are generally steep, the seine is towed parallel to
+  the shoreline as opposed to netting straight toward the shoreline. The
+  seine sites include one perennial pond (YB), nine sites along the Toe
+  Drain (AL# [above Lisbon Weir] and BL# [below Lisbon Weir]) and four
+  high flow sites to capture floodplain inundation periods (CCS7, FW1,
+  LIHF, and YB180; only sampled during floodplain inundation).
+  Generally, during flood events, we begin sampling in the northern
+  Bypass and then gradually work southward as the basin drains. Captured
+  fish are identified to species, counted, and fork length is measured
+  to the nearest millimeter for up to 20-50 individuals of each species,
+  except for native species of special concern, where all fish are
+  counted and processed.
+
+          
+  FISH HANDLING OF SPECIES OF SPECIAL CONCERN: The handling and
+  sub-sampling protocol for special species caught in the rotary screw
+  trap and beach seines follows California Department of Fish and
+  Wildlife (CDFW) (1997) to minimize impacts to salmon, particularly
+  endangered winter-run Chinook. Juvenile Chinook salmon are visually
+  sorted between winter-run and juveniles of other races based on the
+  Delta Model of daily length-at-date criteria of salvage facility
+  catches (USFWS 1994; modified from Fisher 1992). Any winter and
+  spring-run sized salmon with a present adipose fin will be immediately
+  transferred to a separate bucket and processed, recording length,
+  sampling a fin-clip for later genetic identification, and released.
+  Fall-run will a present adipose fin will be processed after
+  winter-and-spring run. Any adipose fin-clipped salmon are euthanized
+  in a kill dose of buffered tricaine methanesulfonate (MS-222), bagged
+  individually (whirl-pack bags) and marked with information on sampling
+  location, date, gear type, fork length, and time. Fish are then kept
+  on ice in a cooler until transferred to our West Sacramento, CA office
+  to be weighed, have their coded wire tag (CWT) read, and frozen at
+  -20C. During periods of Delta Smelt presence, all Delta Smelt are
+  prioritized and carefully identified to differentiate between Delta
+  and Wakasagi Smelt (Hypomesus nipponensis).
+  Following the processing of special species (salmon and smelt) all
+  other fish are identified and counted: fork length is measured to the
+  nearest millimeter on a wetted measuring board for up to 20-50 of each
+  species. Any juvenile fish that cannot be field identified are
+  preserved on ice with respective labels for individual identification
+  and examined at our West Sacramento, CA office. Captured salmonids are
+  inspected for characters such as presence of yolk sac, parr marks,
+  silvery appearance, and deciduous scales to determine life stage
+  and/or degree of smolting. A simple life stage designation (P, X, or
+  S) is determined for each fish measured: 1) clearly parr (P) = a
+  darkly pigmented fish with characteristic dark, oval- to round-shaped
+  parr marks on its sides, 2) between parr and smolt (X, for
+  transitional) = the fish is not clearly parr, but is not yet clearly a
+  smolt either, 3) clearly a smolt (S) = highly faded parr marks, or
+  lacking them completely, bright silver or nearly white color, and
+  deciduous scales.
+
+          
+  WATER QUALITY: In addition to fish catch, water quality parameters are
+  recorded when a fish catch sample is collected. Tide stage, weather,
+  and trap condition are observed and temperature (C), electrical
+  conductivity (uS/cm), dissolved oxygen (mg/L), turbidity (NTU), pH,
+  and Secchi depth (cm) are measured.
+
+          
+  Fish catch data and water quality is recorded using data sheets based
+  on a modified version of "standard" Interagency Ecological
+  Program (IEP) forms.
+
+          
+            (2.) Datasheet available upon request (email data
+  contact):
+
+          
+            (3.) Instruments and equipment:
+
+          
+  SCREW TRAP: The screw trap cone is 8 feet in diameter and designed by
+  EG Solutions (Corvallis, Oregon). The trap configuration is as
+  follows: Length: 22.5 ft, Width: 12 ft, Weight: 1300 lbs, Cone: 8 ft
+  diameter and 9 ft length with 2 ft on each end for shaft (total of 13
+  ft), Livebox: 4 ft by 5 ft with a 25 ft3 volume, Pontoons: 22.5 ft
+  length and 20 in. width, with 9 ft between pontoons. During operation
+  the trap is attached to an overhead cable originally installed
+  December 2003 (replaced in 2011 after damage during a flood) with two
+  cables attached to each pontoon to align the trap in the center of the
+  channel. The overhead cable is strung between two large trees, each
+  with two guide cables connected to concrete T anchors. The trap has a
+  rear anchor to maintain the traps position during low flow periods and
+  strong flood tides. A revolution counter was installed on the main
+  shaft of the screw trap in March 2013.
+
+          
+  FYKE TRAP: The fyke trap is 10 feet in diameter and 24 feet long with
+  a modified design based on fyke traps operated by the California
+  Department of Fish and Wildlife (CDFW). It is constructed out of
+  square stainless steel tubing with galvanized chain link fencing for
+  the main structural netting and black 0.5" square polypropylene
+  fencing lining the terminal compartment to aid in retention and fish
+  safety. The fyke trap is operated with a 12,000 lb winch system
+  attached to a truck.
+
+          
+  BEACH SEINE: Depending on the time period, a 50 ft by 4 ft beach seine
+  or a 25 ft by 4 ft beach seine (starting October 2012 to current) was
+  used to sample during all hydrologic phases, both with a 4 ft bag. The
+  net opening area (avg. depth between two poles x distance between
+  poles) is recorded for each seine. The volume sampled is then recorded
+  as the measured length of set (e.g. distance walked with the seine,
+  commonly 30 m) multiplied by the net opening area. During pilot years
+  of the Yolo Bypass Monitoring program, alternate beach seines,
+  including sizes up to 100 ft, were used, in addition to seine
+  enclosures and cove sets (see project history for more information).
+
+          
+  WATER QUALITY: Water quality measures are taken with a YSI ProDSS
+  handheld meter. YSIs are calibrated for pH, turbidity, DO, and EC
+  bi-monthly, and calibrated for DO daily before using in the field.
+
+          
+            (4.) Analysis and methods (standard operating
+  procedures): Data is in its original form and no catch per
+  effort calculations have been made. SOPs for methods and quality
+  checks are available upon request.
+
+          
+            (5.) Project history (change in methods and
+  locations):
+
+          
+  All fish sampling (screw trap, fyke trap, and beach seines) must be
+  adjusted under different velocity and flooding levels because of
+  debris, permitting, and safety issues. However, the influence of flows
+  and flooding is not straightforward because discharge, tidal
+  inundation, and seasonal short-duration flooding impact the
+  feasibility of sampling at any one site. Additionally, because
+  sampling is meant to be repeatable, all sampling methods are
+  proportionally sampling less when available habitat increases with
+  over-bank flows. For example, it is likely that screw trap efficiency
+  may be quite low during drought conditions because tidal velocities
+  are correspondingly low, so the rotary screw trap only samples
+  efficiently during a small portion of the day. Generally, during low
+  flow, the screw trap only operates on an ebb tide. In wetter years,
+  analyses of rotary screw trap data do not support the hypothesis that
+  trap efficiency is a primary driver of Chinook salmon catch trends in
+  Yolo Bypass (Sommer et al. 2005), however during flooding events the
+  trap samples proportionally less of the available habitat. During
+  periods of flooding/high flows (e.g. 2006 and 2011) in the Yolo
+  bypass, the fyke trap is often times not fished due to heavy debris
+  loads, equipment limitations, and staff safety. Additionally, during
+  periods of high flows and receding floodplain stages, seining at AL#
+  and BL# sites may become too deep to seine for extended periods of
+  time until conditions stabilize. It should also be noted that during
+  the first two years of the monitoring program (1998-1999) additional
+  exploratory fishing methods were used including a Fyke Net (FNET),
+  Purse seine (PSEIN), a 30 and 100 ft beach seines (SEINE30 and
+  SEINE100), enclosed and cove seines (SEINENCL and SEINCOVE) and a 5 ft
+  rotary screw trap (RSTR5). These data are provided in this dataset to
+  provide insight into special species presence in the Yolo Bypass such
+  as Chinook salmon and showing the importance of monitoring in the
+  Bypass; however, these extra methods were not continued in the core
+  monitoring program. Core monitoring includes the screw trap (RSTR, 8'
+  cone), fyke trap (FKTR) and beach seines (SEINE50) and have been
+  continued to the present (2018).
+
+          
+  Specific considerations for each fishing method/gear type are as
+  follows and should be considered in analyses:
+
+          
+  SCREW TRAP: Rotary screw trap (RSTR8) operation began in 1998,
+  deployment generally occurs from December/January through June, and
+  that period of months has been sampled relatively consistently every
+  year of the monitoring program. Throughout the history of the program
+  there have sometimes been two rotary screw traps in place (1998 and
+  1999), the screw trap has been installed one month early to capture
+  winter flooding events (December 2012), and operational challenges
+  have augmented its sampling frequency (see explanation below). When
+  ESA listed fish are caught, some operational flexibility is required,
+  for example shorter day-time only sets are fished when we near the
+  lethal take limit for Delta Smelt, winter-run Chinook salmon, and
+  Steelhead/Rainbow Trout (Oncorhynchus mykiss).
+  High debris loads can also mandate shorter sets, which have been as
+  short as one hour in some instances. Volume cannot be measured because
+  there has not always been a flow-meter in place; effort is generally
+  reported in trap operation hours. However, "set",
+  "check" and "pull" dates and times were not always
+  reported, and therefore operation hours must be calculated as an
+  estimate using the fish capture events in some years. Best estimated
+  hours for effort calculation are provided in a separate table. As of
+  March 2013, catch per unit effort can be reported as catch per
+  rotation with the revolution counter data.
+
+          
+  Screw trap effort alterations:
+
+          
+  1998: a 5 ft rotary screw trap (RTSR5) was used for one less than
+  month in January and February during high flows after which the 8 ft
+  screw trap (RSTR8) was used to current, 2018.
+
+          
+  2000-2009: the rotary screw trap was often set over weekends and
+  checked every 1-2 days.
+
+          
+  2010: the operation of the trap was changed to daily checks and only
+  set on weekends during some flooding events.
+
+          
+  2011: Damage due to high debris loads resulted in several weeks of no
+  operation in late March and April.
+
+          
+  2012: High catches of ESA listed species resulted in shorter daytime
+  only sets intermittently from January through March.
+
+          
+  2016: High catches of ESA listed species resulted in shorter daytime
+  only sets intermittently for one month (March 29th through April
+  26th).
+
+          
+  2017: Short day-time only sets intermittently from January to May due
+  to high floods.
+
+          
+  FYKE TRAP: There have been several changes in sampling frequency, the
+  number of traps and trap location throughout this monitoring effort:
+  (1) in 1998 and 1999 there were two traps fishing four months a year
+  and seven days a week, (2) in 2001 a second trap was deployed, (3) in
+  2002 there was a design change in the fyke trap and three fyke traps
+  were deployed, (4) between 2003 and 2006 the trap was check
+  every-other day instead of daily, and (5) in 2014 and 2015 clogging by
+  water hyacinth rendered the trap likely ineffective for some period
+  and the trap was out of operation and then relocated (from October to
+  December). See Additional Information for more data analyses
+  considerations and alterations in trapping hours. Catch of certain
+  species may be affected by fish already present in the trap. For
+  example, white sturgeon catch increases dramatically when a female is
+  present in the trap as multiple males attempt to gain access to her.
+  Similarly, it is important to remember that predation can occur in the
+  trap, especially on days where exceptionally large piscivorous fish
+  are caught. The fyke trap doesn't cover the entire channel and wings
+  are not used, and hence the fyke trap should not be viewed as a
+  traditional fyke net. The data is most appropriate for presence and
+  timing.
+
+          
+  Fyke trap effort alterations:
+
+          
+  1998: During the first year of the program and a high flow year, a
+  Fyke net was deployed intermittently off the Yolo Bypass Causeway
+  bridge from January to February. This method was removed from the
+  program after 1998, after which only the Fyke trap was used,
+  1999-2018.
+
+          
+  2000-2009: the high number of sampling hours were due to the fyke trap
+  often being fished over weekends and checked every 1-2 days.
+
+          
+  2010: operation of the fyke trap changed to daily checks with no
+  weekend fishing in 2010.
+
+          
+  2014: clogging by water hyacinth likely reduced trap efficiency for
+  some period and the trap was out of operation and then temporarily
+  relocated to a downstream location (Alt_Fyke). Trap was not operated
+  October 10th to November 13th.
+
+          
+  2015: clogging by water hyacinth likely reduced trap efficiency for
+  some period and the trap was out of operation and then temporarily
+  relocated to a downstream location (Alt_Fyke). Trap not operated from
+  December 1st to 10th.
+
+          
+  2016: trap was not operated in November for bank reconstruction.
+
+          
+  2017: trap was operated intermittently during high flood times.
+
+          
+  BEACH SEINE: Throughout the history of the program there have been
+  three perennial pond sites: (1) Yolo Basin Wetlands "study
+  pond", located next the tree grove at I-80 Causeway (YB), (2) a
+  Fremont Weir wetlands pond, located approximately 1 mile south of the
+  weir along the east levee (FW), and (3) Sacramento Bypass (scour pond
+  and large earthen pond at south levee) (SB). Historically, depending
+  on pond size, 1-3 three standard "U.S. Fish and
+  Wildlife-style" (e.g. perpendicular) beach seine hauls would be
+  performed at random coordinates around the perimeter of each pond
+  site. In 1998, inundated floodplain sites were established at Fremont
+  Weir (FW1), I-5 (CCS7), Yolo Causeway (YBI80), Lisbon Weir (LIHF or
+  LI), and the screw trap site (BL4). In 2010, an additional four sites
+  Above Lisbon Weir (AL 1-4) and five site Below Lisbon (BL 1-5) were
+  added as year-round sampling to provide better spatial and temporal
+  data on fish assemblages within the Yolo Bypass Toe Drain. All but the
+  Yolo Causeway site (YB) are located along the east levee as this is
+  the direction the bypass drains and remains wetted the longest. As
+  many of these stations as possible are sampled weekly during
+  floodplain inundation of the Bypass. However, sites such as the Yolo
+  Causeway ramp cannot be sampled except at high flows (eg greater than
+  30,000 cfs). Finally, BL6 was added in 2015 because water hyacinth
+  obstructed much of the Toe Drain and made BL5 too difficult to seine
+  properly. In early years, beach seining only occurred consistently in
+  the winter-spring (Dec - Jun) at sites YB, BL4, and LI (i.e. those
+  sites and months are the target of comparisons across the entire beach
+  seine monitoring time series); however, since the inclusion of Above
+  (AL 1-4) and Below Lisbon (BL 1-4) sites seining has been conducted
+  bi-weekly, year-round, across sites when possible, and the high flow
+  sites: FW1, CCS7, SB, LIHF, and YBI80 were also only sampled during
+  flooding events.
+
+          
+  There are several sampling frequency changes to the beach seine
+  sampling:
+
+          
+  1998-1999: additional seining efforts during a high flood year were
+  conducted in addition to the 50 ft seine (SEINE50), such as SEIN30 (30
+  ft), SEINE100 (100 ft), SEINCOVE (beach seine cove set), SEINENCL
+  (beach seine enclosure), and PSEIN100 (100 ft purse seine).
+
+          
+  1998 to 2006: additional sampling was conducted during floodplain
+  inundation and drainage events.
+
+          
+  2007: additional sites were sampled in the Cache Slough complex.
+
+          
+  2008: additional sampling was conducted during floodplain inundation
+  and drainage events, not including sites in the Cache Slough complex.
+
+          
+  2010: fall, the additional above Lisbon Weir (AL 1-4) and below Lisbon
+  (BL 1-5) were added as year-round sampling to provide better spatial
+  and temporal data on fish assemblages within the Yolo Bypass Toe
+  Drain.
+
+          
+  2011 to 2012: additional sampling was conducted during floodplain
+  inundation and drainage events.
+
+          
+  2015: Site BL6 was added because of difficulty sampling BL5 in 2012,
+  2013, and 2014 due to clogging from water hyacinth (e.g. complete site
+  coverage).
+
+          
+  2018: AL-2 was removed based on analyses of AL sites showing
+  homogenous fish catches across sites during both wet and dry years
+  (report available upon request), and AL1 was moved 30 m upstream due
+  to erosion during the 2017 flood.
+
+          
+            (6.) QA/QC:
+
+          
+  METHODS: All field staff have taken a fish identification course for
+  California freshwater and anadromous fishes. Fish identification
+  resources and dichotomous keys are carried with the field crew if
+  needed, and the field lead always checks fish identification if in
+  question. For special species including Osmerids (Delta Smelt,
+  Wakasagi and Longfin Smelt) and Chinook salmon (Winter, Spring, and
+  Fall/Late-Fall run) fin clips are sampled for genetic identifications
+  and take reporting purposes.
+
+          
+  DATA: Date QA/QC is a four-stage process. First, the data sheets are
+  error checked at the end of each sampling collection by the field
+  lead. Data is then entered in a Microsoft Access form with customized
+  error-checking and data validation checks. Third, a separate person
+  compares the original field data sheets to the values in electronic
+  database. Finally, each data field is sorted and/or summarized based
+  on unique records to highlight erroneous outliers. In addition to data
+  sorting, qualitative analyses are conducted on the water quality data
+  by creating multi-layered visualizations of data in R-studio
+  including; boxplots, histograms, and regressions of correlated water
+  quality parameters from sampling sites across time, as well as
+  overlaying a real-time monitoring data from a sonde deployed at
+  Lisbon, a centrally located station between the traps, and beach seine
+  sites for a final check for inaccurate data entry errors.
+
+          
+            (7.) Contractor information: All fish
+  identification and water quality measures are conducted by the field
+  staff in the Aquatic Ecology Section, Division of Environmental
+  Services, California Department of Water Resources. Genetic
+  identification of Osmerids and Chinook salmon run-type is conducted by
+  the Genomic Variation Laboratory at the University of California
+  Davis.
+
+          
+            (8.) External review process: There is no
+  external review process.
+
+          
+            (9.) Methods references:
+
+          
+  Fisher FW (1992) Chinook salmon, Oncorhynchus tshawytscha, growth and
+  occurrence in the Sacramento-San Joaquin River system. California
+  Department Fish and Game, Inland Fisheries Division, Draft Office
+  Report, June 1.
+
+          
+  [USFWS] United States Fish and Wildlife Service (1994) Use of
+  Tehama-Colusa Fish Facility (TCFF) data for modeling winter Chinook
+  salmon growth in the upper Sacramento River, California. Unpublished
+  Report prepared for Interagency Size Criteria Group.
+
+          
+  See Additional Information for a list of peer-reviewed publications
+  and more detailed information on methodology references listed in this
+  dataset.
+
+        
+      
+      
+        
+          
+            
+              AL1
+              
+                -121.586639
+                -121.586639
+                38.5445
+                38.5445
+              
+            
+          
+          
+            
+              AL2
+              
+                -121.588639
+                -121.588639
+                38.52806
+                38.52806
+              
+            
+          
+          
+            
+              AL3
+              
+                -121.588623
+                -121.588623
+                38.5185
+                38.5185
+              
+            
+          
+          
+            
+              AL4
+              
+                -121.588583
+                -121.588583
+                38.49439
+                38.49439
+              
+            
+          
+          
+            
+              BL1
+              
+                -121.590851
+                -121.590851
+                38.46681
+                38.46681
+              
+            
+          
+          
+            
+              BL2
+              
+                -121.607053
+                -121.607053
+                38.43189
+                38.43189
+              
+            
+          
+          
+            
+              BL3
+              
+                -121.626278
+                -121.626278
+                38.38939
+                38.38939
+              
+            
+          
+          
+            
+              BL4
+              
+                -121.6422
+                -121.6422
+                38.35496
+                38.35496
+              
+            
+          
+          
+            
+              BL5
+              
+                -121.664178
+                -121.664178
+                38.27428
+                38.27428
+              
+            
+          
+          
+            
+              BL6
+              
+                -121.663182
+                -121.663182
+                38.282465
+                38.282465
+              
+            
+          
+          
+            
+              LI
+              
+                -121.588541
+                -121.588541
+                38.47621
+                38.47621
+              
+            
+          
+          
+            
+              YB
+              
+                -121.630989
+                -121.630989
+                38.56538
+                38.56538
+              
+            
+          
+          
+            
+              CCS7
+              
+                -121.643436
+                -121.643436
+                38.67592
+                38.67592
+              
+            
+          
+          
+            
+              FW1
+              
+                -121.635232
+                -121.635232
+                38.74979
+                38.74979
+              
+            
+          
+          
+            
+              SB
+              
+                -121.564176
+                -121.564176
+                38.605219
+                38.605219
+              
+            
+          
+          
+            
+              LIHF
+              
+                -121.588083
+                -121.588083
+                38.47417
+                38.47417
+              
+            
+          
+          
+            
+              YBI80
+              
+                -121.638005
+                -121.638005
+                38.56531
+                38.56531
+              
+            
+          
+          
+            
+              PCS
+              
+                -121.590934
+                -121.590934
+                38.466958
+                38.466958
+              
+            
+          
+          
+            
+              Alt_Fyke
+              
+                -121.604878
+                -121.604878
+                38.436971
+                38.436971
+              
+            
+          
+          
+            
+              STTD
+              
+                -121.643181
+                -121.643181
+                38.353383
+                38.353383
+              
+            
+          
+          
+            
+              LIHFS
+              
+                -121.588083
+                -121.588083
+                38.47417
+                38.47417
+              
+            
+          
+        
+        Geographic coordinates of sampling sites
+      
+    
+    
+      YBFMP_Fish_Catch_and_Water_Quality.csv
+      Fish catch and water quality data from the Yolo Bypass Fish Monitoring Program
+      
+        YBFMP_Fish_Catch_and_Water_Quality.csv
+        33277563
+        4f9c46f9cb9f8af2b5e37fa2c7cd46a7
+        
+          
+            1
+            \r\n
+            column
+            
+              ,
+              "
+            
+          
+        
+        
+          
+            https://pasta.lternet.edu/package/data/eml/edi/233/2/015e494911cf35c90089ced5a3127334
+          
+        
+      
+      
+        
+          SampleDate
+          Date of sample
+          date
+          
+            
+              MM/DD/YYYY
+            
+          
+        
+        
+          SampleTime
+          Time of sample
+          date
+          
+            
+              hh:mm:ss
+            
+          
+          
+            NA
+            Time of sampling not recorded
+          
+        
+        
+          StationCode
+          Sampling locations in the Yolo Bypass.
+          string
+          
+            
+              
+                
+                  
+                    STTD
+                    Screw Trap in Toe Drain, below the Lisbon Weir, in between BL5 and BL6
+                  
+                  
+                    FW1
+                    Fremont Weir
+                  
+                  
+                    CCS7
+                    Cache Creek Sink site 7
+                  
+                  
+                    SB
+                    Sacramento Bypass
+                  
+                  
+                    BL4
+                    Below Lisbon Weir site 4  in Toe Drain
+                  
+                  
+                    BL3
+                    Below Lisbon Weir site 3 in Toe Drain
+                  
+                  
+                    AL4
+                    Above Lisbon Weir site 4 in Toe Drain
+                  
+                  
+                    BL1
+                    Below Lisbon Weir site 1 in Toe Drain
+                  
+                  
+                    LIHFS
+                    Lisbon Weir High Flow Site South
+                  
+                  
+                    AL1
+                    Above Lisbon Weir site 1 in Toe Drain
+                  
+                  
+                    BL5
+                    Below Lisbon Weir site 5 in Toe Drain
+                  
+                  
+                    AL3
+                    Above Lisbon Weir site 3 in Toe Drain
+                  
+                  
+                    BL2
+                    Below Lisbon Weir site 2 in Toe Drain
+                  
+                  
+                    PCS
+                    Putah Creek Sink location of fyke trap in Toe Drain, below Lisbon Weir, near BL1
+                  
+                  
+                    LIHF
+                    Lisbon Weir High Flow Site
+                  
+                  
+                    AL2
+                    Above Lisbon Weir site 2 in Toe Drain
+                  
+                  
+                    YBI80
+                    Yolo Bypass west side near highway I80 an Inundation site
+                  
+                  
+                    BL6
+                    Below Lisbon Weir site 6 in Toe Drain
+                  
+                  
+                    YB
+                    Yolo Basin Pond
+                  
+                  
+                    LI
+                    Lisbon Weir in Toe Drain
+                  
+                  
+                    Alt_Fyke
+                    Alternate fyke trap loction
+                  
+                
+              
+            
+          
+        
+        
+          MethodCode
+          Sampling collection method including a fyke trap, screw trap, seines.
+          string
+          
+            
+              
+                
+                  
+                    RSTR
+                    rotary screw trap
+                  
+                  
+                    BSEIN
+                    beach seine
+                  
+                  
+                    FKTR
+                    fyke trap
+                  
+                  
+                    FNET
+                    fyke net
+                  
+                  
+                    PSEIN
+                    purse seine
+                  
+                
+              
+            
+          
+        
+        
+          GearID
+          Gear used for sampling method
+          string
+          
+            
+              
+                
+                  
+                    RSTR8
+                    8 ft cone screw trap
+                  
+                  
+                    SEIN50
+                    50 ft seine net
+                  
+                  
+                    FKTR
+                    fyke trap
+                  
+                  
+                    SEIN30
+                    30 ft seine net
+                  
+                  
+                    FKNT
+                    fyke net
+                  
+                  
+                    PSEIN100
+                    100 ft purse seine net
+                  
+                  
+                    SEINENCL
+                    seine enclosure
+                  
+                  
+                    RSTR5
+                    5 ft cone screw trap
+                  
+                  
+                    SEINCOVE
+                    seine cove set
+                  
+                  
+                    SEIN100
+                    100 ft seine net
+                  
+                
+              
+            
+          
+        
+        
+          CommonName
+          Fish species catch with genetic identifications corrected for when appropriate
+          string
+          
+            
+              
+                
+                  Fish species catch with genetic identifications corrected for when appropriate
+                
+              
+            
+          
+        
+        
+          GeneticallyConfirmed
+          Indicator if the species was genetically identified. Only Osmerids are currently corrected for with genetic identifications
+          string
+          
+            
+              
+                
+                  Indicator if the species was genetically identified. Only Osmerids are currently corrected for with genetic identifications
+                
+              
+            
+          
+        
+        
+          GeneticID
+          Genetic identification of Osmerids
+          string
+          
+            
+              
+                
+                  Genetic identification of Osmerids
+                
+              
+            
+          
+          
+            NA
+            No genetics done or unknown
+          
+        
+        
+          Field_ID_CommonName
+          Original identification of fish species in the field. Not corrected for with genetics.
+          string
+          
+            
+              
+                
+                  Original identification of fish species in the field. Not corrected for with genetics.
+                
+              
+            
+          
+        
+        
+          ForkLength
+          Length of sampled fish measured from the point of the mouth to the fork of the caudal fin
+          float
+          
+            
+              
+                millimeter
+              
+              
+                real
+                
+                  10
+                  2600
+                
+              
+            
+          
+          
+            NA
+            Fork Length of the fish was not taken
+          
+        
+        
+          Count
+          Number of fish sampled with the measured fork length (or unmeasured plus count)
+          float
+          
+            
+              
+                dimensionless
+              
+              
+                whole
+                
+                  0
+                  26800
+                
+              
+            
+          
+        
+        
+          FishSex
+          Estimated sex of fish, applied mostly to chinook salmon
+          string
+          
+            
+              
+                
+                  Estimated sex of fish, applied mostly to chinook salmon
+                
+              
+            
+          
+          
+            NA
+            Sex of fish unknown or not recorded
+          
+        
+        
+          Race
+          Estimated race of chinook salmon based on the length to date guide
+          string
+          
+            
+              
+                
+                  
+                    F
+                    Fall run
+                  
+                  
+                    NP
+                    Not provided
+                  
+                  
+                    S
+                    Spring run
+                  
+                  
+                    W
+                    Winter run
+                  
+                  
+                    LF
+                    Late Fall run
+                  
+                  
+                    U
+                    Unknown run
+                  
+                
+              
+            
+          
+          
+            NA
+            Only chinook salmon are assigned Race
+          
+        
+        
+          MarkCode
+          Indicator if fish has been marked or tagged that may distinguish hatchery or wild fish, or agency study, applied mostly to chinook salmon
+          string
+          
+            
+              
+                
+                  
+                    A
+                    Adipose fin clipped (hatchery marking)
+                  
+                  
+                    B
+                    Bismark Brown Mark
+                  
+                  
+                    C
+                    Code Wire Tag (CWT)
+                  
+                  
+                    CDFW
+                    CA. Department of Fish and Wildlife marking or tag
+                  
+                  
+                    n/p
+                    Mark information not provided by the data collector
+                  
+                  
+                    None
+                    No mark
+                  
+                  
+                    O
+                    Other
+                  
+                
+              
+            
+          
+        
+        
+          CWTSample
+          True or False statement if Chinook salmon had Code Wire Tags (CWT) detected
+          string
+          
+            
+              
+                
+                  True or False statement if Chinook salmon had Code Wire Tags (CWT) detected
+                
+              
+            
+          
+          
+            NA
+            Only chinook salmon have Code Wire Tags
+          
+        
+        
+          FishTagID
+          Specific ID given to fish if genetic samples were taken or if tags were observed or read on the fish
+          string
+          
+            
+              
+                
+                  Specific ID given to fish if genetic samples were taken or if tags were observed or read on the fish
+                
+              
+            
+          
+          
+            NA
+            No fish ID was assigned or recorded
+          
+        
+        
+          StageCode
+          Life stage designation of chinook salmon
+          string
+          
+            
+              
+                
+                  
+                    NP
+                    Not provided
+                  
+                  
+                    CHN_S
+                    salmon Smolt
+                  
+                  
+                    CHN_X
+                    salmon Transitional
+                  
+                  
+                    CHN_P
+                    salmon Parr
+                  
+                
+              
+            
+          
+          
+            NP
+            Only chinook salmon are assigned a StageCode
+          
+        
+        
+          Dead
+          Recording if fish was dead at time of catch
+          string
+          
+            
+              
+                
+                  
+                    No
+                    Fish alive at time of catch
+                  
+                  
+                    Yes
+                    Fish dead at time of sample
+                  
+                
+              
+            
+          
+        
+        
+          GearConditionCode
+          Condition of gear during sample such as seine twisted or trap not spinning due to debris
+          float
+          
+            
+              
+                dimensionless
+              
+              
+                real
+                
+                  1
+                  4
+                
+              
+            
+          
+          
+            NA
+            No condition code assigned or not applicable
+          
+        
+        
+          WeatherCode
+          Weather at time of sample such as clear or direct sunlight, rain, cloudy, night, fog
+          string
+          
+            
+              
+                
+                  
+                    CLD
+                    Cloudy overcast
+                  
+                  
+                    RAN
+                    Rain
+                  
+                  
+                    CLR
+                    Clear
+                  
+                  
+                    FOG
+                    Fog
+                  
+                  
+                    NA
+                    Not recorded
+                  
+                  
+                    NIT
+                    Night
+                  
+                
+              
+            
+          
+          
+            NA
+            Weather data not recorded
+          
+        
+        
+          WaterTemperature
+          Temperature of water
+          float
+          
+            
+              
+                celsius
+              
+              
+                real
+                
+                  3.33
+                  31.8
+                
+              
+            
+          
+          
+            NA
+            Sample not recorded or collected
+          
+        
+        
+          Secchi
+          Secchi depth sample collected at traps or seine sites
+          float
+          
+            
+              
+                meter
+              
+              
+                real
+                
+                  0.02
+                  1.41
+                
+              
+            
+          
+          
+            NA
+            Sample not recorded or collected
+          
+        
+        
+          Conductivity
+          Electrical conductivity of water
+          float
+          
+            
+              
+                microSeimenPerCentimeter
+              
+              
+                real
+                
+                  41
+                  1882
+                
+              
+            
+          
+          
+            NA
+            Sample not recorded or collected
+          
+        
+        
+          SpCnd
+          Specific conductivity of water
+          float
+          
+            
+              
+                microSeimenPerCentimeter
+              
+              
+                real
+                
+                  54
+                  2003
+                
+              
+            
+          
+          
+            NA
+            Sample not recorded or collected
+          
+        
+        
+          DO
+          Dissolved oxygen concentration
+          float
+          
+            
+              
+                milligramsPerLiter
+              
+              
+                real
+                
+                  0.45
+                  14.71
+                
+              
+            
+          
+          
+            NA
+            Sample not recorded or collected
+          
+        
+        
+          pH
+          Total pH of water
+          float
+          
+            
+              
+                dimensionless
+              
+              
+                real
+                
+                  2.56
+                  13.32
+                
+              
+            
+          
+          
+            NA
+            Sample not recorded or collected
+          
+        
+        
+          Turbidity
+          Turbidity of water
+          float
+          
+            
+              
+                nephelometricTurbidityUnit
+              
+              
+                real
+                
+                  2.2
+                  893
+                
+              
+            
+          
+          
+            NA
+            Sample not recorded or collected
+          
+        
+        
+          SubstrateCode
+          Substrate at beach seine site
+          string
+          
+            
+              
+                
+                  
+                    NA
+                    Not recorded
+                  
+                  
+                    GR
+                    Gravel or on a boat ramp
+                  
+                  
+                    MD
+                    Mud
+                  
+                  
+                    VG
+                    Vegitation
+                  
+                  
+                    PV
+                    Pavement
+                  
+                  
+                    SN
+                    Sand
+                  
+                
+              
+            
+          
+          
+            NA
+            Sample not recorded or collected
+          
+        
+        
+          Tide
+          Tide at sample
+          string
+          
+            
+              
+                
+                  Tide at sample
+                
+              
+            
+          
+          
+            NA
+            Sample not recorded or collected
+          
+        
+        
+          VolumeSeined
+          Calculated volume of water seined using the width (extension out from shore) multiplied by the depth of water (average from two ends) multiplied by the length (distance seined). Volume seined can be used to calculate the catch per unit effort (CPUE)
+          float
+          
+            
+              
+                cubicMeter
+              
+              
+                real
+                
+                  2.2
+                  1200
+                
+              
+            
+          
+          
+            NA
+            Value applicable only to seine methods, if seine value missing sample not recorded or collected
+          
+        
+        
+          Latitude
+          Latitude location of the site
+          float
+          
+            
+              
+                degree
+              
+              
+                real
+                
+                  38.27
+                  38.75
+                
+              
+            
+          
+          
+            NA
+            Location not available for early methods of PSEIN and FKNT
+          
+        
+        
+          Longitude
+          Longitude location of the site
+          float
+          
+            
+              
+                degree
+              
+              
+                real
+                
+                  -121.66
+                  -121.56
+                
+              
+            
+          
+          
+            NA
+            Location not available for early methods of PSEIN and FKNT
+          
+        
+      
+      182414
+    
+    
+      YBFMP_Fish_Taxonomy.csv
+      Taxon table for species including native or invasive classification
+      
+        YBFMP_Fish_Taxonomy.csv
+        6225
+        29ca5e75ff87ec34e3bcf2cc731f29a8
+        
+          
+            1
+            \r\n
+            column
+            
+              ,
+              "
+            
+          
+        
+        
+          
+            https://pasta.lternet.edu/package/data/eml/edi/233/2/0532048e856d4bd07deea11583b893dd
+          
+        
+      
+      
+        
+          OrganismCode
+          A 1 to 4 letter character unique to each species
+          string
+          
+            
+              
+                
+                  A 1 to 4 letter character unique to each species
+                
+              
+            
+          
+        
+        
+          CommonName
+          Common name used for species
+          string
+          
+            
+              
+                
+                  Common name used for species
+                
+              
+            
+          
+        
+        
+          Native
+          Indicator if the species is native or invasive in the San Francisco Estuary
+          string
+          
+            
+              
+                
+                  
+                    N
+                    Native species to the San Francisco Estuary
+                  
+                  
+                    I
+                    Nonnative invasive species to the San Francisco Estuary
+                  
+                  
+                    NA
+                    Unknown species
+                  
+                
+              
+            
+          
+        
+        
+          Phylum
+          Taxonomic Phylum
+          string
+          
+            
+              
+                
+                  Taxonomic Phylum
+                
+              
+            
+          
+          
+            NA
+            unknown identification or not applicable
+          
+        
+        
+          Class
+          Taxonomic Class
+          string
+          
+            
+              
+                
+                  Taxonomic Class
+                
+              
+            
+          
+          
+            NA
+            unknown identification or not applicable
+          
+        
+        
+          Order
+          Taxonomic Order
+          string
+          
+            
+              
+                
+                  Taxonomic Order
+                
+              
+            
+          
+          
+            NA
+            unknown identification or not applicable
+          
+        
+        
+          Family
+          Taxonomic Family
+          string
+          
+            
+              
+                
+                  Taxonomic Family
+                
+              
+            
+          
+          
+            NA
+            unknown identification or not applicable
+          
+        
+        
+          Genus
+          Taxonomic Genus
+          string
+          
+            
+              
+                
+                  Taxonomic Genus
+                
+              
+            
+          
+          
+            NA
+            unknown identification or not applicable
+          
+        
+        
+          Species
+          Taxonomic Species
+          string
+          
+            
+              
+                
+                  Taxonomic Species
+                
+              
+            
+          
+          
+            NA
+            unknown identification or not applicable
+          
+        
+      
+      70
+    
+    
+      YBFMP_Trap_Effort.csv
+      Table of hours fished for effort estimations
+      
+        YBFMP_Trap_Effort.csv
+        8594
+        a641d938d505f681b0ddb025f39e3422
+        
+          
+            1
+            \r\n
+            column
+            
+              ,
+              "
+            
+          
+        
+        
+          
+            https://pasta.lternet.edu/package/data/eml/edi/233/2/ace1ef25f940866865d24109b7250955
+          
+        
+      
+      
+        
+          MethodCode
+          Type of trap fyke or screw trap
+          string
+          
+            
+              
+                
+                  
+                    FKTR
+                    Fyke trap
+                  
+                  
+                    RSTR
+                    Rotary screw trap
+                  
+                
+              
+            
+          
+        
+        
+          Year
+          Calendar year
+          string
+          
+            
+              
+                
+                  Calendar year
+                
+              
+            
+          
+        
+        
+          Month
+          Calendar month
+          string
+          
+            
+              
+                
+                  Calendar month
+                
+              
+            
+          
+        
+        
+          OperationTimeHRS
+          Hours the trap was set or hours fished
+          float
+          
+            
+              
+                hour
+              
+              
+                real
+                
+                  9.45
+                  744
+                
+              
+            
+          
+        
+        
+          Comments
+          Notes about environmental or physical circumstances that may have altered the hours the trap could be fished
+          string
+          
+            
+              
+                
+                  Notes about environmental or physical circumstances that may have altered the hours the trap could be fished
+                
+              
+            
+          
+        
+      
+      313
+    
+    
+      YBFMP_Site_locations_latitude_and_longitude.csv
+      Site location table including coordinates
+      
+        YBFMP_Site_locations_latitude_and_longitude.csv
+        772
+        1f7c4b4c98c46420a26ed7b456bcbe44
+        
+          
+            1
+            \r\n
+            column
+            
+              ,
+              "
+            
+          
+        
+        
+          
+            https://pasta.lternet.edu/package/data/eml/edi/233/2/6a82451e84be1fe82c9821f30ffc2d7d
+          
+        
+      
+      
+        
+          MethodCode
+          A specific type of sampling collection method including a fyke trap, screw trap, beach seine, or water quality
+          string
+          
+            
+              
+                
+                  
+                    BSEIN
+                    beach seine
+                  
+                  
+                    FKTR
+                    fyke trap
+                  
+                  
+                    RSTR
+                    rotary screw trap
+                  
+                
+              
+            
+          
+        
+        
+          StationCode
+          A specific location unique to the Yolo Bypass Monitoring Program at which fish and water quality samples was collected
+          string
+          
+            
+              
+                
+                  
+                    AL1
+                    Above Lisbon Weir site 1 in Toe Drain
+                  
+                  
+                    AL2
+                    Above Lisbon Weir site 2 in Toe Drain
+                  
+                  
+                    AL3
+                    Above Lisbon Weir site 3 in Toe Drain
+                  
+                  
+                    AL4
+                    Above Lisbon Weir site 4 in Toe Drain
+                  
+                  
+                    BL1
+                    Below Lisbon Weir site 1 in Toe Drain
+                  
+                  
+                    BL2
+                    Below Lisbon Weir site 2 in Toe Drain
+                  
+                  
+                    BL3
+                    Below Lisbon Weir site 3 in Toe Drain
+                  
+                  
+                    BL4
+                    Below Lisbon Weir site 4 in Toe Drain
+                  
+                  
+                    BL5
+                    Below Lisbon Weir site 5 in Toe Drain
+                  
+                  
+                    BL6
+                    Below Lisbon Weir site 6 in Toe Drain
+                  
+                  
+                    LI
+                    Lisbon Weir in Toe Drain
+                  
+                  
+                    YB
+                    Yolo Basin Pond
+                  
+                  
+                    CCS7
+                    Cache Creek Sink site 7
+                  
+                  
+                    FW1
+                    Fremont Weir
+                  
+                  
+                    SB
+                    Sacramento Bypass
+                  
+                  
+                    LIHF
+                    Lisbon Weir High Flow Site
+                  
+                  
+                    YBI80
+                    Yolo Bypass west side near highway I80 an Inundation site
+                  
+                  
+                    PCS
+                    Putah Creek Sink location of fyke trap in Toe Drain, below Lisbon Weir, near BL1
+                  
+                  
+                    Alt_Fyke
+                    Alternate fyke trap loction
+                  
+                  
+                    STTD
+                    Screw Trap in Toe Drain, below the Lisbon Weir, in between BL5 and BL6
+                  
+                  
+                    LIHFS
+                    Lisbon Weir High Flow Site South
+                  
+                
+              
+            
+          
+        
+        
+          LatitudeLocation
+          Latitude of sample location
+          float
+          
+            
+              
+                degree
+              
+              
+                real
+                
+                  38.27
+                  38.75
+                
+              
+            
+          
+        
+        
+          LongitudeLocation
+          Longitude of sample location
+          float
+          
+            
+              
+                degree
+              
+              
+                real
+                
+                  -121.66
+                  -121.56
+                
+              
+            
+          
+        
+      
+      22
+    
+  
+  
+    
+      
+        
+          conductivity unit
+        
+        
+          NTU- ratio of the amount of light transmitted through a water sample with the amount scattered at an angle of 90 degrees to one side
+        
+      
+    
+  

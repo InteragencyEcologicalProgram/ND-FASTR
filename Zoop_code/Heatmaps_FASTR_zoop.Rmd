@@ -1,0 +1,471 @@
+---
+title: "Heatmaps_FASTR_zoop.Rmd"
+author: "Mallory Bedwell"
+date: "March 31 2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r clean, include = FALSE, eval = FALSE}
+rm(list=ls(all=TRUE))
+```
+
+Load file
+
+```{r message = FALSE, include = FALSE}
+library(readr)
+library(lubridate)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(RColorBrewer)
+library(hms)
+
+setwd("C:/Users/mbedwell/OneDrive - California Department of Water Resources/info for studies/Fall Flow Study/synthesis/zoop")
+#zoop <- read.csv("LT_zoop_RAW.csv", header = TRUE) old table input with 50 um data
+zoop <- read.csv("LT_RAW_ZoopThru2018_20200825.csv", header = TRUE)
+
+
+#need to add in 2019 zoop counts to 2011-2018 zoop data file. need to add taxonomy first
+#read in 2019 data from the 2019 NDFA report analysis
+zoop_2019 <- read.csv("NDFA_2019_zoop_CPUE_allsites_alldates.csv", header = TRUE, stringsAsFactors = FALSE)
+
+
+#remove random X and X.1 columns
+zoop_2019$X <- NULL
+zoop_2019$X.1 <- NULL
+
+
+#read in taxonomy table from Cat in order to add in matching taxonomic structure
+zoop_taxa <- read.csv("YB_TaxonomyTable.csv", header = TRUE, stringsAsFactors = FALSE)
+
+
+#change classification so they match between zoop_2019 and zoop_taxa table
+zoop_taxa$Classification[zoop_taxa$Classification == 'Microzooplankton & Nauplii'] <- 'Microzooplankton_Nauplii'
+
+
+#change some spellings on the 2019 zoop table to match the taxonomy table
+zoop_2019$Organism[zoop_2019$Organism == 'Calanoid copepodid'] <-'Calanoid copepodids'
+zoop_2019$Organism[zoop_2019$Organism == 'Pseudochydorus'] <-'Pseudochydorus sp.'
+zoop_2019$Organism[zoop_2019$Organism == 'Skistodiaptomus pallidus'] <-'Skistodiaptomus pallidus adult'
+zoop_2019$Organism[zoop_2019$Organism == 'Eucyclops'] <-'Eucyclops spp.'
+zoop_2019$Organism[zoop_2019$Organism == 'Eucyclops sp.'] <-'Eucyclops spp.'
+zoop_2019$Organism[zoop_2019$Organism == 'Ergasilus'] <-'Ergasilus sp.'
+zoop_2019$Organism[zoop_2019$Organism == 'Pseudodiaptomus adult'] <-'Pseudodiaptomus spp.'
+zoop_2019$Organism[zoop_2019$Organism == 'Barnacles nauplii'] <-'Barnacles'
+zoop_2019$Organism[zoop_2019$Organism == 'Paracyclops sp.'] <-'Paracyclops spp.'
+zoop_2019$Organism[zoop_2019$Organism == 'Paracyclops'] <-'Paracyclops spp.'
+zoop_2019$Organism[zoop_2019$Organism == 'Tropocyclops prasinus mexicanus'] <-'Tropocyclops prasinus'
+zoop_2019$Organism[zoop_2019$Organism == 'Arcotdiaptomus dorsalis'] <-'Arctodiaptomus dorsalis'
+zoop_2019$Organism[zoop_2019$Organism == 'Arcodiaptomus dorsalis'] <-'Arctodiaptomus dorsalis'
+
+#join zoop_2019 table with zoop_taxa table using Classification and Organism 
+#first make Classification and Organism factors
+zoop_taxa$Classification <- as.factor(zoop_taxa$Classification)
+zoop_taxa$Organism <- as.factor(zoop_taxa$Organism)
+
+#now combine 2 tables together using left join
+zoop_2019_taxa <- left_join(zoop_2019, zoop_taxa, by = c("Classification", "Organism"))
+
+#combine zoop 2019 taxa table with 2019 discret WQ measurements
+#read in file
+WQ_2019 <- read.csv("2019_NDFA_physical data.csv", stringsAsFactors = FALSE)
+
+#TMF: convert DateTime to POSIX
+# Convert dates and times into POSIXct-compliant values
+# Edit time for 2019-10-02 09:17:00	
+# to allow joining with zoop data
+WQ_2019 <- WQ_2019 %>% unite(DateTime, c("Date","Time"), sep = " ")
+#create datetime column to combine together date and time
+WQ_2019$DateTime <- gsub("10/2/2019 9:25","10/2/2019 9:17",WQ_2019$DateTime) 
+WQ_2019$DateTime <- as.POSIXct(WQ_2019$DateTime, format = c("%m/%d/%Y %H:%M"))
+
+
+#change column headings to match
+colnames(WQ_2019)[colnames(WQ_2019) == 'Station Code'] <- 'Station.Code'
+
+#reformat time. get rid of time seconds in zoop_2019_taxa table because it seems to be keeping tables from joining. 
+zoop_2019_taxa <- zoop_2019_taxa %>% unite(DateTime, c("Date","Time"), sep = " ")
+zoop_2019_taxa$DateTime <- as.POSIXct(zoop_2019_taxa$DateTime, format = c("%m/%d/%Y %H:%M:%OS"))
+
+#get rid of duplicate sites form zoop 2019 taxa table
+#remove duplicate sites
+zoop_2019_taxa <- zoop_2019_taxa[zoop_2019_taxa$Station.Code %in% c("BL5", "I80", "LIB", "LIS", "RCS", "RD22", "RMB", "RVB", "RYI", "STTD"),]
+
+#combine tables
+zoop_2019_taxa_WQ <- left_join(zoop_2019_taxa, WQ_2019, by = c('Station.Code', 'DateTime'))
+
+#changing zoop_2019_taxa_WQ column headings to match FASTR format
+colnames(zoop_2019_taxa_WQ)[colnames(zoop_2019_taxa_WQ) == 'Station.Code'] <- 'StationCode'
+colnames(zoop_2019_taxa_WQ)[colnames(zoop_2019_taxa_WQ) == 'SecchiDiskDepth'] <- 'Secchi'
+colnames(zoop_2019_taxa_WQ)[colnames(zoop_2019_taxa_WQ) == 'CPUE'] <- 'CPUEZoop'
+colnames(zoop_2019_taxa_WQ)[colnames(zoop_2019_taxa_WQ) == 'WaterTemperature'] <- 'WaterTemp'
+
+#parse out Date, Year, Month, Time
+zoop_2019_taxa_WQ$Year <- format(as.POSIXct(zoop_2019_taxa_WQ$DateTime, format = "%m/%d/%Y %H:%M:%OS"), "%Y")
+zoop_2019_taxa_WQ$Date <- format(as.POSIXct(zoop_2019_taxa_WQ$DateTime, format = "%m/%d/%Y %H:%M:%OS"), "%Y-%m-%d")
+zoop_2019_taxa_WQ$Month <- format(as.POSIXct(zoop_2019_taxa_WQ$DateTime, format = "%m/%d/%Y %H:%M:%OS"), "%m")
+zoop_2019_taxa_WQ$Time <- format(as.POSIXct(zoop_2019_taxa_WQ$DateTime, format = "%m/%d/%Y %H:%M:%OS"), "%H:%M:%OS")
+
+#remove kingdom column so it matches zoop table
+zoop_2019_taxa_WQ$Kingdom <- NULL
+```
+
+Plot total CPUE for all years
+-limit each flow action by date
+-add up total CPUE
+
+```{r message = FALSE, include = FALSE}
+#make Date column a date
+zoop$Date <- format(as.Date(zoop$Date, format = "%m/%d/%Y"), "%Y-%m-%d")
+
+#remove columns that don't match from zoop
+zoop$ConditionCode <- NULL
+zoop$FieldComments <- NULL
+zoop$Flowdiff <- NULL
+zoop$LabComments <- NULL
+zoop$MonthAbb <- NULL
+zoop$SetTime <- NULL
+zoop$Tide <- NULL
+zoop$WeatherCode <- NULL
+zoop$X <- NULL
+zoop$PhysicalDataID <- NULL
+
+#change CPUE column name in zoop table to match zoop 2019
+colnames(zoop)[colnames(zoop) == 'CPUE'] <- 'CPUEZoop'
+
+#limit each flow action by dates
+#2011 
+zoop_2011 <- zoop[zoop$Date>="2011-07-23" & zoop$Date<="2011-11-24", ]
+#2012
+zoop_2012 <- zoop[zoop$Date>="2012-07-26" & zoop$Date<="2012-11-02", ]
+#2013
+zoop_2013 <- zoop[zoop$Date>="2013-07-22" & zoop$Date<="2013-11-02", ]
+#2014
+zoop_2014 <- zoop[zoop$Date>="2014-08-09" & zoop$Date<="2014-10-23", ]
+#2015
+zoop_2015 <- zoop[zoop$Date>="2015-07-21" & zoop$Date<="2015-11-01", ]
+#2016
+zoop_2016 <- zoop[zoop$Date>="2016-06-14" & zoop$Date<="2016-09-01", ]
+#2017
+zoop_2017 <- zoop[zoop$Date>="2017-07-29" & zoop$Date<="2017-10-18", ]
+#2018
+zoop_2018 <- zoop[zoop$Date>="2018-07-28" & zoop$Date<="2018-10-26", ]
+
+#change designations in table
+zoop_2019_taxa_WQ$Month <-as.integer(zoop_2019_taxa_WQ$Month)
+zoop_2019_taxa_WQ$Time <-as.factor(zoop_2019_taxa_WQ$Time)
+zoop_2019_taxa_WQ$DateTime <-as.factor(zoop_2019_taxa_WQ$DateTime)
+zoop_2019_taxa_WQ$EC <-as.numeric(zoop_2019_taxa_WQ$EC)
+zoop_2019_taxa_WQ$SpCnd <-as.numeric(zoop_2019_taxa_WQ$SpCnd)
+zoop_2019_taxa_WQ$FlowMeterSpeed <-as.factor(zoop_2019_taxa_WQ$FlowMeterSpeed)
+zoop_2019_taxa_WQ$Phylum <-as.factor(zoop_2019_taxa_WQ$Phylum)
+zoop_2019_taxa_WQ$Subphylum <-as.factor(zoop_2019_taxa_WQ$Subphylum)
+zoop_2019_taxa_WQ$Class <-as.factor(zoop_2019_taxa_WQ$Class)
+zoop_2019_taxa_WQ$Infraclass <-as.factor(zoop_2019_taxa_WQ$Infraclass)
+zoop_2019_taxa_WQ$Superorder <-as.factor(zoop_2019_taxa_WQ$Superorder)
+zoop_2019_taxa_WQ$Order <-as.factor(zoop_2019_taxa_WQ$Order)
+zoop_2019_taxa_WQ$Suborder<-as.factor(zoop_2019_taxa_WQ$Suborder)
+zoop_2019_taxa_WQ$Infraorder <-as.factor(zoop_2019_taxa_WQ$Infraorder)
+zoop_2019_taxa_WQ$Superfamily <-as.factor(zoop_2019_taxa_WQ$Superfamily)
+zoop_2019_taxa_WQ$Family <-as.factor(zoop_2019_taxa_WQ$Family)
+zoop_2019_taxa_WQ$Genus <-as.factor(zoop_2019_taxa_WQ$Genus)
+zoop_2019_taxa_WQ$Species <-as.factor(zoop_2019_taxa_WQ$Species)
+zoop_2019_taxa_WQ$TaxonName <-as.factor(zoop_2019_taxa_WQ$TaxonName)
+zoop_2019_taxa_WQ$TaxonRank <-as.factor(zoop_2019_taxa_WQ$TaxonRank)
+zoop_2019_taxa_WQ$LifeStage <-as.factor(zoop_2019_taxa_WQ$LifeStage)
+zoop_2019_taxa_WQ$CommonName <-as.factor(zoop_2019_taxa_WQ$CommonName)
+
+
+#Merge all files back together
+
+zoop_NDFA <- rbind(zoop_2011, zoop_2012, zoop_2013, zoop_2014, zoop_2015, zoop_2016, zoop_2017, zoop_2018, zoop_2019_taxa_WQ)
+
+#fixing CPUE values that are NA
+#remove rows where classification is missing
+zoop_NDFA <- filter(zoop_NDFA, Classification !="NA")
+#replace subsamples = NA with 1
+zoop_NDFA$Subsample[is.na(zoop_NDFA$Subsample)] <- 1 
+#replace one missing count with 13 (checked and confirmed in raw data 2016 folder: 20160907 YB Zooplankton ID Data Sheet- SAMPLES 33-51 EXPEDITED)
+zoop_NDFA$Count[is.na(zoop_NDFA$Count)] <- 13 
+#fill in blank flow meter speeds
+zoop_NDFA$FlowMeterSpeed[which(zoop_NDFA$FlowMeterSpeed == "")] <- "Low"
+#make sure all microzoop classifications match
+zoop_NDFA$Classification[zoop_NDFA$Classification == 'Microzooplankton & Nauplii'] <- 'Microzooplankton_Nauplii'
+
+#recalculate flow meter for those missing rotor type:
+zoop_NDFA$CPUEZoop2 <- 
+  #if Meso & low
+         ifelse(
+            (zoop_NDFA$Classification != "Microzooplankton_Nauplii" & zoop_NDFA$FlowMeterSpeed == 
+               "Low"), 
+                (
+                 (zoop_NDFA$Count/
+                   ((zoop_NDFA$SubMeso*zoop_NDFA$Subsample)/
+                      zoop_NDFA$VolMeso))/ 
+                        (((3.14*0.25)/4)*
+                          (((zoop_NDFA$EndMeter-zoop_NDFA$StartMeter)*57560)/
+                             999999))
+                ),
+        #if Meso & reg
+               ifelse(
+            (zoop_NDFA$Classification != "Microzooplankton_Nauplii" & zoop_NDFA$FlowMeterSpeed != 
+               "Low"), 
+                (
+                 (zoop_NDFA$Count/
+                   ((zoop_NDFA$SubMeso*zoop_NDFA$Subsample)/
+                      zoop_NDFA$VolMeso))/ 
+                        (((3.14*0.25)/4)*
+                          (((zoop_NDFA$EndMeter-zoop_NDFA$StartMeter)*26873)/
+                             999999))
+                ),
+         #if Micro & low
+         ifelse(
+            (zoop_NDFA$Classification == "Microzooplankton_Nauplii" & zoop_NDFA$FlowMeterSpeed == 
+               "Low"), 
+                (
+                 (zoop_NDFA$Count/
+                   ((zoop_NDFA$SubMicro*zoop_NDFA$Subsample)/
+                      zoop_NDFA$VolMicro))/ 
+                        (((3.14*0.25)/4)*
+                          (((zoop_NDFA$EndMeter-zoop_NDFA$StartMeter)*57560)/
+                             999999))
+                ),
+         #if Micro & reg
+           ifelse(
+            (zoop_NDFA$Classification == "Microzooplankton_Nauplii" & zoop_NDFA$FlowMeterSpeed != 
+               "Low"), 
+                (
+                 (zoop_NDFA$Count/
+                   ((zoop_NDFA$SubMicro*zoop_NDFA$Subsample)/
+                      zoop_NDFA$VolMicro))/ 
+                        (((3.14*0.25)/4)*
+                          (((zoop_NDFA$EndMeter-zoop_NDFA$StartMeter)*26873)/
+                             999999))
+                 ),
+                 "NA"))))
+
+#remove old CPUE column that is incorrect (according to Cat, calculation for microzoop was wrong)
+zoop_NDFA$CPUEZoop <- NULL
+#rename CPUE column
+colnames(zoop_NDFA)[colnames(zoop_NDFA) == 'CPUEZoop2'] <- 'CPUEZoop'
+zoop_NDFA$CPUEZoop <- as.numeric(zoop_NDFA$CPUEZoop)
+
+```
+
+
+
+Make plots
+
+
+```{r Heatmap and bar plots with ggplot2}
+#data needs to be in long format to use with ggplot  and the geom_tile function()
+#can use one of the earlier food datatables to make this plot
+
+#is total CPUE different by year?
+# Sum by year and create bar plot
+
+zoop_NDFA_sum_year <- zoop_NDFA %>% 
+  group_by(Year, StationCode) %>% summarize(CPUEZoop = sum(CPUEZoop))
+
+
+yearsiteplot <- ggplot(zoop_NDFA_sum_year, aes(x = Year, y = StationCode, fill = CPUEZoop)) +
+  geom_tile() +
+  scale_fill_distiller(palette = "YlOrRd", trans = "reverse") +
+  scale_y_discrete(limits = rev(c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB", "SHR")))
+
+yearsiteplot
+
+#year and site plot with log(CPUE)
+yearsiteplot_log <- ggplot(zoop_NDFA_sum_year, aes(x = Year, y = StationCode, fill = log(CPUEZoop))) +
+  geom_tile() +
+  scale_fill_distiller(palette = "YlOrRd", trans = "reverse") +
+  scale_y_discrete(limits = rev(c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB", "SHR")))
+
+yearsiteplot_log
+
+
+#trying to sum by year, site, and Classification with log CPUE
+zoop_NDFA_sum_year_class <- zoop_NDFA %>% 
+  group_by(Year, StationCode, Classification) %>% summarize(CPUEZoop = sum(CPUEZoop))
+
+#create plot
+yearsiteclassplot <- ggplot(zoop_NDFA_sum_year_class, aes(x = Year, y = StationCode, fill = log(CPUEZoop))) + 
+              geom_tile() +
+              scale_fill_distiller(palette = "YlOrRd", trans = "reverse") +
+              scale_y_discrete(limits = rev(c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI",                     "RVB"))) + 
+              facet_grid(. ~ Classification) +
+              theme(axis.text.x = element_text(angle = 90))
+                                                   
+            
+          
+
+yearsiteclassplot
+
+#create plot with site on x, classification on y, faceted by year
+yearsiteclassplot2 <- ggplot(zoop_NDFA_sum_year_class, aes(x = StationCode, y = Classification, fill = log(CPUEZoop))) + 
+              geom_tile() +
+              scale_fill_distiller(palette = "YlOrRd", trans = "reverse") +
+              scale_x_discrete(limits = rev(c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI",                     "RVB"))) + 
+              facet_grid(. ~ Year) +
+              theme(axis.text.x = element_text(angle = 90))
+                                                   
+            
+yearsiteclassplot2
+
+
+#bar plot of CPUE with year on x and cpue on y faceted by Classification and site
+#order the sites so they come out in correct order:
+zoop_NDFA_sum_year_class$StationCode_f = factor(zoop_NDFA_sum_year_class$StationCode, levels=c("RMB", "RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB", "SDI", "SHR"))
+
+#plot
+yearsiteclassplot3 <- ggplot(zoop_NDFA_sum_year_class, aes(x = Year, y = CPUEZoop, fill = StationCode_f)) +
+  geom_bar(stat = "identity") +
+  facet_grid(StationCode_f ~ Classification, scales = "free_y") +
+  theme(axis.text.x = element_text(angle = 90))
+
+yearsiteclassplot3
+
+
+#bar plot of CPUE with classification on x, CPUE on y, faceted by year and site
+yearsiteclassplot4 <- ggplot(zoop_NDFA_sum_year_class, aes(x = Classification, y = CPUEZoop, fill = StationCode_f)) +
+  geom_bar(stat = "identity") +
+  facet_grid(StationCode_f ~ Year, scales = "free_y") +
+  theme(axis.text.x = element_text(angle = 90))
+
+yearsiteclassplot4
+
+
+#bar plot of CPUE with site on x, CPUE on y, faceted by year and classification
+yearsiteclassplot5 <- ggplot(zoop_NDFA_sum_year_class, aes(x = StationCode_f, y = CPUEZoop, fill = StationCode_f)) +
+  geom_bar(stat = "identity") +
+  facet_grid(Year ~ Classification, scales = "free_y") +
+  theme(axis.text.x = element_text(angle = 90))
+
+yearsiteclassplot5
+
+
+#sum by year and class and make bar plot 
+zoop_NDFA_sum_class <- zoop_NDFA %>% 
+  group_by(Year, Classification) %>% summarize(CPUEZoop = sum(CPUEZoop))
+
+#bar plot of CPUE with year on x, CPUE on y, faceted by classification
+yearsiteclassplot6 <- ggplot(zoop_NDFA_sum_class, aes(x = Year, y = CPUEZoop, fill = Year)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(. ~ Classification, scales = "free_y") +
+  theme(axis.text.x = element_text(angle = 90))
+
+yearsiteclassplot6
+
+```
+
+```{r trying ANOSIM code}
+#load vegan
+library(vegan)
+
+#remove columns from zoop_NDFA that aren't needed for NMDS
+zoop_NDFA_NMDS <- zoop_NDFA
+zoop_NDFA_NMDS$WaterTemp <- NULL
+zoop_NDFA_NMDS$Secchi <- NULL
+zoop_NDFA_NMDS$EC <- NULL
+zoop_NDFA_NMDS$SpCnd <- NULL
+zoop_NDFA_NMDS$DO <- NULL
+zoop_NDFA_NMDS$pH <- NULL
+zoop_NDFA_NMDS$Turbidity <- NULL
+zoop_NDFA_NMDS$FlowMeterSpeed <- NULL
+zoop_NDFA_NMDS$StartMeter <- NULL
+zoop_NDFA_NMDS$EndMeter <- NULL
+zoop_NDFA_NMDS$VolMeso <- NULL
+zoop_NDFA_NMDS$VolMicro <- NULL
+zoop_NDFA_NMDS$SubMeso <- NULL
+zoop_NDFA_NMDS$SubMicro <- NULL
+zoop_NDFA_NMDS$Subsample <- NULL
+zoop_NDFA_NMDS$OrganismID <- NULL
+zoop_NDFA_NMDS$Classification <- NULL
+zoop_NDFA_NMDS$Phylum <- NULL
+zoop_NDFA_NMDS$Subphylum <- NULL
+zoop_NDFA_NMDS$Class <- NULL
+zoop_NDFA_NMDS$Subclass <- NULL
+zoop_NDFA_NMDS$Infraclass <- NULL
+zoop_NDFA_NMDS$Superorder <- NULL
+zoop_NDFA_NMDS$Order <- NULL
+zoop_NDFA_NMDS$Suborder <- NULL
+zoop_NDFA_NMDS$Infraorder <- NULL
+zoop_NDFA_NMDS$Superfamily <- NULL
+zoop_NDFA_NMDS$Family <- NULL
+zoop_NDFA_NMDS$Genus <- NULL
+zoop_NDFA_NMDS$Species <- NULL
+zoop_NDFA_NMDS$TaxonName <- NULL
+zoop_NDFA_NMDS$TaxonRank <- NULL
+zoop_NDFA_NMDS$CommonName <- NULL
+zoop_NDFA_NMDS$LifeStage <- NULL
+zoop_NDFA_NMDS$Count <- NULL
+
+#create sitedate column
+zoop_NDFA_NMDS$s.d <- paste(zoop_NDFA_NMDS$StationCode,zoop_NDFA_NMDS$Date,sep="_")
+
+#clean up duplicates taxa with different counts that were found (on zoop_NDFA_dup_check_HH)
+#was initially having trouble flipping the data due to duplicates. Exported files and filtered for those that couldn't flip
+#Haley Hudson went through the raw data to find which count was correct and colored them in the excel file (green = right, red = wrong)
+#need to remove entries that are wrong
+#create ID column which will later be removed
+#update 8/26/20- found out duplicates were caused by not filtering out 50 um zoop data. Cat filtered out 50 um data, which is now new imported "zoop" file. do not need to remove any entries.
+#zoop_NDFA_NMDS <- tibble::rowid_to_column(zoop_NDFA_NMDS, "ID")
+#remove IDs of duplicates
+#zoop_NDFA_NMDS <- zoop_NDFA_NMDS[-c(1324, 1327, 1511, 1351, 1353, 1393, 1397, 1381, 1739 ,1742, 1738, 1748, 1637, 1641, 2353, 2424, 2423, 2695, 2702, 3142, 3141, 3100, 3099, 3098, 3499, 3498, 3497, 3732, 3703, 3701, 3700, 4207, 4206, 4205, 4251, 4249, 4648, 4647, 4619, 4625, 4623, 4622, 4624, 1772, 1698, 1703, 2073, 2334, 2331, 2370, 2367, 2540, 2537, 2513, 2512, 2779, 2776, 4077, 4125, 4124, 4320, 4319, 4510, 4509, 4824, 2004, 2003, 4730, 4729),]
+
+#remove additional columns
+zoop_NDFA_NMDS$Date <- NULL
+zoop_NDFA_NMDS$Time <- NULL
+zoop_NDFA_NMDS$Year <- NULL
+zoop_NDFA_NMDS$StationCode <- NULL
+zoop_NDFA_NMDS$Month <- NULL
+zoop_NDFA_NMDS$DateTime <- NULL
+#zoop_NDFA_NMDS$ID <- NULL
+
+#remove duplicate for SHR
+zoop_NDFA_NMDS <- zoop_NDFA_NMDS[-c(1637),]
+
+#spread the data so that TaxonName are the column headers, CPUE is the cell value, and sitedate is the row names
+all.flip <- spread(data=zoop_NDFA_NMDS, key = Organism, value= CPUEZoop)
+
+#convert "s.d" back to "StationCode" and "Date"
+all.flip <- all.flip %>% separate(s.d, c("StationCode", "Date"), "_")
+
+#extract columns with abundance info
+ZoopCPUE = all.flip[3:86]
+
+#change to matrix for vegan
+m.ZoopCPUE <- as.matrix(ZoopCPUE)
+
+#replace NAs with 0s
+m.ZoopCPUE[is.na(ZoopCPUE)] <- 0
+
+#run metaMDS command - use bray as the distance measure (Bray-Curtis takes into account speices presence/absence as well as abundance - other distance measures often only account for presence/absence)
+nmds <- metaMDS(m.ZoopCPUE, distance = "bray")
+
+plot(nmds)
+
+---####good up to here####------------------------------------
+#extract NMDS scores (x and y coordinates)
+data.scores = as.data.frame(scores(nmds))
+
+#add columns to data frame 
+data.scores$StationCode = all.flip$StationCode
+data.scores$Date = all.flip$Date
+
+#plot
+ggplot(data.scores, aes(x=NMDS1, y=NMDS2)) +
+  geom_point(size=5, aes(shape=StationCode, colour=))
+
+
+
+#ANOSIM - need to figure out what I want to separate by
+#ano <- anosim(m.ZoopCPUE, all.flip$Mesh, distance="bray")
+#ano #more seperation within mesh types than between them - would probably be better to break site out prior to testing
+
+#ano <- anosim(m.diet, all.flip$Location, distance="bray")
+#ano #high seperation between locations
+```
+
+

@@ -1,0 +1,625 @@
+﻿Location,Mesh,Cage,Prey.Taxa,mean.count
+RVR,large,B,Acanthocyclops sp.,4.8
+RVR,large,B,Acanthocyclops sp. copepodid,3.4
+RVR,large,B,Acari,0
+RVR,large,B,Alona sp.,0
+RVR,large,B,Americorophium sp.,0
+RVR,large,B,Amphipoda,0
+RVR,large,B,Bivalvia,0
+RVR,large,B,Bosmina sp.,0
+RVR,large,B,Calanoida copepodid,0
+RVR,large,B,Ceriodaphnia sp.,0.1
+RVR,large,B,Chironomidae,0
+RVR,large,B,Chironomidae larva,0.1
+RVR,large,B,Chironomidae pupae,0
+RVR,large,B,Chydoridae,0
+RVR,large,B,Chydorus sp.,0.5
+RVR,large,B,Cladocera,4.2
+RVR,large,B,Crangonyx sp.,0.1
+RVR,large,B,Culicidae larva,0
+RVR,large,B,Cyclopoida,0
+RVR,large,B,Cyclopoida copepodid,0
+RVR,large,B,Daphnia sp.,13.2
+RVR,large,B,Daphnia sp. egg,0.1
+RVR,large,B,Diacyclops thomasi,0.4
+RVR,large,B,Diaptomidae,0.1
+RVR,large,B,Diaptomidae copepodid,0
+RVR,large,B,empty,0
+RVR,large,B,Eucyclops sp.,0.7
+RVR,large,B,Eurycercus sp.,0
+RVR,large,B,Eurytemora affinis,0
+RVR,large,B,Eurytemora affinis copepodid,0
+RVR,large,B,Eurytemora affinis nauplius,0
+RVR,large,B,Fish eggs,0
+RVR,large,B,Halicyclops sp.,0
+RVR,large,B,Harpacticoida,0
+RVR,large,B,Hemiptera,0
+RVR,large,B,Hemiptera nymph,0
+RVR,large,B,Hyallela azteca,0
+RVR,large,B,Insecta,0.1
+RVR,large,B,Insecta larva,0.1
+RVR,large,B,Leydigia sp.,0
+RVR,large,B,Macrocyclops sp.,0.1
+RVR,large,B,Mesocyclops sp.,0
+RVR,large,B,Osphranticum labronectum,0.5
+RVR,large,B,Ostracoda,0
+RVR,large,B,plant matter,0
+RVR,large,B,Pseudodiaptomus forbesi,0
+RVR,large,B,Scapholeberis sp.,0
+RVR,large,B,Sida sp.,0
+RVR,large,B,Simocephalus sp.,3
+RVR,large,B,Sinocalanus doerrii,0
+RVR,large,B,Sinocalanus doerrii copepodid,0
+RVR,large,B,Tropocyclops sp.,0
+RVR,large,F,Acanthocyclops sp.,2.7
+RVR,large,F,Acanthocyclops sp. copepodid,1.7
+RVR,large,F,Acari,0
+RVR,large,F,Alona sp.,0
+RVR,large,F,Americorophium sp.,0
+RVR,large,F,Amphipoda,0
+RVR,large,F,Bivalvia,0
+RVR,large,F,Bosmina sp.,0
+RVR,large,F,Calanoida copepodid,0
+RVR,large,F,Ceriodaphnia sp.,0.5
+RVR,large,F,Chironomidae,0
+RVR,large,F,Chironomidae larva,0
+RVR,large,F,Chironomidae pupae,0.2
+RVR,large,F,Chydoridae,0
+RVR,large,F,Chydorus sp.,0.3
+RVR,large,F,Cladocera,2.6
+RVR,large,F,Crangonyx sp.,0.2
+RVR,large,F,Culicidae larva,0.1
+RVR,large,F,Cyclopoida,0
+RVR,large,F,Cyclopoida copepodid,0
+RVR,large,F,Daphnia sp.,17.2
+RVR,large,F,Daphnia sp. egg,0
+RVR,large,F,Diacyclops thomasi,0.3
+RVR,large,F,Diaptomidae,0.3
+RVR,large,F,Diaptomidae copepodid,0
+RVR,large,F,empty,0
+RVR,large,F,Eucyclops sp.,0.2
+RVR,large,F,Eurycercus sp.,0
+RVR,large,F,Eurytemora affinis,0
+RVR,large,F,Eurytemora affinis copepodid,0
+RVR,large,F,Eurytemora affinis nauplius,0
+RVR,large,F,Fish eggs,0
+RVR,large,F,Halicyclops sp.,0
+RVR,large,F,Harpacticoida,0
+RVR,large,F,Hemiptera,0
+RVR,large,F,Hemiptera nymph,0
+RVR,large,F,Hyallela azteca,0.2
+RVR,large,F,Insecta,0.1
+RVR,large,F,Insecta larva,0
+RVR,large,F,Leydigia sp.,0
+RVR,large,F,Macrocyclops sp.,0
+RVR,large,F,Mesocyclops sp.,0
+RVR,large,F,Osphranticum labronectum,0.1
+RVR,large,F,Ostracoda,0
+RVR,large,F,plant matter,0
+RVR,large,F,Pseudodiaptomus forbesi,0
+RVR,large,F,Scapholeberis sp.,0
+RVR,large,F,Sida sp.,0
+RVR,large,F,Simocephalus sp.,1
+RVR,large,F,Sinocalanus doerrii,0
+RVR,large,F,Sinocalanus doerrii copepodid,0
+RVR,large,F,Tropocyclops sp.,0
+RVR,small,C,Acanthocyclops sp.,4.4
+RVR,small,C,Acanthocyclops sp. copepodid,4.6
+RVR,small,C,Acari,0
+RVR,small,C,Alona sp.,0
+RVR,small,C,Americorophium sp.,0
+RVR,small,C,Amphipoda,0
+RVR,small,C,Bivalvia,0
+RVR,small,C,Bosmina sp.,0
+RVR,small,C,Calanoida copepodid,0.1
+RVR,small,C,Ceriodaphnia sp.,0.9
+RVR,small,C,Chironomidae,0
+RVR,small,C,Chironomidae larva,0.1
+RVR,small,C,Chironomidae pupae,0
+RVR,small,C,Chydoridae,0
+RVR,small,C,Chydorus sp.,0.2
+RVR,small,C,Cladocera,1
+RVR,small,C,Crangonyx sp.,0.1
+RVR,small,C,Culicidae larva,0
+RVR,small,C,Cyclopoida,0
+RVR,small,C,Cyclopoida copepodid,0.1
+RVR,small,C,Daphnia sp.,10.9
+RVR,small,C,Daphnia sp. egg,0
+RVR,small,C,Diacyclops thomasi,0.6
+RVR,small,C,Diaptomidae,0.3
+RVR,small,C,Diaptomidae copepodid,0.2
+RVR,small,C,empty,0
+RVR,small,C,Eucyclops sp.,1
+RVR,small,C,Eurycercus sp.,0
+RVR,small,C,Eurytemora affinis,0
+RVR,small,C,Eurytemora affinis copepodid,0
+RVR,small,C,Eurytemora affinis nauplius,0
+RVR,small,C,Fish eggs,0
+RVR,small,C,Halicyclops sp.,0
+RVR,small,C,Harpacticoida,0
+RVR,small,C,Hemiptera,0
+RVR,small,C,Hemiptera nymph,0
+RVR,small,C,Hyallela azteca,0
+RVR,small,C,Insecta,0
+RVR,small,C,Insecta larva,0
+RVR,small,C,Leydigia sp.,0
+RVR,small,C,Macrocyclops sp.,0
+RVR,small,C,Mesocyclops sp.,0.1
+RVR,small,C,Osphranticum labronectum,0.2
+RVR,small,C,Ostracoda,0
+RVR,small,C,plant matter,0
+RVR,small,C,Pseudodiaptomus forbesi,0
+RVR,small,C,Scapholeberis sp.,0
+RVR,small,C,Sida sp.,0.1
+RVR,small,C,Simocephalus sp.,0.6
+RVR,small,C,Sinocalanus doerrii,0
+RVR,small,C,Sinocalanus doerrii copepodid,0
+RVR,small,C,Tropocyclops sp.,0
+RVR,small,D,Acanthocyclops sp.,3.3
+RVR,small,D,Acanthocyclops sp. copepodid,4.9
+RVR,small,D,Acari,0
+RVR,small,D,Alona sp.,0
+RVR,small,D,Americorophium sp.,0
+RVR,small,D,Amphipoda,0.1
+RVR,small,D,Bivalvia,0
+RVR,small,D,Bosmina sp.,0.2
+RVR,small,D,Calanoida copepodid,0
+RVR,small,D,Ceriodaphnia sp.,1
+RVR,small,D,Chironomidae,0
+RVR,small,D,Chironomidae larva,0
+RVR,small,D,Chironomidae pupae,0
+RVR,small,D,Chydoridae,0
+RVR,small,D,Chydorus sp.,0.1
+RVR,small,D,Cladocera,1.6
+RVR,small,D,Crangonyx sp.,0
+RVR,small,D,Culicidae larva,0
+RVR,small,D,Cyclopoida,0
+RVR,small,D,Cyclopoida copepodid,0.2
+RVR,small,D,Daphnia sp.,7.5
+RVR,small,D,Daphnia sp. egg,0
+RVR,small,D,Diacyclops thomasi,0.7
+RVR,small,D,Diaptomidae,0.1
+RVR,small,D,Diaptomidae copepodid,0.1
+RVR,small,D,empty,0
+RVR,small,D,Eucyclops sp.,0.7
+RVR,small,D,Eurycercus sp.,0
+RVR,small,D,Eurytemora affinis,0
+RVR,small,D,Eurytemora affinis copepodid,0
+RVR,small,D,Eurytemora affinis nauplius,0
+RVR,small,D,Fish eggs,0
+RVR,small,D,Halicyclops sp.,0
+RVR,small,D,Harpacticoida,0
+RVR,small,D,Hemiptera,0
+RVR,small,D,Hemiptera nymph,0
+RVR,small,D,Hyallela azteca,0
+RVR,small,D,Insecta,0
+RVR,small,D,Insecta larva,0
+RVR,small,D,Leydigia sp.,0
+RVR,small,D,Macrocyclops sp.,0
+RVR,small,D,Mesocyclops sp.,0
+RVR,small,D,Osphranticum labronectum,0
+RVR,small,D,Ostracoda,0.1
+RVR,small,D,plant matter,0.1
+RVR,small,D,Pseudodiaptomus forbesi,0
+RVR,small,D,Scapholeberis sp.,0
+RVR,small,D,Sida sp.,0.1
+RVR,small,D,Simocephalus sp.,1.4
+RVR,small,D,Sinocalanus doerrii,0
+RVR,small,D,Sinocalanus doerrii copepodid,0
+RVR,small,D,Tropocyclops sp.,0
+RVR,wrap,A,Acanthocyclops sp.,2.8
+RVR,wrap,A,Acanthocyclops sp. copepodid,1.6
+RVR,wrap,A,Acari,0.1
+RVR,wrap,A,Alona sp.,0
+RVR,wrap,A,Americorophium sp.,0
+RVR,wrap,A,Amphipoda,0
+RVR,wrap,A,Bivalvia,0
+RVR,wrap,A,Bosmina sp.,0
+RVR,wrap,A,Calanoida copepodid,0
+RVR,wrap,A,Ceriodaphnia sp.,0.1
+RVR,wrap,A,Chironomidae,0
+RVR,wrap,A,Chironomidae larva,0.1
+RVR,wrap,A,Chironomidae pupae,0
+RVR,wrap,A,Chydoridae,0
+RVR,wrap,A,Chydorus sp.,0.1
+RVR,wrap,A,Cladocera,1.5
+RVR,wrap,A,Crangonyx sp.,0
+RVR,wrap,A,Culicidae larva,0
+RVR,wrap,A,Cyclopoida,0
+RVR,wrap,A,Cyclopoida copepodid,0.1
+RVR,wrap,A,Daphnia sp.,13.9
+RVR,wrap,A,Daphnia sp. egg,0
+RVR,wrap,A,Diacyclops thomasi,0.6
+RVR,wrap,A,Diaptomidae,0.1
+RVR,wrap,A,Diaptomidae copepodid,0.1
+RVR,wrap,A,empty,0
+RVR,wrap,A,Eucyclops sp.,0.5
+RVR,wrap,A,Eurycercus sp.,0
+RVR,wrap,A,Eurytemora affinis,0
+RVR,wrap,A,Eurytemora affinis copepodid,0
+RVR,wrap,A,Eurytemora affinis nauplius,0
+RVR,wrap,A,Fish eggs,0
+RVR,wrap,A,Halicyclops sp.,0
+RVR,wrap,A,Harpacticoida,0
+RVR,wrap,A,Hemiptera,0
+RVR,wrap,A,Hemiptera nymph,0
+RVR,wrap,A,Hyallela azteca,0.1
+RVR,wrap,A,Insecta,0
+RVR,wrap,A,Insecta larva,0
+RVR,wrap,A,Leydigia sp.,0
+RVR,wrap,A,Macrocyclops sp.,0
+RVR,wrap,A,Mesocyclops sp.,0
+RVR,wrap,A,Osphranticum labronectum,0.4
+RVR,wrap,A,Ostracoda,0
+RVR,wrap,A,plant matter,0
+RVR,wrap,A,Pseudodiaptomus forbesi,0
+RVR,wrap,A,Scapholeberis sp.,0
+RVR,wrap,A,Sida sp.,0.2
+RVR,wrap,A,Simocephalus sp.,2
+RVR,wrap,A,Sinocalanus doerrii,0
+RVR,wrap,A,Sinocalanus doerrii copepodid,0
+RVR,wrap,A,Tropocyclops sp.,0
+RVR,wrap,E,Acanthocyclops sp.,3.4
+RVR,wrap,E,Acanthocyclops sp. copepodid,4.5
+RVR,wrap,E,Acari,0
+RVR,wrap,E,Alona sp.,0
+RVR,wrap,E,Americorophium sp.,0
+RVR,wrap,E,Amphipoda,0
+RVR,wrap,E,Bivalvia,0
+RVR,wrap,E,Bosmina sp.,0
+RVR,wrap,E,Calanoida copepodid,0
+RVR,wrap,E,Ceriodaphnia sp.,1.1
+RVR,wrap,E,Chironomidae,0
+RVR,wrap,E,Chironomidae larva,0.1
+RVR,wrap,E,Chironomidae pupae,0
+RVR,wrap,E,Chydoridae,0.1
+RVR,wrap,E,Chydorus sp.,0.3
+RVR,wrap,E,Cladocera,1.1
+RVR,wrap,E,Crangonyx sp.,0
+RVR,wrap,E,Culicidae larva,0
+RVR,wrap,E,Cyclopoida,0.2
+RVR,wrap,E,Cyclopoida copepodid,0.2
+RVR,wrap,E,Daphnia sp.,8.2
+RVR,wrap,E,Daphnia sp. egg,0
+RVR,wrap,E,Diacyclops thomasi,0.3
+RVR,wrap,E,Diaptomidae,0.4
+RVR,wrap,E,Diaptomidae copepodid,0
+RVR,wrap,E,empty,0
+RVR,wrap,E,Eucyclops sp.,1.3
+RVR,wrap,E,Eurycercus sp.,0
+RVR,wrap,E,Eurytemora affinis,0.1
+RVR,wrap,E,Eurytemora affinis copepodid,0
+RVR,wrap,E,Eurytemora affinis nauplius,0
+RVR,wrap,E,Fish eggs,0
+RVR,wrap,E,Halicyclops sp.,0
+RVR,wrap,E,Harpacticoida,0
+RVR,wrap,E,Hemiptera,0
+RVR,wrap,E,Hemiptera nymph,0
+RVR,wrap,E,Hyallela azteca,0
+RVR,wrap,E,Insecta,0.1
+RVR,wrap,E,Insecta larva,0
+RVR,wrap,E,Leydigia sp.,0
+RVR,wrap,E,Macrocyclops sp.,0
+RVR,wrap,E,Mesocyclops sp.,0
+RVR,wrap,E,Osphranticum labronectum,0.2
+RVR,wrap,E,Ostracoda,0.2
+RVR,wrap,E,plant matter,0
+RVR,wrap,E,Pseudodiaptomus forbesi,0
+RVR,wrap,E,Scapholeberis sp.,0.1
+RVR,wrap,E,Sida sp.,0
+RVR,wrap,E,Simocephalus sp.,1.4
+RVR,wrap,E,Sinocalanus doerrii,0
+RVR,wrap,E,Sinocalanus doerrii copepodid,0
+RVR,wrap,E,Tropocyclops sp.,0.1
+DWSC,large,B,Acanthocyclops sp.,2.3
+DWSC,large,B,Acanthocyclops sp. copepodid,25.3
+DWSC,large,B,Acari,0
+DWSC,large,B,Alona sp.,0
+DWSC,large,B,Americorophium sp.,0.1
+DWSC,large,B,Amphipoda,0
+DWSC,large,B,Bivalvia,0
+DWSC,large,B,Bosmina sp.,5.5
+DWSC,large,B,Calanoida copepodid,5.2
+DWSC,large,B,Ceriodaphnia sp.,0.4
+DWSC,large,B,Chironomidae,0
+DWSC,large,B,Chironomidae larva,0
+DWSC,large,B,Chironomidae pupae,0
+DWSC,large,B,Chydoridae,0
+DWSC,large,B,Chydorus sp.,8.9
+DWSC,large,B,Cladocera,0
+DWSC,large,B,Crangonyx sp.,0
+DWSC,large,B,Culicidae larva,0
+DWSC,large,B,Cyclopoida,0
+DWSC,large,B,Cyclopoida copepodid,7.7
+DWSC,large,B,Daphnia sp.,2.1
+DWSC,large,B,Daphnia sp. egg,0
+DWSC,large,B,Diacyclops thomasi,4.8
+DWSC,large,B,Diaptomidae,0.3
+DWSC,large,B,Diaptomidae copepodid,0.1
+DWSC,large,B,empty,0
+DWSC,large,B,Eucyclops sp.,0.5
+DWSC,large,B,Eurycercus sp.,0
+DWSC,large,B,Eurytemora affinis,1.5
+DWSC,large,B,Eurytemora affinis copepodid,1.1
+DWSC,large,B,Eurytemora affinis nauplius,0.1
+DWSC,large,B,Fish eggs,0
+DWSC,large,B,Halicyclops sp.,0
+DWSC,large,B,Harpacticoida,0.1
+DWSC,large,B,Hemiptera,0.1
+DWSC,large,B,Hemiptera nymph,0.1
+DWSC,large,B,Hyallela azteca,0.1
+DWSC,large,B,Insecta,0
+DWSC,large,B,Insecta larva,0
+DWSC,large,B,Leydigia sp.,0
+DWSC,large,B,Macrocyclops sp.,0
+DWSC,large,B,Mesocyclops sp.,0
+DWSC,large,B,Osphranticum labronectum,0
+DWSC,large,B,Ostracoda,0.5
+DWSC,large,B,plant matter,0
+DWSC,large,B,Pseudodiaptomus forbesi,0.1
+DWSC,large,B,Scapholeberis sp.,0.2
+DWSC,large,B,Sida sp.,0
+DWSC,large,B,Simocephalus sp.,0.1
+DWSC,large,B,Sinocalanus doerrii,0.8
+DWSC,large,B,Sinocalanus doerrii copepodid,1.1
+DWSC,large,B,Tropocyclops sp.,0
+DWSC,large,F,Acanthocyclops sp.,3.5
+DWSC,large,F,Acanthocyclops sp. copepodid,36.6
+DWSC,large,F,Acari,0.1
+DWSC,large,F,Alona sp.,0
+DWSC,large,F,Americorophium sp.,0
+DWSC,large,F,Amphipoda,0
+DWSC,large,F,Bivalvia,0
+DWSC,large,F,Bosmina sp.,12.6
+DWSC,large,F,Calanoida copepodid,0.4
+DWSC,large,F,Ceriodaphnia sp.,1
+DWSC,large,F,Chironomidae,0
+DWSC,large,F,Chironomidae larva,0.2
+DWSC,large,F,Chironomidae pupae,0
+DWSC,large,F,Chydoridae,0.4
+DWSC,large,F,Chydorus sp.,12
+DWSC,large,F,Cladocera,0
+DWSC,large,F,Crangonyx sp.,0
+DWSC,large,F,Culicidae larva,0
+DWSC,large,F,Cyclopoida,0
+DWSC,large,F,Cyclopoida copepodid,21.2
+DWSC,large,F,Daphnia sp.,1.9
+DWSC,large,F,Daphnia sp. egg,0
+DWSC,large,F,Diacyclops thomasi,1.7
+DWSC,large,F,Diaptomidae,0.2
+DWSC,large,F,Diaptomidae copepodid,0.2
+DWSC,large,F,empty,0
+DWSC,large,F,Eucyclops sp.,0.9
+DWSC,large,F,Eurycercus sp.,0
+DWSC,large,F,Eurytemora affinis,2.3
+DWSC,large,F,Eurytemora affinis copepodid,0.5
+DWSC,large,F,Eurytemora affinis nauplius,0
+DWSC,large,F,Fish eggs,0.4
+DWSC,large,F,Halicyclops sp.,0
+DWSC,large,F,Harpacticoida,0.1
+DWSC,large,F,Hemiptera,0
+DWSC,large,F,Hemiptera nymph,0
+DWSC,large,F,Hyallela azteca,0
+DWSC,large,F,Insecta,0
+DWSC,large,F,Insecta larva,0
+DWSC,large,F,Leydigia sp.,0
+DWSC,large,F,Macrocyclops sp.,0
+DWSC,large,F,Mesocyclops sp.,0
+DWSC,large,F,Osphranticum labronectum,0
+DWSC,large,F,Ostracoda,0.5
+DWSC,large,F,plant matter,0
+DWSC,large,F,Pseudodiaptomus forbesi,0
+DWSC,large,F,Scapholeberis sp.,0.1
+DWSC,large,F,Sida sp.,0
+DWSC,large,F,Simocephalus sp.,0
+DWSC,large,F,Sinocalanus doerrii,0.1
+DWSC,large,F,Sinocalanus doerrii copepodid,0.1
+DWSC,large,F,Tropocyclops sp.,0
+DWSC,small,C,Acanthocyclops sp.,5.8
+DWSC,small,C,Acanthocyclops sp. copepodid,42.5
+DWSC,small,C,Acari,0
+DWSC,small,C,Alona sp.,0
+DWSC,small,C,Americorophium sp.,0
+DWSC,small,C,Amphipoda,0
+DWSC,small,C,Bivalvia,0.1
+DWSC,small,C,Bosmina sp.,12.8
+DWSC,small,C,Calanoida copepodid,3.5
+DWSC,small,C,Ceriodaphnia sp.,1
+DWSC,small,C,Chironomidae,0.1
+DWSC,small,C,Chironomidae larva,0
+DWSC,small,C,Chironomidae pupae,0
+DWSC,small,C,Chydoridae,0.1
+DWSC,small,C,Chydorus sp.,15.8
+DWSC,small,C,Cladocera,0
+DWSC,small,C,Crangonyx sp.,0
+DWSC,small,C,Culicidae larva,0
+DWSC,small,C,Cyclopoida,0
+DWSC,small,C,Cyclopoida copepodid,7.7
+DWSC,small,C,Daphnia sp.,2.5
+DWSC,small,C,Daphnia sp. egg,0
+DWSC,small,C,Diacyclops thomasi,6
+DWSC,small,C,Diaptomidae,0.4
+DWSC,small,C,Diaptomidae copepodid,0
+DWSC,small,C,empty,0
+DWSC,small,C,Eucyclops sp.,0.5
+DWSC,small,C,Eurycercus sp.,0
+DWSC,small,C,Eurytemora affinis,3.5
+DWSC,small,C,Eurytemora affinis copepodid,2.2
+DWSC,small,C,Eurytemora affinis nauplius,0
+DWSC,small,C,Fish eggs,0
+DWSC,small,C,Halicyclops sp.,0.4
+DWSC,small,C,Harpacticoida,0
+DWSC,small,C,Hemiptera,0
+DWSC,small,C,Hemiptera nymph,0
+DWSC,small,C,Hyallela azteca,0
+DWSC,small,C,Insecta,0
+DWSC,small,C,Insecta larva,0
+DWSC,small,C,Leydigia sp.,0
+DWSC,small,C,Macrocyclops sp.,0
+DWSC,small,C,Mesocyclops sp.,0
+DWSC,small,C,Osphranticum labronectum,0
+DWSC,small,C,Ostracoda,0
+DWSC,small,C,plant matter,0
+DWSC,small,C,Pseudodiaptomus forbesi,0
+DWSC,small,C,Scapholeberis sp.,0.1
+DWSC,small,C,Sida sp.,0
+DWSC,small,C,Simocephalus sp.,0.4
+DWSC,small,C,Sinocalanus doerrii,0.8
+DWSC,small,C,Sinocalanus doerrii copepodid,1.1
+DWSC,small,C,Tropocyclops sp.,0
+DWSC,small,D,Acanthocyclops sp.,8
+DWSC,small,D,Acanthocyclops sp. copepodid,41.2
+DWSC,small,D,Acari,0
+DWSC,small,D,Alona sp.,0
+DWSC,small,D,Americorophium sp.,0.1
+DWSC,small,D,Amphipoda,0
+DWSC,small,D,Bivalvia,0
+DWSC,small,D,Bosmina sp.,7.1
+DWSC,small,D,Calanoida copepodid,2.1
+DWSC,small,D,Ceriodaphnia sp.,0.1
+DWSC,small,D,Chironomidae,0.1
+DWSC,small,D,Chironomidae larva,0.4
+DWSC,small,D,Chironomidae pupae,0
+DWSC,small,D,Chydoridae,0
+DWSC,small,D,Chydorus sp.,13.3
+DWSC,small,D,Cladocera,0
+DWSC,small,D,Crangonyx sp.,0
+DWSC,small,D,Culicidae larva,0
+DWSC,small,D,Cyclopoida,0
+DWSC,small,D,Cyclopoida copepodid,11.6
+DWSC,small,D,Daphnia sp.,2.1
+DWSC,small,D,Daphnia sp. egg,0
+DWSC,small,D,Diacyclops thomasi,2.2
+DWSC,small,D,Diaptomidae,0.2
+DWSC,small,D,Diaptomidae copepodid,0
+DWSC,small,D,empty,0
+DWSC,small,D,Eucyclops sp.,0.4
+DWSC,small,D,Eurycercus sp.,0.1
+DWSC,small,D,Eurytemora affinis,3
+DWSC,small,D,Eurytemora affinis copepodid,1
+DWSC,small,D,Eurytemora affinis nauplius,0
+DWSC,small,D,Fish eggs,0
+DWSC,small,D,Halicyclops sp.,0.1
+DWSC,small,D,Harpacticoida,0.1
+DWSC,small,D,Hemiptera,0
+DWSC,small,D,Hemiptera nymph,0
+DWSC,small,D,Hyallela azteca,0
+DWSC,small,D,Insecta,0
+DWSC,small,D,Insecta larva,0
+DWSC,small,D,Leydigia sp.,0
+DWSC,small,D,Macrocyclops sp.,0
+DWSC,small,D,Mesocyclops sp.,0
+DWSC,small,D,Osphranticum labronectum,0
+DWSC,small,D,Ostracoda,0
+DWSC,small,D,plant matter,0
+DWSC,small,D,Pseudodiaptomus forbesi,0
+DWSC,small,D,Scapholeberis sp.,0.5
+DWSC,small,D,Sida sp.,0
+DWSC,small,D,Simocephalus sp.,0.8
+DWSC,small,D,Sinocalanus doerrii,0.5
+DWSC,small,D,Sinocalanus doerrii copepodid,0.1
+DWSC,small,D,Tropocyclops sp.,0
+DWSC,wrap,A,Acanthocyclops sp.,3.1
+DWSC,wrap,A,Acanthocyclops sp. copepodid,34.5
+DWSC,wrap,A,Acari,0.1
+DWSC,wrap,A,Alona sp.,0.1
+DWSC,wrap,A,Americorophium sp.,0
+DWSC,wrap,A,Amphipoda,0
+DWSC,wrap,A,Bivalvia,0
+DWSC,wrap,A,Bosmina sp.,15.6
+DWSC,wrap,A,Calanoida copepodid,8.2
+DWSC,wrap,A,Ceriodaphnia sp.,0.8
+DWSC,wrap,A,Chironomidae,0
+DWSC,wrap,A,Chironomidae larva,0.1
+DWSC,wrap,A,Chironomidae pupae,0
+DWSC,wrap,A,Chydoridae,0
+DWSC,wrap,A,Chydorus sp.,14.4
+DWSC,wrap,A,Cladocera,0.9
+DWSC,wrap,A,Crangonyx sp.,0
+DWSC,wrap,A,Culicidae larva,0
+DWSC,wrap,A,Cyclopoida,0
+DWSC,wrap,A,Cyclopoida copepodid,16.2
+DWSC,wrap,A,Daphnia sp.,2.5
+DWSC,wrap,A,Daphnia sp. egg,0
+DWSC,wrap,A,Diacyclops thomasi,7.3
+DWSC,wrap,A,Diaptomidae,1.5
+DWSC,wrap,A,Diaptomidae copepodid,0.1
+DWSC,wrap,A,empty,0
+DWSC,wrap,A,Eucyclops sp.,0.2
+DWSC,wrap,A,Eurycercus sp.,0.1
+DWSC,wrap,A,Eurytemora affinis,2.9
+DWSC,wrap,A,Eurytemora affinis copepodid,0.9
+DWSC,wrap,A,Eurytemora affinis nauplius,0
+DWSC,wrap,A,Fish eggs,0
+DWSC,wrap,A,Halicyclops sp.,0.1
+DWSC,wrap,A,Harpacticoida,1.3
+DWSC,wrap,A,Hemiptera,0
+DWSC,wrap,A,Hemiptera nymph,0
+DWSC,wrap,A,Hyallela azteca,0
+DWSC,wrap,A,Insecta,0.1
+DWSC,wrap,A,Insecta larva,0
+DWSC,wrap,A,Leydigia sp.,0
+DWSC,wrap,A,Macrocyclops sp.,0
+DWSC,wrap,A,Mesocyclops sp.,0
+DWSC,wrap,A,Osphranticum labronectum,0
+DWSC,wrap,A,Ostracoda,0.1
+DWSC,wrap,A,plant matter,0
+DWSC,wrap,A,Pseudodiaptomus forbesi,0
+DWSC,wrap,A,Scapholeberis sp.,0
+DWSC,wrap,A,Sida sp.,0
+DWSC,wrap,A,Simocephalus sp.,0.1
+DWSC,wrap,A,Sinocalanus doerrii,1
+DWSC,wrap,A,Sinocalanus doerrii copepodid,1
+DWSC,wrap,A,Tropocyclops sp.,0
+DWSC,wrap,E,Acanthocyclops sp.,13.8
+DWSC,wrap,E,Acanthocyclops sp. copepodid,38.5
+DWSC,wrap,E,Acari,0
+DWSC,wrap,E,Alona sp.,0
+DWSC,wrap,E,Americorophium sp.,0
+DWSC,wrap,E,Amphipoda,0
+DWSC,wrap,E,Bivalvia,0
+DWSC,wrap,E,Bosmina sp.,8.6
+DWSC,wrap,E,Calanoida copepodid,0.8
+DWSC,wrap,E,Ceriodaphnia sp.,0.6
+DWSC,wrap,E,Chironomidae,0
+DWSC,wrap,E,Chironomidae larva,0.3
+DWSC,wrap,E,Chironomidae pupae,0
+DWSC,wrap,E,Chydoridae,0.3
+DWSC,wrap,E,Chydorus sp.,13.8
+DWSC,wrap,E,Cladocera,0
+DWSC,wrap,E,Crangonyx sp.,0
+DWSC,wrap,E,Culicidae larva,0
+DWSC,wrap,E,Cyclopoida,0
+DWSC,wrap,E,Cyclopoida copepodid,8.7
+DWSC,wrap,E,Daphnia sp.,1.1
+DWSC,wrap,E,Daphnia sp. egg,0
+DWSC,wrap,E,Diacyclops thomasi,5.8
+DWSC,wrap,E,Diaptomidae,0.7
+DWSC,wrap,E,Diaptomidae copepodid,0.3
+DWSC,wrap,E,empty,0
+DWSC,wrap,E,Eucyclops sp.,0.7
+DWSC,wrap,E,Eurycercus sp.,0
+DWSC,wrap,E,Eurytemora affinis,2.8
+DWSC,wrap,E,Eurytemora affinis copepodid,2.5
+DWSC,wrap,E,Eurytemora affinis nauplius,0
+DWSC,wrap,E,Fish eggs,0
+DWSC,wrap,E,Halicyclops sp.,0
+DWSC,wrap,E,Harpacticoida,0.2
+DWSC,wrap,E,Hemiptera,0
+DWSC,wrap,E,Hemiptera nymph,0
+DWSC,wrap,E,Hyallela azteca,0
+DWSC,wrap,E,Insecta,0.2
+DWSC,wrap,E,Insecta larva,0
+DWSC,wrap,E,Leydigia sp.,0.1
+DWSC,wrap,E,Macrocyclops sp.,0
+DWSC,wrap,E,Mesocyclops sp.,0
+DWSC,wrap,E,Osphranticum labronectum,0
+DWSC,wrap,E,Ostracoda,0
+DWSC,wrap,E,plant matter,0
+DWSC,wrap,E,Pseudodiaptomus forbesi,0.1
+DWSC,wrap,E,Scapholeberis sp.,0
+DWSC,wrap,E,Sida sp.,0
+DWSC,wrap,E,Simocephalus sp.,1.4
+DWSC,wrap,E,Sinocalanus doerrii,0.1
+DWSC,wrap,E,Sinocalanus doerrii copepodid,0
+DWSC,wrap,E,Tropocyclops sp.,0
