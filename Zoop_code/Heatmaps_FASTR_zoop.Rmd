@@ -21,14 +21,14 @@ library(ggplot2)
 library(RColorBrewer)
 library(hms)
 
-setwd("C:/Users/mbedwell/OneDrive - California Department of Water Resources/info for studies/Fall Flow Study/synthesis/zoop")
+#setwd("C:/Users/mbedwell/OneDrive - California Department of Water Resources/info for studies/Fall Flow Study/synthesis/zoop")
 #zoop <- read.csv("LT_zoop_RAW.csv", header = TRUE) old table input with 50 um data
-zoop <- read.csv("LT_RAW_ZoopThru2018_20200825.csv", header = TRUE)
+zoop <- read.csv("Zoop_code/LT_RAW_ZoopThru2018_20200825.csv", header = TRUE)
 
 
 #need to add in 2019 zoop counts to 2011-2018 zoop data file. need to add taxonomy first
 #read in 2019 data from the 2019 NDFA report analysis
-zoop_2019 <- read.csv("NDFA_2019_zoop_CPUE_allsites_alldates.csv", header = TRUE, stringsAsFactors = FALSE)
+zoop_2019 <- read.csv("Zoop_code/NDFA_2019_zoop_CPUE_allsites_alldates.csv", header = TRUE, stringsAsFactors = FALSE)
 
 
 #remove random X and X.1 columns
@@ -37,7 +37,7 @@ zoop_2019$X.1 <- NULL
 
 
 #read in taxonomy table from Cat in order to add in matching taxonomic structure
-zoop_taxa <- read.csv("YB_TaxonomyTable.csv", header = TRUE, stringsAsFactors = FALSE)
+zoop_taxa <- read.csv("Zoop_code/YB_TaxonomyTable.csv", header = TRUE, stringsAsFactors = FALSE)
 
 
 #change classification so they match between zoop_2019 and zoop_taxa table
@@ -69,7 +69,7 @@ zoop_2019_taxa <- left_join(zoop_2019, zoop_taxa, by = c("Classification", "Orga
 
 #combine zoop 2019 taxa table with 2019 discret WQ measurements
 #read in file
-WQ_2019 <- read.csv("2019_NDFA_physical data.csv", stringsAsFactors = FALSE)
+WQ_2019 <- read.csv("Zoop_code/2019_NDFA_physical data.csv", stringsAsFactors = FALSE)
 
 #TMF: convert DateTime to POSIX
 # Convert dates and times into POSIXct-compliant values
@@ -401,8 +401,14 @@ zoop_NDFA_NMDS$CommonName <- NULL
 zoop_NDFA_NMDS$LifeStage <- NULL
 zoop_NDFA_NMDS$Count <- NULL
 
+#Rosie's note: faster way to do this
+zoop_NDFA_NMDS <- select(zoop_NDFA, Year, Month, Date, StationCode, Organism, CPUEZoop)
+
+
+
 #create sitedate column
-zoop_NDFA_NMDS$s.d <- paste(zoop_NDFA_NMDS$StationCode,zoop_NDFA_NMDS$Date,sep="_")
+#zoop_NDFA_NMDS$s.d <- #paste(zoop_NDFA_NMDS$StationCode,zoop_NDFA_NMDS$Date,sep="_")
+
 
 #clean up duplicates taxa with different counts that were found (on zoop_NDFA_dup_check_HH)
 #was initially having trouble flipping the data due to duplicates. Exported files and filtered for those that couldn't flip
@@ -415,22 +421,27 @@ zoop_NDFA_NMDS$s.d <- paste(zoop_NDFA_NMDS$StationCode,zoop_NDFA_NMDS$Date,sep="
 #zoop_NDFA_NMDS <- zoop_NDFA_NMDS[-c(1324, 1327, 1511, 1351, 1353, 1393, 1397, 1381, 1739 ,1742, 1738, 1748, 1637, 1641, 2353, 2424, 2423, 2695, 2702, 3142, 3141, 3100, 3099, 3098, 3499, 3498, 3497, 3732, 3703, 3701, 3700, 4207, 4206, 4205, 4251, 4249, 4648, 4647, 4619, 4625, 4623, 4622, 4624, 1772, 1698, 1703, 2073, 2334, 2331, 2370, 2367, 2540, 2537, 2513, 2512, 2779, 2776, 4077, 4125, 4124, 4320, 4319, 4510, 4509, 4824, 2004, 2003, 4730, 4729),]
 
 #remove additional columns
-zoop_NDFA_NMDS$Date <- NULL
+#zoop_NDFA_NMDS$Date <- NULL
 zoop_NDFA_NMDS$Time <- NULL
 zoop_NDFA_NMDS$Year <- NULL
-zoop_NDFA_NMDS$StationCode <- NULL
+#zoop_NDFA_NMDS$StationCode <- NULL
 zoop_NDFA_NMDS$Month <- NULL
 zoop_NDFA_NMDS$DateTime <- NULL
 #zoop_NDFA_NMDS$ID <- NULL
+
+#Faster way:
+zoop_NDFA_NMDS = select(zoop_NDFA_NMDS, Date, StationCode, Organism, CPUEZoop)
 
 #remove duplicate for SHR
 zoop_NDFA_NMDS <- zoop_NDFA_NMDS[-c(1637),]
 
 #spread the data so that TaxonName are the column headers, CPUE is the cell value, and sitedate is the row names
-all.flip <- spread(data=zoop_NDFA_NMDS, key = Organism, value= CPUEZoop)
+all.flip <- spread(data=zoop_NDFA_NMDS, key = Organism, value= CPUEZoop, fill = 0)
 
+#Rosie's note: You don't need to make the "stationdate" value
+#and convert back and forth. "Spread" will deal with it for you.
 #convert "s.d" back to "StationCode" and "Date"
-all.flip <- all.flip %>% separate(s.d, c("StationCode", "Date"), "_")
+#all.flip <- all.flip %>% separate(s.d, c("StationCode", "Date"), "_")
 
 #extract columns with abundance info
 ZoopCPUE = all.flip[3:86]
@@ -439,24 +450,58 @@ ZoopCPUE = all.flip[3:86]
 m.ZoopCPUE <- as.matrix(ZoopCPUE)
 
 #replace NAs with 0s
+#Rosie's note: You can do this within your "spread" call by assigning "fill = 0"
 m.ZoopCPUE[is.na(ZoopCPUE)] <- 0
 
 #run metaMDS command - use bray as the distance measure (Bray-Curtis takes into account speices presence/absence as well as abundance - other distance measures often only account for presence/absence)
-nmds <- metaMDS(m.ZoopCPUE, distance = "bray")
+nmds <- metaMDS(m.ZoopCPUE, distance = "bray", trymax = 500)
+#Hmmm..., it's not converging for me.
+
 
 plot(nmds)
 
+#I'm going to try running it on higher levels of classification to see if I can get it to converge
+zoop_NDFA_NMDS2 <- select(zoop_NDFA, Date, Month, Year, StationCode, Classification, CPUEZoop)
+
+#remove duplicate for SHR
+zoop_NDFA_NMDS2 <- zoop_NDFA_NMDS2[-c(1637),]
+
+#spread the data so that TaxonName are the column headers, CPUE is the cell value, and sitedate is the row names
+all.flip2 <- pivot_wider(data=zoop_NDFA_NMDS2, names_from = Classification, values_from = CPUEZoop, values_fill = 0, values_fn = sum)
+
+#extract columns with abundance info
+ZoopCPUE2 = as.matrix(all.flip2[5:10])
+
+nmds2 <- metaMDS(ZoopCPUE2, distance = "bray", trymax = 500)
+
+stationColors = data.frame(StationCode = unique(all.flip2$StationCode),
+                           col = c("#8DD3C7", "#FFFFB3", "#BEBADA",
+                                   "#FB8072", "#80B1D3", "#FDB462",
+                                   "#B3DE69", "#FCCDE5", "#D9D9D9",
+                                   "#BC80BD","#CCEBC5"))
+all.flip2 = merge(all.flip2, stationColors)
+
+plot(nmds2)
+ordiplot(nmds2, type="n")
+ordihull(nmds2, groups=all.flip2$Year, draw="polygon", col="grey90", label=F)
+orditorp(nmds2, display="sites", col=all.flip2$col,
+         air=0.01)
+orditorp(nmds2, display="species", col="red", air=0.01)
+
+
+
 ---####good up to here####------------------------------------
 #extract NMDS scores (x and y coordinates)
-data.scores = as.data.frame(scores(nmds))
+data.scores = as.data.frame(scores(nmds2))
 
 #add columns to data frame 
-data.scores$StationCode = all.flip$StationCode
-data.scores$Date = all.flip$Date
+data.scores$StationCode = all.flip2$StationCode
+data.scores$Date = all.flip2$Date
+data.scores$Month = as.factor(all.flip2$Month)
 
 #plot
 ggplot(data.scores, aes(x=NMDS1, y=NMDS2)) +
-  geom_point(size=5, aes(shape=StationCode, colour=))
+  geom_point(size=5, aes(shape=Month, colour= StationCode))
 
 
 
