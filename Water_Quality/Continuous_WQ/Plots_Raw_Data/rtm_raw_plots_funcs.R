@@ -28,9 +28,12 @@ add_yaxis_var <- function(df, param_var) {
     mutate(
       yaxis_lab = case_when(
         !!param_var_enquo == "Chla" ~ "Chlorophyll (ug/L)",
+        !!param_var_enquo == "Chla_RFU" ~ "Chlorophyll Fluorescence (RFU)",
         !!param_var_enquo == "DO" ~ "Dissolved Oxygen (mg/L)",
+        !!param_var_enquo == "fDOM" ~ "Dissolved Organic Matter Fluorescence (ug/L as QSE)",
         !!param_var_enquo == "Flow" ~ "Flow (cfs)",
         !!param_var_enquo == "FlowTF" ~ "Tidally-filtered Flow (cfs)",
+        !!param_var_enquo == "NitrateNitrite" ~ "Nitrate + Nitrite (mg/L as N)",
         !!param_var_enquo == "pH" ~ "pH (pH units)",
         !!param_var_enquo == "SpCnd" ~ "Specific Conductance (uS/cm)",
         !!param_var_enquo == "Turbidity" ~ "Turbidity (FNU)",

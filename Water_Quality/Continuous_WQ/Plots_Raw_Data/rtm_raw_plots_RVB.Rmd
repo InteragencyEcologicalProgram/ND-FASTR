@@ -23,6 +23,7 @@ Create plots of the raw continuous water quality data for the RVB station. The d
 # Global code and functions
 
 ```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
 library(tidyverse)
 library(lubridate)
 ```
@@ -54,6 +55,7 @@ Sys.setenv(TZ = "Etc/GMT+8")
 # Import and Prepare Data
 
 ```{r import data}
+# Import data
 data_orig <- import_rtm_data(fp_abs_rtm_data, 8)
 ```
 

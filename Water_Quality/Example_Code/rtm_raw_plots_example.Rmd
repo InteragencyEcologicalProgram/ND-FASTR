@@ -1,7 +1,7 @@
 ---
-title: "Raw Data Plots - RD22"
+title: "Raw Data Plots - Example"
 author: "Dave Bosworth"
-date: "8/28/2020"
+date: "8/31/2020"
 output: 
   html_document: 
     code_folding: show
@@ -12,9 +12,13 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+**This paragraph isn't necessary in the actual code:**
+
+Here is some example code to use for updating the Rmd files containing the plots of raw continuous water quality data. This code adds some functions to increase efficiency and consistency and tab navigation for the plots. The example uses the RD22 station.
 
 # Purpose
 
@@ -71,60 +75,88 @@ data_clean <- data_orig %>%
     names_to = "parameter",
     values_to = "value"
   ) %>% 
-  # add a yr variable
-  mutate(yr = year(DateTime))
-
-# Find the first year with data for each parameter
-data_first_yr <- data_clean %>% 
-  filter(!is.na(value)) %>% 
-  group_by(parameter) %>% 
-  summarize(min_yr = min(yr))
-
-# Create a nested dataframe grouped by parameter- including all years of data
-data_all_yrs <- data_clean %>% 
-  group_nest(parameter) %>%
-  # remove data before the first year data was collected for each parameter
-  left_join(data_first_yr) %>% 
-  mutate(
-    data = map2(data, min_yr, ~filter(.x, yr >= .y)),
-    yr = "All Years"
-  ) %>% 
-  select(parameter, yr, data)
-
-# Create a nested dataframe grouped by parameter and year
-data_indiv_yrs <- data_clean %>% 
-  filter(!is.na(value)) %>% 
-  mutate(yr = as.character(yr)) %>% 
-  group_nest(parameter, yr)
-
-# Combine nested dataframes and add variable for y-axis label
-data_yrs_c <- 
-  bind_rows(data_all_yrs, data_indiv_yrs) %>% 
+  # add yr and y-axis label variables
+  mutate(yr = year(DateTime)) %>% 
   add_yaxis_var(parameter)
-```
-
-# Create Plots
-
-```{r create plots}
-plots <- data_yrs_c %>% 
-  mutate(plot = map2(data, yaxis_lab, .f = create_ts_plot)) %>% 
-  select(parameter, yr, plot) %>% 
-  group_nest(parameter)
 ```
 
 # Raw Data Plots {.tabset .tabset-pills}
 
-```{r print plots, echo = FALSE, warning = FALSE, results = "asis"}
-for (i in 1:nrow(plots)) {
-  # Create heading for each parameter
-  cat("## ", as.character(plots$parameter[i]), " {.tabset .tabset-pills}\n\n")
-  for (j in 1:nrow(plots$data[[i]])) {
-    # Create subheadings for each yr
-    cat("### ", as.character(plots$data[[i]]$yr[j]), "\n\n") 
-    # Display plot
-    print(plots$data[[i]]$plot[[j]])
-    cat("\n\n")  
-  }
-}
+## Chla {.tabset .tabset-pills}
+
+```{r filter chla data, include = FALSE}
+# Use this code to filter to your parameter of interest and remove any excess data at the beginning of the period of record
+data_clean_chla <- data_clean %>% 
+  filter(
+    parameter == "Chla",
+    yr >= 2013
+  )
 ```
+
+### All Years
+
+```{r plot chla all years, echo = FALSE, warning = FALSE}
+# Use the create_ts_plot function to create your plot
+data_clean_chla %>% create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2013
+
+```{r plot chla 2013, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_chla %>% 
+  filter(
+    yr == 2013,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2014
+
+```{r plot chla 2014, echo = FALSE}
+# Follow the same pattern for creating the plot for 2014
+data_clean_chla %>% 
+  filter(
+    yr == 2014,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+## DO {.tabset .tabset-pills}
+
+```{r filter do data, include = FALSE}
+# Follow the same pattern for your next parameter
+data_clean_do <- data_clean %>% 
+  filter(
+    parameter == "DO",
+    yr >= 2014
+  )
+```
+
+### All Years
+
+```{r plot do all years, echo = FALSE, warning = FALSE}
+# Use the create_ts_plot function to create your plot
+data_clean_do %>% create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2014
+
+```{r plot do 2014, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_do %>% 
+  filter(
+    yr == 2014,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+# Extra Instructions
+
+**This section isn't necessary in the actual code**
+
+Follow the pattern above for the Chlorophyll and DO data for the remaining parameters and years.
 
