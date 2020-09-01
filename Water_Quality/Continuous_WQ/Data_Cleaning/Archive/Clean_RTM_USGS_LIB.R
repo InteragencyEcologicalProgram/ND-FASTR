@@ -1,7 +1,7 @@
 # NDFA Water Quality
-# Purpose: Code to import, clean, and export continuous water quality data for TOE station
+# Purpose: Script to clean LIB data
 # collected by USGS
-# Author: Amanda Maguire
+# Author: Dave Bosworth & Traci Treleaven
 
 # Load packages
 library(tidyverse)
@@ -14,34 +14,29 @@ library(lubridate)
 sharepoint_path <- normalizePath(
   file.path(
     Sys.getenv("USERPROFILE"),
-    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - Water Quality Subteam"
+    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam"
   )
 )
 
+
 # Import data
-# First TOE station - 11455140
-toe_orig_1 <- read_csv(
-  file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_TOE_1.csv"),
-  col_types = paste0("-cc", str_c(rep("dc", 11), collapse = ""), "-")
+#  LIB station 
+#- is skip, cc bring in as character, str_c is combing into a sting (rep is repeating) dc is numeric/character combo which is 38 columns divided by 2, final part gets rid of tz time zone column 
+  
+lib_orig <- read_csv(
+  file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_LIB.csv"),
+  col_types = paste0("-cc", str_c(rep("dc", 19), collapse = ""), "-")
 ) 
 
-# Second TOE station - 11455139
-toe_orig_2 <- read_csv(
-  file = paste0(sharepoint_path, "/Raw_Data/Continuous/RTM_RAW_USGS_TOE_2.csv"),
-  col_types = paste0("-cc", str_c(rep("dc", 3), collapse = ""), "-")
-)
+glimpse(lib_orig)
 
-# Check if toe_orig1 and toe_orig2 have same variable names
-names(toe_orig_1)
-names(toe_orig_2)
-# Not all variables have same names, but will bind them together anyway, and deal with
-# their inconsistencies later
 
-# Bind toe_orig1 and toe_orig2
-toe_orig <- bind_rows(toe_orig_1, toe_orig_2)
 
-glimpse(toe_orig)
+# remove repeating column names 
 
+lib_clean <- lib_orig %>% select(!starts_with("X_CHLOR"))
+
+glimpse(lib_clean)
 
 # Clean Data --------------------------------------------------------------
 
@@ -59,19 +54,21 @@ glimpse(toe_orig)
 # 32321 - Phycocyanin relative fluorescence (RFU)
 # 99133 - Nitrate plus nitrite (mg/L as N)
 
-# Clean TOE data
-toe_clean <- toe_orig %>% 
+# Clean data
+lib_clean2 <- lib_clean %>% 
   mutate(
     # Parse date time variable
     DateTime = ymd_hms(dateTime),
     # Convert Station name to NDFA standardized name
-    StationCode = "TOE"
+    StationCode = "LIB"
   ) %>% 
   select(-dateTime)
 
+glimpse(lib_clean2)
+
 # Standardize parameter variable names
 # Data values
-toe_values <- toe_clean %>% 
+lib_values <- lib_clean2 %>% 
   select(!ends_with("_cd")) %>% 
   pivot_longer(
     cols = -c(DateTime, StationCode, site_no),
@@ -98,7 +95,7 @@ toe_values <- toe_clean %>%
   pivot_wider(names_from = parameter, values_from = value)
 
 # Qual Codes
-toe_qual <- toe_clean %>% 
+lib_qual <- lib_clean2 %>% 
   select(site_no, DateTime, ends_with("_cd")) %>% 
   pivot_longer(
     cols = -c(site_no, DateTime),
@@ -124,9 +121,13 @@ toe_qual <- toe_clean %>%
   ) %>% 
   pivot_wider(names_from = parameter, values_from = value)
 
+glimpse(lib_clean2)
+glimpse(lib_qual)
+glimpse(lib_values)
+
 # Join two wide dataframes together
-toe_clean1 <- 
-  left_join(toe_values, toe_qual) %>% 
+lib_clean2 <- 
+  left_join(lib_values, lib_qual) %>% 
   # Reorder variables
   select(
     site_no,
@@ -150,18 +151,23 @@ toe_clean1 <-
     starts_with("Ni")
   )
 
-glimpse(toe_clean1)
 
-# Export TOE Data -------------------------------------------------------------
+glimpse(lib_clean2)
+
+
+# Export Data -------------------------------------------------------------
+
 
 # Export formatted data as a .csv file 
-toe_clean1 %>% 
+
+
+lib_clean2 %>% 
   write_excel_csv(
-    path = paste0(sharepoint_path, "/Processed_Data/Continuous/RTM_OUTPUT_TOE_formatted.csv"),
+    path = paste0(sharepoint_path, "/Processed_Data/Continuous/RTM_OUTPUT_LIB_formatted.csv"),
     na = ""
   )
+
 
 # For easier importing of this file in the future should either:
 # 1) convert file to .xlsx file after exporting, or
 # 2) manually format the 'DateTime' variable in the .csv file to "yyyy-mm-dd hh:mm:ss"
-

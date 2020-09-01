@@ -1,0 +1,391 @@
+---
+title: "Multi station plots RCS, I80, LIS"
+author: "Amanda Maguire"
+date: "August 10, 2020"
+output: 
+  html_document: 
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+Code is placed in code chunks like below:
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+```
+
+# Import Data
+
+Data imported for all three stations using a binded file.
+```{r import data}
+# Define path on SharePoint site for data
+sharepoint_path <- normalizePath(
+  file.path(
+    Sys.getenv("USERPROFILE"),
+    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/Processed_Data/Continuous"
+  )
+)
+
+# Import RCS, I80, and LIS data
+all_orig <- 
+  read_csv(
+    file = paste0(sharepoint_path, "/RTM_OUTPUT_RCS_I80_LIS_formatted.csv"),
+    col_types = paste0("T", str_c(rep("d", 14), collapse = ""), "c")
+  )
+```
+
+
+
+The data looks as we expect it to:
+```{r glimpse data}
+glimpse(all_orig)
+```
+
+
+## Plot Multiple stations - RCS, I80, AND LIS
+
+Plot multiple stations at once on a single plot with `facet_grid`. Remove the Quality Code variables and restructure the data to a long format using `pivot_longer`.
+```{r pivot data longer}
+all_long <-all_orig %>% 
+  select(!ends_with("_Qual")) %>% 
+  pivot_longer(
+    cols = Flow:Chla,
+    names_to = "parameter",
+    values_to = "value"
+  ) 
+```
+
+Now the data is structured so that the parameter names are in the `parameter` variable and the data values are in the `value` variable. 
+```{r display data in long format}
+head(all_long)
+```
+
+```{r}
+all_long$stationCode <- factor(all_long$stationCode, levels = unique(all_long$stationCode))
+```
+
+
+## Chlorophyll-a 
+Facet plots for a single parameter and stations are ordered in a north to south direction. 
+```{r Chla plot with facets, warning = FALSE}
+p2 <-  filter(all_long, parameter == "Chla") %>%
+    ggplot(aes(x = DateTime, y = value)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(stationCode),
+    scales = "free_y" ) + 
+  scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+
+p2
+```
+
+
+Chla 2016 - managed Sac River flow - positive Rio Vista plankton response
+```{r plot 2016 CHla parameters}
+p2 + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00"))) +
+  ylim(NA , 80)
+```
+
+Chla 2018 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2018 Chla parameters}
+p2 + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00"))) +
+  ylim(NA , 50)
+```
+
+Chla 2019 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2019 CHla parameters}
+p2 + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+Chla 2013 - natural flow - negative Rio Vista plankton response
+```{r plot 2013 Chla parameters}
+p2 + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00")))
+```
+
+Chla 2014 - natural flow - negative Rio Vista plankton response
+```{r plot 2014 Chla parameters}
+p2 + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+Chla 2015 - natural flow - negative Rio Vista plankton response
+```{r plot 2015 Chla parameters}
+p2 + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+## Dissolved Oxygen 
+```{r DO plot with facets, warning = FALSE}
+p <-  filter(all_long, parameter == "DO") %>%
+  ggplot(aes(x = DateTime, y = value)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(stationCode),
+    scales = "free_y"
+  ) + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+
+print(p)
+```
+
+DO 2016 - managed Sac River flow - positive Rio Vista plankton response
+```{r plot 2016 DO parameters}
+p + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+DO 2018 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2018 DO parameters}
+p + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00"))) 
+```
+
+DO 2019 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2019 DO parameters}
+p + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+DO 2013 - natural flow - negative Rio Vista plankton response
+```{r plot 2013 DO parameters}
+p + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00"))) +
+  ylim(NA , 12)
+```
+
+DO 2014 - natural flow - negative Rio Vista plankton response
+```{r plot 2014 DO parameters}
+p + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+DO 2015 - natural flow - negative Rio Vista plankton response
+```{r plot 2015 DO parameters}
+p + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+## Specific Conductivity 
+```{r SpCnd plot with facets, warning = FALSE}
+p3 <-  filter(all_long, parameter == "SpCnd") %>%
+  ggplot(aes(x = DateTime, y = value)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(stationCode),
+    scales = "free_y"
+  ) + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+
+print(p3)
+```
+
+SpCnd 2016 - managed Sac River flow - positive Rio Vista plankton response
+```{r plot 2016 SpCnd parameters}
+p3 + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+SpCnd 2018 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2018 SpCnd parameters}
+p3 + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00"))) 
+```
+
+SpCnd 2019 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2019 SpCnd parameters}
+p3 + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+SpCnd 2013 - natural flow - negative Rio Vista plankton response
+```{r plot 2013 SpCnd parameters}
+p3 + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00"))) 
+```
+
+SpCnd 2014 - natural flow - negative Rio Vista plankton response
+```{r plot 2014 SpCnd parameters}
+p3 + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+SpCnd 2015 - natural flow - negative Rio Vista plankton response
+```{r plot 2015 SpCnd parameters}
+p3 + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+##pH
+```{r pH plot with facets, warning = FALSE}
+p4 <-  filter(all_long, parameter == "pH") %>%
+  ggplot(aes(x = DateTime, y = value)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(stationCode),
+    scales = "free_y"
+  ) + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+
+print(p4)
+```
+
+pH 2016 - managed Sac River flow - positive Rio Vista plankton response
+```{r plot 2016 pH parameters}
+p4 + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+pH 2018 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2018 pH parameters}
+p4 + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00"))) 
+```
+
+pH 2019 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2019 pH parameters}
+p4 + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+pH 2013 - natural flow - negative Rio Vista plankton response
+```{r plot 2013 pH parameters}
+p4 + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00"))) 
+```
+
+pH 2014 - natural flow - negative Rio Vista plankton response
+```{r plot 2014 pH parameters}
+p4 + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+pH 2015 - natural flow - negative Rio Vista plankton response
+```{r plot 2015 pH parameters}
+p4 + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+##Turbidity
+```{r Turb plot with facets, warning = FALSE}
+p5 <-  filter(all_long, parameter == "Turbidity") %>%
+  ggplot(aes(x = DateTime, y = value)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(stationCode),
+    scales = "free_y"
+  ) + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+
+print(p5)
+```
+
+Turbidity 2016 - managed Sac River flow - positive Rio Vista plankton response
+```{r plot 2016 Turb parameters}
+p5 + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00"))) +
+  ylim(NA , 150)
+```
+
+Turbidity 2018 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2018 Turb parameters}
+p5 + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00"))) +
+  ylim(NA , 150)
+```
+
+Turbidity 2019 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2019 Turb parameters}
+p5 + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00"))) +
+  ylim(NA , 150)
+```
+
+Turbidity 2013 - natural flow - negative Rio Vista plankton response
+```{r plot 2013 Turb parameters}
+p5 + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00"))) +
+   ylim(NA , 175)
+```
+
+Turbidity 2014 - natural flow - negative Rio Vista plankton response
+```{r plot 2014 Turb parameters}
+p5 + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+Turbidity 2015 - natural flow - negative Rio Vista plankton response
+```{r plot 2015 Turb parameters}
+p5 + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00"))) +
+  ylim(NA , 300)
+```
+
+##Water Temperature
+```{r WT plot with facets, warning = FALSE}
+p6 <-  filter(all_long, parameter == "WaterTemp") %>%
+  ggplot(aes(x = DateTime, y = value)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(stationCode),
+    scales = "free_y"
+  ) + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+
+print(p6)
+```
+
+Water Temp 2016 - managed Sac River flow - positive Rio Vista plankton response
+```{r plot 2016 WT parameters}
+p6 + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+Water Temp 2018 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2018 WT parameters}
+p6 + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+Water Temp 2019 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2019 WT parameters}
+p6 + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+Water Temp 2013 - natural flow - negative Rio Vista plankton response
+```{r plot 2013 WT parameters}
+p6 + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00")))
+```
+
+Water Temp 2014 - natural flow - negative Rio Vista plankton response
+```{r plot 2014 WT parameters}
+p6 + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+Water Temp 2015 - natural flow - negative Rio Vista plankton response
+```{r plot 2015 WT parameters}
+p6 + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+##Flow
+```{r Flow plot with facets, warning = FALSE}
+p7 <-  filter(all_long, parameter == "Flow") %>%
+  ggplot(aes(x = DateTime, y = value)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(stationCode),
+    scales = "free_y"
+  ) + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+
+print(p7)
+```
+
+Flow 2016 - managed Sac River flow - positive Rio Vista plankton response
+```{r plot 2016 Flow parameters}
+p7 + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+Flow 2018 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2018 Flow parameters}
+p7 + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+Flow 2019 - managed Ag flow - negative Rio Vista plankton response
+```{r plot 2019 Flow parameters}
+p7 + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+Flow 2013 - natural flow - negative Rio Vista plankton response
+```{r plot 2013 Flow parameters}
+p7 + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00")))
+```
+
+Flow 2014 - natural flow - negative Rio Vista plankton response
+```{r plot 2014 Flow parameters}
+p7 + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+Flow 2015 - natural flow - negative Rio Vista plankton response
+```{r plot 2015 Flow parameters}
+p7 + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+

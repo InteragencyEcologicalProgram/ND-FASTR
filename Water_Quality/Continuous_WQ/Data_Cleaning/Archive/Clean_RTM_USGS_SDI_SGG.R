@@ -14,7 +14,7 @@ library(lubridate)
 sharepoint_path <- normalizePath(
   file.path(
     Sys.getenv("USERPROFILE"),
-    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - Water Quality Subteam"
+    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam"
   )
 )
 # SDI station - 11455478

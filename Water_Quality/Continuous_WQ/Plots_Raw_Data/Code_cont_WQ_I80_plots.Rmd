@@ -1,0 +1,337 @@
+---
+title: "Code_cont_WQ_I80_plot"
+author: "Amanda Maguire"
+date: "July 27, 2020"
+output: 
+  html_document: 
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+
+# Purpose
+
+Code to plot continuous water quality data and check for missing data during the study period.
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+```
+
+# Import Data
+
+```{r import data}
+# Define path on SharePoint site for data
+sharepoint_path <- normalizePath(
+  file.path(
+    Sys.getenv("USERPROFILE"),
+    "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/Processed_Data/Continuous"
+  )
+)
+
+# Import I80 data
+i80_orig <- 
+  read_csv(
+    file = paste0(sharepoint_path, "/RTM_OUTPUT_I80_formatted.csv"),
+    col_types = paste0("T", str_c(rep("d", 12), collapse = ""), "c")
+  )
+```
+
+The data looks as we expect it to:
+```{r glimpse data}
+glimpse(i80_orig)
+```
+
+## One parameter
+
+Simple line plot of the parameters collected at the RMB station. We'll use the `ggplot` function from the ggplot2 package.
+
+WaterTemp plot
+```{r plot WaterTemp param, warning = FALSE}
+p <- i80_orig %>% 
+  ggplot(aes(x = DateTime, y = WaterTemp)) +
+  geom_line()
+
+print(p)
+```
+
+2013
+```{r plot WaterTemp 2013 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00"))) 
+```
+
+2014
+```{r plot WaterTemp 2014 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+2015
+```{r plot WaterTemp 2015 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+2016
+```{r plot WaterTemp 2016 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+2017
+```{r plot WaterTemp 2017 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2017-07-15 00:00:00"), as_datetime("2017-11-05 00:00:00")))
+```
+
+2018
+```{r plot WaterTemp 2018 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+2019
+```{r plot WaterTemp 2019 param, warning = FALSE}
+p + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+SpCnd plots
+```{r plot SpCnd param, warning = FALSE}
+ps <- i80_orig %>%
+  ggplot(aes(x = DateTime, y = SpCnd)) +
+  geom_line()
+
+print(ps)
+```
+
+2013
+```{r plot SpCnd 2013 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00"))) 
+```
+
+2014
+```{r plot SpCnd 2014 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+2015
+```{r plot SpCnd 2015 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+2016
+```{r plot SpCnd 2016 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+2017
+```{r plot SpCnd 2017 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2017-07-15 00:00:00"), as_datetime("2017-11-05 00:00:00")))
+```
+
+2018
+```{r plot SpCnd 2018 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+2019
+```{r plot SpCnd 2019 param, warning = FALSE}
+ps + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+
+Turbidity plot
+```{r plot Turbidity param, warning = FALSE}
+pt <- i80_orig %>%
+  ggplot(aes(x = DateTime, y = Turbidity)) +
+  geom_line()
+
+print(pt)
+```
+
+Let's take a closer look Turbidity in 2019. 
+```{r plot Turb param change x axis lim, warning = FALSE}
+pt + scale_x_datetime(limits = c(as_datetime("2019-07-01 00:00:00"), NA))
+```
+
+DO plot
+```{r plot DO param, warning = FALSE}
+pd <- i80_orig %>%
+  ggplot(aes(x = DateTime, y = DO)) +
+  geom_line()
+
+print(pd)
+```
+
+2014
+```{r plot DO 2014 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+2015
+```{r plot DO 2015 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+2016
+```{r plot DO 2016 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+2017
+```{r plot DO 2017 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2017-07-15 00:00:00"), as_datetime("2017-11-05 00:00:00")))
+```
+
+2018
+```{r plot DO 2018 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+2019
+```{r plot DO 2019 param, warning = FALSE}
+pd + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+pH plot
+```{r plot pH param, warning = FALSE}
+ph <- i80_orig %>%
+  ggplot(aes(x = DateTime, y = pH)) +
+  geom_line()
+
+print(ph)
+```
+
+2014
+```{r plot pH 2014 param, warning = FALSE}
+ph + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+2015
+```{r plot pH 2015 param, warning = FALSE}
+ph + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+2016
+```{r plot pH 2016 param, warning = FALSE}
+ph + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+2017
+```{r plot pH 2017 param, warning = FALSE}
+ph + scale_x_datetime(limits = c(as_datetime("2017-07-15 00:00:00"), as_datetime("2017-11-05 00:00:00")))
+```
+
+2018
+```{r plot pH 2018 param, warning = FALSE}
+ph + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+2019
+```{r plot pH 2019 param, warning = FALSE}
+ph + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+Chla plots
+```{r plot CHla param, warning = FALSE}
+pc <- i80_orig %>%
+  ggplot(aes(x = DateTime, y = Chla)) +
+  geom_line()
+
+print(pc)
+```
+
+2013
+```{r plot Chla 2013 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2013-07-15 00:00:00"), as_datetime("2013-11-05 00:00:00"))) 
+```
+
+2014
+```{r plot Chla 2014 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2014-07-15 00:00:00"), as_datetime("2014-11-05 00:00:00")))
+```
+
+2015
+```{r plot Chla 2015 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2015-07-15 00:00:00"), as_datetime("2015-11-05 00:00:00")))
+```
+
+2016
+```{r plot Chla 2016 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```
+
+2017
+```{r plot Chla 2017 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2017-07-15 00:00:00"), as_datetime("2017-11-05 00:00:00")))
+```
+
+2018
+```{r plot Chla 2018 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+2019
+```{r plot Chla 2019 param, warning = FALSE}
+pc + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+## Multiple parameters
+
+This is nice, but we can also plot multiple parameters at once on a single plot with `facet_grid`. But, first we have to remove the Quality Code variables and restructure the data to a long format using `pivot_longer`.
+```{r pivot data longer}
+i80_long <- i80_orig %>% 
+  select(!ends_with("_Qual")) %>% 
+  pivot_longer(
+    cols = WaterTemp:Chla,
+    names_to = "parameter",
+    values_to = "value"
+  ) 
+```
+
+Now the data is structured so that the parameter names are in the `parameter` variable and the data values are in the `value` variable. 
+```{r display data in long format}
+head(i80_long)
+```
+
+Let's create a plot with facets. Use the `scales` argument set to `"free_y"` in `facet_grid` to adjust y-axis limits to the data of each parameter.
+```{r plot with facets, warning = FALSE}
+p2 <- i80_long %>%
+  ggplot(aes(x = DateTime, y = value)) +
+  geom_line() +
+  facet_grid(
+    rows = vars(parameter),
+    scales = "free_y"
+  )
+
+p2
+```
+
+This is nice, but it would be even nicer to make the plot larger so we can see it better. This is done with the `fig.width` and `fig.height` options in the top of the code chunk.
+```{r plot with facets larger, fig.width = 8.5, fig.height = 11}
+p2
+```
+
+We can add limits to datetime and look at one year.
+2019
+```{r plot 2019 all parameters}
+p2 + scale_x_datetime(limits = c(as_datetime("2019-07-15 00:00:00"), as_datetime("2019-11-05 00:00:00")))
+```
+
+2018
+```{r plot 2019 all parameters}
+p2 + scale_x_datetime(limits = c(as_datetime("2018-07-15 00:00:00"), as_datetime("2018-11-05 00:00:00")))
+```
+
+2016
+```{r plot 2019 all parameters}
+p2 + scale_x_datetime(limits = c(as_datetime("2016-06-15 00:00:00"), as_datetime("2016-11-05 00:00:00")))
+```

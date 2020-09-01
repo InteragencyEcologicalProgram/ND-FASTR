@@ -1,4 +1,46 @@
 .Rproj.user
 .Rhistory
+<<<<<<< HEAD
 .RData
 .Ruserdata
+=======
+.Rapp.history
+#large data sets
+.zip
+.csv
+.xlsx
+/fish data/edi.415.1
+/fish data/edi.244.3
+/fish data/edi.233.2
+# Session Data files
+.RData
+# User-specific files
+.Ruserdata
+# Example code in package build process
+*-Ex.R
+# Output files from R CMD build
+/*.tar.gz
+# Output files from R CMD check
+/*.Rcheck/
+# RStudio files
+.Rproj.user/
+# produced vignettes
+vignettes/*.html
+vignettes/*.pdf
+# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
+.httr-oauth
+# knitr and R markdown default cache directories
+*_cache/
+/cache/
+# Temporary files created by R markdown
+*.utf8.md
+*.knit.md
+# R Environment Variables
+.Renviron
+# specific files
+test_code.Rmd
+d-wq_boxplots.Rmd
+d-wq_ts_station_plots.Rmd
+d-wq_ts_regional_plots.Rmd
+d-wq_chl-nh3_plots.Rmd
+>>>>>>> 56b08a460d4cef26917653a90faea03bd5d3987a
