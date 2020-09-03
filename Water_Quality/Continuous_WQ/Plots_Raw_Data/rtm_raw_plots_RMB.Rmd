@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Purpose
 
-Create plots of the raw continuous water quality data for the RD22 station. The data in these plots has been cleaned and formatted, but not inspected for suspect values. The purpose of these plots is to allow for us to visually inspect the data for suspect or unreliable values during the study period (2011-2019). The final QA/QC steps for this data can be found in the xxx.Rmd file.
+Create plots of the raw continuous water quality data for the RMB station. The data in these plots has been cleaned and formatted, but not inspected for suspect values. The purpose of these plots is to allow for us to visually inspect the data for suspect or unreliable values during the study period (2011-2019). The final QA/QC steps for this data can be found in the xxx.Rmd file.
 
 # Global code and functions
 
