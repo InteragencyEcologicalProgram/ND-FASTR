@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Purpose
 
-Create plots of the raw continuous water quality data for the RD22 station. The data in these plots has been cleaned and formatted, but not inspected for suspect values. The purpose of these plots is to allow for us to visually inspect the data for suspect or unreliable values during the study period (2011-2019). The final QA/QC steps for this data can be found in the xxx.Rmd file.
+Create plots of the raw continuous water quality data for the LIS station. The data in these plots has been cleaned and formatted, but not inspected for suspect values. The purpose of these plots is to allow for us to visually inspect the data for suspect or unreliable values during the study period (2011-2019). The final QA/QC steps for this data can be found in the xxx.Rmd file.
 
 # Global code and functions
 
@@ -187,7 +187,7 @@ data_clean_chla %>%
 data_clean_do <- data_clean %>% 
   filter(
     parameter == "DO",
-    yr >= 2014
+    yr >= 2013
   )
 ```
 
@@ -196,6 +196,18 @@ data_clean_do <- data_clean %>%
 ```{r plot do all years, echo = FALSE, warning = FALSE}
 # Use the create_ts_plot function to create your plot
 data_clean_do %>% create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2013
+
+```{r plot do 2013, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_do %>% 
+  filter(
+    yr == 2013,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
 ```
 
 ### 2014
@@ -403,7 +415,7 @@ data_clean_flow %>%
 data_clean_pH <- data_clean %>% 
   filter(
     parameter == "pH",
-    yr >= 2014
+    yr >= 2013
   )
 ```
 
@@ -412,6 +424,18 @@ data_clean_pH <- data_clean %>%
 ```{r plot pH all years, echo = FALSE, warning = FALSE}
 # Use the create_ts_plot function to create your plot
 data_clean_pH %>% create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2013
+
+```{r plot pH 2013, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_pH %>% 
+  filter(
+    yr == 2013,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
 ```
 
 ### 2014
@@ -595,7 +619,7 @@ data_clean_spcnd %>%
 data_clean_turb <- data_clean %>% 
   filter(
     parameter == "Turbidity",
-    yr >= 2019
+    yr >= 2013
   )
 ```
 
@@ -606,6 +630,30 @@ data_clean_turb <- data_clean %>%
 data_clean_turb %>% filter(
   !is.na(value)
   ) %>%
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2013
+
+```{r plot turb 2013, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_turb %>% 
+  filter(
+    yr == 2013,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2014
+
+```{r plot turb 2014, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_turb %>% 
+  filter(
+    yr == 2014,
+    !is.na(value)
+  ) %>% 
   create_ts_plot(.$yaxis_lab[1])
 ```
 
