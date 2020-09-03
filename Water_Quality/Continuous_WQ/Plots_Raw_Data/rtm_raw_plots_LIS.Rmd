@@ -270,6 +270,132 @@ data_clean_do %>%
   create_ts_plot(.$yaxis_lab[1])
 ```
 
+## Flow {.tabset .tabset-pills}
+
+```{r filter flow data, include = FALSE}
+# Follow the same pattern for your next parameter
+data_clean_flow <- data_clean %>% 
+  filter(
+    parameter == "Flow",
+    yr >= 2011
+  )
+```
+
+### All Years
+
+```{r plot flow all years, echo = FALSE, warning = FALSE}
+# Use the create_ts_plot function to create your plot
+data_clean_flow %>% create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2011
+
+```{r plot flow 2011, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_flow %>% 
+  filter(
+    yr == 2011,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2012
+
+```{r plot flow 2012, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_flow %>% 
+  filter(
+    yr == 2012,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2013
+
+```{r plot flow 2013, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_flow %>% 
+  filter(
+    yr == 2013,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2014
+
+```{r plot flow 2014, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_flow %>% 
+  filter(
+    yr == 2014,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2015
+
+```{r plot flow 2015, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_flow %>% 
+  filter(
+    yr == 2015,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2016
+
+```{r plot flow 2016, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_flow %>% 
+  filter(
+    yr == 2016,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2017
+
+```{r plot flow 2017, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_flow %>% 
+  filter(
+    yr == 2017,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2018
+
+```{r plot flow 2018, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_flow %>% 
+  filter(
+    yr == 2018,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2019
+
+```{r plot flow 2019, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_flow %>% 
+  filter(
+    yr == 2019,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
 ## pH {.tabset .tabset-pills}
 
 ```{r filter pH data, include = FALSE}
