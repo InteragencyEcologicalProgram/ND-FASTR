@@ -1,7 +1,7 @@
 ---
 title: "Raw Data Plots - I80"
 author: "Dave Bosworth & Amanda Maguire"
-date: "9/02/2020"
+date: "9/03/2020"
 output: 
   html_document: 
     code_folding: show
@@ -477,7 +477,10 @@ data_clean_turb <- data_clean %>%
 
 ```{r plot turb all years, echo = FALSE, warning = FALSE}
 # Use the create_ts_plot function to create your plot
-data_clean_turb %>% create_ts_plot(.$yaxis_lab[1])
+data_clean_turb %>% filter(
+  !is.na(value)
+  ) %>%
+  create_ts_plot(.$yaxis_lab[1])
 ```
 
 ## WaterTemp {.tabset .tabset-pills}
