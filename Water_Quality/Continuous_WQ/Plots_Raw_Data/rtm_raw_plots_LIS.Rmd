@@ -657,6 +657,66 @@ data_clean_turb %>%
   create_ts_plot(.$yaxis_lab[1])
 ```
 
+### 2015
+
+```{r plot turb 2015, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_turb %>% 
+  filter(
+    yr == 2015,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2016
+
+```{r plot turb 2016, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_turb %>% 
+  filter(
+    yr == 2016,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2017
+
+```{r plot turb 2017, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_turb %>% 
+  filter(
+    yr == 2017,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2018
+
+```{r plot turb 2018, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_turb %>% 
+  filter(
+    yr == 2018,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+### 2019
+
+```{r plot turb 2019, echo = FALSE}
+# Filter by yr and remove NA values before creating your plot
+data_clean_turb %>% 
+  filter(
+    yr == 2019,
+    !is.na(value)
+  ) %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
 ## WaterTemp {.tabset .tabset-pills}
 
 ```{r filter wt data, include = FALSE}
