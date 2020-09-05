@@ -61,43 +61,98 @@ obj_keep <- append(objects(), "obj_keep")
 ## Import Data
 
 ```{r import raw water data}
-# 2015-2018 data:
-# Create a vector of all file paths for the raw USGS contaminants data downloaded from NWIS
-nwis_fp <- dir(fp_abs_raw, pattern = "^CONTAM_RAW", full.names = T)
+# Import water concentration data for 2015-2018:
+  # Create a vector of all file paths for the raw USGS contaminants data downloaded from NWIS
+  nwis_fp <- dir(fp_abs_raw, pattern = "^CONTAM_RAW", full.names = T)
+  
+  # Import the raw USGS contaminants data downloaded from NWIS
+  nwis_orig <-
+    tibble(
+      sta_code = str_sub(nwis_fp, start = 176, end = -15),
+      df = map(nwis_fp, .f = import_nwis_data)
+    ) %>% 
+    unnest(df)
+  
+  # Remove the contaminant concentration data on suspended sediment for 2015-2018 from nwis_orig and save it to work on later
+  nwis_ss <- nwis_orig %>% filter(medium_cd == "SS")
+  
+  # Keep just the water concentration data for 2015-2018
+  nwis_wc <- nwis_orig %>% filter(medium_cd == "WS")
 
-# Import the raw USGS contaminants data downloaded from NWIS into a nested dataframe
-nwis_orig <-
-  tibble(
-    sta_code = str_sub(nwis_fp, start = 176, end = -15),
-    df = map(nwis_fp, .f = import_nwis_data)
-  )
-
-
-# Import flow data for SDI
-sdi_flow_orig <- read_excel(paste0(fp_abs_wq_raw, "/RTM_RAW_USGS_SDI Flow_2011-2018.xlsx"))
-
-
-# Import water concentration data for 2015-2018
-
-
-water_16_18_orig <- 
+# Import water concentration data for 2019:
+water_conc19_orig <- 
   read_excel(
-    path = paste0(fp_abs_raw, "/PesticideResults_YoloDWR_2016_18Data_ForDWR.xlsx"),
+    path = paste0(fp_abs_raw, "/2019YoloBypass_Pesticide Results_forDWR.xlsx"),
     sheet =  "Water",
+    range = "C1:FS93",
     col_types = c(
-      "skip",
       "text",
-      rep("skip", 2),
+      rep("skip", 3),
       rep("date", 2),
       rep("skip", 3),
-      rep("text", 175),
-      rep("skip", 5)
-    ),
-    n_max = 174
+      rep("text", 164)
+    )
   )
-
-
 ```
 
+## Clean Data
+
+### Prepare data to be bound
+
+The contaminant water concentration data from 2015-2018 needs to be bound with the 2019 data, but each dataframe needs to be modified to allow for the data to be combined correctly. We'll start with the 2015-2018 data.
+
+#### 2015-2018
+
+There may be a few unnecessary variables in the dataframe with the 2015-2018 water concentrations depending upon the data within them. We'll investigate this further and remove any unnecessary variables.
+
+```{r inspect 2015 to 2018 water df variables}
+# Look at unique values for the dqi_cd variable - Data-quality indicator code
+unique(nwis_wc$dqi_cd)
+
+# For the dqi_cd variable:
+# R = Reviewed and approved
+# S = Provisional
+# Look at how many values are Provisional
+nwis_wc %>% filter(dqi_cd == "S")  # 155 values collected at RD22 on 7/28/2016
+
+# Look at unique values for the rpt_lev_cd variable - Reporting level type
+unique(nwis_wc$rpt_lev_cd)
+
+# Look at unique values for the result_lab_cm_tx variable - Lab result comment
+unique(nwis_wc$result_lab_cm_tx)
+```
+
+We'll remove the medium_cd, dqi_cd and rpt_lev_cd variables since they aren't necessary to keep at this point.
+
+```{r remove variables 2015 to 2018 water df}
+nwis_wc_clean1 <- nwis_wc %>% select(-c(medium_cd, dqi_cd, rpt_lev_cd))
+```
+
+The 2015-2018 water concentration data downloaded from NWIS has 5-digit numeric codes to represent each parameter measured. We need to convert these numeric codes to the actual names of the parameters. We developed a crosswalk table to help execute this conversion.
+
+```{r import param code crosswalk}
+# Bring in dataframe to be used as a crosswalk for the parameter codes
+param_code_cw <- 
+  read_excel(
+    paste0(fp_abs_raw, "/USGS_Data_Download_metadata.xlsx"), 
+    sheet = "Parameter Codes"
+  )
+```
+
+We'll finish preparing the dataframe with the 2015-2018 water concentrations by:
+
+* Parsing the startDateTime variable to a datetime object
+* Converting the numeric parameter codes to the descriptive parameter names
+* Creating a new variable to identify values above and below the Method Detection Limit (MDL)
+* Make the result_va variable equal its MDL value for the samples below the MDL
+* Changing some variable names to standardized names for the NDFA synthesis
+
+
+
+## Export Data
+
+
+
+# Suspended Sediment Data
 
 
