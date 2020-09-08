@@ -78,107 +78,50 @@ data_clean <- data_orig %>%
 
 # Raw Data Plots {.tabset .tabset-pills}
 
-## Chla {.tabset .tabset-pills}
+## Chla
 
-```{r filter chla data, include = FALSE}
-# Use this code to filter to your parameter of interest and remove any excess data at the beginning of the period of record
-data_clean_chla <- data_clean %>% 
-  filter(
-    parameter == "Chla"
-  )
-```
-
-### All Years
-
-```{r plot chla all years, echo = FALSE, warning = FALSE}
-# Use the create_ts_plot function to create your plot
-data_clean_chla %>% create_ts_plot(.$yaxis_lab[1])
-```
-
-## DO {.tabset .tabset-pills}
-
-```{r filter do data, include = FALSE}
-# Follow the same pattern for your next parameter
-data_clean_do <- data_clean %>% 
-  filter(
-    parameter == "DO"
-  )
-```
-
-### All Years
-
-```{r plot do all years, echo = FALSE, warning = FALSE}
-# Use the create_ts_plot function to create your plot
-data_clean_do %>% create_ts_plot(.$yaxis_lab[1])
-```
-
-## pH {.tabset .tabset-pills}
-
-```{r filter pH data, include = FALSE}
-# Follow the same pattern for your next parameter
-data_clean_pH <- data_clean %>% 
-  filter(
-    parameter == "pH"
-  )
-```
-
-### All Years
-
-```{r plot pH all years, echo = FALSE, warning = FALSE}
-# Use the create_ts_plot function to create your plot
-data_clean_pH %>% create_ts_plot(.$yaxis_lab[1])
-```
-
-## SpCnd {.tabset .tabset-pills}
-
-```{r filter SpCnd data, include = FALSE}
-# Follow the same pattern for your next parameter
-data_clean_spcnd <- data_clean %>% 
-  filter(
-    parameter == "SpCnd"
-  )
-```
-
-### All Years
-
-```{r plot SpCnd all years, echo = FALSE, warning = FALSE}
-# Use the create_ts_plot function to create your plot
-data_clean_spcnd %>% create_ts_plot(.$yaxis_lab[1])
-```
-
-## Turbidity {.tabset .tabset-pills}
-
-```{r filter turb data, include = FALSE}
-# Follow the same pattern for your next parameter
-data_clean_turb <- data_clean %>% 
-  filter(
-    parameter == "Turbidity"
-  )
-```
-
-### All Years
-
-```{r plot turb all years, echo = FALSE, warning = FALSE}
-# Use the create_ts_plot function to create your plot
-data_clean_turb %>% filter(
-  !is.na(value)
-  ) %>%
+```{r plot chla data, echo = FALSE, warning = FALSE}
+data_clean %>% 
+  filter(parameter == "Chla") %>% 
   create_ts_plot(.$yaxis_lab[1])
 ```
 
-## WaterTemp {.tabset .tabset-pills}
+## DO
 
-```{r filter wt data, include = FALSE}
-# Follow the same pattern for your next parameter
-data_clean_wt <- data_clean %>% 
-  filter(
-    parameter == "WaterTemp"
-  )
+```{r plot do data, echo = FALSE, warning = FALSE}
+data_clean %>% 
+  filter(parameter == "DO") %>% 
+  create_ts_plot(.$yaxis_lab[1])
 ```
 
-### All Years
+## pH
 
-```{r plot wt all years, echo = FALSE, warning = FALSE}
-# Use the create_ts_plot function to create your plot
-data_clean_wt %>% create_ts_plot(.$yaxis_lab[1])
+```{r plot pH data, echo = FALSE, warning = FALSE}
+data_clean %>% 
+  filter(parameter == "pH") %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+## SpCnd
+
+```{r plot SpCnd data, echo = FALSE, warning = FALSE}
+data_clean %>% 
+  filter(parameter == "SpCnd") %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+## Turbidity
+
+```{r plot turb data, echo = FALSE, warning = FALSE}
+data_clean %>% 
+  filter(parameter == "Turbidity") %>% 
+  create_ts_plot(.$yaxis_lab[1])
+```
+
+## WaterTemp
+
+```{r plot wt data, echo = FALSE, warning = FALSE}
+data_clean %>% 
+  filter(parameter == "WaterTemp") %>% 
+  create_ts_plot(.$yaxis_lab[1])
 ```

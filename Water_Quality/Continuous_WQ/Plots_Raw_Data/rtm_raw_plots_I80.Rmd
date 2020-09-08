@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Purpose
 
-Create plots of the raw continuous water quality data for the RD22 station. The data in these plots has been cleaned and formatted, but not inspected for suspect values. The purpose of these plots is to allow for us to visually inspect the data for suspect or unreliable values during the study period (2011-2019). The final QA/QC steps for this data can be found in the xxx.Rmd file.
+Create plots of the raw continuous water quality data for the I-80 station. The data in these plots has been cleaned and formatted, but not inspected for suspect values. The purpose of these plots is to allow for us to visually inspect the data for suspect or unreliable values during the study period (2011-2019). The final QA/QC steps for this data can be found in the xxx.Rmd file.
 
 # Global code and functions
 
@@ -40,7 +40,7 @@ source("Water_Quality/Continuous_WQ/Plots_Raw_Data/rtm_raw_plots_funcs.R")
 # Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
 fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
 
-# Define relative file path for processed continuous WQ data file for RD22
+# Define relative file path for processed continuous WQ data file for I-80
 fp_rel_rtm_data <- paste0(fp_fastr, "Processed_Data/Continuous/RTM_OUTPUT_I80_formatted.csv")
 
 # Define absolute file path
@@ -81,25 +81,19 @@ data_clean <- data_orig %>%
 ## Chla {.tabset .tabset-pills}
 
 ```{r filter chla data, include = FALSE}
-# Use this code to filter to your parameter of interest and remove any excess data at the beginning of the period of record
 data_clean_chla <- data_clean %>% 
-  filter(
-    parameter == "Chla",
-    yr >= 2013
-  )
+  filter(parameter == "Chla")
 ```
 
 ### All Years
 
 ```{r plot chla all years, echo = FALSE, warning = FALSE}
-# Use the create_ts_plot function to create your plot
 data_clean_chla %>% create_ts_plot(.$yaxis_lab[1])
 ```
 
 ### 2013
 
 ```{r plot chla 2013, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_chla %>% 
   filter(
     yr == 2013,
@@ -111,7 +105,6 @@ data_clean_chla %>%
 ### 2014
 
 ```{r plot chla 2014, echo = FALSE}
-# Follow the same pattern for creating the plot for 2014
 data_clean_chla %>% 
   filter(
     yr == 2014,
@@ -123,7 +116,6 @@ data_clean_chla %>%
 ### 2015
 
 ```{r plot chla 2015, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_chla %>% 
   filter(
     yr == 2015,
@@ -135,7 +127,6 @@ data_clean_chla %>%
 ### 2016
 
 ```{r plot chla 2016, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_chla %>% 
   filter(
     yr == 2016,
@@ -147,7 +138,6 @@ data_clean_chla %>%
 ### 2017
 
 ```{r plot chla 2017, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_chla %>% 
   filter(
     yr == 2017,
@@ -159,7 +149,6 @@ data_clean_chla %>%
 ### 2018
 
 ```{r plot chla 2018, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_chla %>% 
   filter(
     yr == 2018,
@@ -171,7 +160,6 @@ data_clean_chla %>%
 ### 2019
 
 ```{r plot chla 2019, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_chla %>% 
   filter(
     yr == 2019,
@@ -183,7 +171,6 @@ data_clean_chla %>%
 ## DO {.tabset .tabset-pills}
 
 ```{r filter do data, include = FALSE}
-# Follow the same pattern for your next parameter
 data_clean_do <- data_clean %>% 
   filter(
     parameter == "DO",
@@ -194,14 +181,12 @@ data_clean_do <- data_clean %>%
 ### All Years
 
 ```{r plot do all years, echo = FALSE, warning = FALSE}
-# Use the create_ts_plot function to create your plot
 data_clean_do %>% create_ts_plot(.$yaxis_lab[1])
 ```
 
 ### 2014
 
 ```{r plot do 2014, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_do %>% 
   filter(
     yr == 2014,
@@ -213,7 +198,6 @@ data_clean_do %>%
 ### 2015
 
 ```{r plot do 2015, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_do %>% 
   filter(
     yr == 2015,
@@ -225,7 +209,6 @@ data_clean_do %>%
 ### 2016
 
 ```{r plot do 2016, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_do %>% 
   filter(
     yr == 2016,
@@ -237,7 +220,6 @@ data_clean_do %>%
 ### 2017
 
 ```{r plot do 2017, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_do %>% 
   filter(
     yr == 2017,
@@ -249,7 +231,6 @@ data_clean_do %>%
 ### 2018
 
 ```{r plot do 2018, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_do %>% 
   filter(
     yr == 2018,
@@ -261,7 +242,6 @@ data_clean_do %>%
 ### 2019
 
 ```{r plot do 2019, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_do %>% 
   filter(
     yr == 2019,
@@ -273,7 +253,6 @@ data_clean_do %>%
 ## pH {.tabset .tabset-pills}
 
 ```{r filter pH data, include = FALSE}
-# Follow the same pattern for your next parameter
 data_clean_pH <- data_clean %>% 
   filter(
     parameter == "pH",
@@ -284,14 +263,12 @@ data_clean_pH <- data_clean %>%
 ### All Years
 
 ```{r plot pH all years, echo = FALSE, warning = FALSE}
-# Use the create_ts_plot function to create your plot
 data_clean_pH %>% create_ts_plot(.$yaxis_lab[1])
 ```
 
 ### 2014
 
 ```{r plot pH 2014, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_pH %>% 
   filter(
     yr == 2014,
@@ -303,7 +280,6 @@ data_clean_pH %>%
 ### 2015
 
 ```{r plot pH 2015, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_pH %>% 
   filter(
     yr == 2015,
@@ -315,7 +291,6 @@ data_clean_pH %>%
 ### 2016
 
 ```{r plot pH 2016, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_pH %>% 
   filter(
     yr == 2016,
@@ -327,7 +302,6 @@ data_clean_pH %>%
 ### 2017
 
 ```{r plot pH 2017, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_pH %>% 
   filter(
     yr == 2017,
@@ -339,7 +313,6 @@ data_clean_pH %>%
 ### 2018
 
 ```{r plot pH 2018, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_pH %>% 
   filter(
     yr == 2018,
@@ -351,7 +324,6 @@ data_clean_pH %>%
 ### 2019
 
 ```{r plot pH 2019, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_pH %>% 
   filter(
     yr == 2019,
@@ -363,25 +335,19 @@ data_clean_pH %>%
 ## SpCnd {.tabset .tabset-pills}
 
 ```{r filter SpCnd data, include = FALSE}
-# Follow the same pattern for your next parameter
 data_clean_spcnd <- data_clean %>% 
-  filter(
-    parameter == "SpCnd",
-    yr >= 2013
-  )
+  filter(parameter == "SpCnd")
 ```
 
 ### All Years
 
 ```{r plot SpCnd all years, echo = FALSE, warning = FALSE}
-# Use the create_ts_plot function to create your plot
 data_clean_spcnd %>% create_ts_plot(.$yaxis_lab[1])
 ```
 
 ### 2013
 
 ```{r plot SpCnd 2013, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_spcnd %>% 
   filter(
     yr == 2013,
@@ -393,7 +359,6 @@ data_clean_spcnd %>%
 ### 2014
 
 ```{r plot SpCnd 2014, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_spcnd %>% 
   filter(
     yr == 2014,
@@ -405,7 +370,6 @@ data_clean_spcnd %>%
 ### 2015
 
 ```{r plot SpCnd 2015, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_spcnd %>% 
   filter(
     yr == 2015,
@@ -417,7 +381,6 @@ data_clean_spcnd %>%
 ### 2016
 
 ```{r plot SpCnd 2016, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_spcnd %>% 
   filter(
     yr == 2016,
@@ -429,7 +392,6 @@ data_clean_spcnd %>%
 ### 2017
 
 ```{r plot SpCnd 2017, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_spcnd %>% 
   filter(
     yr == 2017,
@@ -441,7 +403,6 @@ data_clean_spcnd %>%
 ### 2018
 
 ```{r plot SpCnd 2018, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_spcnd %>% 
   filter(
     yr == 2018,
@@ -453,7 +414,6 @@ data_clean_spcnd %>%
 ### 2019
 
 ```{r plot SpCnd 2019, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_spcnd %>% 
   filter(
     yr == 2019,
@@ -465,7 +425,6 @@ data_clean_spcnd %>%
 ## Turbidity {.tabset .tabset-pills}
 
 ```{r filter turb data, include = FALSE}
-# Follow the same pattern for your next parameter
 data_clean_turb <- data_clean %>% 
   filter(
     parameter == "Turbidity",
@@ -476,7 +435,6 @@ data_clean_turb <- data_clean %>%
 ### All Years
 
 ```{r plot turb all years, echo = FALSE, warning = FALSE}
-# Use the create_ts_plot function to create your plot
 data_clean_turb %>% filter(
   !is.na(value)
   ) %>%
@@ -486,25 +444,19 @@ data_clean_turb %>% filter(
 ## WaterTemp {.tabset .tabset-pills}
 
 ```{r filter wt data, include = FALSE}
-# Follow the same pattern for your next parameter
 data_clean_wt <- data_clean %>% 
-  filter(
-    parameter == "WaterTemp",
-    yr >= 2013
-  )
+  filter(parameter == "WaterTemp")
 ```
 
 ### All Years
 
 ```{r plot wt all years, echo = FALSE, warning = FALSE}
-# Use the create_ts_plot function to create your plot
 data_clean_wt %>% create_ts_plot(.$yaxis_lab[1])
 ```
 
 ### 2013
 
 ```{r plot wt 2013, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_wt %>% 
   filter(
     yr == 2013,
@@ -516,7 +468,6 @@ data_clean_wt %>%
 ### 2014
 
 ```{r plot wt 2014, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_wt %>% 
   filter(
     yr == 2014,
@@ -528,7 +479,6 @@ data_clean_wt %>%
 ### 2015
 
 ```{r plot wt 2015, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_wt %>% 
   filter(
     yr == 2015,
@@ -540,7 +490,6 @@ data_clean_wt %>%
 ### 2016
 
 ```{r plot wt 2016, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_wt %>% 
   filter(
     yr == 2016,
@@ -552,7 +501,6 @@ data_clean_wt %>%
 ### 2017
 
 ```{r plot wt 2017, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_wt %>% 
   filter(
     yr == 2017,
@@ -564,7 +512,6 @@ data_clean_wt %>%
 ### 2018
 
 ```{r plot wt 2018, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_wt %>% 
   filter(
     yr == 2018,
@@ -576,7 +523,6 @@ data_clean_wt %>%
 ### 2019
 
 ```{r plot wt 2019, echo = FALSE}
-# Filter by yr and remove NA values before creating your plot
 data_clean_wt %>% 
   filter(
     yr == 2019,
