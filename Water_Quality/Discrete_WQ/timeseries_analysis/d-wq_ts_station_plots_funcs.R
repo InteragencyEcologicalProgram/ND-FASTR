@@ -77,10 +77,9 @@ add_phase_actions <- function(df_wq, df_dates){
 create_seg_df <- function(df){
   # subset out the ND data into own df (based on NA values in 'values' column)
   df_subset <- subset(df, is.na(df$Result))
-  
+
   # check if any non-detect data
   any_data <- 'Non-detect' %in% df_subset$LabDetect
-  
   if (any_data){
     # create new df for the vertical and horizontal segments
     df_seg <- data.frame(
@@ -141,8 +140,9 @@ create_facet <- function(df){
   action_max <- unique(df_filt$PostFlowStart)
   action_min <- unique(df_filt$PreFlowEnd)
   
-  # check if RL data exists
-  RL_dat <- nrow(df_seg) > 0
+  # check if any/RL data exists
+  any_dat <- nrow(df_filt) > 0
+  rl_dat <- nrow(df_seg) > 0
   
   # define relevant values
   analyte_full <- unique(df_filt$AnalyteFull[df_filt$Analyte == analyte])
@@ -150,48 +150,50 @@ create_facet <- function(df){
   cmap_colors <- c('#999999', '#f781bf', '#B79F00', '#984ea3', '#377eb8', '#e41a1c') # #ffff33
   
   # plot timeseries
-  p <- ggplot() +
-    facet_grid(StationCode ~ ., scales = 'free') +
-    annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
-
-  # add RL segments
-  if (RL_dat) {
-    p <- p +
-      geom_segment( # vertical segment
-        data = df_seg,
-        mapping = aes(x = x_vert, xend = xend_vert, y = y_vert, yend = yend_vert, group = StationCode, color = Region),
-        size = 1.6
+  if (any_dat) {
+    if (rl_dat) {
+      p <- ggplot() +
+        facet_grid(StationCode ~ ., scales = 'free') +
+        annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
+      
+      # add RL segments
+      p <- p +
+        geom_segment( # vertical segment
+          data = df_seg,
+          mapping = aes(x = x_vert, xend = xend_vert, y = y_vert, yend = yend_vert, group = StationCode, color = Region),
+          size = 1.6
         ) +
-      geom_segment( # horizontal segment
-        data = df_seg,
-        mapping = aes(x = x_horz, xend = xend_horz, y = y_horz, yend = yend_horz, group = StationCode, color = Region),
-        size = 1.3,
-        lineend = 'square'
+        geom_segment( # horizontal segment
+          data = df_seg,
+          mapping = aes(x = x_horz, xend = xend_horz, y = y_horz, yend = yend_horz, group = StationCode, color = Region),
+          size = 1.3,
+          lineend = 'square'
+        )
+    }
+    
+    # add timeseries data
+    p <- p +
+      geom_point( # points
+        df_filt,
+        mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
+        size = 4.3
+      ) +
+      geom_line( # line
+        df_filt,
+        mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
+        size = 1.8
       )
+    
+    # fix asthetics
+    p <- p +
+      blank_theme + # theme
+      scale_x_date(labels = date_format('%d-%b'), breaks = pretty_breaks(10)) +
+      scale_fill_manual(values = cmap_colors) +
+      scale_color_manual(values = cmap_colors) +
+      xlab('Date') +
+      ylab(analyte_unit) +
+      ggtitle(paste(analyte_full,'-',year))
+    
+    return(p)
   }
-
-  # add timeseries data
-  p <- p +
-    geom_point( # points
-      df_filt,
-      mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
-      size = 4.3
-    ) +
-    geom_line( # line
-      df_filt,
-      mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
-      size = 1.8
-    )
-
-  # fix asthetics
-  p <- p +
-    blank_theme + # theme
-    scale_x_date(labels = date_format('%d-%b'), breaks = pretty_breaks(10)) +
-    scale_fill_manual(values = cmap_colors) +
-    scale_color_manual(values = cmap_colors) +
-    xlab('Date') +
-    ylab(analyte_unit) +
-    ggtitle(paste(analyte_full,'-',year))
-
-  return(p)
 }
