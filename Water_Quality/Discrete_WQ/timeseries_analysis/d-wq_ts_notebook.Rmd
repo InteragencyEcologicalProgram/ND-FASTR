@@ -268,19 +268,19 @@ df_wq <- add_phase_actions(df_wq, df_dates)
 
 # --- Convert NDs to NA --- 
 df_wq$Result[df_wq$LabDetect == 'Non-detect'] <- NA
+```
 
+## Graphs
+```{r, message=FALSE, warning=FALSE, eval=FALSE, results='asis'}
 # --- Prep for Graphs ---
 # list of analytes/stations
 analytes <- unique(df_wq$AnalyteFull)
 years <- sort(unique(df_wq$Year))
 
 # change station col to factor type and order it
-stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','SHR','LIS','SRH','STTD','BL5','LIB','RYI','SRV','RVB','SDI')
+stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','LIS','STTD','BL5','LIB','RYI','RVB','SDI','SHR','SRH','SRV')
 df_wq$StationCode <- factor(df_wq$StationCode, levels = stat_lvls)
-```
 
-## Graphs
-```{r, message=FALSE, warning=FALSE, eval=FALSE, results='asis'}
 # --- Create Time Series --
 # create plots
 for (year in years){
@@ -305,6 +305,15 @@ cat('\n# Graphs {.tabset .tabset-fade .tabset-pills}')
 ```
 
 ```{r, message=FALSE, warning=FALSE, results='asis', echo=FALSE, fig.width=6.3, fig.height=10.7, fig.align='center'}
+# --- Prep for Graphs ---
+# list of analytes/stations
+analytes <- unique(df_wq$AnalyteFull)
+years <- sort(unique(df_wq$Year))
+
+# change station col to factor type and order it
+stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','LIS','STTD','BL5','LIB','RYI','RVB','SDI','SHR','SRH','SRV')
+df_wq$StationCode <- factor(df_wq$StationCode, levels = stat_lvls)
+
 # --- Create Time Series --
 # create plots
 for (year in years){
