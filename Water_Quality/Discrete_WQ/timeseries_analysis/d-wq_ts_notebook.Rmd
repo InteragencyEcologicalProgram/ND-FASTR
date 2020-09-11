@@ -1,8 +1,31 @@
-# FASTR - Fuctions for Discrete WQ Timeseries Analysis
-# purpose: functions for timeseries analysis of discrete WQ data for FASTR
-# author: Sarah Perry
-# contact: seperry83@gmail.com
+---
+title: 'NDFA - Discrete WQ Time Series'
+author: 'Sarah Perry'
+date: '09/10/2020'
 
+output: 
+  html_document: 
+    code_folding: hide
+    toc: true
+    toc_depth: 1
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+This file provides time series graphs for the discrete water quality stations of the FASTR project. They include time periods before, during, and after a flow action.
+
+# Code {.tabset .tabset-fade .tabset-pills}
+## Functions
+```{r message=FALSE, warning=FALSE}
+# --- Import Packages ---
 # import packages
 library(scales)
 library(ggplot2)
@@ -108,15 +131,15 @@ blank_theme <- function(){
       panel.grid.major.y = element_blank(),
       panel.grid.major.x = element_blank(),
       panel.grid.minor = element_blank(),
-      axis.text = element_text(color = 'black', size = 14, family = 'sans'),
+      axis.text = element_text(color = 'black', size = 10, family = 'sans'),
       axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
-      strip.text = element_text(size = 14),
-      axis.title = element_text(size = 18, face = 'bold'),
-      plot.title = element_text(size = 20, hjust = 0.5, face = 'bold'),
+      strip.text = element_text(size = 11),
+      axis.title = element_text(size = 15, face = 'bold'),
+      plot.title = element_text(size = 17, hjust = 0.5, face = 'bold'),
       legend.position = 'top',
       legend.title = element_blank(),
       legend.box.margin = margin(-10,0,-10,0),
-      legend.text = element_text(size = 13)
+      legend.text = element_text(size = 9)
     )
 }
 
@@ -129,10 +152,10 @@ create_facet <- function(df){
   df_filt <-
     df %>%
     filter(
-      Analyte == analyte,
+      AnalyteFull == analyte,
       Year == year
     )
-  
+
   # create segment (RL) df
   df_seg <- create_seg_df(df_filt)
   
@@ -145,28 +168,30 @@ create_facet <- function(df){
   rl_dat <- nrow(df_seg) > 0
   
   # define relevant values
-  analyte_full <- unique(df_filt$AnalyteFull[df_filt$Analyte == analyte])
-  analyte_unit <- unique(df_filt$Units[df_filt$Analyte == analyte])
-  cmap_colors <- c('#999999', '#f781bf', '#B79F00', '#984ea3', '#377eb8', '#e41a1c') # #ffff33
+  analyte_unit <- unique(df_filt$Units[df_filt$AnalyteFull == analyte])
+  cmap_colors <- c('#999999', '#f781bf', '#B79F00', '#984ea3', '#377eb8', '#e41a1c')
   
   # plot timeseries
   if (any_dat) {
+    
+    # create plot
+    p <- ggplot() +
+      facet_grid(StationCode ~ ., scales = 'free') +
+      annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
+    
     if (rl_dat) {
-      p <- ggplot() +
-        facet_grid(StationCode ~ ., scales = 'free') +
-        annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
       
       # add RL segments
       p <- p +
         geom_segment( # vertical segment
           data = df_seg,
           mapping = aes(x = x_vert, xend = xend_vert, y = y_vert, yend = yend_vert, group = StationCode, color = Region),
-          size = 1.6
+          size = 1.1
         ) +
         geom_segment( # horizontal segment
           data = df_seg,
           mapping = aes(x = x_horz, xend = xend_horz, y = y_horz, yend = yend_horz, group = StationCode, color = Region),
-          size = 1.3,
+          size = .8,
           lineend = 'square'
         )
     }
@@ -176,12 +201,12 @@ create_facet <- function(df){
       geom_point( # points
         df_filt,
         mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
-        size = 4.3
+        size = 3.0
       ) +
       geom_line( # line
         df_filt,
         mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
-        size = 1.8
+        size = 1.1
       )
     
     # fix asthetics
@@ -192,8 +217,109 @@ create_facet <- function(df){
       scale_color_manual(values = cmap_colors) +
       xlab('Date') +
       ylab(analyte_unit) +
-      ggtitle(paste(analyte_full,'-',year))
+      ggtitle(paste(analyte,'-',year))
     
     return(p)
   }
 }
+```
+
+## Data Cleaning
+```{r, message=FALSE, warning=FALSE, results='asis', fig.width=8, fig.height=14}
+# --- Import Packages ---
+# import packages
+library(ggplot2)
+library(tidyverse)
+
+# source functions
+# source('Water_Quality/Discrete_WQ/timeseries_analysis/d-wq_ts_station_plots_funcs.R')
+
+# --- Import Data ---
+# define main FASTR filepath (assumes sync'd with Sharepoint)
+fp_fastr <- 'California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/'
+
+# define relative filepaths 
+fp_rel_wq <- paste0(fp_fastr,'WQ_Subteam/Processed_Data/Discrete/WQ_OUTPUT_Discrete_Lab_formatted.csv')
+fp_rel_dates <- paste0(fp_fastr,'Data Management/FlowDatesDesignations.csv')
+fp_rel_regions = paste0(fp_fastr, 'WQ_Subteam/Processed_Data/NDFA_WQ_Stations.csv')
+
+# define absolute filepaths
+fp_abs_wq <- get_abs_path(fp_rel_wq)
+fp_abs_dates <- get_abs_path(fp_rel_dates)
+fp_abs_regions <- get_abs_path(fp_rel_regions)
+
+# read in data
+df_wq <- read_csv(fp_abs_wq)
+df_dates <- read_csv(fp_abs_dates)
+df_regions <- read_csv(fp_abs_regions)
+
+# --- Clean Data In Order To Create Timeseries Plots w/ RLs ---
+# create date/year columns (character type)
+df_wq$Date <- format(strptime(df_wq$DateTime, '%Y/%m/%d'),'%m/%d/%Y')
+df_wq$Year <- format(strptime(df_wq$DateTime, '%Y/%m/%d'),'%Y')
+
+df_wq <- merge(x = df_wq, y = df_regions[, c('StationCode', 'Region')], by = 'StationCode')
+
+# add full analyte name column
+df_wq <- add_analyte_names(df_wq)
+
+# add in phase actions (will also convert 'Date' column to date type)
+df_wq <- add_phase_actions(df_wq, df_dates)
+
+# --- Convert NDs to NA --- 
+df_wq$Result[df_wq$LabDetect == 'Non-detect'] <- NA
+
+# --- Prep for Graphs ---
+# list of analytes/stations
+analytes <- unique(df_wq$AnalyteFull)
+years <- sort(unique(df_wq$Year))
+
+# change station col to factor type and order it
+stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','SHR','LIS','SRH','STTD','BL5','LIB','RYI','SRV','RVB','SDI')
+df_wq$StationCode <- factor(df_wq$StationCode, levels = stat_lvls)
+```
+
+## Graphs
+```{r, message=FALSE, warning=FALSE, eval=FALSE, results='asis'}
+# --- Create Time Series --
+# create plots
+for (year in years){
+  cat('\n##', year, '{.tabset .tabset-fade .tabset-pills}')
+  for (analyte in analytes) { 
+    
+    # create time series graphs
+    p <- create_facet(df_wq)
+
+    # plot
+    if (!length(p) == 0) {
+      cat('\n###', analyte, '\n')
+      plot(p)
+      cat('\n')
+    }
+  }
+}
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='asis'}
+cat('\n# Graphs {.tabset .tabset-fade .tabset-pills}')
+```
+
+```{r, message=FALSE, warning=FALSE, results='asis', echo=FALSE, fig.width=6.3, fig.height=10.7, fig.align='center'}
+# --- Create Time Series --
+# create plots
+for (year in years){
+  cat('\n##', year, '{.tabset .tabset-fade .tabset-pills}')
+  for (analyte in analytes) { 
+
+    # create time series graphs
+    p <- create_facet(df_wq)
+
+    # plot
+    if (!length(p) == 0) {
+      cat('\n###', analyte,'\n')
+      plot(p)
+      cat('\n')
+    }
+  }
+}
+```
