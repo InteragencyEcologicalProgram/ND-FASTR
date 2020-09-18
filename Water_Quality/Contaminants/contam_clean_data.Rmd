@@ -141,16 +141,55 @@ param_code_cw <-
 
 We'll finish preparing the dataframe with the 2015-2018 water concentrations by:
 
-* Parsing the startDateTime variable to a datetime object
+* Parsing the startDateTime variable to a datetime object, separate into two variables for Date and Time
 * Converting the numeric parameter codes to the descriptive parameter names
-* Creating a new variable to identify values above and below the Method Detection Limit (MDL)
-* Make the result_va variable equal its MDL value for the samples below the MDL
+* Adding a Pesticide_type variable
+* Creating a new variable to identify estimated values and values above and below the Method Detection Limit (MDL)
+* Creating a new variable for the measurement units
+* Make the result_va variable equal to its MDL value for the samples below the MDL
 * Changing some variable names to standardized names for the NDFA synthesis
 
-
+```{r finish prep 2015 to 2018 water df}
+nwis_wc_clean2 <- nwis_wc_clean1 %>% 
+  mutate(
+    # parse date-time variable and separate into two variables for Date and Time
+    DateTime = ymd_hms(startDateTime, tz = "Etc/GMT+8"),
+    Date = as_date(DateTime),
+    Time = hms::as_hms(DateTime),
+    # create a new variable to identify values above and below the MDL and estimated values
+    LabDetect = case_when(
+      remark_cd == "<" ~ "Non-detect",
+      remark_cd == "E" ~ "Estimated value",
+      TRUE ~ "Detect"
+    ),
+    # create result variable- use MDL values for <MDL data
+    Result = if_else(
+      LabDetect == "Non-detect",
+      rpt_lev_va,
+      result_va
+    ),
+    # create a variable for measurement units
+    Units = "ng/L"
+  ) %>% 
+  # add descriptive parameter names and Pesticide_type variable
+  left_join(param_code_cw, by = c("parm_cd" = "parameter_code")) %>% 
+  # remove some variables and standardize names
+  select(
+    StationCode = sta_code,
+    Date,
+    Time,
+    Analyte = parameter_nwis,
+    PesticideType = pesticide_type,
+    Result,
+    LabDetect,
+    MDL = rpt_lev_va,
+    Units,
+    Method = meth_cd,
+    LabComments = result_lab_cm_tx
+  )
+```
 
 ## Export Data
-
 
 
 # Suspended Sediment Data
