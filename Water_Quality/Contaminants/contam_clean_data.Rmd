@@ -56,12 +56,12 @@ rm(fp_rel_raw, fp_rel_proc)
 obj_keep <- append(objects(), "obj_keep")
 ```
 
-# Water Data
+# Import Data
 
-## Import Data
+Jim Orlando from the USGS provided all of the contaminants data for water, suspended sediment, and zooplankton concentrations for 2015-2019. However the dataset did not include Method Detection Limits (MDL) for each parameter. As a result, we downloaded the contaminants data from the [USGS NWIS website](https://nwis.waterdata.usgs.gov/usa/nwis/qwdata) which contained this information. Only water and suspended sediment concentration data for 2015-2018 were available at the time. Therefore we used the water and suspended sediment data downloaded from NWIS and the zooplankton data provided by Jim Orlando. 
 
-```{r import raw water data}
-# Import water concentration data for 2015-2018:
+```{r import raw data}
+# Import water and suspended sediment concentration data for 2015-2018:
   # Create a vector of all file paths for the raw USGS contaminants data downloaded from NWIS
   nwis_fp <- dir(fp_abs_raw, pattern = "^CONTAM_RAW", full.names = T)
   
@@ -73,11 +73,9 @@ obj_keep <- append(objects(), "obj_keep")
     ) %>% 
     unnest(df)
   
-  # Remove the contaminant concentration data on suspended sediment for 2015-2018 from nwis_orig and save it to work on later
-  nwis_ss <- nwis_orig %>% filter(medium_cd == "SS")
-  
-  # Keep just the water concentration data for 2015-2018
-  nwis_wc <- nwis_orig %>% filter(medium_cd == "WS")
+# Split the water and suspended sediment concentration data into separate dataframes
+nwis_wc <- nwis_orig %>% filter(medium_cd == "WS")
+nwis_ss <- nwis_orig %>% filter(medium_cd == "SS")
 
 # Import water concentration data for 2019:
 water_conc19_orig <- 
@@ -95,7 +93,9 @@ water_conc19_orig <-
   )
 ```
 
-## Clean Data
+# Clean Data
+
+## Water Concentration Data
 
 ### Prepare data to be bound
 
@@ -189,9 +189,14 @@ nwis_wc_clean2 <- nwis_wc_clean1 %>%
   )
 ```
 
-## Export Data
+## Suspended Sediment Concentration Data
 
 
-# Suspended Sediment Data
+## Zooplankton Concentration Data
+
+
+# Export Data
+
+
 
 
