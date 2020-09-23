@@ -18,7 +18,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Purpose
 
-This document provides the code and decisions made to clean and standardize all contaminants data used for the North Delta Flow Action synthesis project. The data were collected by USGS, and includes concentration data for water, suspended sediment, and zooplankton samples.
+This document provides the code and decisions made to clean and standardize all contaminants data used for the North Delta Flow Action synthesis project. The data were collected by USGS, and includes concentration data for water, suspended sediment, and zooplankton samples. 
+
+Jim Orlando from the USGS provided all of the contaminants data for 2015-2019 in a couple of Excel spreadsheets that are stored on the NDFA SharePoint site. However this dataset provided by Jim Orlando did not include Method Detection Limits (MDL) for each parameter. To obtain the MDL values, we downloaded the contaminants data from the [USGS NWIS website](https://nwis.waterdata.usgs.gov/usa/nwis/qwdata) and added this information to the data provided in the Excel spreadsheets.
 
 # Global code and functions
 
@@ -56,11 +58,22 @@ rm(fp_rel_raw, fp_rel_proc)
 obj_keep <- append(objects(), "obj_keep")
 ```
 
-# Import Data
+The data downloaded from NWIS has 5-digit numeric codes to represent each parameter measured. We developed a crosswalk table to convert these numeric codes to standardized names of the parameters. We also used this crosswalk table to standardize the parameter names in the spreadsheets provided by Jim Orlando.
 
-Jim Orlando from the USGS provided all of the contaminants data for water, suspended sediment, and zooplankton concentrations for 2015-2019. However the dataset did not include Method Detection Limits (MDL) for each parameter. As a result, we downloaded the contaminants data from the [USGS NWIS website](https://nwis.waterdata.usgs.gov/usa/nwis/qwdata) which contained this information. Only water and suspended sediment concentration data for 2015-2018 were available at the time. Therefore we used the water and suspended sediment data downloaded from NWIS and the zooplankton data provided by Jim Orlando. 
+```{r import param code crosswalk}
+# Bring in dataframe to be used as a crosswalk for the parameter codes and standardized names
+param_code_cw <- 
+  read_excel(
+    paste0(fp_abs_raw, "/USGS_Data_Download_metadata.xlsx"), 
+    sheet = "Parameter Codes"
+  )
+```
 
-```{r import raw data}
+# Water Concentration Data
+
+## Import Data
+
+```{r import raw water data}
 # Import water and suspended sediment concentration data for 2015-2018:
   # Create a vector of all file paths for the raw USGS contaminants data downloaded from NWIS
   nwis_fp <- dir(fp_abs_raw, pattern = "^CONTAM_RAW", full.names = T)
@@ -93,9 +106,7 @@ water_conc19_orig <-
   )
 ```
 
-# Clean Data
-
-## Water Concentration Data
+## Clean Data
 
 ### Prepare data to be bound
 
@@ -189,13 +200,26 @@ nwis_wc_clean2 <- nwis_wc_clean1 %>%
   )
 ```
 
-## Suspended Sediment Concentration Data
+## Export Data
 
 
-## Zooplankton Concentration Data
+# Suspended Sediment Concentration Data
+
+## Import Data
+
+## Clean Data
+
+## Export Data
 
 
-# Export Data
+# Zooplankton Concentration Data
+
+## Import Data
+
+## Clean Data
+
+## Export Data
+
 
 
 
