@@ -1,9 +1,7 @@
 # NDFA Water Quality
-# Purpose: Download the 2015-2018 contaminant water concentration data collected and analyzed by 
-  # USGS from NWIS. The water concentration data for 2019 is not available on NWIS at this time 
-  # and was provided by Jim Orlando from the USGS. Jim Orlando also provided contaminant 
-  # concentration data in zooplankton and suspended sediment from 2017-2019 since this data is not 
-  # available on NWIS at this time either.
+# Purpose: Download the 2015-2019 contaminant concentration data in water and suspended sediment 
+  # collected and analyzed by USGS from NWIS. Jim Orlando provided contaminant concentration 
+  # data in zooplankton from 2017-2019 since this data is not available on NWIS at this time.
 # Author: Dave Bosworth
 # Contacts: David.Bosworth@water.ca.gov
 
@@ -26,7 +24,7 @@ fp_abs <- get_abs_path(fp_rel)
 
 # Create objects for start and end dates
 start_date <- "2015-10-19"
-end_date <- "2018-11-10"
+end_date <- "2019-10-16"
 
 # Import parameter codes to download
 params <- 
@@ -51,17 +49,18 @@ get_usgs_contam_data <- function(site_no) {
   return(df_tibb)
 }
 
-# Download data for each station individually
+# Download data for each station individually since it doesn't work to download all at once
 bl5 <- get_usgs_contam_data("381627121395101")
 i80 <- get_usgs_contam_data("383423121345901")
 lis <- get_usgs_contam_data("382829121351801")
 rcs <- get_usgs_contam_data("384737121433201")
 rd22 <- get_usgs_contam_data("384035121383801")
+rmb <- get_usgs_contam_data("11390890")
 ryi <- get_usgs_contam_data("11455350")
 shr <- get_usgs_contam_data("383155121314101")
 sttd <- get_usgs_contam_data("382113121383501")
 
-# Combine all data files into a named list for export 
+# Combine all data files into a dataframe 
 usgs_data <- 
   list(
     BL5 = bl5,
@@ -69,18 +68,16 @@ usgs_data <-
     LIS = lis,
     RCS = rcs,
     RD22 = rd22,
+    RMB = rmb,
     RYI = ryi,
     SHR = shr,
     STTD = sttd
-  )
+  ) %>% 
+  bind_rows(.id = "StationCode")
 
-# Export raw data as .csv files for each site
-iwalk(
-  usgs_data,
-  .f = ~write_excel_csv(
-    .x, 
-    path = paste0(fp_abs, "/CONTAM_RAW_", .y, "_2015-2018.csv"),
+# Export raw data as a .csv file
+usgs_data %>% write_excel_csv(
+  path = paste0(fp_abs, "/CONTAM_RAW_NWIS_2015-2019.csv"),
     na = ""
   )
-)
 
