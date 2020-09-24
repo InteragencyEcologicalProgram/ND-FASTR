@@ -51,6 +51,11 @@ orditorp(nmds,display="species",col="red",air=0.01)
 orditorp(nmds,display="sites",col=c(rep("green",5),rep("blue",5)),
          air=0.01,cex=1.25)
 
+
+
+###########################################################
+#Plot with GGplot
+
 #extract NMDS scores (x and y coordinates)
 data.scores = as.data.frame(scores(nmds))
 
