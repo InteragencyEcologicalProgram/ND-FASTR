@@ -20,7 +20,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This document provides the code and decisions made to clean and standardize all contaminants data used for the North Delta Flow Action synthesis project. The data were collected by USGS, and includes concentration data for water, suspended sediment, and zooplankton samples. 
 
-Jim Orlando from the USGS provided all of the contaminants data for 2015-2019 in a couple of Excel spreadsheets that are stored on the NDFA SharePoint site. However this dataset provided by Jim Orlando did not include Method Detection Limits (MDL) for each parameter. To obtain the MDL values, we downloaded the contaminants data from the [USGS NWIS website](https://nwis.waterdata.usgs.gov/usa/nwis/qwdata) and added this information to the data provided in the Excel spreadsheets.
+Jim Orlando from the USGS provided all of the contaminants data for 2016-2019 in a couple of Excel spreadsheets that are stored on the NDFA SharePoint site. This dataset provided by Jim Orlando did not include Method Detection Limits (MDL) for each parameter. To obtain the MDL values, we downloaded the contaminants data from the [USGS NWIS website](https://nwis.waterdata.usgs.gov/usa/nwis/qwdata) and added the MDL values to the data provided in the Excel spreadsheets.
 
 # Global code and functions
 
@@ -53,12 +53,9 @@ fp_abs_proc <- get_abs_path(fp_rel_proc)
 
 # Clean up
 rm(fp_rel_raw, fp_rel_proc)
-
-# Create a vector of object names to keep throughout the script
-obj_keep <- append(objects(), "obj_keep")
 ```
 
-The data downloaded from NWIS has 5-digit numeric codes to represent each parameter measured. We developed a crosswalk table to convert these numeric codes to standardized names of the parameters. We also used this crosswalk table to standardize the parameter names in the spreadsheets provided by Jim Orlando.
+The data downloaded from NWIS has 5-digit numeric codes to represent each parameter measured. We developed a crosswalk table to convert these numeric codes to standardized names of the parameters. We also used this crosswalk table to standardize the parameter names in the Excel spreadsheets provided by Jim Orlando.
 
 ```{r import param code crosswalk}
 # Bring in dataframe to be used as a crosswalk for the parameter codes and standardized names
@@ -73,23 +70,24 @@ param_code_cw <-
 
 ## Import Data
 
-```{r import raw water data}
-# Import water and suspended sediment concentration data for 2015-2018:
-  # Create a vector of all file paths for the raw USGS contaminants data downloaded from NWIS
-  nwis_fp <- dir(fp_abs_raw, pattern = "^CONTAM_RAW", full.names = T)
-  
-  # Import the raw USGS contaminants data downloaded from NWIS
-  nwis_orig <-
-    tibble(
-      sta_code = str_sub(nwis_fp, start = 176, end = -15),
-      df = map(nwis_fp, .f = import_nwis_data)
-    ) %>% 
-    unnest(df)
-  
-# Split the water and suspended sediment concentration data into separate dataframes
-nwis_wc <- nwis_orig %>% filter(medium_cd == "WS")
-nwis_ss <- nwis_orig %>% filter(medium_cd == "SS")
+Import the water concentration data in the two Excel spreadsheets provided by Jim Orlando.
 
+```{r import raw water data excel}
+# Import water concentration data for 2016-2018:
+water_conc16_18_orig <- 
+  read_excel(
+    path = paste0(fp_abs_raw, "/PesticideResults_YoloDWR_2016_18Data_ForDWR.xlsx"),
+    sheet =  "Water",
+    range = "B1:GB175",
+    col_types = c(
+      "text",
+      rep("skip", 2),
+      rep("date", 2),
+      rep("skip", 3),
+      rep("text", 175)
+    )
+  )
+  
 # Import water concentration data for 2019:
 water_conc19_orig <- 
   read_excel(
@@ -106,101 +104,257 @@ water_conc19_orig <-
   )
 ```
 
+Import the MDL information downloaded from NWIS.
+
+```{r import nwis water data mdl}
+water_nwis_orig <-
+  import_nwis_data(paste0(fp_abs_raw, "/CONTAM_RAW_NWIS_2015-2019.csv")) %>% 
+  filter(medium_cd == "WS")
+```
+
 ## Clean Data
 
-### Prepare data to be bound
+### Clean up NA values
 
-The contaminant water concentration data from 2015-2018 needs to be bound with the 2019 data, but each dataframe needs to be modified to allow for the data to be combined correctly. We'll start with the 2015-2018 data.
+In both of the Excel spreadsheets provided by Jim Orlando, `NA` values represent measurements below the Method Detection Limit and "NA" values represent instances when the parameter wasn't analyzed. This needs to be cleaned up before proceeding with other data cleaning tasks.
 
-#### 2015-2018
+```{r clean na values water}
+# 2016-2018 data:
+water_conc16_18_clean1 <- water_conc16_18_orig %>% 
+  # first remove completely empty rows within the dataset
+  filter(!is.na(Site)) %>%
+  # use convert_na_val function to define NA values correctly
+  convert_na_val(4, 178) %>% 
+  # restructure dataframe and remove values that weren't analyzed
+  pivot_longer(
+    cols = -c(Site, Date, Time), 
+    names_to = "Analyte", 
+    values_to = "Result"
+  ) %>% 
+  filter(Result != "Not analyzed")
 
-There may be a few unnecessary variables in the dataframe with the 2015-2018 water concentrations depending upon the data within them. We'll investigate this further and remove any unnecessary variables.
-
-```{r inspect 2015 to 2018 water df variables}
-# Look at unique values for the dqi_cd variable - Data-quality indicator code
-unique(nwis_wc$dqi_cd)
-
-# For the dqi_cd variable:
-# R = Reviewed and approved
-# S = Provisional
-# Look at how many values are Provisional
-nwis_wc %>% filter(dqi_cd == "S")  # 155 values collected at RD22 on 7/28/2016
-
-# Look at unique values for the rpt_lev_cd variable - Reporting level type
-unique(nwis_wc$rpt_lev_cd)
-
-# Look at unique values for the result_lab_cm_tx variable - Lab result comment
-unique(nwis_wc$result_lab_cm_tx)
+# 2019 data:
+water_conc19_clean1 <- water_conc19_orig %>% 
+  # first remove completely empty rows within the dataset
+  filter(!is.na(Site)) %>%
+  # use convert_na_val function to define NA values correctly
+  convert_na_val(4, 167) %>% 
+  # restructure dataframe and remove values that weren't analyzed
+  pivot_longer(
+    cols = -c(Site, Date, Time), 
+    names_to = "Analyte", 
+    values_to = "Result"
+  ) %>% 
+  filter(Result != "Not analyzed")
 ```
 
-We'll remove the medium_cd, dqi_cd and rpt_lev_cd variables since they aren't necessary to keep at this point.
+### Standardize Parameter names
 
-```{r remove variables 2015 to 2018 water df}
-nwis_wc_clean1 <- nwis_wc %>% select(-c(medium_cd, dqi_cd, rpt_lev_cd))
+Next we need to standardize the contaminant parameter names before combining all of the water concentration data.
+
+```{r standard param names water}
+# 2016-2018 data:
+water_conc16_18_clean2 <- water_conc16_18_clean1 %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_16_18_xlsx")) %>% 
+  select(
+    Site,
+    Date,
+    Time,
+    Analyte = parameter_std,
+    PesticideType = pesticide_type,
+    Result
+  ) %>% 
+  # remove parameters we aren't keeping in the dataset (Clothianidin des methyl)
+  filter(Analyte != "remove")
+
+# 2019 data:
+water_conc19_clean2 <- water_conc19_clean1 %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_19_xlsx")) %>% 
+  select(
+    Site,
+    Date,
+    Time,
+    Analyte = parameter_std,
+    PesticideType = pesticide_type,
+    Result
+  ) %>% 
+  # remove parameters we aren't keeping in the dataset (Clothianidin des methyl and Imidacloprid desnitro)
+  filter(Analyte != "remove")
 ```
 
-The 2015-2018 water concentration data downloaded from NWIS has 5-digit numeric codes to represent each parameter measured. We need to convert these numeric codes to the actual names of the parameters. We developed a crosswalk table to help execute this conversion.
+### Combine data
 
-```{r import param code crosswalk}
-# Bring in dataframe to be used as a crosswalk for the parameter codes
-param_code_cw <- 
-  read_excel(
-    paste0(fp_abs_raw, "/USGS_Data_Download_metadata.xlsx"), 
-    sheet = "Parameter Codes"
+The contaminant water concentration data from 2016-2018 and 2019 can now be combined into one dataframe. We will also need to standardize the "Site" variable and convert the "Date" variable to a date object so that the MDL values from the data downloaded from NWIS can be joined correctly.
+
+```{r combine water data}
+water_conc_all1 <- 
+  bind_rows(water_conc16_18_clean2, water_conc19_clean2) %>% 
+  mutate(
+    Site = case_when(
+      Site == "I-80" ~ "I80",
+      Site == "RY1" ~ "RYI",
+      TRUE ~ Site
+    ),
+    Date = as_date(Date)
   )
 ```
 
-We'll finish preparing the dataframe with the 2015-2018 water concentrations by:
+### Add MDL values
 
-* Parsing the startDateTime variable to a datetime object, separate into two variables for Date and Time
-* Converting the numeric parameter codes to the descriptive parameter names
-* Adding a Pesticide_type variable
-* Creating a new variable to identify estimated values and values above and below the Method Detection Limit (MDL)
+We need to add the Method Detection Limit (MDL) values downloaded from NWIS to the main dataset. The contaminant data downloaded from NWIS has 5-digit numeric codes to represent each parameter measured. We need to convert these numeric codes to the standardized parameter names so that this data can be joined to the main dataset correctly. We will also convert the "sample_dt" variable to a date object so that the join can occur correctly.
+
+```{r mod nwis water data mdl}
+water_nwis_clean <- water_nwis_orig %>% 
+  left_join(param_code_cw, by = c("parm_cd" = "parameter_code")) %>% 
+  mutate(sample_dt = ymd(sample_dt)) %>% 
+  select(
+    StationCode,
+    sample_dt,
+    parameter_std,
+    remark_cd,
+    result_va,
+    rpt_lev_va,
+    result_lab_cm_tx
+  )
+```
+
+We can now join the NWIS data with the MDL values to the main dataset.
+
+```{r join nwis water data mdl}
+water_conc_all2 <- water_conc_all1 %>% 
+  left_join(
+    water_nwis_clean,
+    by = c(
+      "Site" = "StationCode",
+      "Date" = "sample_dt",
+      "Analyte" = "parameter_std"
+    )
+  )
+```
+
+Check to see if all of the rows in the main dataset had corresponding records in the NWIS dataset.
+
+```{r check missing mdl val water}
+anyNA(water_conc_all2$rpt_lev_va)
+```
+
+Not all of the rows in the main dataset had corresponding records in the NWIS dataset. Therefore, we will need to estimate the MDL values for these missing records. First, we need to summarize the MDL values for each parameter measured to determine how consistent they were throughout the period of record.
+
+```{r summarize mdl val water}
+# Summarize the MDL values for each parameter
+water_mdl_val <- water_nwis_clean %>% 
+  count(parameter_std, rpt_lev_va)
+
+# Determine if any parameters had more than one MDL value during the period of record
+water_mdl_val %>% count(parameter_std) %>% filter(n > 1)
+```
+
+Most of the parameters had the same MDL value throughout the period of record. However, 14 parameters had 2 MDL values during the period of record. We need to look at these 14 parameters more closely to decide which MDL value to assign to these parameters.
+
+```{r look at duplicate mdl val water}
+# Create a vector of the parameters with 2 MDL values during the period of record
+water_mdl_val_dup <- water_mdl_val %>% 
+  count(parameter_std) %>% 
+  filter(n > 1) %>% 
+  pull(parameter_std)
+
+# Filter out these 14 parameters to take a closer look at them
+water_mdl_val %>% filter(parameter_std %in% water_mdl_val_dup)
+```
+
+All of the parameters with 2 MDL values had one MDL value that was very frequent and another that was rare. We'll use the frequent MDL values to estimate the MDL values for these 14 parameters.
+
+```{r create df for estimated mdl val water}
+# Keep the frequent MDL value for the 14 parameters with 2 MDL values
+water_mdl_val2 <- water_mdl_val %>% 
+  filter(
+    parameter_std %in% water_mdl_val_dup,
+    n > 7
+  )
+
+# Create a dataframe to use to estimate the MDL values of each parameter for the water concentration data with missing MDL values
+water_mdl_val_f <- water_mdl_val %>% 
+  filter(!parameter_std %in% water_mdl_val_dup) %>% 
+  bind_rows(water_mdl_val2) %>% 
+  select(-n)
+```
+
+We can now use the `water_mdl_val_f` dataframe to estimate MDL values for the records in the main dataset without a provided MDL.
+
+```{r estimate missing mdl val water}
+# Provide estimated MDL values for the records without a MDL in the main dataframe
+water_conc_all2_estMDL <- water_conc_all2 %>% 
+  filter(is.na(rpt_lev_va)) %>% 
+  select(-rpt_lev_va) %>% 
+  left_join(water_mdl_val_f, by = c("Analyte" = "parameter_std"))
+
+# Add the records with estimated MDL values back to the main dataframe
+water_conc_all3 <- water_conc_all2 %>% 
+  filter(!is.na(rpt_lev_va)) %>% 
+  bind_rows(water_conc_all2_estMDL)
+```
+
+### Finish Cleaning data
+
+We'll finish cleaning the dataframe with the 2016-2019 water concentrations by:
+
+* Parsing the Time variable to a time object
+* Creating a new variable to identify estimated values (reported values below the MDL) and values above and below the Method Detection Limit (MDL)
 * Creating a new variable for the measurement units
-* Make the result_va variable equal to its MDL value for the samples below the MDL
+* Making the Result variable equal to its MDL value for the samples below the MDL
+* Rounding the Result variable to 2 significant figures for values less than 10 and 3 significant figures for values greater than 10
 * Changing some variable names to standardized names for the NDFA synthesis
 
-```{r finish prep 2015 to 2018 water df}
-nwis_wc_clean2 <- nwis_wc_clean1 %>% 
+```{r finish cleaning water df, warning = FALSE}
+water_conc_all_f <- water_conc_all3 %>% 
   mutate(
-    # parse date-time variable and separate into two variables for Date and Time
-    DateTime = ymd_hms(startDateTime, tz = "Etc/GMT+8"),
-    Date = as_date(DateTime),
-    Time = hms::as_hms(DateTime),
-    # create a new variable to identify values above and below the MDL and estimated values
-    LabDetect = case_when(
-      remark_cd == "<" ~ "Non-detect",
-      remark_cd == "E" ~ "Estimated value",
-      TRUE ~ "Detect"
-    ),
-    # create result variable- use MDL values for <MDL data
-    Result = if_else(
-      LabDetect == "Non-detect",
-      rpt_lev_va,
-      result_va
-    ),
+    # parse Time variable to a time object
+    Time = hms::as_hms(Time),
+    # create a new variable to identify values above and below the MDL
+    LabDetect = if_else(Result == "Non-detect", "Non-detect", "Detect"),
+    # convert result variable to numeric- use MDL values for <MDL data
+    Result = if_else(LabDetect == "Non-detect", rpt_lev_va, as.numeric(Result)),
+    # Round the Result variable to the appropriate number of significant figures
+    Result = if_else(Result < 10, signif(Result, 2), signif(Result, 3)),
+    # add "Estimated" category to the LabDetect variable for reported values less than the MDL
+    LabDetect = if_else(Result < rpt_lev_va, "Estimated", LabDetect),
     # create a variable for measurement units
     Units = "ng/L"
   ) %>% 
-  # add descriptive parameter names and Pesticide_type variable
-  left_join(param_code_cw, by = c("parm_cd" = "parameter_code")) %>% 
-  # remove some variables and standardize names
+  # standardize variable names
   select(
-    StationCode = sta_code,
+    StationCode = Site,
     Date,
     Time,
-    Analyte = parameter_nwis,
-    PesticideType = pesticide_type,
+    Analyte,
+    PesticideType,
     Result,
     LabDetect,
     MDL = rpt_lev_va,
-    Units,
-    Method = meth_cd,
-    LabComments = result_lab_cm_tx
+    Units
   )
 ```
 
 ## Export Data
+
+Export the contaminant water concentration data as a .csv file to the Processed_Data/Contaminants folder on SharePoint.
+
+```{r export water data as csv, eval = FALSE}
+# Code chunk is set to eval = FALSE, so this code is not executed when this file is knitted
+# change eval option to TRUE when you want to export the data when knitting this file
+water_conc_all_f %>% 
+  write_excel_csv(
+    path = paste0(fp_abs_proc, "/WQ_OUTPUT_Contam_water_formatted.csv"),
+    na = ""
+  )
+```
+
+Clean up objects in the global environment to only keep necessary objects at this point.
+
+```{r clean obj from global env water}
+# Remove all objects related to cleaning the water concentration data
+rm(list = ls()[str_detect(ls(), "^water")])
+```
 
 
 # Suspended Sediment Concentration Data
