@@ -361,6 +361,51 @@ rm(list = ls()[str_detect(ls(), "^water")])
 
 ## Import Data
 
+Import the suspended sediment concentration data in the two Excel spreadsheets provided by Jim Orlando.
+
+```{r import raw susp sed data excel}
+# Import suspended sediment concentration data for 2016-2018:
+ss_conc16_18_orig <- 
+  read_excel(
+    path = paste0(fp_abs_raw, "/PesticideResults_YoloDWR_2016_18Data_ForDWR.xlsx"),
+    sheet =  "Suspended Sed",
+    range = "B1:EU175",
+    col_types = c(
+      "text",
+      rep("skip", 2),
+      rep("date", 2),
+      rep("skip", 2),
+      rep("numeric", 2),
+      rep("text", 141)
+    )
+  )
+  
+# Import suspended sediment concentration data for 2019:
+ss_conc19_orig <- 
+  read_excel(
+    path = paste0(fp_abs_raw, "/2019YoloBypass_Pesticide Results_forDWR.xlsx"),
+    sheet =  "Suspended Sediment",
+    range = "C1:EJ93",
+    col_types = c(
+      "text",
+      rep("skip", 3),
+      rep("date", 2),
+      rep("skip", 2),
+      rep("numeric", 2),
+      "skip",
+      rep("text", 127)
+    )
+  )
+```
+
+Import the MDL information downloaded from NWIS.
+
+```{r import nwis susp sed data mdl}
+ss_nwis_orig <-
+  import_nwis_data(paste0(fp_abs_raw, "/CONTAM_RAW_NWIS_2015-2019.csv")) %>% 
+  filter(medium_cd == "SS")
+```
+
 ## Clean Data
 
 ## Export Data
