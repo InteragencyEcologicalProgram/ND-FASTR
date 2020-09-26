@@ -408,6 +408,50 @@ ss_nwis_orig <-
 
 ## Clean Data
 
+### Clean up NA values
+
+In both of the Excel spreadsheets provided by Jim Orlando, `NA` values represent measurements below the Method Detection Limit and "NA" values represent instances when the parameter wasn't analyzed. This needs to be cleaned up before proceeding with other data cleaning tasks.
+
+```{r clean na values susp sed}
+# 2016-2018 data:
+ss_conc16_18_clean1 <- ss_conc16_18_orig %>% 
+  # first remove completely empty rows within the dataset
+  filter(!is.na(Site)) %>%
+  # use convert_na_val function to define NA values correctly
+  convert_na_val(6, 146) %>% 
+  # rename mass and volume variables
+  rename(
+    Vol = "Volume (L)",
+    Mass = "Mass (g)"
+  ) %>% 
+  # restructure dataframe and remove values that weren't analyzed
+  pivot_longer(
+    cols = -c(Site, Date, Time, Vol, Mass), 
+    names_to = "Analyte", 
+    values_to = "Result"
+  ) %>% 
+  filter(Result != "Not analyzed")
+
+# 2019 data:
+ss_conc19_clean1 <- ss_conc19_orig %>% 
+  # first remove completely empty rows within the dataset
+  filter(!is.na(Site)) %>%
+  # use convert_na_val function to define NA values correctly
+  convert_na_val(6, 132) %>% 
+  # rename mass and volume variables
+  rename(
+    Vol = "Filtered Volume for Sed Analysis (ml)",
+    Mass = "Mass (g)"
+  ) %>%
+  # restructure dataframe and remove values that weren't analyzed
+  pivot_longer(
+    cols = -c(Site, Date, Time, Mass, Vol), 
+    names_to = "Analyte", 
+    values_to = "Result"
+  ) %>% 
+  filter(Result != "Not analyzed")
+```
+
 ## Export Data
 
 
