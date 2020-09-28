@@ -155,7 +155,7 @@ Next we need to standardize the contaminant parameter names before combining all
 ```{r standard param names water}
 # 2016-2018 data:
 water_conc16_18_clean2 <- water_conc16_18_clean1 %>% 
-  left_join(param_code_cw, by = c("Analyte" = "parameter_16_18_xlsx")) %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_water_16_18_xlsx")) %>% 
   select(
     Site,
     Date,
@@ -169,7 +169,7 @@ water_conc16_18_clean2 <- water_conc16_18_clean1 %>%
 
 # 2019 data:
 water_conc19_clean2 <- water_conc19_clean1 %>% 
-  left_join(param_code_cw, by = c("Analyte" = "parameter_19_xlsx")) %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_water_19_xlsx")) %>% 
   select(
     Site,
     Date,
@@ -205,7 +205,7 @@ We need to add the Method Detection Limit (MDL) values downloaded from NWIS to t
 
 ```{r mod nwis water data mdl}
 water_nwis_clean <- water_nwis_orig %>% 
-  left_join(param_code_cw, by = c("parm_cd" = "parameter_code")) %>% 
+  left_join(param_code_cw, by = c("parm_cd" = "usgs_parameter_code")) %>% 
   mutate(sample_dt = ymd(sample_dt)) %>% 
   select(
     StationCode,
