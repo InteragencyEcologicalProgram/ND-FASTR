@@ -452,6 +452,42 @@ ss_conc19_clean1 <- ss_conc19_orig %>%
   filter(Result != "Not analyzed")
 ```
 
+### Standardize Parameter names
+
+Next we need to standardize the contaminant parameter names before combining all of the suspended sediment concentration data.
+
+```{r standard param names susp sed}
+# 2016-2018 data:
+ss_conc16_18_clean2 <- ss_conc16_18_clean1 %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_ss_16_18_xlsx")) %>% 
+  select(
+    Site,
+    Date,
+    Time,
+    Vol,
+    Mass,
+    Analyte = parameter_std,
+    PesticideType = pesticide_type,
+    Result
+  ) %>% 
+  # remove parameters we aren't keeping in the dataset (CDEPA)
+  filter(Analyte != "remove")
+
+# 2019 data:
+ss_conc19_clean2 <- ss_conc19_clean1 %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_ss_19_xlsx")) %>% 
+  select(
+    Site,
+    Date,
+    Time,
+    Vol,
+    Mass,
+    Analyte = parameter_std,
+    PesticideType = pesticide_type,
+    Result
+  )
+```
+
 ## Export Data
 
 
@@ -462,7 +498,6 @@ ss_conc19_clean1 <- ss_conc19_orig %>%
 ## Clean Data
 
 ## Export Data
-
 
 
 
