@@ -338,7 +338,7 @@ We'll finish cleaning the dataframe with the 2016-2019 water concentrations by:
 * Creating a new variable to identify estimated values (reported values below the MDL) and values above and below the Method Detection Limit (MDL)
 * Creating a new variable for the measurement units
 * Making the Result variable equal to its MDL value for the samples below the MDL
-* Rounding the Result variable to 2 significant figures for values less than 10 and 3 significant figures for values greater than 10
+* Rounding the Result variable to 1 significant figure for values less than 1, 2 significant figures for values less than 10 and 3 significant figures for values greater than 10
 * Changing some variable names to standardized names for the NDFA synthesis
 
 ```{r finish cleaning water df, warning = FALSE}
@@ -350,13 +350,13 @@ water_conc_all_f <- water_conc_all3 %>%
     LabDetect = if_else(Result == "Non-detect", "Non-detect", "Detect"),
     # convert result variable to numeric- use MDL values for <MDL data
     Result = if_else(LabDetect == "Non-detect", rpt_lev_va, as.numeric(Result)),
-    # Round the Result variable to the appropriate number of significant figures
-    Result = if_else(Result < 10, signif(Result, 2), signif(Result, 3)),
-    # add "Estimated" category to the LabDetect variable for reported values less than the MDL
-    LabDetect = if_else(Result < rpt_lev_va, "Estimated", LabDetect),
     # create a variable for measurement units
     Units = "ng/L"
   ) %>% 
+  # Round the Result variable to the appropriate number of significant figures
+  round_val(Result) %>% 
+  # add "Estimated" category to the LabDetect variable for reported values less than the MDL
+  mutate(LabDetect = if_else(Result < rpt_lev_va, "Estimated", LabDetect)) %>% 
   # standardize variable names
   select(
     StationCode = Site,
