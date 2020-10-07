@@ -245,36 +245,73 @@ water_mdl_val <- water_nwis_clean %>%
   count(parameter_std, rpt_lev_va)
 
 # Determine if any parameters had more than one MDL value during the period of record
-water_mdl_val %>% count(parameter_std) %>% filter(n > 1)
+water_mdl_val %>% 
+  count(parameter_std) %>% 
+  filter(n > 1) %>% 
+  kable(
+    col.names = c("Parameter", "Count of unique MDL values"),
+    caption = "Parameters with more than one MDL value"
+  ) %>% 
+  kable_styling(
+    "striped", 
+    full_width = FALSE
+  )
 ```
 
 Most of the parameters had the same MDL value throughout the period of record. However, 14 parameters had 2 MDL values during the period of record. We need to look at these 14 parameters more closely to decide which MDL value to assign to these parameters.
 
 ```{r look at duplicate mdl val water}
 # Create a vector of the parameters with 2 MDL values during the period of record
-water_mdl_val_dup <- water_mdl_val %>% 
+water_mdl_val_dup_params <- water_mdl_val %>% 
   count(parameter_std) %>% 
   filter(n > 1) %>% 
   pull(parameter_std)
 
 # Filter out these 14 parameters to take a closer look at them
-water_mdl_val %>% filter(parameter_std %in% water_mdl_val_dup)
+water_mdl_val %>% 
+  filter(parameter_std %in% water_mdl_val_dup_params) %>% 
+  kable(
+    col.names = c("Parameter", "MDL value", "Count"),
+    caption = "Summary of Parameters with 2 MDL values"
+  ) %>% 
+  kable_styling(
+    "striped", 
+    full_width = FALSE
+  )
+
+# Pull out the records with the rare MDL values
+water_mdl_val %>% 
+  filter(
+    parameter_std %in% water_mdl_val_dup_params,
+    n <= 7
+  ) %>% 
+  select(-n) %>% 
+  inner_join(water_nwis_clean) %>% 
+  count(parameter_std, sample_dt) %>% 
+  kable(
+    col.names = c("Parameter", "Sample Date", "Count"),
+    caption = "Sample Dates of rare MDL values"
+  ) %>% 
+  kable_styling(
+    "striped", 
+    full_width = FALSE
+  )
 ```
 
-All of the parameters with 2 MDL values had one MDL value that was very frequent and another that was rare. We'll use the frequent MDL values to estimate the MDL values for these 14 parameters.
+All of the parameters with 2 MDL values had one MDL value that was very frequent and another that was rare. The rare MDL value corresponded with all six sites collected on the first and only sampling event in 2015 (10/19/2015) and one site (LIS) on 8/9/2016. Therefore, we'll use the most common MDL values to estimate missing MDL values for these 14 parameters.
 
 ```{r create df for estimated mdl val water}
 # Keep the frequent MDL value for the 14 parameters with 2 MDL values
-water_mdl_val2 <- water_mdl_val %>% 
+water_mdl_val_freq <- water_mdl_val %>% 
   filter(
-    parameter_std %in% water_mdl_val_dup,
+    parameter_std %in% water_mdl_val_dup_params,
     n > 7
   )
 
 # Create a dataframe to use to estimate the MDL values of each parameter for the water concentration data with missing MDL values
 water_mdl_val_f <- water_mdl_val %>% 
-  filter(!parameter_std %in% water_mdl_val_dup) %>% 
-  bind_rows(water_mdl_val2) %>% 
+  filter(!parameter_std %in% water_mdl_val_dup_params) %>% 
+  bind_rows(water_mdl_val_freq) %>% 
   select(-n)
 ```
 
