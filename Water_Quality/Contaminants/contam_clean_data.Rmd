@@ -703,6 +703,25 @@ ss_conc_all_f <- ss_conc_all4 %>%
 
 ## Export Data
 
+Export the contaminant suspended sediment concentration data as a .csv file to the Processed_Data/Contaminants folder on SharePoint.
+
+```{r export susp sed data as csv, eval = FALSE}
+# Code chunk is set to eval = FALSE, so this code is not executed when this file is knitted
+# change eval option to TRUE when you want to export the data when knitting this file
+ss_conc_all_f %>% 
+  write_excel_csv(
+    path = paste0(fp_abs_proc, "/WQ_OUTPUT_Contam_SuspSed_formatted.csv"),
+    na = ""
+  )
+```
+
+Clean up objects in the global environment to only keep necessary objects at this point.
+
+```{r clean obj from global env susp sed}
+# Remove all objects related to cleaning the suspended sediment concentration data
+rm(list = ls()[str_detect(ls(), "^ss")])
+```
+
 
 # Zooplankton Concentration Data
 
