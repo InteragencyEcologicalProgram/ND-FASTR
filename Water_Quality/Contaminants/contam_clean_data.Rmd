@@ -213,10 +213,7 @@ water_nwis_clean <- water_nwis_orig %>%
     StationCode,
     sample_dt,
     parameter_std,
-    remark_cd,
-    result_va,
-    rpt_lev_va,
-    result_lab_cm_tx
+    rpt_lev_va
   )
 ```
 
@@ -521,10 +518,7 @@ ss_nwis_clean <- ss_nwis_orig %>%
     StationCode,
     sample_dt,
     parameter_std,
-    remark_cd,
-    result_va,
-    rpt_lev_va,
-    result_lab_cm_tx
+    rpt_lev_va
   )
 ```
 

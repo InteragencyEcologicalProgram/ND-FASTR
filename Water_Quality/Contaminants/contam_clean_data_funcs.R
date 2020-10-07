@@ -14,7 +14,7 @@ library(readxl)
 import_nwis_data <- function(file_path) {
   df <- read_csv(
     file = file_path,
-    col_types = "c--c------c--------ncn---n------c---"
+    col_types = "c--c------c--------n-----n----------"
   )
   
   return(df)
