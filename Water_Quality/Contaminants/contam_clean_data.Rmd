@@ -29,6 +29,8 @@ Jim Orlando from the USGS provided all of the contaminants data for 2016-2019 in
 library(tidyverse)
 library(readxl)
 library(lubridate)
+library(knitr)
+library(kableExtra)
 ```
 
 ```{r load functions}
@@ -41,7 +43,7 @@ source("Water_Quality/Contaminants/contam_clean_data_funcs.R")
 
 ```{r define file paths}
 # Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
-fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
+fp_fastr <- "California Department of Water Resources/North Delta Flow Action - Documents/WQ_Subteam/"
 
 # Define relative file paths for raw and processed contaminants data files
 fp_rel_raw <- paste0(fp_fastr, "Raw_Data/Contaminants")
@@ -487,6 +489,180 @@ ss_conc19_clean2 <- ss_conc19_clean1 %>%
     Result
   )
 ```
+
+### Combine data
+
+The contaminant suspended sediment concentration data from 2016-2018 and 2019 can now be combined into one dataframe. We will also need to standardize the "Site" variable and convert the "Date" variable to a date object so that the MDL values from the data downloaded from NWIS can be joined correctly.
+
+```{r combine susp sed data}
+ss_conc_all1 <- 
+  bind_rows(ss_conc16_18_clean2, ss_conc19_clean2) %>% 
+  mutate(
+    Site = case_when(
+      Site == "I-80" ~ "I80",
+      Site == "BLS" ~ "BL5",
+      TRUE ~ Site
+    ),
+    Date = as_date(Date)
+  )
+```
+
+### Add MDL values
+
+We need to add the Method Detection Limit (MDL) values downloaded from NWIS to the main dataset. The contaminant data downloaded from NWIS has 5-digit numeric codes to represent each parameter measured. We need to convert these numeric codes to the standardized parameter names so that this data can be joined to the main dataset correctly. We will also convert the "sample_dt" variable to a date object so that the join can occur correctly.
+
+```{r mod nwis susp sed data mdl}
+ss_nwis_clean <- ss_nwis_orig %>% 
+  left_join(param_code_cw, by = c("parm_cd" = "usgs_parameter_code")) %>% 
+  mutate(sample_dt = ymd(sample_dt)) %>% 
+  select(
+    StationCode,
+    sample_dt,
+    parameter_std,
+    remark_cd,
+    result_va,
+    rpt_lev_va,
+    result_lab_cm_tx
+  )
+```
+
+We can now join the NWIS data with the MDL values to the main dataset.
+
+```{r join nwis susp sed data mdl}
+ss_conc_all2 <- ss_conc_all1 %>% 
+  left_join(
+    ss_nwis_clean,
+    by = c(
+      "Site" = "StationCode",
+      "Date" = "sample_dt",
+      "Analyte" = "parameter_std"
+    )
+  )
+```
+
+Check to see if all of the rows in the main dataset had corresponding records in the NWIS dataset.
+
+```{r check missing mdl val susp sed}
+anyNA(ss_conc_all2$rpt_lev_va)
+```
+
+Not all of the rows in the main dataset had corresponding records in the NWIS dataset. Therefore, we will need to estimate the MDL values for these missing records. First, we need to summarize the MDL values for each parameter measured to determine how consistent they were throughout the period of record.
+
+```{r summarize mdl val susp sed}
+# Summarize the MDL values for each parameter
+ss_mdl_val <- ss_nwis_clean %>% 
+  count(parameter_std, rpt_lev_va)
+
+# Determine if any parameters had more than one MDL value during the period of record
+ss_mdl_val %>% 
+  count(parameter_std) %>% 
+  filter(n > 1) %>% 
+  kable(
+    col.names = c("Parameter", "Count of unique MDL values"),
+    caption = "Parameters with more than one MDL value"
+  ) %>% 
+  kable_styling(
+    "striped", 
+    full_width = FALSE
+  )
+```
+
+Most of the parameters had the same MDL value throughout the period of record. However, 15 parameters had 2 MDL values during the period of record. We need to look at these 15 parameters more closely to decide which MDL value to assign to these parameters.
+
+```{r look at duplicate mdl val susp sed}
+# Create a vector of the parameters with 2 MDL values during the period of record
+ss_mdl_val_dup_params <- ss_mdl_val %>% 
+  count(parameter_std) %>% 
+  filter(n > 1) %>% 
+  pull(parameter_std)
+
+# Filter out these 15 parameters to take a closer look at them
+ss_mdl_val %>% 
+  filter(parameter_std %in% ss_mdl_val_dup_params) %>% 
+  kable(
+    col.names = c("Parameter", "MDL value", "Count"),
+    caption = "Summary of Parameters with 2 MDL values"
+  ) %>% 
+  kable_styling(
+    "striped", 
+    full_width = FALSE
+  )
+
+# Pull out the records with the rare MDL values
+ss_mdl_val %>% 
+  filter(
+    parameter_std %in% ss_mdl_val_dup_params,
+    n <= 19
+  ) %>% 
+  select(-n) %>% 
+  inner_join(ss_nwis_clean) %>% 
+  count(parameter_std, sample_dt) %>% 
+  kable(
+    col.names = c("Parameter", "Sample Date", "Count"),
+    caption = "Sample Dates of rare MDL values"
+  ) %>% 
+  kable_styling(
+    "striped", 
+    full_width = FALSE
+  )
+```
+
+All of the parameters with 2 MDL values had one MDL value that was very frequent and another that was rare. With the exception of 3,4-Dichloroaniline, the rare MDL value corresponded with all six sites collected on the first and only sampling event in 2015 (10/19/2015) and one site (LIS) on 8/9/2016. Therefore, we'll use the most common MDL values to estimate missing MDL values for the 14 parameters other than 3,4-Dichloroaniline.
+
+For 3,4-Dichloroaniline, the less frequently used MDL value (3.2 ng/L) corresponded to the six sampling events collected in 2015 and 2016. The remaining sampling events in 2017-2020 had an MDL value of 8.3 ng/L. To estimate missing MDL values in the main dataset for 3,4-Dichloroaniline, we'll use 3.2 ng/L for the sampling events in 2015-2016 and 8.3 ng/L for the remaining sampling events in 2017-2020.
+
+```{r create df for estimated mdl val susp sed}
+# Keep the frequent MDL value for the 14 parameters with 2 MDL values (excluding 3,4-Dichloroaniline)
+ss_mdl_val_freq <- ss_mdl_val %>% 
+  filter(
+    parameter_std %in% ss_mdl_val_dup_params,
+    parameter_std != "3,4-Dichloroaniline",
+    n > 7
+  )
+
+# Create a dataframe to use to estimate the MDL values of each parameter for the suspended sediment concentration data with missing MDL values (excluding 3,4-Dichloroaniline)
+ss_mdl_val_f <- ss_mdl_val %>% 
+  filter(!parameter_std %in% ss_mdl_val_dup_params) %>% 
+  bind_rows(ss_mdl_val_freq) %>% 
+  select(-n)
+```
+
+We can now use the `ss_mdl_val_f` dataframe to estimate MDL values for the records in the main dataset without a provided MDL.
+
+```{r estimate missing mdl val susp sed}
+# Provide estimated MDL values for the records without a MDL in the main dataframe (excluding 3,4-Dichloroaniline)
+ss_conc_all2_estMDL1 <- ss_conc_all2 %>% 
+  filter(
+    is.na(rpt_lev_va),
+    Analyte != "3,4-Dichloroaniline"
+  ) %>% 
+  select(-rpt_lev_va) %>% 
+  left_join(ss_mdl_val_f, by = c("Analyte" = "parameter_std"))
+
+# Provide estimated MDL values for the 3,4-Dichloroaniline records without a MDL in the main dataframe
+ss_conc_all2_estMDL2 <- ss_conc_all2 %>% 
+  filter(
+    is.na(rpt_lev_va),
+    Analyte == "3,4-Dichloroaniline"
+  ) %>% 
+  mutate(
+    rpt_lev_va = if_else(year(Date) <= 2016, 3.2, 8.3)
+  )
+
+# Add the records with estimated MDL values back to the main dataframe
+ss_conc_all3 <- ss_conc_all2 %>% 
+  filter(!is.na(rpt_lev_va)) %>% 
+  bind_rows(ss_conc_all2_estMDL1, ss_conc_all2_estMDL2)
+```
+
+The Method Detection Limit (MDL) values downloaded from NWIS are reported in ng/L while the suspended sediment concentration data provided by Jim Orlando are reported in ng/g. We need to make these units consistent by converting the MDL values to ng/g by multiplying each MDL value by the volume filtered and dividing by the sediment mass recovered from the whole water sample.
+
+```{r convert mdl val susp sed}
+# Convert MDL values to units of ng/g
+ss_conc_all4 <- ss_conc_all3 %>% 
+  mutate(rpt_lev_va = rpt_lev_va * Vol/Mass)
+```
+
 
 ## Export Data
 
