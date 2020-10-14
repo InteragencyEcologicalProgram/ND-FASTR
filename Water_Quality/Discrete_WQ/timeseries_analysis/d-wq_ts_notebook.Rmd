@@ -29,6 +29,7 @@ This file provides time series graphs for the discrete water quality stations of
 # import packages
 library(scales)
 library(ggplot2)
+library(data.table)
 library(tidyverse)
 
 # --- Import Data from SharePoint ---
@@ -174,6 +175,16 @@ create_facet <- function(df){
   # plot timeseries
   if (any_dat) {
     
+    # set limits by region
+    buffer <- 0.01
+    
+    df_filt <- data.table(df_filt)
+    
+    df_filt <- df_filt[,y_min := min(Result, na.rm = TRUE) - 0.01, by = Region]
+    df_filt <- df_filt[,y_max := max(Result, na.rm = TRUE) + .01, by = Region]
+    
+    df_filt$y_min[df_filt$y_min < 0] <- 0
+    
     # create plot
     p <- ggplot() +
       facet_grid(StationCode ~ ., scales = 'free') +
@@ -207,7 +218,9 @@ create_facet <- function(df){
         df_filt,
         mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
         size = 1.1
-      )
+      ) +
+      geom_point(data = df_filt, aes(y = y_max, x = Date, color = NA)) +
+      geom_point(data = df_filt, aes(y = y_min, x = Date, color = NA))
     
     # fix asthetics
     p <- p +
@@ -218,6 +231,10 @@ create_facet <- function(df){
       xlab('Date') +
       ylab(analyte_unit) +
       ggtitle(paste(analyte,'-',year))
+    
+    # p <- p +
+    #   geom_blank(aes(y = y_min)) +
+    #   geom_blank(aes(y = y_max))
     
     return(p)
   }
@@ -236,7 +253,7 @@ library(tidyverse)
 
 # --- Import Data ---
 # define main FASTR filepath (assumes sync'd with Sharepoint)
-fp_fastr <- 'California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/'
+fp_fastr <- 'California Department of Water Resources/North Delta Flow Action - Documents/'
 
 # define relative filepaths 
 fp_rel_wq <- paste0(fp_fastr,'WQ_Subteam/Processed_Data/Discrete/WQ_OUTPUT_Discrete_Lab_formatted.csv')
