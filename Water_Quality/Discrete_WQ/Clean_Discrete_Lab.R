@@ -14,7 +14,7 @@ library(lubridate)
 source("Water_Quality/global_wq_funcs.R")
 
 # Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
-fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
+fp_fastr <- "California Department of Water Resources/North Delta Flow Action - Documents/WQ_Subteam/"
 
 # Define relative file paths for raw and processed discrete lab WQ data files
 fp_rel_wq_raw <- paste0(fp_fastr, "Raw_Data/Discrete/Raw_WDL_export_June2020")
