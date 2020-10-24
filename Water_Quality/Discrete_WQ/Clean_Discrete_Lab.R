@@ -36,7 +36,11 @@ rm(list = ls()[!(ls() %in% obj_keep)])
 # Create a character vector of all raw discrete lab data files
 dis_lab_files <- dir(fp_abs_wq_raw, pattern = "\\.xlsx$", full.names = T)
 
-# Define column types for data to be imported with read_excel
+# Pull out "Discrete_WQ_2017_Aug-Oct.xlsx" file since it has a different data structure
+dis_lab_files1 <- str_subset(dis_lab_files, "Discrete_WQ_2017", negate = TRUE)
+dis_lab_files2 <- str_subset(dis_lab_files, "Discrete_WQ_2017")
+
+# Define column types for data in dis_lab_files1 to be imported with read_excel
 dis_lab_col_types <- c(
   rep("numeric", 2),
   rep("text", 3),
@@ -46,17 +50,57 @@ dis_lab_col_types <- c(
   rep("text", 8)
 )
 
-# Import and combine all of the raw discrete lab data
-dis_lab_data_orig <- map_dfr(dis_lab_files, ~read_excel(.x, col_types = dis_lab_col_types))
+# Import and combine all of the raw discrete lab data in dis_lab_files1
+dis_lab_data1_orig <- map_dfr(dis_lab_files1, ~read_excel(.x, col_types = dis_lab_col_types))
+
+# Import the raw discrete lab data in dis_lab_files2
+dis_lab_data2_orig <- read_excel(dis_lab_files2)
 
 
 # 3. Clean Data --------------------------------------------------------------
 
-# Clean up variable names in dis_lab_data_orig
-names(dis_lab_data_orig) <- str_replace_all(names(dis_lab_data_orig), "[:space:]", "")
+# Clean up variable names in dis_lab_data1_orig and dis_lab_data2_orig
+names(dis_lab_data1_orig) <- str_replace_all(names(dis_lab_data1_orig), "[:space:]", "")
+names(dis_lab_data2_orig) <- str_replace_all(names(dis_lab_data2_orig), "[:space:]", "")
+
+# Modify dis_lab_data1_orig and dis_lab_data2_orig so that they can be bound together
+dis_lab_data1_clean <- dis_lab_data1_orig %>% 
+  select(
+    SampleCode,
+    StationName, 
+    CollectionDate, 
+    Analyte, 
+    Result, 
+    RptLimit, 
+    Units,
+    Method,
+    Purpose,
+    ParentSample
+  )
+
+dis_lab_data2_clean <- dis_lab_data2_orig %>%
+  select(
+    SampleCode,
+    StationName = LongStationName, 
+    CollectionDate, 
+    Analyte, 
+    Result, 
+    RptLimit, 
+    Units,
+    Method,
+    Purpose = SampleType,
+    ParentSample
+  ) %>% 
+  mutate(
+    CollectionDate = mdy_hm(CollectionDate),
+    RptLimit = as.numeric(RptLimit)
+  )
+
+# Bind dis_lab_data1_clean and dis_lab_data2_clean
+dis_lab_data_clean <- bind_rows(dis_lab_data1_clean, dis_lab_data2_clean)
 
 # Start to clean the discrete lab data
-dis_lab_data_clean <- dis_lab_data_orig %>% 
+dis_lab_data_clean1 <- dis_lab_data_clean %>% 
   # Remove unnecessary Analytes
   filter(str_detect(Analyte, "^\\*No|^Field|^Spec|^Weath|Bromide$|Alkalinity$", negate = TRUE)) %>% 
   filter(Analyte != "Dissolved Total Kjeldahl Nitrogen") %>% 
