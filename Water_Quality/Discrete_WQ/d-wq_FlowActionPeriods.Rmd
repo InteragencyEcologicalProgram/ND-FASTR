@@ -14,6 +14,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(knitr.kable.NA = "")
 ```
 
 # Global code and functions
@@ -23,7 +24,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(lubridate)
 library(scales)
-library(DT)
+library(kableExtra)
 ```
 
 ```{r load functions, message = FALSE, warning = FALSE}
@@ -90,7 +91,7 @@ df_dwq_clean <- df_dwq_orig %>%
 
 # Create Plots
 
-```{r create plots}
+```{r create plots and kables}
 # Create function for discrete WQ plots
 create_dwq_plot <- function(df) {
   df %>% 
@@ -104,36 +105,46 @@ create_dwq_plot <- function(df) {
     )
 }
 
-# Create plots for each year-analyte combination
-df_dwq_plots <- df_dwq_clean %>% 
+# Create plots and kables for each year-analyte combination
+df_dwq_plots_tbls <- df_dwq_clean %>% 
   nest(data = -c(Year, Analyte)) %>% 
-  mutate(plot = map(data, .f = create_dwq_plot)) %>% 
+  mutate(
+    plot = map(data, .f = create_dwq_plot),
+    table = map(
+      data, 
+      ~count(.x, StationCode, ActionPhase) %>% 
+        pivot_wider(names_from = ActionPhase, values_from = n) %>% 
+        kable(
+          format = "html",
+          caption = "Sample counts within each Action Phase"
+        ) %>% 
+        kable_styling(
+          "striped", 
+          full_width = FALSE, 
+          position = "left"
+        )
+    )
+  ) %>% 
   nest(data2 = -Year)
 ```
 
 
-# Plots {.tabset .tabset-fade .tabset-pills}
+# Plots and Data Summaries {.tabset .tabset-fade .tabset-pills}
 
-```{r print plots, echo = FALSE, results = "asis", fig.height = 9, fig.width = 8}
-for (i in 1:nrow(df_dwq_plots)) {
+```{r print plots and kables, echo = FALSE, results = "asis", fig.height = 9, fig.width = 8}
+for (i in 1:nrow(df_dwq_plots_tbls)) {
   # Create heading for each parameter
-  cat("## ", as.character(df_dwq_plots$Year[i]), " {.tabset .tabset-pills}\n\n")
-  for (j in 1:nrow(df_dwq_plots$data2[[i]])) {
+  cat("## ", as.character(df_dwq_plots_tbls$Year[i]), " {.tabset .tabset-pills}\n\n")
+  for (j in 1:nrow(df_dwq_plots_tbls$data2[[i]])) {
     # Create subheadings for each yr
-    cat("### ", as.character(df_dwq_plots$data2[[i]]$Analyte[j]), "\n\n") 
+    cat("### ", as.character(df_dwq_plots_tbls$data2[[i]]$Analyte[j]), "\n\n") 
     # Display plot
-    print(df_dwq_plots$data2[[i]]$plot[[j]])
-    cat("\n\n")  
+    print(df_dwq_plots_tbls$data2[[i]]$plot[[j]])
+    cat("\n\n")
+    # Display kable
+    print(df_dwq_plots_tbls$data2[[i]]$table[[j]])
+    cat("\n\n")
   }
 }
-```
-
-# Counts of Sampling Events
-
-```{r create datatable}
-df_dwq_clean %>% 
-  count(Analyte, StationCode, Year, ActionPhase) %>% 
-  pivot_wider(names_from = ActionPhase, values_from = n) %>% 
-  datatable(rownames = FALSE)
 ```
 
