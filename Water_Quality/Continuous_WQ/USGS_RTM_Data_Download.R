@@ -55,21 +55,18 @@ usgs_data <-
   ) %>% 
   map(as_tibble)
   
-# Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
-fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
-
 # Define relative file path to export raw continuous USGS data files to
-fp_rel_wq_raw <- paste0(fp_fastr, "Raw_Data/Continuous")
+fp_rel_rtm_wq_raw <- "WQ_Subteam/Raw_Data/Continuous"
 
 # Define absolute file path
-fp_abs_wq_raw <- get_abs_path(fp_rel_wq_raw)
+fp_abs_rtm_wq_raw <- get_abs_path(fp_rel_rtm_wq_raw)
 
 # Export raw data as .csv files for each site
 iwalk(
   usgs_data,
   .f = ~write_excel_csv(
     .x, 
-    path = paste0(fp_abs_wq_raw, "/RTM_RAW_USGS_", .y, ".csv"),
+    path = paste0(fp_abs_rtm_wq_raw, "/RTM_RAW_USGS_", .y, ".csv"),
     na = ""
   )
 )
