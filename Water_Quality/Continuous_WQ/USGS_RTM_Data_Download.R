@@ -7,7 +7,7 @@ library(tidyverse)
 library(dataRetrieval)
 
 # Source global WQ functions
-source("Water_Quality/global_wq_funcs.R")
+source("global_ndfa_funcs.R")
 
 # Create vectors for parameters, start and end dates
 start_date <- "2011-01-01" 
@@ -59,7 +59,7 @@ usgs_data <-
 fp_rel_rtm_wq_raw <- "WQ_Subteam/Raw_Data/Continuous"
 
 # Define absolute file path
-fp_abs_rtm_wq_raw <- get_abs_path(fp_rel_rtm_wq_raw)
+fp_abs_rtm_wq_raw <- ndfa_abs_sp_path(fp_rel_rtm_wq_raw)
 
 # Export raw data as .csv files for each site
 iwalk(
