@@ -27,8 +27,10 @@ ndfa_abs_sp_path <- function(fp_rel = NULL) {
 
 
 # Add Flow Action Periods - Before, During, After flow action
-  # Function requires that the dataframe (df) has a 'Date" variable 
-    # that represents sample dates in the date data type (yyyy-mm-dd)
+  # Function requires that the dataframe (df) has a 'Date' variable that represents sample 
+    # dates in the date data type (yyyy-mm-dd)
+  # Function adds a 'Year' variable that represents the year during which each sample was collected
+    # if it doesn't exist in the dataframe (df) already
   # The na_action_remove argument specifies whether the sampling dates outside of the before,
     # during, and after flow action period window are removed from the dataframe. If it is 
     # TRUE, then the sampling dates outside of the window are removed. If it is FALSE, all
