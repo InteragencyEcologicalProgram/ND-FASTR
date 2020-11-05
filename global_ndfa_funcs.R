@@ -35,7 +35,9 @@ ndfa_abs_sp_path <- function(fp_rel = NULL) {
     # during, and after flow action period window are removed from the dataframe. If it is 
     # TRUE, then the sampling dates outside of the window are removed. If it is FALSE, all
     # sampling dates will be retained. Defaults to TRUE.
-ndfa_action_periods <- function(df, na_action_remove = TRUE) {
+  # The keep_action_dates argument specifies whether to keep the variables containing the flow 
+    # action dates in the returned dataframe. Defaults to FALSE.
+ndfa_action_periods <- function(df, na_action_remove = TRUE, keep_action_dates = FALSE) {
   # Make sure Date variable exists in df
   assert_that(
     "Date" %in% names(df),
@@ -72,13 +74,19 @@ ndfa_action_periods <- function(df, na_action_remove = TRUE) {
         Date >= PostFlowStart & Date <= PostFlowEnd ~ "After"
       )
     ) %>% 
-    # Remove variables from df_act_dates_clean
-    select(-c(PreFlowStart:NetFlowDays))
+    # Remove some variables from df_act_dates_clean
+    select(-c(WYType, FlowPulseType, NetFlowDays))
   
   # Remove sampling dates outside of before, during, and after flow action period window 
     # if na_action_remove is TRUE
   if (na_action_remove == TRUE) {
     df_join <- df_join %>% filter(!is.na(FlowActionPeriod))
+  }
+  
+  # Remove variables from df_act_dates_clean containing the flow action dates if 
+    # keep_action_dates is FALSE
+  if (keep_action_dates == FALSE) {
+    df_join <- df_join %>% select(-c(PreFlowStart, PreFlowEnd, PostFlowStart, PostFlowEnd))
   }
 
   return(df_join)
