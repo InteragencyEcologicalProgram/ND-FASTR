@@ -4,9 +4,9 @@
 # Contacts: seperry83@gmail.com; David.Bosworth@water.ca.gov
 
 # Load packages
-library(tidyverse)
-library(lubridate)
-library(assertthat)
+require(tidyverse)
+require(lubridate)
+require(assertthat)
 
 
 # Define absolute file path for NDFA SharePoint
