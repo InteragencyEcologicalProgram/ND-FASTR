@@ -14,7 +14,7 @@ library(lubridate)
 source("Water_Quality/global_wq_funcs.R")
 
 # Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
-fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
+fp_fastr <- "California Department of Water Resources/North Delta Flow Action - Documents/WQ_Subteam/"
 
 # Define relative file paths for raw and processed discrete lab WQ data files
 fp_rel_wq_raw <- paste0(fp_fastr, "Raw_Data/Discrete/Raw_WDL_export_June2020")
@@ -36,7 +36,11 @@ rm(list = ls()[!(ls() %in% obj_keep)])
 # Create a character vector of all raw discrete lab data files
 dis_lab_files <- dir(fp_abs_wq_raw, pattern = "\\.xlsx$", full.names = T)
 
-# Define column types for data to be imported with read_excel
+# Pull out "Discrete_WQ_2017_Aug-Oct.xlsx" file since it has a different data structure
+dis_lab_files1 <- str_subset(dis_lab_files, "Discrete_WQ_2017", negate = TRUE)
+dis_lab_files2 <- str_subset(dis_lab_files, "Discrete_WQ_2017")
+
+# Define column types for data in dis_lab_files1 to be imported with read_excel
 dis_lab_col_types <- c(
   rep("numeric", 2),
   rep("text", 3),
@@ -46,20 +50,64 @@ dis_lab_col_types <- c(
   rep("text", 8)
 )
 
-# Import and combine all of the raw discrete lab data
-dis_lab_data_orig <- map_dfr(dis_lab_files, ~read_excel(.x, col_types = dis_lab_col_types))
+# Import and combine all of the raw discrete lab data in dis_lab_files1
+dis_lab_data1_orig <- map_dfr(dis_lab_files1, ~read_excel(.x, col_types = dis_lab_col_types))
+
+# Import the raw discrete lab data in dis_lab_files2
+dis_lab_data2_orig <- read_excel(dis_lab_files2)
 
 
 # 3. Clean Data --------------------------------------------------------------
 
-# Clean up variable names in dis_lab_data_orig
-names(dis_lab_data_orig) <- str_replace_all(names(dis_lab_data_orig), "[:space:]", "")
+# Clean up variable names in dis_lab_data1_orig and dis_lab_data2_orig
+names(dis_lab_data1_orig) <- str_replace_all(names(dis_lab_data1_orig), "[:space:]", "")
+names(dis_lab_data2_orig) <- str_replace_all(names(dis_lab_data2_orig), "[:space:]", "")
+
+# Modify dis_lab_data1_orig and dis_lab_data2_orig so that they can be bound together
+dis_lab_data1_clean <- dis_lab_data1_orig %>% 
+  select(
+    SampleCode,
+    StationName, 
+    CollectionDate, 
+    Analyte, 
+    Result, 
+    RptLimit, 
+    Units,
+    Method,
+    Purpose,
+    ParentSample
+  )
+
+dis_lab_data2_clean <- dis_lab_data2_orig %>%
+  select(
+    SampleCode,
+    StationName = LongStationName, 
+    CollectionDate, 
+    Analyte, 
+    Result, 
+    RptLimit, 
+    Units,
+    Method,
+    Purpose = SampleType,
+    ParentSample
+  ) %>% 
+  mutate(
+    CollectionDate = mdy_hm(CollectionDate),
+    RptLimit = as.numeric(RptLimit)
+  ) %>% 
+  # Remove samples for LIB station since they are already in dis_lab_data1_clean
+  filter(!str_detect(StationName, "^Liberty"))
+  
+# Bind dis_lab_data1_clean and dis_lab_data2_clean
+dis_lab_data_clean <- bind_rows(dis_lab_data1_clean, dis_lab_data2_clean)
 
 # Start to clean the discrete lab data
-dis_lab_data_clean <- dis_lab_data_orig %>% 
+dis_lab_data_clean1 <- dis_lab_data_clean %>% 
   # Remove unnecessary Analytes
   filter(str_detect(Analyte, "^\\*No|^Field|^Spec|^Weath|Bromide$|Alkalinity$", negate = TRUE)) %>% 
   filter(Analyte != "Dissolved Total Kjeldahl Nitrogen") %>% 
+  # Remove Field Blank samples
+  filter(!str_detect(Purpose, "^Blank")) %>% 
   mutate(
     # Rename Analytes and Stations with NDFA standardized names
     Analyte = recode(
@@ -71,6 +119,7 @@ dis_lab_data_clean <- dis_lab_data_orig %>%
       "Dissolved Nitrate + Nitrite" = "DisNitrateNitrite",
       "Dissolved Organic Carbon" = "DOC",
       "Dissolved Organic Nitrogen" = "DON",
+      "Dissolved ortho-Phosphate" = "DOP",
       "Dissolved Ortho-phosphate" = "DOP",
       "Dissolved Silica (SiO2)" = "DisSilica",
       "Pheophytin a" = "Pheo",
@@ -81,24 +130,25 @@ dis_lab_data_clean <- dis_lab_data_orig %>%
       "Total Suspended Solids" = "TSS",
       "Volatile Suspended Solids" = "VSS"       
     ),
+    StationName = str_replace(StationName, "[:space:]{1}\\(ID.+\\)", ""),
     StationName = recode(
       StationName,
-      "Below Base of Toe Drain in Prospect Slough (ID:47528)" = "BL5",
-      "Cache Slough at Ryer Island (ID:47538)" = "RYI",
-      "Davis Wastewater Discharge at Toe Drain (ID:47876)" = "DWT",
-      "Liberty at Approx Cntr S End (ID:47539)" = "LIB",
-      "Ridge Cut Slough at Knights Landing (ID:47535)" = "RCS",
-      "Rominger Bridge at Colusa Basin Drain (ID:47867)" = "RMB",
-      "Sacramento River @ Hood - C3A (ID:45916)" = "SRH",
-      "Sacramento River @ Sherwood Harbor (ID:47116)" = "SHR",
-      "Sacramento River at Decker Island (USGS) (ID:47092)" = "SDI",
-      "Sacramento River at Rio Vista Bridge (ID:47536)" = "RVB",
-      "Sacramento River at Vieira's (ID:47537)" = "SRV",
-      "Toe Drain at County Road 22 (ID:47533)" = "RD22",
-      "Toe Drain at Interstate 80 (ID:47532)" = "I80",
-      "Toe Drain at Rotary Screw Trap (ID:47529)" = "STTD",
-      "Woodland Wastewater Discharge at Toe Drain (ID:47873)" = "WWT",
-      "Yolo Bypass Toe Drain Below Lisbon Weir (ID:145)" = "LIS"
+      "Below Base of Toe Drain in Prospect Slough" = "BL5",
+      "Cache Slough at Ryer Island" = "RYI",
+      "Davis Wastewater Discharge at Toe Drain" = "DWT",
+      "Liberty at Approx Cntr S End" = "LIB",
+      "Ridge Cut Slough at Knights Landing" = "RCS",
+      "Rominger Bridge at Colusa Basin Drain" = "RMB",
+      "Sacramento River @ Hood - C3A" = "SRH",
+      "Sacramento River @ Sherwood Harbor" = "SHR",
+      "Sacramento River at Decker Island (USGS)" = "SDI",
+      "Sacramento River at Rio Vista Bridge" = "RVB",
+      "Sacramento River at Vieira's" = "SRV",
+      "Toe Drain at County Road 22" = "RD22",
+      "Toe Drain at Interstate 80" = "I80",
+      "Toe Drain at Rotary Screw Trap" = "STTD",
+      "Woodland Wastewater Discharge at Toe Drain" = "WWT",
+      "Yolo Bypass Toe Drain Below Lisbon Weir" = "LIS"
     ),
     # Create a new variable to identify values below the Reporting Limit
     LabDetect = if_else(
@@ -111,12 +161,14 @@ dis_lab_data_clean <- dis_lab_data_orig %>%
       LabDetect == "Non-detect",
       RptLimit,
       signif(as.numeric(Result), 3)  #round to 3 significant digits
-    )
+    ),
+    # Standardize the Units variable
+    Units = if_else(Units == "ug/L", "µg/L", Units)
   ) %>% 
   select(
     SampleCode,
-    StationName, 
-    CollectionDate, 
+    StationCode = StationName, 
+    DateTime = CollectionDate, 
     Analyte, 
     Result, 
     LabDetect,
@@ -132,11 +184,11 @@ dis_lab_data_clean <- dis_lab_data_orig %>%
 
 # Remove the unusual lab replicates for DOC collected at SRH in 2019 
   # which have different Sample codes
-srh_doc_19_orig <- dis_lab_data_clean %>% 
+srh_doc_19_orig <- dis_lab_data_clean1 %>% 
   filter(
-    StationName == "SRH",
+    StationCode == "SRH",
     Analyte == "DOC",
-    year(CollectionDate) == 2019
+    year(DateTime) == 2019
   )
 
 srh_doc_19_clean <- srh_doc_19_orig %>% 
@@ -151,18 +203,18 @@ srh_doc_19_clean <- srh_doc_19_orig %>%
     )
   )
 
-dis_lab_data_clean1 <- 
-  anti_join(dis_lab_data_clean, srh_doc_19_orig) %>% 
+dis_lab_data_clean2 <- 
+  anti_join(dis_lab_data_clean1, srh_doc_19_orig) %>% 
   bind_rows(srh_doc_19_clean)
 
 # Pull out lab replicates
-dis_lab_reps <- dis_lab_data_clean1 %>%
+dis_lab_reps <- dis_lab_data_clean2 %>%
   count(SampleCode, Analyte) %>% 
   filter(n == 2) %>% 
   select(-n)
 
-# Pull lab replicates from dis_lab_data_clean1
-dis_lab_rep_pairs <- inner_join(dis_lab_data_clean1, dis_lab_reps)
+# Pull lab replicates from dis_lab_data_clean2
+dis_lab_rep_pairs <- inner_join(dis_lab_data_clean2, dis_lab_reps)
 
 # The Result and LabDetect variables are unique between lab replicate pairs, 
   # all other variables are identical
@@ -184,16 +236,16 @@ dis_lab_reps_f <- dis_lab_rep_pairs %>%
   left_join(dis_lab_reps_wide) %>% 
   mutate(RPD = round(abs(Result_1 - Result_2)/((Result_1 + Result_2)/2), 3))
 
-# Are there any lab replicate pairs with RPD values greater than 25%?
+# Are there any lab replicate pairs with RPD values greater than 20%?
 dis_lab_reps_f %>% filter(RPD > 0.2)  
-# yes, 12 pairs, all but one pair are close to the RL
+# yes, 16 pairs, all but one pair are close to the RL
 
 # Export lab replicate data as a .csv file
 dis_lab_reps_f %>% 
   select(
     SampleCode,
-    StationName,
-    CollectionDate,
+    StationCode,
+    DateTime,
     Analyte,
     Result_1,
     Result_2,
@@ -216,24 +268,24 @@ dis_lab_reps_1r <- dis_lab_reps_f %>%
     LabDetect = LabDetect_1
   )
 
-dis_lab_data_clean2 <- dis_lab_data_clean1 %>% 
+dis_lab_data_clean3 <- dis_lab_data_clean2 %>% 
   anti_join(dis_lab_reps) %>% 
   bind_rows(dis_lab_reps_1r)
 
 # Clean up working environment
-obj_keep <- append(obj_keep, "dis_lab_data_clean2")
+obj_keep <- append(obj_keep, "dis_lab_data_clean3")
 rm(list = ls()[!(ls() %in% obj_keep)])
 
 
 # 5. Field Duplicates -----------------------------------------------------
 
 # Pull out Field Duplicates
-dis_field_dups <- dis_lab_data_clean2 %>% filter(Purpose != "Normal Sample")
+dis_field_dups <- dis_lab_data_clean3 %>% filter(Purpose != "Normal Sample")
 
-# Pull out all parent samples from dis_lab_data_clean2 and join with Field Duplicate data
+# Pull out all parent samples from dis_lab_data_clean3 and join with Field Duplicate data
 dis_field_dup_pairs <- 
   inner_join(
-    dis_lab_data_clean2, 
+    dis_lab_data_clean3, 
     dis_field_dups,
     by = c("SampleCode" = "ParentSample", "Analyte"),
     suffix = c("_PS", "_FD")
@@ -244,15 +296,15 @@ dis_field_dup_pairs_f <- dis_field_dup_pairs %>%
   mutate(RPD = round(abs(Result_PS - Result_FD)/((Result_PS + Result_FD)/2), 3)) %>% 
   rename(
     SampleCode_PS = SampleCode,
-    StationName = StationName_PS,
+    StationCode = StationCode_PS,
     RptLimit = RptLimit_PS,
     Units = Units_PS,
     Method = Method_PS
   ) %>% 
   select(
     starts_with("Samp"),
-    StationName,
-    starts_with("Coll"),
+    StationCode,
+    starts_with("Date"),
     Analyte,
     starts_with("Res"),
     starts_with("LabD"),
@@ -262,32 +314,29 @@ dis_field_dup_pairs_f <- dis_field_dup_pairs %>%
     Method
   )
 
-# Are there any Field Duplicate pairs with RPD values greater than 25%?
+# Are there any Field Duplicate pairs with RPD values greater than 20%?
 dis_field_dup_pairs_f %>% filter(RPD > 0.2)  
-# yes, 12 pairs, but values are small and the differences aren't alarming
+# yes, 18 pairs, but values are small and the differences aren't alarming
 
 # Export Field Duplicate data as a .csv file
 dis_field_dup_pairs_f %>% write_excel_csv(paste0(fp_abs_wq_proc, "/Discrete_Lab_Data_Field_Dups.csv"), na = "")
 
 # Only keep the Normal Samples for the final dataset
-dis_lab_data_clean3 <- dis_lab_data_clean2 %>% filter(Purpose == "Normal Sample")
+dis_lab_data_clean4 <- dis_lab_data_clean3 %>% filter(Purpose == "Normal Sample")
 
 # Clean up working environment
-obj_keep <- append(obj_keep, "dis_lab_data_clean3")
-obj_keep <- discard(obj_keep, str_detect(obj_keep, "clean2$"))
+obj_keep <- append(obj_keep, "dis_lab_data_clean4")
+obj_keep <- discard(obj_keep, str_detect(obj_keep, "clean3$"))
 rm(list = ls()[!(ls() %in% obj_keep)])
 
 
 # 6. Final Cleaning and Export --------------------------------------------
 
-# Rename and remove a few variables
-dis_lab_data_clean3 <- dis_lab_data_clean3 %>%
-  rename(
-    StationCode = StationName,
-    DateTime = CollectionDate
-  ) %>%
-  select(-c(Purpose, ParentSample))
+# Remove a few variables
+dis_lab_data_clean_f <- dis_lab_data_clean4 %>%
+  select(-c(Purpose, ParentSample)) %>% 
+  arrange(DateTime, Analyte)
 
 # Export cleaned discrete lab data as a .csv file
-dis_lab_data_clean3 %>% write_excel_csv(paste0(fp_abs_wq_proc, "/WQ_OUTPUT_Discrete_Lab_formatted.csv"), na = "")
+dis_lab_data_clean_f %>% write_excel_csv(paste0(fp_abs_wq_proc, "/WQ_OUTPUT_Discrete_Lab_formatted.csv"), na = "")
 
