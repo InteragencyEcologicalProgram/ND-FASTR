@@ -27,6 +27,8 @@ This file provides time series graphs for the discrete water quality stations of
 ```{r message=FALSE, warning=FALSE}
 # --- Import Packages ---
 # import packages
+library(knitr)
+library(crayon)
 library(scales)
 library(ggplot2)
 library(data.table)
@@ -91,8 +93,8 @@ add_phase_actions <- function(df_wq, df_dates){
           Date >= PreFlowEnd & Date <= PostFlowStart ~ 'During',
           Date >= PostFlowStart & Date <= PostFlowEnd ~ 'Post'
         )
-    ) %>%
-    filter(!is.na(ActionPhase))
+    ) # %>%
+    # filter(!is.na(ActionPhase))
   
   return(df_combined)
 }
@@ -232,12 +234,27 @@ create_facet <- function(df){
       ylab(analyte_unit) +
       ggtitle(paste(analyte,'-',year))
     
-    # p <- p +
-    #   geom_blank(aes(y = y_min)) +
-    #   geom_blank(aes(y = y_max))
-    
     return(p)
   }
+}
+
+# --- Create Table ---
+add_table <- function(df){
+  # filter df by analyte and year
+  df_filt <-
+    df %>%
+    filter(
+      Analyte == analyte,
+      Year == year
+    )
+  
+  # cleanup df
+  df_filt <- subset(df_filt, select = -c(Note, Year, Analyte))
+  
+  # make table
+  table <- kable(df_filt, align = 'c', caption = '<center><strong>Graph Interpretations</strong></center>')
+  
+  return(table)
 }
 ```
 
@@ -257,16 +274,19 @@ fp_fastr <- 'California Department of Water Resources/North Delta Flow Action - 
 
 # define relative filepaths 
 fp_rel_wq <- paste0(fp_fastr,'WQ_Subteam/Processed_Data/Discrete/WQ_OUTPUT_Discrete_Lab_formatted.csv')
+fp_rel_hypo <- paste0(fp_fastr,'WQ_Subteam/Processed_Data/Discrete/Discrete_Hypothesis_Table.csv')
 fp_rel_dates <- paste0(fp_fastr,'Data Management/FlowDatesDesignations.csv')
 fp_rel_regions = paste0(fp_fastr, 'WQ_Subteam/Processed_Data/NDFA_WQ_Stations.csv')
 
 # define absolute filepaths
 fp_abs_wq <- get_abs_path(fp_rel_wq)
+fp_abs_hypo <- get_abs_path(fp_rel_hypo)
 fp_abs_dates <- get_abs_path(fp_rel_dates)
 fp_abs_regions <- get_abs_path(fp_rel_regions)
 
 # read in data
 df_wq <- read_csv(fp_abs_wq)
+df_hypo <- read_csv(fp_abs_hypo)
 df_dates <- read_csv(fp_abs_dates)
 df_regions <- read_csv(fp_abs_regions)
 
@@ -342,10 +362,16 @@ for (year in years){
 
     # plot
     if (!length(p) == 0) {
-      cat('\n###', analyte,'\n')
+      cat('\n###', analyte,'\n\n')
       plot(p)
+      cat('\n')
+      
+      # add table
+      t <- add_table(df_hypo)
+      print(t)
       cat('\n')
     }
   }
 }
 ```
+
