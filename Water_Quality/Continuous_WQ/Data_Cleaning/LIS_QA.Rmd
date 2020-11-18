@@ -26,8 +26,6 @@ df_LIS <- import_rtm_data(fp_abs, 7)
 
 # parse datatime
 df_LIS$DateTime <- ymd_hms(df_LIS$DateTime, tz = 'Etc/GMT+8')
-
-
 ```
 
 ```{r}
