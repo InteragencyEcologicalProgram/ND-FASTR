@@ -22,37 +22,66 @@ import_rtm_data <- function(file_path, num_params) {
 
 # Restructure data to long format to allow for a more generalized plotting function
 restructure_df_long <- function(df) {
-  df %>% 
+  # pivot data values to long format
+  df_data_values <-  df %>% 
     select(-c(StationCode, ends_with("_Qual"))) %>% 
     pivot_longer(
       cols = -DateTime,
       names_to = "parameter",
       values_to = "value"
     )
+  
+  # pivot qual codes to long format
+  df_qual_codes <-  df %>% 
+    select(DateTime, ends_with("_Qual")) %>% 
+    rename_with(~str_remove(.x, "_Qual"), ends_with("_Qual")) %>%
+    pivot_longer(
+      cols = -DateTime,
+      names_to = "parameter",
+      values_to = "qual_code"
+    )
+  
+  # Join data values and qual codes together
+  left_join(df_data_values, df_qual_codes, by = c("DateTime", "parameter"))
 }
 
 
-# Remove data before the first year when data was collected for each parameter so 
-  # that the x-axis is centered correctly on the plots of all years of data
-trim_to_first_yr <- function(df) {
-  # Find the first year with data for each parameter
-  data_first_yr <- df %>% 
-    filter(!is.na(value)) %>% 
-    group_by(parameter) %>% 
-    summarize(min_yr = min(yr))
+# Add extra datetime values for gaps of missing data greater than a half a day to 
+  # eliminate lines connecting the data
+add_extra_dt_halfday <- function(df, time_int = c("15min", "1hr")) {
+  # check arguments in time_int
+  time_int = match.arg(time_int, c("15min", "1hr"))
   
+  # add all timestamps between min and max DateTime depending upon time interval
+  if (time_int == "15min") {
+    df_dt_full <- complete(df, DateTime = seq.POSIXt(min(DateTime), max(DateTime), by = "15 min"))
+  } else {
+    df_dt_full <- complete(df, DateTime = seq.POSIXt(min(DateTime), max(DateTime), by = "hour"))
+  }
   
-  # Filter data in df
-  df %>% 
-    left_join(data_first_yr, by = "parameter") %>% 
-    filter(yr >= min_yr) %>% 
-    select(-min_yr)
+  # count the number of consecutive missing timestamps
+  df_dt_full_count <- df_dt_full %>% 
+    arrange(DateTime) %>% 
+    mutate(
+      na_val = is.na(value),
+      na_val_run_total = sequence(rle(na_val)$lengths)
+    )
+  
+  # remove gaps of missing data less than a half day depending upon time interval
+  if (time_int == "15min") {
+    df_dt_filt <- filter(df_dt_full_count, !(na_val == TRUE & na_val_run_total < 48))
+  } else {
+    df_dt_filt <- filter(df_dt_full_count, !(na_val == TRUE & na_val_run_total < 12))
+  }
+  
+  # remove temporary variables
+  df_dt_filt %>% select(!starts_with("na_val"))
 }
 
 
-# Add extra datetime values so that the lines connecting years are eliminated in the 
-  # plots of all years of data
-add_extra_dt_values <- function(df) {
+# Add extra datetime values to eliminate the lines connecting the years in the plots 
+  # of all years of data
+add_extra_dt_yr <- function(df) {
   extra_dt <- df %>% 
     group_by(yr, parameter) %>% 
     summarize(max_dt = max(DateTime), .groups = "drop") %>% 
@@ -84,9 +113,9 @@ int_define_yaxis_lab <- function(param) {
 
 
 # Create simple ggplot of continuous WQ Data - for plots of all years of data
-create_ts_ggplot <- function(df) {
+create_ts_ggplot <- function(df, param) {
   # define y-axis label
-  y_lab <- int_define_yaxis_lab(df$parameter[1])
+  y_lab <- int_define_yaxis_lab(param)
   
   # create plot
   p <-
@@ -97,7 +126,7 @@ create_ts_ggplot <- function(df) {
         y = value
       )
     ) +
-    geom_line() +
+    geom_line(na.rm = TRUE) +
     scale_x_datetime(
       name = "Date",
       breaks = breaks_pretty(15),
@@ -114,11 +143,16 @@ create_ts_ggplot <- function(df) {
 
 # Create simple interactive timeseries plotly plot of continuous WQ Data - for plots 
   # of individual years
-create_ts_plotly <- function(df) {
+create_ts_plotly <- function(df, param) {
   # use create_ts_ggplot to make timeseries ggplot
-  p <- create_ts_ggplot(df)
+  p <- create_ts_ggplot(df, param)
   
   # convert ggplot to interactive plotly plot
   ggplotly(p)
+}
+
+# Wrapper to print plots
+print_plot <- function(df) {
+  df %>% pull(plot) %>% chuck(1)
 }
 
