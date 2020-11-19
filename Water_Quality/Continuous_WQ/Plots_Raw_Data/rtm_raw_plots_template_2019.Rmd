@@ -1,0 +1,22 @@
+---
+title: "Raw Data Plots template - 2019"
+author: "Dave Bosworth"
+date: "11/6/2020"
+output: html_document
+---
+
+## {{parameter}} {.tabset .tabset-pills}
+
+### All Years - only collected in 2019
+
+```{r plot {{parameter}} all yrs, echo = FALSE}
+filt_param <- "{{parameter}}"
+
+df_plots_indiv_yr %>% 
+  filter(
+    parameter == filt_param,
+    yr == 2019
+  ) %>% 
+  print_plot()
+```
+
