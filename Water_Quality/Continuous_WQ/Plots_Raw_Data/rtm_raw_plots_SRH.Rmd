@@ -1,7 +1,7 @@
 ---
 title: "Raw Data Plots - SRH"
 author: "Traci Treleaven and Dave Bosworth"
-date: "9/8/2020"
+date: "11/23/2020"
 output: 
   html_document: 
     code_folding: show
@@ -26,25 +26,29 @@ Create plots of the raw continuous water quality data for the SRH station. The d
 # Load packages
 library(tidyverse)
 library(lubridate)
+library(knitr)
 ```
 
 ```{r load functions, message = FALSE, warning = FALSE}
-# Source global WQ functions
-source("Water_Quality/global_wq_funcs.R")
+# Define directory for local repository
+fp_local_repo <- "C:/Repositories/ND-FASTR/"
 
-# Source continuous WQ raw data plot functions
-source("Water_Quality/Continuous_WQ/Plots_Raw_Data/rtm_raw_plots_funcs.R")
+# Source global WQ functions
+source(paste0(fp_local_repo, "global_ndfa_funcs.R"))
+source(paste0(fp_local_repo, "Water_Quality/global_wq_funcs.R"))
+
+# Source continuous WQ raw data plot functions - look at this R script file for greater detail 
+  # regarding the functions used in this Rmd file
+source(paste0(fp_local_repo, "Water_Quality/Continuous_WQ/Plots_Raw_Data/rtm_raw_plots_funcs.R"))
 ```
 
 ```{r define file paths}
-# Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
-fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
-
-# Define relative file path for processed continuous WQ data file for SRH
-fp_rel_rtm_data <- paste0(fp_fastr, "Processed_Data/Continuous/RTM_OUTPUT_SRH_formatted.csv")
+# Define relative file path for processed continuous WQ data file for LIB
+fp_rel_rtm_data <- 
+  "WQ_Subteam/Processed_Data/Continuous/Filtered_Dates/RTM_OUTPUT_SRH_formatted_filt.csv"
 
 # Define absolute file path
-fp_abs_rtm_data <- get_abs_path(fp_rel_rtm_data)
+fp_abs_rtm_data <- ndfa_abs_sp_path(fp_rel_rtm_data)
 ```
 
 ```{r set system tz as PST}
@@ -56,75 +60,66 @@ Sys.setenv(TZ = "Etc/GMT+8")
 
 ```{r import data}
 # Import data
-data_orig <- import_rtm_data(fp_abs_rtm_data, 6)
+df_orig <- import_rtm_data(fp_abs_rtm_data, 6)
 ```
 
-```{r prepare data, message = FALSE}
-# Clean original data
-data_clean <- data_orig %>% 
+```{r prepare data}
+# Clean original data and nest it by year and parameter for plots of individual years 
+  # for each parameter
+df_clean_nest_indiv_yr <- df_orig %>% 
   # parse date-time variable and define tz as PST
   mutate(DateTime = ymd_hms(DateTime, tz = "Etc/GMT+8")) %>% 
   # pivot data longer for easier plotting
-  select(-c(StationCode, ends_with("_Qual"))) %>% 
-  pivot_longer(
-    cols = -DateTime,
-    names_to = "parameter",
-    values_to = "value"
-  ) %>% 
-  # add a yr variable
-  mutate(yr = year(DateTime))
-
-# Find the first year with data for each parameter
-data_first_yr <- data_clean %>% 
+  restructure_df_long() %>% 
+  # add a year variable
+  mutate(yr = year(DateTime)) %>% 
+  # remove data with NA values
   filter(!is.na(value)) %>% 
-  group_by(parameter) %>% 
-  summarize(min_yr = min(yr))
+  # group nest by year and parameter
+  nest(data = -c(yr, parameter)) %>%
+  # add extra datetime values for gaps of missing data greater than a half a day
+  mutate(data_full_dt = map(data, add_extra_dt_halfday, time_int = "15min")) %>% 
+  select(-data)
 
-# Create a nested dataframe grouped by parameter- including all years of data
-data_all_yrs <- data_clean %>% 
-  group_nest(parameter) %>%
-  # remove data before the first year data was collected for each parameter
-  left_join(data_first_yr) %>% 
-  mutate(
-    data = map2(data, min_yr, ~filter(.x, yr >= .y)),
-    yr = "All Years"
-  ) %>% 
-  select(parameter, yr, data)
-
-# Create a nested dataframe grouped by parameter and year
-data_indiv_yrs <- data_clean %>% 
-  filter(!is.na(value)) %>% 
-  mutate(yr = as.character(yr)) %>% 
-  group_nest(parameter, yr)
-
-# Combine nested dataframes and add variable for y-axis label
-data_yrs_c <- 
-  bind_rows(data_all_yrs, data_indiv_yrs) %>% 
-  add_yaxis_var(parameter)
+# Create another dataframe nested by parameter for the plots of all years of data 
+  # for each parameter
+df_clean_nest_all_yrs <- df_clean_nest_indiv_yr %>% 
+  unnest(data_full_dt) %>% 
+  # Add extra datetime values so that the lines connecting years are eliminated in the plots 
+  add_extra_dt_yr() %>% 
+  select(-yr) %>% 
+  nest(data_all_yrs = -parameter)
 ```
 
 # Create Plots
 
 ```{r create plots}
-plots <- data_yrs_c %>% 
-  mutate(plot = map2(data, yaxis_lab, .f = create_ts_plot)) %>% 
-  select(parameter, yr, plot) %>% 
-  group_nest(parameter)
+# Create interactive plotly plots of individual years for each parameter
+df_plots_indiv_yr <- df_clean_nest_indiv_yr %>% 
+  mutate(plot = map2(data_full_dt, parameter, create_ts_plotly))
+
+# Create static ggplots of all years of data for each parameter
+df_plots_all_yrs <- df_clean_nest_all_yrs %>% 
+  mutate(plot = map2(data_all_yrs, parameter, create_ts_ggplot))
 ```
 
 # Raw Data Plots {.tabset .tabset-pills}
 
-```{r print plots, echo = FALSE, warning = FALSE, results = "asis"}
-for (i in 1:nrow(plots)) {
-  # Create heading for each parameter
-  cat("## ", as.character(plots$parameter[i]), " {.tabset .tabset-pills}\n\n")
-  for (j in 1:nrow(plots$data[[i]])) {
-    # Create subheadings for each yr
-    cat("### ", as.character(plots$data[[i]]$yr[j]), "\n\n") 
-    # Display plot
-    print(plots$data[[i]]$plot[[j]])
-    cat("\n\n")  
-  }
-}
+```{r print plots, include = FALSE}
+# Find the starting year for the period of record for each parameter
+df_start_yr <- df_clean_nest_indiv_yr %>% 
+  group_by(parameter) %>% 
+  summarize(start_yr = min(yr)) %>% 
+  arrange(parameter)
+
+# Create a list of plot templates to use for each parameter
+produce_plots <- 
+  map2(
+    df_start_yr$start_yr,
+    df_start_yr$parameter,
+    ~knit_expand(file = paste0("rtm_raw_plots_template_", .x, ".Rmd"), parameter = .y)
+  )
 ```
+
+`r knit(text = unlist(produce_plots))`
 
