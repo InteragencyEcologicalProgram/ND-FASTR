@@ -116,9 +116,12 @@ df_qual_code_summ <- df_clean_nest_indiv_yr %>%
    # remove data with NA values
   filter(!is.na(value)) %>%
   count(parameter, yr, qual_code) %>% 
+  arrange(qual_code) %>% 
   pivot_wider(names_from = qual_code, values_from = n) %>% 
   rename(Year = yr) %>% 
+  arrange(Year) %>% 
   nest(data = -parameter) %>% 
+  arrange(parameter) %>% 
   mutate(
     data_kable = map(
       data,
