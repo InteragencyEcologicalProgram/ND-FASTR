@@ -32,12 +32,16 @@ library(kableExtra)
 ```
 
 ```{r load functions, message = FALSE, warning = FALSE}
+# Define directory for local repository
+fp_local_repo <- "C:/Repositories/ND-FASTR/"
+
 # Source global WQ functions
-source("C:/Repositories/ND-FASTR/global_ndfa_funcs.R")
+source(paste0(fp_local_repo, "global_ndfa_funcs.R"))
+source(paste0(fp_local_repo, "Water_Quality/global_wq_funcs.R"))
 
 # Source continuous WQ raw data plot functions - look at this R script file for greater detail 
   # regarding the functions used in this Rmd file
-source("C:/Repositories/ND-FASTR/Water_Quality/Continuous_WQ/Plots_Raw_Data/rtm_raw_plots_funcs.R")
+source(paste0(fp_local_repo, "Water_Quality/Continuous_WQ/Plots_Raw_Data/rtm_raw_plots_funcs.R"))
 ```
 
 ```{r define file paths}
