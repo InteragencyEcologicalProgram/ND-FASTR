@@ -43,7 +43,7 @@ source(paste0(fp_local_repo, "Water_Quality/Continuous_WQ/Plots_Raw_Data/rtm_raw
 ```
 
 ```{r define file paths}
-# Define relative file path for processed continuous WQ data file for LIB
+# Define relative file path for processed continuous WQ data file for RVB
 fp_rel_rtm_data <- 
   "WQ_Subteam/Processed_Data/Continuous/Filtered_Dates/RTM_OUTPUT_RVB_formatted_filt.csv"
 
