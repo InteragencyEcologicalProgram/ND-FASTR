@@ -9,17 +9,6 @@ library(scales)
 library(plotly)
 
 
-# Import processed continuous WQ Data from SharePoint
-import_rtm_data <- function(file_path, num_params) {
-  df <- read_csv(
-    file = file_path,
-    col_types = paste0("cc", str_dup("dc", num_params))
-  )
-  
-  return(df)
-}
-
-
 # Restructure data to long format to allow for a more generalized plotting function
 restructure_df_long <- function(df) {
   # pivot data values to long format
