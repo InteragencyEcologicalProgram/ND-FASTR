@@ -1,7 +1,7 @@
 ---
 title: "Raw Data Plots - I80"
 author: "Dave Bosworth & Amanda Maguire"
-date: "11/6/2020"
+date: "11/23/2020"
 output: 
   html_document: 
     code_folding: show
@@ -30,12 +30,16 @@ library(knitr)
 ```
 
 ```{r load functions, message = FALSE, warning = FALSE}
+# Define directory for local repository
+fp_local_repo <- "C:/Repositories/ND-FASTR/"
+
 # Source global WQ functions
-source("../../../global_ndfa_funcs.R")
+source(paste0(fp_local_repo, "global_ndfa_funcs.R"))
+source(paste0(fp_local_repo, "Water_Quality/global_wq_funcs.R"))
 
 # Source continuous WQ raw data plot functions - look at this R script file for greater detail 
   # regarding the functions used in this Rmd file
-source("rtm_raw_plots_funcs.R")
+source(paste0(fp_local_repo, "Water_Quality/Continuous_WQ/Plots_Raw_Data/rtm_raw_plots_funcs.R"))
 ```
 
 ```{r define file paths}
@@ -59,28 +63,51 @@ Sys.setenv(TZ = "Etc/GMT+8")
 df_orig <- import_rtm_data(fp_abs_rtm_data, 6)
 ```
 
-```{r prepare data, message = FALSE}
-# Clean original data
-df_clean <- df_orig %>% 
+```{r prepare data}
+# Clean original data and nest it by year and parameter for plots of individual years 
+  # for each parameter
+df_clean_nest_indiv_yr <- df_orig %>% 
   # parse date-time variable and define tz as PST
   mutate(DateTime = ymd_hms(DateTime, tz = "Etc/GMT+8")) %>% 
   # pivot data longer for easier plotting
   restructure_df_long() %>% 
   # add a year variable
   mutate(yr = year(DateTime)) %>% 
-  # remove data before the first year when data was collected for each parameter so that 
-    # the x-axis is centered correctly on the plots of all years of data
-  trim_to_first_yr() %>% 
+  # remove data with NA values
+  filter(!is.na(value)) %>% 
+  # group nest by year and parameter
+  nest(data = -c(yr, parameter)) %>%
+  # add extra datetime values for gaps of missing data greater than a half a day
+  mutate(data_full_dt = map(data, add_extra_dt_halfday, time_int = "15min")) %>%
+  select(-data)
+
+# Create another dataframe nested by parameter for the plots of all years of data 
+  # for each parameter
+df_clean_nest_all_yrs <- df_clean_nest_indiv_yr %>% 
+  unnest(data_full_dt) %>% 
   # Add extra datetime values so that the lines connecting years are eliminated in the plots 
-    # of all years of data
-  add_extra_dt_values()
+  add_extra_dt_yr() %>% 
+  select(-yr) %>% 
+  nest(data_all_yrs = -parameter)
+```
+
+# Create Plots
+
+```{r create plots}
+# Create interactive plotly plots of individual years for each parameter
+df_plots_indiv_yr <- df_clean_nest_indiv_yr %>% 
+  mutate(plot = map2(data_full_dt, parameter, create_ts_plotly))
+
+# Create static ggplots of all years of data for each parameter
+df_plots_all_yrs <- df_clean_nest_all_yrs %>% 
+  mutate(plot = map2(data_all_yrs, parameter, create_ts_ggplot))
 ```
 
 # Raw Data Plots {.tabset .tabset-pills}
 
 ```{r print plots, include = FALSE}
 # Find the starting year for the period of record for each parameter
-df_start_yr <- df_clean %>% 
+df_start_yr <- df_clean_nest_indiv_yr %>% 
   group_by(parameter) %>% 
   summarize(start_yr = min(yr)) %>% 
   arrange(parameter)
