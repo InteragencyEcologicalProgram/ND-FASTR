@@ -265,15 +265,16 @@ df_plots_indiv_yr_filt %>%
 
 
 ```{r print flow and nitrate plots, include = FALSE}
-# Create a list of plot templates to use for flow and NitrateNitrite plots
-produce_plots_flow_nitr <- list(
+# Create a list of plot templates to use for fDOM, Flow, and NitrateNitrite plots
+produce_plots_fdom_flow_nitr <- list(
+  knit_expand(file = "rtm_raw_plots_template_2018.Rmd", parameter = "fDOM"),
   knit_expand(file = "rtm_raw_plots_template_2015.Rmd", parameter = "Flow"),
   knit_expand(file = "rtm_raw_plots_template_2015.Rmd", parameter = "FlowTF"),
   knit_expand(file = "rtm_raw_plots_template_2018.Rmd", parameter = "NitrateNitrite")
 )
 ```
 
-`r knit(text = unlist(produce_plots_flow_nitr))`
+`r knit(text = unlist(produce_plots_fdom_flow_nitr))`
 
 
 ## pH {.tabset .tabset-pills}
