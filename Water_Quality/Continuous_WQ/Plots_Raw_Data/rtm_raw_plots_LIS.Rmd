@@ -1,7 +1,7 @@
 ---
 title: "Raw Data Plots - LIS"
 author: "Dave Bosworth & Amanda Maguire"
-date: "9/02/2020"
+date: "12/1/2020"
 output: 
   html_document: 
     code_folding: show
@@ -26,25 +26,29 @@ Create plots of the raw continuous water quality data for the LIS station. The d
 # Load packages
 library(tidyverse)
 library(lubridate)
+library(knitr)
 ```
 
 ```{r load functions, message = FALSE, warning = FALSE}
-# Source global WQ functions
-source("Water_Quality/global_wq_funcs.R")
+# Define directory for local repository
+fp_local_repo <- "C:/Repositories/ND-FASTR/"
 
-# Source continuous WQ raw data plot functions
-source("Water_Quality/Continuous_WQ/Plots_Raw_Data/rtm_raw_plots_funcs.R")
+# Source global WQ functions
+source(paste0(fp_local_repo, "global_ndfa_funcs.R"))
+source(paste0(fp_local_repo, "Water_Quality/global_wq_funcs.R"))
+
+# Source continuous WQ raw data plot functions - look at this R script file for greater detail 
+  # regarding the functions used in this Rmd file
+source(paste0(fp_local_repo, "Water_Quality/Continuous_WQ/Plots_Raw_Data/rtm_raw_plots_funcs.R"))
 ```
 
 ```{r define file paths}
-# Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
-fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
-
 # Define relative file path for processed continuous WQ data file for LIS
-fp_rel_rtm_data <- paste0(fp_fastr, "Processed_Data/Continuous/RTM_OUTPUT_LIS_formatted.csv")
+fp_rel_rtm_data <- 
+  "WQ_Subteam/Processed_Data/Continuous/Filtered_Dates/RTM_OUTPUT_LIS_formatted_filt.csv"
 
 # Define absolute file path
-fp_abs_rtm_data <- get_abs_path(fp_rel_rtm_data)
+fp_abs_rtm_data <- ndfa_abs_sp_path(fp_rel_rtm_data)
 ```
 
 ```{r set system tz as PST}
@@ -56,697 +60,66 @@ Sys.setenv(TZ = "Etc/GMT+8")
 
 ```{r import data}
 # Import data
-data_orig <- import_rtm_data(fp_abs_rtm_data, 7)
+df_orig <- import_rtm_data(fp_abs_rtm_data, 7)
 ```
 
-```{r prepare data, message = FALSE}
-# Clean original data
-data_clean <- data_orig %>% 
+```{r prepare data}
+# Clean original data and nest it by year and parameter for plots of individual years 
+  # for each parameter
+df_clean_nest_indiv_yr <- df_orig %>% 
   # parse date-time variable and define tz as PST
   mutate(DateTime = ymd_hms(DateTime, tz = "Etc/GMT+8")) %>% 
   # pivot data longer for easier plotting
-  select(-c(StationCode, ends_with("_Qual"))) %>% 
-  pivot_longer(
-    cols = -DateTime,
-    names_to = "parameter",
-    values_to = "value"
-  ) %>% 
-  # add yr and y-axis label variables
+  restructure_df_long() %>% 
+  # add a year variable
   mutate(yr = year(DateTime)) %>% 
-  add_yaxis_var(parameter)
+  # remove data with NA values
+  filter(!is.na(value)) %>% 
+  # group nest by year and parameter
+  nest(data = -c(yr, parameter)) %>%
+  # add extra datetime values for gaps of missing data greater than a half a day
+  mutate(data_full_dt = map(data, add_extra_dt_halfday, time_int = "15min")) %>%
+  select(-data)
+
+# Create another dataframe nested by parameter for the plots of all years of data 
+  # for each parameter
+df_clean_nest_all_yrs <- df_clean_nest_indiv_yr %>% 
+  unnest(data_full_dt) %>% 
+  # Add extra datetime values so that the lines connecting years are eliminated in the plots 
+  add_extra_dt_yr() %>% 
+  select(-yr) %>% 
+  nest(data_all_yrs = -parameter)
+```
+
+# Create Plots
+
+```{r create plots}
+# Create interactive plotly plots of individual years for each parameter
+df_plots_indiv_yr <- df_clean_nest_indiv_yr %>% 
+  mutate(plot = map2(data_full_dt, parameter, create_ts_plotly))
+
+# Create static ggplots of all years of data for each parameter
+df_plots_all_yrs <- df_clean_nest_all_yrs %>% 
+  mutate(plot = map2(data_all_yrs, parameter, create_ts_ggplot))
 ```
 
 # Raw Data Plots {.tabset .tabset-pills}
 
-## Chla {.tabset .tabset-pills}
+```{r print plots, include = FALSE}
+# Find the starting year for the period of record for each parameter
+df_start_yr <- df_clean_nest_indiv_yr %>% 
+  group_by(parameter) %>% 
+  summarize(start_yr = min(yr)) %>% 
+  arrange(parameter)
 
-```{r filter chla data, include = FALSE}
-data_clean_chla <- data_clean %>% 
-  filter(
-    parameter == "Chla",
-    yr >= 2013
+# Create a list of plot templates to use for each parameter
+produce_plots <- 
+  map2(
+    df_start_yr$start_yr,
+    df_start_yr$parameter,
+    ~knit_expand(file = paste0("rtm_raw_plots_template_", .x, ".Rmd"), parameter = .y)
   )
 ```
 
-### All Years
+`r knit(text = unlist(produce_plots))`
 
-```{r plot chla all years, echo = FALSE, warning = FALSE}
-data_clean_chla %>% create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2013
-
-```{r plot chla 2013, echo = FALSE}
-data_clean_chla %>% 
-  filter(
-    yr == 2013,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2014
-
-```{r plot chla 2014, echo = FALSE}
-data_clean_chla %>% 
-  filter(
-    yr == 2014,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2015
-
-```{r plot chla 2015, echo = FALSE}
-data_clean_chla %>% 
-  filter(
-    yr == 2015,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2016
-
-```{r plot chla 2016, echo = FALSE}
-data_clean_chla %>% 
-  filter(
-    yr == 2016,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2017
-
-```{r plot chla 2017, echo = FALSE}
-data_clean_chla %>% 
-  filter(
-    yr == 2017,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2018
-
-```{r plot chla 2018, echo = FALSE}
-data_clean_chla %>% 
-  filter(
-    yr == 2018,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2019
-
-```{r plot chla 2019, echo = FALSE}
-data_clean_chla %>% 
-  filter(
-    yr == 2019,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-## DO {.tabset .tabset-pills}
-
-```{r filter do data, include = FALSE}
-data_clean_do <- data_clean %>% 
-  filter(
-    parameter == "DO",
-    yr >= 2013
-  )
-```
-
-### All Years
-
-```{r plot do all years, echo = FALSE, warning = FALSE}
-data_clean_do %>% create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2013
-
-```{r plot do 2013, echo = FALSE}
-data_clean_do %>% 
-  filter(
-    yr == 2013,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2014
-
-```{r plot do 2014, echo = FALSE}
-data_clean_do %>% 
-  filter(
-    yr == 2014,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2015
-
-```{r plot do 2015, echo = FALSE}
-data_clean_do %>% 
-  filter(
-    yr == 2015,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2016
-
-```{r plot do 2016, echo = FALSE}
-data_clean_do %>% 
-  filter(
-    yr == 2016,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2017
-
-```{r plot do 2017, echo = FALSE}
-data_clean_do %>% 
-  filter(
-    yr == 2017,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2018
-
-```{r plot do 2018, echo = FALSE}
-data_clean_do %>% 
-  filter(
-    yr == 2018,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2019
-
-```{r plot do 2019, echo = FALSE}
-data_clean_do %>% 
-  filter(
-    yr == 2019,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-## Flow {.tabset .tabset-pills}
-
-```{r filter flow data, include = FALSE}
-data_clean_flow <- data_clean %>% 
-  filter(parameter == "Flow")
-```
-
-### All Years
-
-```{r plot flow all years, echo = FALSE, warning = FALSE}
-data_clean_flow %>% create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2011
-
-```{r plot flow 2011, echo = FALSE}
-data_clean_flow %>% 
-  filter(
-    yr == 2011,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2012
-
-```{r plot flow 2012, echo = FALSE}
-data_clean_flow %>% 
-  filter(
-    yr == 2012,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2013
-
-```{r plot flow 2013, echo = FALSE}
-data_clean_flow %>% 
-  filter(
-    yr == 2013,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2014
-
-```{r plot flow 2014, echo = FALSE}
-data_clean_flow %>% 
-  filter(
-    yr == 2014,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2015
-
-```{r plot flow 2015, echo = FALSE}
-data_clean_flow %>% 
-  filter(
-    yr == 2015,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2016
-
-```{r plot flow 2016, echo = FALSE}
-data_clean_flow %>% 
-  filter(
-    yr == 2016,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2017
-
-```{r plot flow 2017, echo = FALSE}
-data_clean_flow %>% 
-  filter(
-    yr == 2017,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2018
-
-```{r plot flow 2018, echo = FALSE}
-data_clean_flow %>% 
-  filter(
-    yr == 2018,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2019
-
-```{r plot flow 2019, echo = FALSE}
-data_clean_flow %>% 
-  filter(
-    yr == 2019,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-## pH {.tabset .tabset-pills}
-
-```{r filter pH data, include = FALSE}
-data_clean_pH <- data_clean %>% 
-  filter(
-    parameter == "pH",
-    yr >= 2013
-  )
-```
-
-### All Years
-
-```{r plot pH all years, echo = FALSE, warning = FALSE}
-data_clean_pH %>% create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2013
-
-```{r plot pH 2013, echo = FALSE}
-data_clean_pH %>% 
-  filter(
-    yr == 2013,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2014
-
-```{r plot pH 2014, echo = FALSE}
-data_clean_pH %>% 
-  filter(
-    yr == 2014,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2015
-
-```{r plot pH 2015, echo = FALSE}
-data_clean_pH %>% 
-  filter(
-    yr == 2015,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2016
-
-```{r plot pH 2016, echo = FALSE}
-data_clean_pH %>% 
-  filter(
-    yr == 2016,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2017
-
-```{r plot pH 2017, echo = FALSE}
-data_clean_pH %>% 
-  filter(
-    yr == 2017,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2018
-
-```{r plot pH 2018, echo = FALSE}
-data_clean_pH %>% 
-  filter(
-    yr == 2018,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2019
-
-```{r plot pH 2019, echo = FALSE}
-data_clean_pH %>% 
-  filter(
-    yr == 2019,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-## SpCnd {.tabset .tabset-pills}
-
-```{r filter SpCnd data, include = FALSE}
-data_clean_spcnd <- data_clean %>% 
-  filter(
-    parameter == "SpCnd",
-    yr >= 2013
-  )
-```
-
-### All Years
-
-```{r plot SpCnd all years, echo = FALSE, warning = FALSE}
-data_clean_spcnd %>% create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2013
-
-```{r plot SpCnd 2013, echo = FALSE}
-data_clean_spcnd %>% 
-  filter(
-    yr == 2013,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2014
-
-```{r plot SpCnd 2014, echo = FALSE}
-data_clean_spcnd %>% 
-  filter(
-    yr == 2014,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2015
-
-```{r plot SpCnd 2015, echo = FALSE}
-data_clean_spcnd %>% 
-  filter(
-    yr == 2015,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2016
-
-```{r plot SpCnd 2016, echo = FALSE}
-data_clean_spcnd %>% 
-  filter(
-    yr == 2016,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2017
-
-```{r plot SpCnd 2017, echo = FALSE}
-data_clean_spcnd %>% 
-  filter(
-    yr == 2017,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2018
-
-```{r plot SpCnd 2018, echo = FALSE}
-data_clean_spcnd %>% 
-  filter(
-    yr == 2018,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2019
-
-```{r plot SpCnd 2019, echo = FALSE}
-data_clean_spcnd %>% 
-  filter(
-    yr == 2019,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-## Turbidity {.tabset .tabset-pills}
-
-```{r filter turb data, include = FALSE}
-data_clean_turb <- data_clean %>% 
-  filter(
-    parameter == "Turbidity",
-    yr >= 2013
-  )
-```
-
-### All Years
-
-```{r plot turb all years, echo = FALSE, warning = FALSE}
-data_clean_turb %>% filter(
-  !is.na(value)
-  ) %>%
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2013
-
-```{r plot turb 2013, echo = FALSE}
-data_clean_turb %>% 
-  filter(
-    yr == 2013,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2014
-
-```{r plot turb 2014, echo = FALSE}
-data_clean_turb %>% 
-  filter(
-    yr == 2014,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2015
-
-```{r plot turb 2015, echo = FALSE}
-data_clean_turb %>% 
-  filter(
-    yr == 2015,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2016
-
-```{r plot turb 2016, echo = FALSE}
-data_clean_turb %>% 
-  filter(
-    yr == 2016,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2017
-
-```{r plot turb 2017, echo = FALSE}
-data_clean_turb %>% 
-  filter(
-    yr == 2017,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2018
-
-```{r plot turb 2018, echo = FALSE}
-data_clean_turb %>% 
-  filter(
-    yr == 2018,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2019
-
-```{r plot turb 2019, echo = FALSE}
-data_clean_turb %>% 
-  filter(
-    yr == 2019,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-## WaterTemp {.tabset .tabset-pills}
-
-```{r filter wt data, include = FALSE}
-data_clean_wt <- data_clean %>% 
-  filter(
-    parameter == "WaterTemp",
-    yr >= 2013
-  )
-```
-
-### All Years
-
-```{r plot wt all years, echo = FALSE, warning = FALSE}
-data_clean_wt %>% create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2013
-
-```{r plot wt 2013, echo = FALSE}
-data_clean_wt %>% 
-  filter(
-    yr == 2013,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2014
-
-```{r plot wt 2014, echo = FALSE}
-data_clean_wt %>% 
-  filter(
-    yr == 2014,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2015
-
-```{r plot wt 2015, echo = FALSE}
-data_clean_wt %>% 
-  filter(
-    yr == 2015,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2016
-
-```{r plot wt 2016, echo = FALSE}
-data_clean_wt %>% 
-  filter(
-    yr == 2016,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2017
-
-```{r plot wt 2017, echo = FALSE}
-data_clean_wt %>% 
-  filter(
-    yr == 2017,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2018
-
-```{r plot wt 2018, echo = FALSE}
-data_clean_wt %>% 
-  filter(
-    yr == 2018,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
-
-### 2019
-
-```{r plot wt 2019, echo = FALSE}
-data_clean_wt %>% 
-  filter(
-    yr == 2019,
-    !is.na(value)
-  ) %>% 
-  create_ts_plot(.$yaxis_lab[1])
-```
