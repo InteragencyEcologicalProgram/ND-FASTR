@@ -14,7 +14,7 @@ require(assertthat)
   # The optional fp_rel argument allows for more specific file paths beyond the NDFA SharePoint
     # root directory
 ndfa_abs_sp_path <- function(fp_rel = NULL) {
-  fp_fastr <- "California Department of Water Resources/North Delta Flow Action - Documents/"
+  fp_fastr <- "California Department of Water Resources/North Delta Flow Action - Documents"
   
   if (is.null(fp_rel)) {
     fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_fastr))
