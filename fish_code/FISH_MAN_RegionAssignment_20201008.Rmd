@@ -1,0 +1,224 @@
+---
+title: "RegionAssignment"
+author: "Catarina Pien"
+date: "10/8/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Read in data
+
+```{r read, warning = FALSE, message = FALSE, echo = FALSE, include = FALSE}
+### Assign Regions
+knitr::opts_chunk$set(cache = F)
+
+library(tidyverse)
+library(leaflet)
+library(sf)
+library(sp)
+library(maptools)
+library(rgdal)
+library(mapview)
+
+# Read data
+Fish <- read.csv("R_write/FISH_MAN_AllIEPsurveys_20200527.csv")
+NDFA <- read.csv("NDFA_LatLon_20200723.csv")
+# https://hub.arcgis.com/datasets/esri::usa-rivers-and-streams
+Hydro <- st_read("Data/USA_Rivers_and_Streams/USA_Rivers_and_Streams.shp")
+head(Hydro)
+Cali <- filter(Hydro, State == "CA")
+```
+
+## Process data
+```{r process, warning = FALSE, message = FALSE, echo = FALSE, include = FALSE}
+
+# Summarize to just fish stations
+latlon <- Fish %>% 
+  group_by(Survey,StationCode, Latitude, Longitude) %>%
+  summarize(count = n()) %>%
+  arrange(Latitude) %>%
+  select(-c(count)) %>%
+  ungroup()
+
+str(latlon)
+
+# Bind fish and ndfa stations
+AllSta <- rbind(latlon, NDFA)
+AllSta2 <- AllSta
+
+### GIS
+# Make shapefile
+coordinates(AllSta2) =~Longitude+Latitude
+proj4string(AllSta2) <- CRS("+proj=longlat +datum=WGS84")
+
+# Write file
+# raster::shapefile(AllSta2, "R_write/AllNDFAStations2.shp")
+
+# Read back in
+AllNDFA <- st_read("R_write/AllNDFAStations2.shp")
+# mapview(AllNDFA)
+
+
+# Reproject data
+st_crs(Cali)
+Cali <- st_transform(Cali, crs = 26910) #NAD83 UTM Zone 10
+st_crs(AllNDFA)
+AllNDFA <- st_transform(AllNDFA, crs = 26910)
+#plot(Cali)
+#mapview(Cali)
+#mapview(AllNDFA)
+
+# Make a buffer around Sacramento River
+sacR <- filter(Cali, Name == "Sacramento River")
+#mapview(sacR)
+
+sacR <- st_as_sf(sacR)
+str(sacR)
+
+sacR_buffer <- st_buffer(sacR, 1000)
+#mapview(sacR_buffer)
+
+# Which of the stations intersects? 
+intersect <- st_intersection(AllNDFA, sacR_buffer)
+#mapview(intersect)
+intersect$Intersect <- "Y"
+intersect <- rename(intersect, StationCode = StatnCd)
+
+AllSta3 <- left_join(AllSta, intersect, by = "StationCode") %>%
+  mutate(Intersect = replace_na(Intersect, "N")) %>%
+  select(-c(5:12))
+
+```
+
+## Region Assignment
+* North of WWT: Colusa Drain/RCS Region
+* North of LIS to WWT: Central Yolo
+* North of 719 to LIS: Lower Yolo
+* North of 18-18-RV01 to 719: Cache Slough Complex
+* Rest: Lower Sac River
+```{r ifelse assignment, warning = FALSE, message = FALSE}
+
+
+AllSta4 <- AllSta3 %>%
+  mutate(Region = 
+          ifelse(StationCode %in% c("719", "18-02-CS01", "19-14-LSSC01", 
+                                    "19-29-LSSC03","19-11-LSSC05",
+                                     "18-53-CS06", "19-05-LSSC05",
+                  "18-13-CS01", "CS55"), "CacheSloughComplex",
+                  ifelse(StationCode %in% c("SB1", "SB2"), "UpperYolo",
+    ifelse(Latitude >=	38.21318 & Latitude <	38.34550 & Longitude < 	-121.6481, "CacheSloughComplex",
+        ifelse(Latitude > 38.33428 & Latitude < 38.3455 & Longitude< -121.64266, "CacheSloughComplex",
+           ifelse(Latitude < 38.21318 & Longitude < -121.6481, "LowerSacRiver", 
+              ifelse(Intersect == "Y", "MiddleSacRiver",
+                  ifelse(Latitude >	38.68163, "ColusaDrainRCS",
+                      ifelse(Latitude > 	38.47483,  "UpperYolo",
+                          ifelse(Latitude>	38.34436, "LowerYolo",
+                              ifelse(Longitude > -121.6481 | StationCode == "SHR", "MiddleSacRiver", 
+                                     ifelse(Latitude >= 38.21318, "CacheSloughComplex",
+                                           "LowerSacRiver")))))))))))) %>%
+  arrange(StationCode)
+
+
+
+```
+
+
+## Plot stations by survey
+
+```{r plotSurvey, warning = FALSE, message = FALSE, echo = FALSE, include = FALSE}
+library(viridis)
+##### Make a map ----------------------
+# Define palette
+pal <- colorFactor("magma", domain = AllSta4$Survey.x)
+
+AllSta4 %>%
+  leaflet()%>%
+addTiles() %>%
+  addCircleMarkers(
+    color = ~pal(Survey.x),
+    stroke = FALSE,
+    fillOpacity = 0.7,
+    lng = ~Longitude,
+    lat = ~Latitude,
+  popup = ~paste(StationCode, "<br/>", 
+                 "Region:", Region, "<br/>", 
+                 "Survey:", Survey.x)) %>%
+  addLegend(pal = pal,
+            values = ~Survey.x,
+            position = "bottomright")
+
+                                     
+
+
+```
+
+## Plot stations by region
+### Option 1 - Cutoff at RYI
+```{r plotRegions, warning= FALSE, message = FALSE}
+pal2 <- colorFactor(c("purple3", "blue3", "forestgreen", "orange", "orangered", "hotpink"), domain = c("MiddleSacRiver", "ColusaDrainRCS", "UpperYolo", "LowerYolo", "CacheSloughComplex", "LowerSacRiver"))
+
+AllSta4 %>%
+  leaflet()%>%
+  addTiles() %>%
+  addCircleMarkers(
+    color = ~pal2(Region),
+    stroke = FALSE,
+    fillOpacity = 0.6,
+    lng = ~Longitude,
+    lat = ~Latitude,
+    label = ~paste(StationCode, " ", Region, "Lat:", Latitude, "Long:", Longitude)) %>%
+  addLegend(pal = pal2,
+            values = ~Region,
+            position = "bottomright")
+```
+
+### Option 2 - cutoff after the merge
+```{r}
+AllSta4b <- AllSta3 %>%
+  mutate(Region = 
+          ifelse(StationCode %in% c("719", "18-02-CS01", "19-14-LSSC01", 
+                                    "19-29-LSSC03","19-11-LSSC05",
+                                     "18-53-CS06", "19-05-LSSC05",
+                  "18-13-CS01", "CS55"), "CacheSloughComplex",
+                  ifelse(StationCode %in% c("SB1", "SB2"), "UpperYolo",
+    ifelse(Latitude >=	38.22639 & Latitude <	38.34550 & Longitude < 	-121.6481, "CacheSloughComplex",
+        ifelse(Latitude > 38.33428 & Latitude < 38.3455 & Longitude< -121.64266, "CacheSloughComplex",
+           ifelse(Latitude < 38.22639 & Longitude < -121.6481, "LowerSacRiver", 
+              ifelse(Intersect == "Y", "MiddleSacRiver",
+                  ifelse(Latitude >	38.68163, "ColusaDrainRCS",
+                      ifelse(Latitude > 	38.47483,  "UpperYolo",
+                          ifelse(Latitude>	38.34436, "LowerYolo",
+                              ifelse(Longitude > -121.6481 | StationCode == "SHR", "MiddleSacRiver", 
+                                     ifelse(Latitude >= 38.22639, "CacheSloughComplex",
+                                           "LowerSacRiver")))))))))))) %>%
+  arrange(StationCode)
+```
+
+```{r plotRegions2, warning= FALSE, message = FALSE}
+pal2 <- colorFactor(c("purple3", "blue3", "forestgreen", "orange", "orangered", "hotpink"), domain = c("MiddleSacRiver", "ColusaDrainRCS", "UpperYolo", "LowerYolo", "CacheSloughComplex", "LowerSacRiver"))
+
+AllSta4b %>%
+  leaflet()%>%
+  addTiles() %>%
+  addCircleMarkers(
+    color = ~pal2(Region),
+    stroke = FALSE,
+    fillOpacity = 0.6,
+    lng = ~Longitude,
+    lat = ~Latitude,
+    label = ~paste(StationCode, " ", Region, "Lat:", Latitude, "Long:", Longitude)) %>%
+  addLegend(pal = pal2,
+            values = ~Region,
+            position = "bottomright")
+```
+
+
+## Write file
+```{r write file, warning = FALSE, message = FALSE, eval = FALSE, include = FALSE}
+# Write file with regions 
+library(lubridate)
+today = today()
+write_csv(AllSta4, paste0("R_write/Stations_Fish_NDFA_", today, ".csv"))
+```
+
