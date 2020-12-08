@@ -31,8 +31,8 @@ df_orig <- import_rtm_data(temp_fp_abs_rtm_data, 11)
 df_clean_nest <- df_orig %>% 
   # parse date-time variable and define tz as PST
   mutate(DateTime = ymd_hms(DateTime, tz = "Etc/GMT+8")) %>% 
-  # only keep Turbidity, Chla, fDOM, and NitrateNitrite parameters for testing
-  select(DateTime, Turbidity, Chla, fDOM, NitrateNitrite) %>% 
+  # only keep Turbidity, Chla, and fDOM parameters for testing
+  select(DateTime, Turbidity, Chla, fDOM) %>% 
   # pivot data longer for nesting
   pivot_longer(
     cols = -DateTime,
