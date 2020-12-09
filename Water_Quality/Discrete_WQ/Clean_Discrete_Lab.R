@@ -11,18 +11,15 @@ library(readxl)
 library(lubridate)
 
 # Source global WQ functions
-source("Water_Quality/global_wq_funcs.R")
-
-# Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
-fp_fastr <- "California Department of Water Resources/North Delta Flow Action - Documents/WQ_Subteam/"
+source("global_ndfa_funcs.R")
 
 # Define relative file paths for raw and processed discrete lab WQ data files
-fp_rel_wq_raw <- paste0(fp_fastr, "Raw_Data/Discrete/Raw_WDL_export_June2020")
-fp_rel_wq_proc <- paste0(fp_fastr, "Processed_Data/Discrete")
+fp_rel_wq_raw <- "WQ_Subteam/Raw_Data/Discrete/Raw_WDL_export_June2020"
+fp_rel_wq_proc <- "WQ_Subteam/Processed_Data/Discrete"
 
 # Define absolute file paths
-fp_abs_wq_raw <- get_abs_path(fp_rel_wq_raw)
-fp_abs_wq_proc <- get_abs_path(fp_rel_wq_proc)
+fp_abs_wq_raw <- ndfa_abs_sp_path(fp_rel_wq_raw)
+fp_abs_wq_proc <- ndfa_abs_sp_path(fp_rel_wq_proc)
 
 # Create a vector of object names to keep throughout the script
 obj_keep <- c("fp_abs_wq_raw", "fp_abs_wq_proc", "obj_keep")
