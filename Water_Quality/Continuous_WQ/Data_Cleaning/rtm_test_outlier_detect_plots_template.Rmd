@@ -43,3 +43,9 @@ df_filt$plot_incr[[1]]
 df_filt$plot_decr[[1]]
 ```
 
+### Majority scoring
+
+```{r majority scoring plot {{yr}}, echo = FALSE, fig.width = 8, fig.height = 6}
+df_filt$plot_maj[[1]]
+```
+
