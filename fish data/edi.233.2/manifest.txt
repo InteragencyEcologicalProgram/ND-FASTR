@@ -1,0 +1,8 @@
+Manifest file for edi.233.2.zip created on Thu Nov 14 15:48:34 MST 2019
+YBFMP_Fish_Catch_and_Water_Quality.csv (33277563 bytes)
+YBFMP_Fish_Taxonomy.csv (6225 bytes)
+YBFMP_Trap_Effort.csv (8594 bytes)
+YBFMP_Site_locations_latitude_and_longitude.csv (772 bytes)
+edi.233.2.xml (109274 bytes)
+edi.233.2.txt (68773 bytes)
+edi.233.2.report.xml (83330 bytes)

@@ -11,17 +11,14 @@ library(plyr)
 library(tidyverse)
 library(reticulate)
 
-# set wd
-setwd('Water_Quality')
-
 # source functions
-source('Code_cont_timeseries analysis_func.R')
+source('Plots_Multi_Station/Code_cont_timeseries analysis_func.R')
 
 #initialize conda env for python use
 use_condaenv('rStudio')
 
 # define main FASTR filepath (assumes sync'd with Sharepoint)
-fp_fastr <- 'California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/'
+fp_fastr <- 'California Department of Water Resources/North Delta Flow Action - Documents/'
 ```
 
 ```{python}
@@ -44,10 +41,8 @@ all_files = glob.glob(os.path.join(path, '*.csv'))
 df_each_file = (pd.read_csv(f, dtype = str) for f in all_files)
 df_concat = pd.concat(df_each_file, ignore_index = True)
 
-print(df_concat['StationCode'].unique())
-
 # export
-df_concat.to_csv(path+'combined_files/combined_all.csv', index = False)
+df_concat.to_csv(path+'Combined_Files/combined_all.csv', index = False)
 ```
 
 ```{r}

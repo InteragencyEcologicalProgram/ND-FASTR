@@ -1,0 +1,71 @@
+OrganismCode,CommonName,Native,Phylum,Class,Order,Family,Genus,Species
+AMM,AMMOCOETE LAMPREY,N,NA,NA,NA,PETROMYZONTIDAE,LAMPETRA,NA
+AMS,American Shad,I,Chordata,Osteichthyes,Clupeiformes,Clupeidae,Alosa,sapidissima
+BAS,Bass Unknown,I,Chordata,Osteichthyes,Perciformes,Centrarchidae,Micropterus,NA
+BGS,Bluegill,I,Chordata,Osteichthyes,Perciformes,Centrarchidae,Lepomis,macrochirus
+BKB,Black Bullhead,I,Chordata,Osteichthyes,Siluriformes,Ictaluridae,Ameiurus,melas
+BKS,Black Crappie,I,Chordata,Osteichthyes,Perciformes,Centrarchidae,Pomoxis,nigromaculatus
+BKT,Brook Trout,I,Chordata,Actinopterygii,Salmoniformes,Salmonidae,Salvelinus,fontinalis
+BL,Pacific Brook Lamprey,N,Chordata,Cephalaspidomorphi,Petromyzontiformes,Petromyzontidae,Lampetra,pacifica
+BRB,Brown Bullhead,I,Chordata,Osteichthyes,Siluriformes,Ictaluridae,Ameiurus,nebulosus
+BT,Brown Trout,N,Chordata,Osteichthyes,Salmoniformes,Salmonidae,Salmo,trutta
+C,Common Carp,I,Chordata,Osteichthyes,Cypriniformes,Cyprinidae,Cyprinus,carpio
+CAR,California Roach,N,Chordata,Osteichthyes,Cypriniformes,Cyprinidae,Hesperoleucus,symmetricus
+CAT,Catfish Unknown,I,Chordata,Osteichthyes,Siluriformes,Ictaluridae,NA,NA
+CHC,Channel Catfish,I,Chordata,Osteichthyes,Siluriformes,Ictaluridae,Ictalurus,punctatus
+CHN,Chinook Salmon,N,Chordata,Osteichthyes,Salmoniformes,Salmonidae,Oncorhynchus,tshawytscha
+CMC,Chinese Mitten Crab,I,Arthropoda,Crustacea,Decapoda,Grapsidae,Eriocheir,sinensis
+DSM,Delta Smelt,N,Chordata,Osteichthyes,Salmoniformes,Osmeridae,Hypomesus,transpacificus
+FHM,Fathead Minnow,I,Chordata,Osteichthyes,Cypriniformes,Cyprinidae,Pimephales,promelas
+GF,Goldfish,I,Chordata,Osteichthyes,Cypriniformes,Cyprinidae,Carassius,auratus
+GSF,Green Sunfish,I,Chordata,Osteichthyes,Perciformes,Centrarchidae,Lepomis,cyanellus
+GSN,Golden Shiner,I,Chordata,Osteichthyes,Cypriniformes,Cyprinidae,Notemigonus,crysoleucas
+GST,Green Sturgeon,N,Chordata,Osteichthyes,Acipenseriformes,Acipenseridae,Acipenser,medirostris
+HCH,Hitch,N,Chordata,Osteichthyes,Cypriniformes,Cyprinidae,Lavinia,exilicauda
+HH,Hardhead,I,Chordata,Osteichthyes,Cypriniformes,Cyprinidae,Mylopharodon,conocephalus
+LAM,Lamprey Unknown,N,Chordata,Cephalaspidomorphi,Petromyzontiformes,Petromyzontidae,Lampetra,NA
+LFS,Longfin Smelt,N,Chordata,Osteichthyes,Salmoniformes,Osmeridae,Spirinchus,thaleichthys
+LMB,Largemouth Bass,I,Chordata,Osteichthyes,Perciformes,Centrarchidae,Micropterus,salmoides
+LP,Bigscale Logperch,I,Chordata,Osteichthyes,Perciformes,Percidae,Percina,macrolepida
+MIN,Minnow Unknown,NA,Chordata,Osteichthyes,Cypriniformes,Cyprinidae,NA,NA
+MQF,Western Mosquitofish,I,Chordata,Osteichthyes,Cyprinodontiformes,Poeciliidae,Gambusia,affinis
+MSS,Inland Silverside,I,Chordata,Osteichthyes,Atheriniformes,Atherinidae,Menidia,beryllina
+NONE,NoCatch,NA,NA,NA,NA,NA,NA,nocatch
+PKN,Pumpkinseed Sunfish,N,Chordata,Actinopterygii,Perciformes,Centrarchidae,Lepomis,gibbosus
+PL,Pacific  Lamprey,N,Chordata,Cephalaspidomorphi,Petromyzontiformes,Petromyzontidae,Lampetra,tridentata
+PRS,Prickly Sculpin,N,Chordata,Osteichthyes,Scorpaeniformes,Cottidae,Cottus,asper
+PSS,Pacific Staghorn Sculpin,N,Chordata,Osteichthyes,Scorpaeniformes,Cottidae,Leptocottus,armatus
+RBT,Rainbow / Steelhead Trout,N,Chordata,Osteichthyes,Salmoniformes,Salmonidae,Oncorhynchus,mykiss
+RES,Redear Sunfish,I,Chordata,Osteichthyes,Perciformes,Centrarchidae,Lepomis,microlophus
+RFK,Rainwater Killifish,I,Chordata,Osteichthyes,Cyprinodontiformes,Cyprinodontidae,Lucania,parva
+RFS,Riffle Sculpin,N,Chordata,Osteichthyes,Scorpaeniformes,Cottidae,Cottus,gulosus
+RL,River Lamprey,N,Chordata,Cephalaspidomorphi,Petromyzontiformes,Petromyzontidae,Lampetra,ayresi
+RSN,Red Shiner,I,Chordata,Osteichthyes,Cypriniformes,Cyprinidae,Cyprinella,lutrensis
+SAPM,Sacramento Pikeminnow,N,Chordata,Osteichthyes,Cypriniformes,Cyprinidae,Ptychocheilus,grandis
+SASU,Sacramento Sucker,N,Chordata,Osteichthyes,Cypriniformes,Catostomidae,Catostomus,occidentalis
+SCB,Sacramento Blackfish,N,Chordata,Osteichthyes,Cypriniformes,Cyprinidae,Orthodon,microlepidotus
+SCP,Sculpin Unknown,N,Chordata,Osteichthyes,Scorpaeniformes,Cottidae,NA,NA
+SF,Pumpkinseed,I,Chordata,Osteichthyes,Perciformes,Centrarchidae,Lepomis,gibbosus
+SHM,Shimofuri Goby,I,Chordata,Osteichthyes,Perciformes,Gobiidae,Tridentiger,bifasciatus
+SHR,Siberian Prawn,I,Arthropoda,Crustacea,Caridae,Palaemonidae,Exopalaemon,modestus
+SHRK,Mississippi Grass Shrimp,I,Arthropoda,Malacostraca,Decapoda,Palaemonidae,Palaemonetes,kadiakensis
+SMB,Smallmouth Bass,I,Chordata,Osteichthyes,Perciformes,Centrarchidae,Micropterus,dolomieu
+SME,Smelt Unknown,NA,Chordata,Osteichthyes,Salmoniformes,Osmeridae,NA,NA
+SNF,Sunfish Unknown,I,Chordata,Osteichthyes,Perciformes,Centrarchidae,NA,NA
+SPB,Spotted Bass,I,Chordata,Osteichthyes,Perciformes,Centrarchidae,Micropterus,punctulatus
+SPLT,Splittail,N,Chordata,Osteichthyes,Cypriniformes,Cyprinidae,Pogonichthys,macrolepidotus
+STB,Striped Bass,I,Chordata,Osteichthyes,Perciformes,Percichthyidae,Morone,saxatilis
+STF,Starry Flounder,N,Chordata,Osteichthyes,Pleuronectiformes,Pleuronectidae,Platichthys,stellatus
+STG,Sturgeon Unknown,N,Chordata,Osteichthyes,Acipenseriformes,Acipenseridae,Acipenser,NA
+STSC,Staghorn Sculpin,N,Chordata,Actinopterygii,Scorpaeniformes,Cottidae,Leptocottus,armatus
+TFS,Threadfin Shad,I,Chordata,Osteichthyes,Clupeiformes,Clupeidae,Dorosoma,petenense
+TP,Tule Perch,N,Chordata,Osteichthyes,Perciformes,Embiotocidae,Hysterocarpus,traski
+TSS,Threespine Stickleback,N,Chordata,Osteichthyes,Gasterosteiformes,Gasterosteidae,Gasterosteus,aculeatus
+UNID,Unknown,NA,NA,NA,NA,NA,NA,unknown
+W,Warmouth,I,Chordata,Osteichthyes,Perciformes,Centrarchidae,Lepomis,gulosus
+WAG,Wakasagi,I,Chordata,Osteichthyes,Salmoniformes,Osmeridae,Hypomesus,nipponensis
+WHC,White Catfish,I,Chordata,Osteichthyes,Siluriformes,Ictaluridae,Ameiurus,catus
+WHS,White Crappie,I,Chordata,Osteichthyes,Perciformes,Centrarchidae,Pomoxis,annularis
+WST,White Sturgeon,N,Chordata,Osteichthyes,Acipenseriformes,Acipenseridae,Acipenser,transmontanus
+YEB,Yellow Bullhead,I,Chordata,Osteichthyes,Siluriformes,Ictaluridae,Ictalurus,natalis
+YFG,Yellowfin Goby,I,Chordata,Osteichthyes,Perciformes,Gobiidae,Acanthogobius,flavimanus

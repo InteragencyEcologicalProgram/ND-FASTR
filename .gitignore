@@ -1,5 +1,9 @@
-# History files
+.Rproj.user
 .Rhistory
+<<<<<<< HEAD
+.RData
+.Ruserdata
+=======
 .Rapp.history
 #large data sets
 .zip
@@ -39,3 +43,4 @@ d-wq_boxplots.Rmd
 d-wq_ts_station_plots.Rmd
 d-wq_ts_regional_plots.Rmd
 d-wq_chl-nh3_plots.Rmd
+>>>>>>> 56b08a460d4cef26917653a90faea03bd5d3987a
