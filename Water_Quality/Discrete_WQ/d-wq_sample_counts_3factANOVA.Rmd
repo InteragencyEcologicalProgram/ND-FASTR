@@ -1,0 +1,109 @@
+---
+title: "Discrete WQ - Sample counts and plots for 3-factor ANOVA"
+author: "Dave Bosworth"
+date: "12/21/2020"
+output: 
+  html_document: 
+    code_folding: hide
+    toc: true
+    toc_depth: 1
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+```
+
+```{r load functions, message = FALSE, warning = FALSE}
+# Source global NDFA functions
+source("global_ndfa_funcs.R")
+
+# Source functions for this Rmd file
+source("Water_Quality/Discrete_WQ/d-wq_sample_counts_3factANOVA_funcs.R")
+```
+
+```{r define file paths}
+# define relative filepath to discrete WQ lab data 
+fp_rel_dwq <- "WQ_Subteam/Processed_Data/Discrete/WQ_OUTPUT_Discrete_Lab_formatted.csv"
+
+# define absolute filepath to data
+fp_abs_dwq <- ndfa_abs_sp_path(fp_rel_dwq)
+```
+
+# Import and Prepare Data
+
+```{r import data, message = FALSE}
+# Import data
+df_dwq_orig <- read_csv(fp_abs_dwq)
+```
+
+```{r prepare data, message = FALSE}
+# Define stations to keep and their factor order
+stations <- c("RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "RYI", "RVB")
+
+# Clean original discrete lab data
+df_dwq_clean <- df_dwq_orig %>% 
+  # subset stations
+  filter(StationCode %in% stations) %>%
+  # parse date-time variable and add date and year variables
+  mutate(
+    DateTime = ymd_hms(DateTime),
+    Date = date(DateTime),
+    Year = year(DateTime)
+  ) %>% 
+  # remove years 2011 and 2012
+  filter(Year > 2012) %>% 
+  # add variable for NDFA flow action periods
+  ndfa_action_periods() %>% 
+  # convert some variables to factors for custom plot and sorting order
+  mutate(
+    StationCode = factor(StationCode, levels = stations),
+    FlowActionPeriod = factor(FlowActionPeriod, levels = c("Before", "During", "After"))
+  )
+```
+
+
+# Create Plots and Summary Tables
+
+```{r create plots and summary tables}
+# Create plots and summary tables for each year-analyte combination
+df_dwq_plots_tbls <- df_dwq_clean %>% 
+  nest(data = -c(Year, Analyte)) %>% 
+  mutate(
+    plot = map2(data, Analyte, .f = plot_dwq),
+    summ_data = map(data, ~calc_summ_tbl(.x) %>% add_ndfa_region()), 
+    gt_tbl = map(summ_data, .f = conv_gt_table)
+  ) %>% 
+  nest(data2 = -Year)
+```
+
+
+# Plots and Data Summaries {.tabset .tabset-fade .tabset-pills}
+
+```{r print plots and summary tables, echo = FALSE, results = "asis", fig.height = 7, fig.width = 5}
+for (i in 1:nrow(df_dwq_plots_tbls)) {
+  # Create heading for each parameter
+  cat("## ", as.character(df_dwq_plots_tbls$Year[i]), " {.tabset .tabset-pills}\n\n")
+  for (j in 1:nrow(df_dwq_plots_tbls$data2[[i]])) {
+    # Create subheadings for each yr
+    cat("### ", as.character(df_dwq_plots_tbls$data2[[i]]$Analyte[j]), "\n\n") 
+    # Display plot
+    print(df_dwq_plots_tbls$data2[[i]]$plot[[j]])
+    cat("\n\n")
+    # Display gt table
+    print(df_dwq_plots_tbls$data2[[i]]$gt_tbl[[j]])
+    cat("\n\n")
+  }
+}
+```
+
