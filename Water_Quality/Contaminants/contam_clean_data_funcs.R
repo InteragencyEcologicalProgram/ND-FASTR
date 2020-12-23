@@ -25,14 +25,21 @@ import_nwis_data <- function(file_path) {
 
 # Convert NA values, where NA (missing) values represent measurements below the Method Detection 
   # Limit and "NA" values represent instances when the parameter wasn't analyzed
-convert_na_val <- function(df, var_idx_start, var_idx_end) {
+convert_na_val <- function(df, var_start, var_end) {
+  # Convert var_start and var_end to quosures for tidy evaluation
+  var_start_enquo <- enquo(var_start)
+  var_end_enquo <- enquo(var_end)
+  
+  # Convert NA values for specified columns
   df %>% 
-    mutate_at(
-      c(var_idx_start:var_idx_end),
-      ~case_when(
-        is.na(.x) ~ "Non-detect",
-        .x == "NA" ~ "Not analyzed",
-        TRUE ~ .x
+    mutate(
+      across(
+        !!var_start_enquo:!!var_end_enquo,
+        ~case_when(
+          is.na(.x) ~ "Non-detect",
+          .x == "NA" ~ "Not analyzed",
+          TRUE ~ .x
+        )
       )
     )
 }

@@ -34,24 +34,21 @@ library(kableExtra)
 ```
 
 ```{r load functions}
-# Source global WQ functions
-source("Water_Quality/global_wq_funcs.R")
+# Source global NDFA functions
+source("global_ndfa_funcs.R")
 
 # Source contaminants data cleaning functions
 source("Water_Quality/Contaminants/contam_clean_data_funcs.R")
 ```
 
 ```{r define file paths}
-# Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
-fp_fastr <- "California Department of Water Resources/North Delta Flow Action - Documents/WQ_Subteam/"
-
 # Define relative file paths for raw and processed contaminants data files
-fp_rel_raw <- paste0(fp_fastr, "Raw_Data/Contaminants")
-fp_rel_proc <- paste0(fp_fastr, "Processed_Data/Contaminants")
+fp_rel_raw <- "WQ_Subteam/Raw_Data/Contaminants"
+fp_rel_proc <- "WQ_Subteam/Processed_Data/Contaminants"
 
 # Define absolute file paths
-fp_abs_raw <- get_abs_path(fp_rel_raw)
-fp_abs_proc <- get_abs_path(fp_rel_proc)
+fp_abs_raw <- ndfa_abs_sp_path(fp_rel_raw)
+fp_abs_proc <- ndfa_abs_sp_path(fp_rel_proc)
 
 # Clean up
 rm(fp_rel_raw, fp_rel_proc)
@@ -60,10 +57,10 @@ rm(fp_rel_raw, fp_rel_proc)
 The data downloaded from NWIS has 5-digit numeric codes to represent each parameter measured. We developed a crosswalk table to convert these numeric codes to standardized names of the parameters. We also used this crosswalk table to standardize the parameter names in the Excel spreadsheets provided by Jim Orlando.
 
 ```{r import param code crosswalk}
-# Bring in dataframe to be used as a crosswalk for the parameter codes and standardized names
+# Import dataframe to be used as a crosswalk for the parameter codes and standardized names
 param_code_cw <- 
   read_excel(
-    paste0(fp_abs_raw, "/USGS_Data_Download_metadata.xlsx"), 
+    file.path(fp_abs_raw, "USGS_Data_Download_metadata.xlsx"), 
     sheet = "Parameter Codes"
   )
 ```
@@ -78,7 +75,7 @@ Import the water concentration data in the two Excel spreadsheets provided by Ji
 # Import water concentration data for 2016-2018:
 water_conc16_18_orig <- 
   read_excel(
-    path = paste0(fp_abs_raw, "/PesticideResults_YoloDWR_2016_18Data_ForDWR.xlsx"),
+    path = file.path(fp_abs_raw, "PesticideResults_YoloDWR_2016_18Data_ForDWR.xlsx"),
     sheet =  "Water",
     range = "B1:GB175",
     col_types = c(
@@ -93,7 +90,7 @@ water_conc16_18_orig <-
 # Import water concentration data for 2019:
 water_conc19_orig <- 
   read_excel(
-    path = paste0(fp_abs_raw, "/2019YoloBypass_Pesticide Results_forDWR.xlsx"),
+    path = file.path(fp_abs_raw, "2019YoloBypass_Pesticide Results_forDWR.xlsx"),
     sheet =  "Water",
     range = "C1:FS93",
     col_types = c(
@@ -110,7 +107,7 @@ Import the MDL information downloaded from NWIS.
 
 ```{r import nwis water data mdl}
 water_nwis_orig <-
-  import_nwis_data(paste0(fp_abs_raw, "/CONTAM_RAW_NWIS_2015-2019.csv")) %>% 
+  import_nwis_data(file.path(fp_abs_raw, "CONTAM_RAW_NWIS_2015-2019.csv")) %>% 
   filter(medium_cd == "WS")
 ```
 
@@ -126,7 +123,7 @@ water_conc16_18_clean1 <- water_conc16_18_orig %>%
   # first remove completely empty rows within the dataset
   filter(!is.na(Site)) %>%
   # use convert_na_val function to define NA values correctly
-  convert_na_val(4, 178) %>% 
+  convert_na_val(`3,4-DCA`, Zoxamide) %>% 
   # restructure dataframe and remove values that weren't analyzed
   pivot_longer(
     cols = -c(Site, Date, Time), 
@@ -140,7 +137,7 @@ water_conc19_clean1 <- water_conc19_orig %>%
   # first remove completely empty rows within the dataset
   filter(!is.na(Site)) %>%
   # use convert_na_val function to define NA values correctly
-  convert_na_val(4, 167) %>% 
+  convert_na_val(`3,4-Dichloroaniline`, Zoxamide) %>% 
   # restructure dataframe and remove values that weren't analyzed
   pivot_longer(
     cols = -c(Site, Date, Time), 
@@ -380,7 +377,7 @@ Export the contaminant water concentration data as a .csv file to the Processed_
 # change eval option to TRUE when you want to export the data when knitting this file
 water_conc_all_f %>% 
   write_excel_csv(
-    path = paste0(fp_abs_proc, "/WQ_OUTPUT_Contam_water_formatted.csv"),
+    path = file.path(fp_abs_proc, "WQ_OUTPUT_Contam_water_formatted.csv"),
     na = ""
   )
 ```
@@ -403,7 +400,7 @@ Import the suspended sediment concentration data in the two Excel spreadsheets p
 # Import suspended sediment concentration data for 2016-2018:
 ss_conc16_18_orig <- 
   read_excel(
-    path = paste0(fp_abs_raw, "/PesticideResults_YoloDWR_2016_18Data_ForDWR.xlsx"),
+    path = file.path(fp_abs_raw, "PesticideResults_YoloDWR_2016_18Data_ForDWR.xlsx"),
     sheet =  "Suspended Sed",
     range = "B1:EU175",
     col_types = c(
@@ -419,7 +416,7 @@ ss_conc16_18_orig <-
 # Import suspended sediment concentration data for 2019:
 ss_conc19_orig <- 
   read_excel(
-    path = paste0(fp_abs_raw, "/2019YoloBypass_Pesticide Results_forDWR.xlsx"),
+    path = file.path(fp_abs_raw, "2019YoloBypass_Pesticide Results_forDWR.xlsx"),
     sheet =  "Suspended Sediment",
     range = "C1:EJ93",
     col_types = c(
@@ -438,7 +435,7 @@ Import the MDL information downloaded from NWIS.
 
 ```{r import nwis susp sed data mdl}
 ss_nwis_orig <-
-  import_nwis_data(paste0(fp_abs_raw, "/CONTAM_RAW_NWIS_2015-2019.csv")) %>% 
+  import_nwis_data(file.path(fp_abs_raw, "CONTAM_RAW_NWIS_2015-2019.csv")) %>% 
   filter(medium_cd == "SS")
 ```
 
@@ -454,7 +451,7 @@ ss_conc16_18_clean1 <- ss_conc16_18_orig %>%
   # first remove completely empty rows within the dataset
   filter(!is.na(Site)) %>%
   # use convert_na_val function to define NA values correctly
-  convert_na_val(6, 146) %>% 
+  convert_na_val(`3,4-DCA`, Zoxamide) %>% 
   # rename mass and volume variables
   rename(
     Vol = "Volume (L)",
@@ -475,7 +472,7 @@ ss_conc19_clean1 <- ss_conc19_orig %>%
   # first remove completely empty rows within the dataset
   filter(!is.na(Site)) %>%
   # use convert_na_val function to define NA values correctly
-  convert_na_val(6, 132) %>% 
+  convert_na_val(`3,4-Dichloroaniline`, Zoxamide) %>% 
   # rename mass and volume variables
   rename(
     Vol = "Filtered Volume for Sed Analysis (ml)",
@@ -747,7 +744,7 @@ Export the contaminant suspended sediment concentration data as a .csv file to t
 # change eval option to TRUE when you want to export the data when knitting this file
 ss_conc_all_f %>% 
   write_excel_csv(
-    path = paste0(fp_abs_proc, "/WQ_OUTPUT_Contam_SuspSed_formatted.csv"),
+    path = file.path(fp_abs_proc, "WQ_OUTPUT_Contam_SuspSed_formatted.csv"),
     na = ""
   )
 ```
