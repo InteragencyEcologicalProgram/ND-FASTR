@@ -14,7 +14,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Load Packages
-
 ```{r load, echo = FALSE, results = FALSE, warning = FALSE, message = FALSE}
 
 rm(list=ls(all=TRUE))
@@ -27,18 +26,20 @@ library(visreg) # Visualize models
 
 ## Import data
 * Fish_ndfa: integrated fish dataset
-* Merge flow data into rest of data
+* FlowDesignation: Assigns action phases by date
+* Regions: Assigns regions to fish stations
+* Merge all together
 * Define variable structures
 * Order action phases
 
 ```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
-Fish_ndfa_0 <- read.csv("R_write/FISH_MAN_allIEPsurveys_20201030.csv")
+Fish_ndfa_0 <- read.csv("fish_code/R_write/FISH_MAN_allIEPsurveys_20201030.csv")
 Fish_ndfa <- select(Fish_ndfa_0, -c(Turbidity, DO, Latitude, Longitude))
 FlowDesignation <- read.csv("fish data/FlowDatesDesignations_45days.csv")
-Regions <- read.csv("fish_code/R_write/Stations_Fish_NDFA_2020-10-30.csv")
+Regions <- read.csv("fish_code/R_write/Stations_Fish_NDFA_2021-01-13.csv")
 Regions_min <- Regions %>%
   rename(Survey = Survey.x) %>%
-  select(-c(Intersect, geometry))
+  select(-c(Intersect, geometry, RegionMult))
 
 # Look at data
 head(Fish_ndfa)
@@ -95,25 +96,26 @@ str(Fish_all)
 
 
 ## Data Prep
-* Filter to just tow data
-* Fill in zeros for unlisted species
+* Filter to just tow data and year starting 2013
+* Fill in zeros for unlisted species using complete cases
 * Calculate CPUE 
-* Organize data the way you want it
+* Organize data
 
 ```{r seine, warning = FALSE, message = FALSE}
 # Filter Dataset
-Tow <- Fish_all %>% filter(Survey %in% c("EDSM", "Townet", "FMWT")) %>%
+Tow <- Fish_all %>% 
+  filter(Survey %in% c("EDSM", "Townet", "FMWT")) %>%
+  filter(Year>2012) %>%
   arrange(Survey, Date, StationCode, Tow, Depth)
 
 ### Complete Cases
-# For each Date, Survey, StationCode combination, make sure each fish species is represented with 
-# either positive count or zero. 
+# For each Date, Survey, StationCode combination, make sure each fish species is represented with either positive count or zero. 
 Tow_completecase <- Tow %>%
   group_by(Date, Survey, StationCode, Tow, Depth, CommonName) %>%
   summarize(sum.count = sum(totalCount)) %>%
   ungroup() %>%
   complete(CommonName, nesting(Date, Survey, StationCode, Tow, Depth), fill = list(sum.count = 0)) %>%
-  arrange(Date,Survey, StationCode,CommonName)
+  arrange(Date, Survey, StationCode,CommonName)
 
 ### Merge back together with rest of data
 
@@ -130,11 +132,7 @@ Tow_CPUE <- Tow_complete %>%
   mutate(CPUE = sum.count/VolumeSampled)
 
 ### Rearrange columns 
-Tow_f <- Tow_CPUE[, c("Date", "Year", "fYear", "Month", "Day", "Survey", "StationCode", 
-                          "Latitude", "Longitude","Region","MethodCode",
-                         "WYType", "FlowPulseType", "NetFlowDays","ActionPhase", 
-                         "Secchi",  "Conductivity", "WaterTemp",  "Tow",
-                         "Depth", "VolumeSampled",  "CommonName", "sum.count", "CPUE")]
+Tow_f <- Tow_CPUE[, c("Date", "Year", "fYear", "Month", "Day", "Survey", "StationCode", "Latitude", "Longitude","Region","MethodCode", "WYType", "FlowPulseType", "NetFlowDays","ActionPhase", "Secchi",  "Conductivity", "WaterTemp",  "Tow", "Depth", "VolumeSampled",  "CommonName", "sum.count", "CPUE")]
 ```
 
 
@@ -144,6 +142,13 @@ Tow_f <- Tow_CPUE[, c("Date", "Year", "fYear", "Month", "Day", "Survey", "Statio
 CPUE_means_Tow_phase <- Tow_f %>%
   group_by(Year, Survey, StationCode, Tow, ActionPhase, CommonName) %>% 
   summarize(mean.CPUE = mean(CPUE)) 
+```
+
+## Calculate how often fish is present in samples
+```{r}
+Tow_f %>%
+  group_by(Survey, StationCode, CommonName) %>%
+  summarize()
 ```
 
 

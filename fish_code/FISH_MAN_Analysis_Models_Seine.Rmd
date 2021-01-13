@@ -30,13 +30,13 @@ library(visreg) # Visualize models
 * Order action phases
 
 ```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
-Fish_ndfa_0 <- read.csv("R_write/FISH_MAN_allIEPsurveys_20201030.csv")
+Fish_ndfa_0 <- read.csv("fish_code/R_write/FISH_MAN_allIEPsurveys_20201030.csv")
 Fish_ndfa <- select(Fish_ndfa_0, -c(Turbidity, DO, Latitude, Longitude))
-FlowDesignation <- read.csv("Data/FlowDatesDesignations_45days.csv")
-Regions <- read.csv("R_write/Stations_Fish_NDFA_2020-10-30.csv")
+FlowDesignation <- read.csv("fish data/FlowDatesDesignations_45days.csv")
+Regions <- read.csv("fish_code/R_write/Stations_Fish_NDFA_2021-01-13.csv")
 Regions_min <- Regions %>%
   rename(Survey = Survey.x) %>%
-  select(-c(Intersect, geometry))
+  select(-c(Intersect, geometry, RegionMult))
 
 # Look at data
 head(Fish_ndfa)
