@@ -101,6 +101,7 @@ str(Fish_all)
 ```{r seine, warning = FALSE, message = FALSE}
 # Filter Dataset
 Seine <-  Fish_all %>% filter(MethodCode == "SEIN" | MethodCode == "BSEIN") %>%
+  filter(Year>2012)%>%
 arrange(Survey, Date, StationCode)
 
 ### Complete Cases
