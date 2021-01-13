@@ -169,6 +169,12 @@ Tow_smeltish <- Tow_f %>% filter(CommonName %in% list_smeltish)
 
 ### Smeltish
 
+```{r}
+ggplot(Tow_smeltish, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + theme_bw()
+
+ggplot(Tow_smeltish, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + theme_bw()
+```
+
 Using transformations - doesn't work well
 ```{r}
 (M.smeltish1 <- glm(log(CPUE+1)~FlowPulseType + ActionPhase + Region, data  = Tow_smeltish))
@@ -190,6 +196,10 @@ Tow_smeltish$Samp <- log(Tow_smeltish$VolumeSampled)
 # Formula
 f1 <- formula(sum.count ~ Region + fYear + ActionPhase + offset(Samp))
 
+# Overdispersion = Variance much larger than mean. 
+var(Tow_smeltish$sum.count)
+mean(Tow_smeltish$sum.count)
+
 # Negbin
 zinb1 <- zeroinfl(f1, na.action = "na.fail", dist="negbin", link = "logit", data = Tow_smeltish) ; summary(zinb1)
 
@@ -197,14 +207,17 @@ zinb1 <- zeroinfl(f1, na.action = "na.fail", dist="negbin", link = "logit", data
 zip1 <- zeroinfl(f1, dist = "poisson", link = "logit", data = Tow_smeltish); summary(zip1)
 ```
 
-Compare zero-inflated poisson with zero-inflated negbin
-```{r}
+Compare zero-inflated poisson with zero-inflated negbin using likelihood ratio test
 
+**Confused about what this test is telling me. I use negbin if the test is significant?**
+```{r}
+library(lmtest)
+lrtest(zip1, zinb1)
+
+# Significantly different 
 ```
 
 Diagnostic Plots
-
-* Still need to figure out how to do this
 
 ```{r}
 # Diagnostic Plots -------------------------------------
@@ -216,8 +229,9 @@ EP1 <- resid(zinb1, type = "pearson")
 par(mfrow = c(2,2))
 plot(x=zinb1$fitted.values, y = EP1, main = "Pearson residuals")
 # qqrplot(EP1) # Don't know why not working
-plot(x=Tow_smeltish$ActionPhase,y = EP1, main = "Action Phase")
-plot(x=Tow_smeltish$Region, y = EP1, main = "Region")
+plot(x=Tow_smeltish$ActionPhase,y = EP1, main = "Resid vs Action Phase")
+plot(x=Tow_smeltish$Region, y = EP1, main = "Resid vs Region")
+plot(x=Tow_smeltish$fYear, y = EP1, main = "Resid vs Year")
 
 par(mfrow = c(2,2))
 visreg(zinb1)
@@ -225,13 +239,22 @@ visreg(zinb1)
 
 **Conclusions**
 
-* More smeltish in phase "pre" followed by "during" follow by "post"
-* More smeltish in Lower Yolo, less in Lower Sac River and Middle Sac River
-* No effect of region on the extra zeroes
-* More zeroes in post and pre vs. during
+* More smeltish in phase "pre" followed by "post" followed by "during"
+* More smeltish upstream, then downstream then Middle Sac River (much less)
+* Variability by year but nothing too big
+* No effect of region or year on the extra zeroes
+* More zeroes in during then post then pre
 
 ### Native fishes
+
+```{r}
+ggplot(Tow_natives, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + theme_bw()
+
+ggplot(Tow_natives, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + theme_bw()
+```
+
 Zero-inflated model
+# Doesn't work - not enough samples?
 ```{r}
 
 # For CPUE, use offset to account for sampling effort
@@ -249,7 +272,8 @@ zip2 <- zeroinfl(f2, dist = "poisson", link = "logit", data = Tow_natives); summ
 
 Compare zero-inflated poisson with zero-inflated negbin
 ```{r}
-
+library(lmtest)
+lrtest(zip2, zinb2)
 ```
 
 Diagnostic Plots
@@ -265,6 +289,7 @@ plot(x=zinb2$fitted.values, y = EP2, main = "Pearson residuals")
 # qqrplot(EP2) # Don't know why not working
 plot(x=Tow_natives$ActionPhase,y = EP2, main = "Action Phase")
 plot(x=Tow_natives$Region, y = EP2, main = "Region")
+plot(x=Tow_natives$fYear, y = EP2, main = "Year")
 
 par(mfrow = c(2,2))
 visreg(zinb2)
@@ -284,6 +309,7 @@ Tow_allfish <- Tow_f %>%
 ```
 
 Zero-inflated model
+Could probably try a normal negative binomial as well
 ```{r}
 
 # For CPUE, use offset to account for sampling effort
@@ -317,6 +343,7 @@ plot(x=zinb3$fitted.values, y = EP3, main = "Pearson residuals")
 # qqrplot(EP3) # Don't know why not working
 plot(x=Tow_f$ActionPhase,y = EP3, main = "Action Phase")
 plot(x=Tow_f$Region, y = EP3, main = "Region")
+plot(x=Tow_f$fYear, y = EP3, main = "Year")
 
 par(mfrow = c(2,2))
 visreg(zinb3)

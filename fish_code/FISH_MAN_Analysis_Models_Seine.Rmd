@@ -21,6 +21,7 @@ library(tidyverse)
 library(lubridate) # Datetime
 library(pscl) # Run zips and zinbs
 library(visreg) # Visualize models
+library(viridis) # Color palette
 ```
 
 ## Import data
@@ -30,10 +31,10 @@ library(visreg) # Visualize models
 * Order action phases
 
 ```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
-Fish_ndfa_0 <- read.csv("fish_code/R_write/FISH_MAN_allIEPsurveys_20201030.csv")
+Fish_ndfa_0 <- read.csv("fish data/FISH_MAN_allIEPsurveys_20201030.csv")
 Fish_ndfa <- select(Fish_ndfa_0, -c(Turbidity, DO, Latitude, Longitude))
 FlowDesignation <- read.csv("fish data/FlowDatesDesignations_45days.csv")
-Regions <- read.csv("fish_code/R_write/Stations_Fish_NDFA_2021-01-13.csv")
+Regions <- read.csv("fish data/Stations_Fish_NDFA_2021-01-13.csv")
 Regions_min <- Regions %>%
   rename(Survey = Survey.x) %>%
   select(-c(Intersect, geometry, RegionMult))
@@ -171,6 +172,12 @@ Seine_smeltish <- Seine_f %>% filter(CommonName %in% list_smeltish)
 ## Run ANOVA {.tabset}
 
 ### Smeltish
+```{r}
+ggplot(Seine_smeltish, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+ggplot(Seine_smeltish, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+```
+
 
 Using transformations - doesn't work well
 ```{r}
@@ -186,7 +193,6 @@ hist(logCPUE)
 
 Zero-inflated model
 ```{r}
-
 # For CPUE, use offset to account for sampling effort
 Seine_smeltish$Samp <- log(Seine_smeltish$VolumeSampled)
 
@@ -221,15 +227,29 @@ plot(x=zinb1$fitted.values, y = EP1, main = "Pearson residuals")
 # qqrplot(EP1) # Don't know why not working
 plot(x=Seine_smeltish$ActionPhase,y = EP1, main = "Action Phase")
 plot(x=Seine_smeltish$Region, y = EP1, main = "Region")
+plot(x=Seine_smeltish$fYear, y = EP1, main = "Year")
 
 par(mfrow = c(2,2))
 visreg(zinb1)
 ```
 
 **Conclusions**
-
+* More smeltish downstream, then middle Sac, then upstream
+* More smeltish pre, then during, then post
+* Year variability
+* More zeros in Middle Sac River, then Downstream, then Upstream
+* More zeros Pre vs Post
+* Not much year effect on zeros but some variability
 
 ### Native fishes
+
+```{r}
+ggplot(Seine_natives, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+ggplot(Seine_natives, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+```
+
+
 Zero-inflated model
 ```{r}
 
@@ -264,10 +284,24 @@ plot(x=zinb2$fitted.values, y = EP2, main = "Pearson residuals")
 # qqrplot(EP2) # Don't know why not working
 plot(x=Seine_natives$ActionPhase,y = EP2, main = "Action Phase")
 plot(x=Seine_natives$Region, y = EP2, main = "Region")
+plot(x=Seine_natives$fYear, y = EP2, main = "Year")
 
 par(mfrow = c(2,2))
 visreg(zinb2)
+
+levels(Seine_natives$fYear)
 ```
+
+**Conclusions**
+
+* More natives Middle Sac > Downstream > Upstream
+* More natives Pre > Post > During
+* Having hard time reading the years
+* More zeros Downstream > Middle Sac > Upstream
+* More zeros During > Pre
+
+
+
 
 ### Overall CPUE
 * Think about if you want to sum overall CPUE or do individual species? - can do regular ANOVA if you combine all species for overall CPUE
