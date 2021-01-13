@@ -1,11 +1,13 @@
 ---
-title: "FASTR_Fish_ANOVA"
+title: "FISH_MAN_Analysis_Models"
 author: "Catarina Pien"
 date: "12/15/2020"
 output: html_document
 editor_options: 
   chunk_output_type: console
 ---
+Code for fish models
+Fish ~ Region + Action Phase + Year
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -32,8 +34,8 @@ library(visreg) # Visualize models
 ```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
 Fish_ndfa_0 <- read.csv("R_write/FISH_MAN_allIEPsurveys_20201030.csv")
 Fish_ndfa <- select(Fish_ndfa_0, -c(Turbidity, DO, Latitude, Longitude))
-FlowDesignation <- read.csv("Data/FlowDatesDesignations_45days.csv")
-Regions <- read.csv("R_write/Stations_Fish_NDFA_2020-10-30.csv")
+FlowDesignation <- read.csv("fish data/FlowDatesDesignations_45days.csv")
+Regions <- read.csv("fish_code/R_write/Stations_Fish_NDFA_2020-10-30.csv")
 Regions_min <- Regions %>%
   rename(Survey = Survey.x) %>%
   select(-c(Intersect, geometry))
