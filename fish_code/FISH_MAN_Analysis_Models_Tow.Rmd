@@ -1,0 +1,318 @@
+---
+title: "FASTR_Fish_ANOVA"
+author: "Catarina Pien"
+date: "12/15/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load Packages
+
+```{r load, echo = FALSE, results = FALSE, warning = FALSE, message = FALSE}
+
+rm(list=ls(all=TRUE))
+
+library(tidyverse)
+library(lubridate) # Datetime
+library(pscl) # Run zips and zinbs
+library(visreg) # Visualize models
+```
+
+## Import data
+* Fish_ndfa: integrated fish dataset
+* Merge flow data into rest of data
+* Define variable structures
+* Order action phases
+
+```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
+Fish_ndfa_0 <- read.csv("R_write/FISH_MAN_allIEPsurveys_20201030.csv")
+Fish_ndfa <- select(Fish_ndfa_0, -c(Turbidity, DO, Latitude, Longitude))
+FlowDesignation <- read.csv("Data/FlowDatesDesignations_45days.csv")
+Regions <- read.csv("R_write/Stations_Fish_NDFA_2020-10-30.csv")
+Regions_min <- Regions %>%
+  rename(Survey = Survey.x) %>%
+  select(-c(Intersect, geometry))
+
+# Look at data
+head(Fish_ndfa)
+str(Fish_ndfa)
+
+# Add variables
+Fish_ndfa$Date <- ymd(Fish_ndfa$Date)
+Fish_ndfa$Month <- month(Fish_ndfa$Date)
+Fish_ndfa$Day <- day(Fish_ndfa$Date)
+FlowDesignation$PreFlowStart <- mdy(FlowDesignation$PreFlowStart)
+FlowDesignation$PreFlowEnd <- mdy(FlowDesignation$PreFlowEnd)
+FlowDesignation$PostFlowStart <- mdy(FlowDesignation$PostFlowStart)
+FlowDesignation$PostFlowEnd <- mdy(FlowDesignation$PostFlowEnd)
+
+# Merge data from FlowDesignation Table (Water Year Type, Flow days and type)
+# Filter only Pre-During-Post Flow Action Data. 
+# We have a during action, and then Pre = 30 days before/Post = 30 days after
+Fish_all0 <- inner_join(Fish_ndfa,FlowDesignation, by = "Year")
+Fish_all1 <- left_join(Fish_all0, Regions_min, by = c("StationCode", "Survey"))
+
+# anti_join(Fish_all1, Fish_all0, by = colnames(Fish_all0))
+
+Fish_all <- Fish_all1 %>%
+   mutate(ActionPhase = ifelse(Date > PreFlowStart & Date<PreFlowEnd, "Pre", NA)) %>%
+   mutate(ActionPhase = replace(ActionPhase, Date > PreFlowEnd & Date < PostFlowStart, "During")) %>% 
+   mutate(ActionPhase = replace(ActionPhase, Date > PostFlowStart & Date < PostFlowEnd, "Post")) %>%
+  filter(!is.na(ActionPhase)) %>%
+   select(-c(PreFlowStart:PostFlowEnd)) %>%
+   arrange(Date, Survey, StationCode, CommonName)
+
+
+# Order Action Phases
+Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
+Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhase)[c(3,1,2)])
+
+# Define variable structures
+str(Fish_all)
+
+Fish_all$Date <- ymd(Fish_all$Date)
+Fish_all$fMonth <- ordered(Fish_all$Month)
+Fish_all$fYear <- ordered(Fish_all$Year)
+Fish_all$WYType <- as.factor(Fish_all$WYType)
+Fish_all$FlowPulseType <- as.factor(Fish_all$FlowPulseType)
+Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
+Fish_all$X1 <- NULL
+Fish_all$Survey <- as.factor(Fish_all$Survey)
+Fish_all$StationCode <- as.factor(Fish_all$StationCode)
+Fish_all$MethodCode <- as.factor(Fish_all$MethodCode)
+Fish_all$Region <- as.factor(Fish_all$Region)
+
+str(Fish_all)
+
+```
+
+
+## Data Prep
+* Filter to just tow data
+* Fill in zeros for unlisted species
+* Calculate CPUE 
+* Organize data the way you want it
+
+```{r seine, warning = FALSE, message = FALSE}
+# Filter Dataset
+Tow <- Fish_all %>% filter(Survey %in% c("EDSM", "Townet", "FMWT")) %>%
+  arrange(Survey, Date, StationCode, Tow, Depth)
+
+### Complete Cases
+# For each Date, Survey, StationCode combination, make sure each fish species is represented with 
+# either positive count or zero. 
+Tow_completecase <- Tow %>%
+  group_by(Date, Survey, StationCode, Tow, Depth, CommonName) %>%
+  summarize(sum.count = sum(totalCount)) %>%
+  ungroup() %>%
+  complete(CommonName, nesting(Date, Survey, StationCode, Tow, Depth), fill = list(sum.count = 0)) %>%
+  arrange(Date,Survey, StationCode,CommonName)
+
+### Merge back together with rest of data
+
+# Get distinct samples for looking at Water Quality 
+Tow_samples <- Tow %>% select(-c(CommonName, totalCount)) %>% distinct()
+
+# Merge 
+Tow_complete <- left_join(Tow_completecase, Tow_samples, by = c("Date", "Survey", "StationCode", "Tow", "Depth"))
+
+### Calculate CPUE
+# Remove samples with no volume 
+Tow_CPUE <- Tow_complete %>%
+  filter(!is.na(VolumeSampled))%>%
+  mutate(CPUE = sum.count/VolumeSampled)
+
+### Rearrange columns 
+Tow_f <- Tow_CPUE[, c("Date", "Year", "fYear", "Month", "Day", "Survey", "StationCode", 
+                          "Latitude", "Longitude","Region","MethodCode",
+                         "WYType", "FlowPulseType", "NetFlowDays","ActionPhase", 
+                         "Secchi",  "Conductivity", "WaterTemp",  "Tow",
+                         "Depth", "VolumeSampled",  "CommonName", "sum.count", "CPUE")]
+```
+
+
+```{r}
+### Mean CPUE 
+## Calculate means for each species by year-location-actionphase
+CPUE_means_Tow_phase <- Tow_f %>%
+  group_by(Year, Survey, StationCode, Tow, ActionPhase, CommonName) %>% 
+  summarize(mean.CPUE = mean(CPUE)) 
+```
+
+
+## Filter for species sets
+
+```{r Tow filters, warning = FALSE, message = FALSE}
+# Lists
+list_native <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish")
+list_smeltish <- c("Wakasagi", "Inland Silverside")
+list_nmds <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish","Wakasagi", "Inland Silverside", "Delta Smelt", "Carp", "Goldfish", "Hardhead", "Golden Shiner", "Fathead Minnow", "Hitch","Rainwater Killifish", "Western Mosquitofish", "Black Crappie", "White Crappie", "Bluegill", "Bigscale Logperch","Largemouth Bass", "Smallmouth Bass", "Striped Bass", "Spotted Bass","Threadfin Shad", "American Shad", "Tridentiger spp_", "Shimofuri Goby", "White Catfish")
+
+Tow_natives <- Tow_f %>%filter(CommonName %in% list_native)
+Tow_nmds_larger <- Tow_f%>% filter(CommonName %in%list_nmds)
+Tow_smeltish <- Tow_f %>% filter(CommonName %in% list_smeltish)
+```
+
+## Run ANOVA {.tabset}
+
+### Smeltish
+
+Using transformations - doesn't work well
+```{r}
+(M.smeltish1 <- glm(log(CPUE+1)~FlowPulseType + ActionPhase + Region, data  = Tow_smeltish))
+summary(M.smeltish1)
+par(mfrow = c(2,2))
+plot(M.smeltish1)
+
+logCPUE <-  log(Tow_smeltish$CPUE + 1)
+hist(logCPUE)
+
+```
+
+Zero-inflated model
+```{r}
+
+# For CPUE, use offset to account for sampling effort
+Tow_smeltish$Samp <- log(Tow_smeltish$VolumeSampled)
+
+# Formula
+f1 <- formula(sum.count ~ Region + fYear + ActionPhase + offset(Samp))
+
+# Negbin
+zinb1 <- zeroinfl(f1, na.action = "na.fail", dist="negbin", link = "logit", data = Tow_smeltish) ; summary(zinb1)
+
+# Poisson
+zip1 <- zeroinfl(f1, dist = "poisson", link = "logit", data = Tow_smeltish); summary(zip1)
+```
+
+Compare zero-inflated poisson with zero-inflated negbin
+```{r}
+
+```
+
+Diagnostic Plots
+
+* Still need to figure out how to do this
+
+```{r}
+# Diagnostic Plots -------------------------------------
+# Model Validation 
+# Calculate residuals
+EP1 <- resid(zinb1, type = "pearson")
+
+# Diagnostic Plots
+par(mfrow = c(2,2))
+plot(x=zinb1$fitted.values, y = EP1, main = "Pearson residuals")
+# qqrplot(EP1) # Don't know why not working
+plot(x=Tow_smeltish$ActionPhase,y = EP1, main = "Action Phase")
+plot(x=Tow_smeltish$Region, y = EP1, main = "Region")
+
+par(mfrow = c(2,2))
+visreg(zinb1)
+```
+
+**Conclusions**
+
+* More smeltish in phase "pre" followed by "during" follow by "post"
+* More smeltish in Lower Yolo, less in Lower Sac River and Middle Sac River
+* No effect of region on the extra zeroes
+* More zeroes in post and pre vs. during
+
+### Native fishes
+Zero-inflated model
+```{r}
+
+# For CPUE, use offset to account for sampling effort
+Tow_natives$Samp <- log(Tow_natives$VolumeSampled)
+
+# Formula
+f2 <- formula(sum.count ~ Region + fYear + ActionPhase + offset(Samp))
+
+# Negbin
+zinb2 <- zeroinfl(f2, na.action = "na.fail", dist="negbin", link = "logit", data = Tow_natives) ; summary(zinb2)
+
+# Poisson
+zip2 <- zeroinfl(f2, dist = "poisson", link = "logit", data = Tow_natives); summary(zip2)
+```
+
+Compare zero-inflated poisson with zero-inflated negbin
+```{r}
+
+```
+
+Diagnostic Plots
+```{r}
+# Diagnostic Plots -------------------------------------
+# Model Validation 
+# Calculate residuals
+EP2 <- resid(zinb2, type = "pearson")
+
+# Diagnostic Plots
+par(mfrow = c(2,2))
+plot(x=zinb2$fitted.values, y = EP2, main = "Pearson residuals")
+# qqrplot(EP2) # Don't know why not working
+plot(x=Tow_natives$ActionPhase,y = EP2, main = "Action Phase")
+plot(x=Tow_natives$Region, y = EP2, main = "Region")
+
+par(mfrow = c(2,2))
+visreg(zinb2)
+```
+
+### Overall CPUE
+* Think about if you want to sum overall CPUE or do individual species? - can do regular ANOVA if you combine all species for overall CPUE
+* If you do modeling as above, consider using the Tow_nmds_larger grouping or calculate species that are in at least 5% of samples so there aren't *quite* so many zeroes. 
+* Below code is modeling for including **all** fish
+
+Sum Overall CPUE
+```{r}
+Tow_allfish <- Tow_f %>%
+  group_by(Survey,fYear, Date, Region, StationCode, ActionPhase, MethodCode, Tow, VolumeSampled) %>%
+  summarize(CPUE_total = sum(CPUE),
+            Count_total = sum(sum.count))
+```
+
+Zero-inflated model
+```{r}
+
+# For CPUE, use offset to account for sampling effort
+Tow_f$Samp <- log(Tow_f$VolumeSampled)
+
+# Formula
+f3 <- formula(sum.count ~ Region + fYear + ActionPhase + offset(Samp))
+
+# Negbin
+zinb3 <- zeroinfl(f3, na.action = "na.fail", dist="negbin", link = "logit", data = Tow_f) ; summary(zinb3)
+
+# Poisson
+zip3 <- zeroinfl(f3, dist = "poisson", link = "logit", data = Tow_f); summary(zip3)
+```
+
+Compare zero-inflated poisson with zero-inflated negbin
+```{r}
+
+```
+
+Diagnostic Plots
+```{r}
+# Diagnostic Plots -------------------------------------
+# Model Validation 
+# Calculate residuals
+EP3 <- resid(zinb3, type = "pearson")
+
+# Diagnostic Plots
+par(mfrow = c(2,2))
+plot(x=zinb3$fitted.values, y = EP3, main = "Pearson residuals")
+# qqrplot(EP3) # Don't know why not working
+plot(x=Tow_f$ActionPhase,y = EP3, main = "Action Phase")
+plot(x=Tow_f$Region, y = EP3, main = "Region")
+
+par(mfrow = c(2,2))
+visreg(zinb3)
+```
+
+
