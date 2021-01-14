@@ -1,0 +1,277 @@
+---
+output: 
+  html_document: 
+    code_folding: hide
+    toc: true
+    toc_depth: 1
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r echo = FALSE}
+# FASTR exploratory Analyses
+# Author: Laura Twardochleb
+# Date created: 10/12/2020
+# Purpose: ANOVAS/Regression explorations for FASTR
+
+# functions
+# Define absolute file path for SharePoint
+get_abs_path <- function(fp_rel){
+  fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_rel))
+  
+  return(fp_abs)
+}
+
+blank_theme <- function(){
+  theme_bw() +
+    theme(
+      panel.grid.major.y = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.text = element_text(color = 'black', size = 10, family = 'sans'),
+      axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
+      strip.text = element_text(size = 11),
+      axis.title = element_text(size = 15, face = 'bold'),
+      plot.title = element_text(size = 17, hjust = 0.5, face = 'bold'),
+      legend.position = 'top',
+      legend.title = element_blank(),
+      legend.box.margin = margin(-10,0,-10,0),
+      legend.text = element_text(size = 9)
+    )
+}
+```
+
+```{r message=FALSE, warning=FALSE, echo = FALSE}
+################# read in and clean data #######################################################################################################################
+#clears the global environment (loaded packages, stored objects, etc.)
+library(tidyverse)
+library(lubridate)
+library(quantreg)
+
+# define relative filepaths 
+fp_fastr <- 'California Department of Water Resources/North Delta Flow Action - Documents/WQ_Subteam/'
+
+fp_rel_discrete <- paste0(fp_fastr,'Processed_Data/Discrete/WQ_OUTPUT_Discrete_Lab_formatted.csv')
+fp_rel_distance <- paste0(fp_fastr,'Processed_Data/Discrete/Analysis/NDFA_map.csv')
+fp_rel_wy <- paste0(fp_fastr,'Processed_Data/Discrete/Analysis/FlowDatesDesignations.csv')
+fp_rel_fm <- paste0(fp_fastr,'Processed_Data/Discrete/Analysis/flow_magnitude.csv')
+
+# define absolute filepaths
+fp_abs_discrete <- get_abs_path(fp_rel_discrete)
+fp_abs_distance <- get_abs_path(fp_rel_distance)
+fp_abs_wy <- get_abs_path(fp_rel_wy)
+fp_abs_fm <- get_abs_path(fp_rel_fm)
+
+discrete <- read_csv(fp_abs_discrete)
+distance <- read_csv(fp_abs_distance)
+water_year <- read_csv(fp_abs_wy)
+flow_magnitude <-read_csv(fp_abs_fm)
+```
+
+```{r message=FALSE, warning=FALSE, echo = FALSE}
+#merge distance from source and discrete data
+
+discrete2 <- left_join(discrete, distance, by=c('StationCode' = 'Station'))
+
+#data cleaning in prep for analyses
+#remove rows with only NA
+discrete3 <- discrete2[rowSums(is.na(discrete2)) != ncol(discrete2), ]
+
+#remove sites we aren't including (not available for all years), create a column for year
+remove<-c("DWT", "SRH", "SDI", "SHR", "SRV", "WWT")
+discrete3$DateTime2<-discrete3$DateTime
+discrete4<-filter(discrete3, !StationCode%in% remove)%>%separate(DateTime2, c("Year", "Month", "Day"), sep="/")%>%separate(Day, c("Day", "Time"), sep=" ") # changed order
+
+
+#join with water year and flow_magnitude data sets
+flow_magnitude$Year<-as.character(flow_magnitude$Year)
+discrete5<-left_join(discrete4, flow_magnitude)
+water_year$Year<-as.character(water_year$Year)
+discrete6<-left_join(discrete5, water_year)
+
+
+#create factor for flow action period using PreFlowStart, PreFlowEnd, PostFlowStart, PostFlowEnd columns
+discrete6$DateTime2<-as.Date(discrete6$DateTime, format = "%Y/%m/%d %H:%M:%S") # changed order
+discrete6$PreFlowStart<-as.Date(discrete6$PreFlowStart, "%m/%d/%Y")
+discrete6$PreFlowEnd<-as.Date(discrete6$PreFlowEnd, "%m/%d/%Y")
+discrete6$PostFlowStart<-as.Date(discrete6$PostFlowStart, "%m/%d/%Y")
+discrete6$PostFlowEnd<-as.Date(discrete6$PostFlowEnd, "%m/%d/%Y")
+
+discrete6$FlowPeriod<-if_else(discrete6$DateTime2<=discrete6$PreFlowEnd & discrete6$DateTime2>=discrete6$PreFlowStart, "Before",
+                             if_else(discrete6$DateTime2>=discrete6$PostFlowStart&discrete6$DateTime2<=discrete6$PostFlowEnd, "After",
+                                    if_else(discrete6$DateTime2>=discrete6$PreFlowEnd&discrete6$DateTime2<=discrete6$PostFlowStart, "During", discrete6$FlowPeriod)))
+
+#all nas are before or after the monitoring period- so can remove
+nas<-unique(discrete6$DateTime2[which(is.na(discrete6$FlowPeriod))])
+#drop na values
+discrete7<-discrete6[!is.na(discrete6$FlowPeriod),]
+
+#subset to chla- discrete7 has cleaned nutrient data 
+# chla<-discrete7%>%filter(Analyte=="Chla")
+
+#create different flow pulse types?
+names(discrete7)[names(discrete7) == 'Total.Average.Net/Volume.AF'] <- 'Total.Average.Net.Volume.AF'
+```
+
+# Main Graphs {.tabset .tabset-fade .tabset-pills}
+```{r results='asis', echo = FALSE}
+###################################### explore the data ###################################################################################################################
+analytes <- unique(discrete7$Analyte)
+main_analytes <- c('DisAmmonia','DisNitrateNitrite','DOP')
+other_analytes <- analytes[!analytes %in% main_analytes]
+flowtypes <- c('Max.Daily.Ave.Net.Flow_cfs','Total.Average.Net.Volume.AF','NetFlowDays')
+
+for (analyte in main_analytes){
+  df_analyte <-
+    discrete7 %>%
+    filter(
+      Analyte == analyte
+    )
+  
+  # tests
+  eq <- log(df_analyte$Result)~df_analyte$FlowPulseType + df_analyte$FlowPeriod+ df_analyte$Region
+  eq <- log(df_analyte$Result)~df_analyte$FlowPulseType*df_analyte$FlowPeriod +df_analyte$Region*df_analyte$FlowPeriod+ df_analyte$Region*df_analyte$FlowPulseType
+
+  df_analyte1 <- aov(eq)
+  qrfit <- rq(eq)
+
+  # df_analyte1 <- aov(log(df_analyte$Result)~df_analyte$FlowPulseType*df_analyte$FlowPeriod +df_analyte$Region*df_analyte$FlowPeriod+ df_analyte$Region*df_analyte$FlowPulseType)
+  
+  # By Analyte
+  cat('\n##', analyte, '{.tabset .tabset-fade .tabset-pills}')
+  
+  cat('\n### Residuals Histogram \n\n')
+  hist(df_analyte1$residuals)
+  cat('\n')
+  
+  cat('\n### Residuals vs. Fitted \n\n')
+  plot(df_analyte1, which = 1)
+  cat('\n')
+  
+  cat('\n### Q-Q Plot (Normality) \n\n')
+  plot(df_analyte1, which = 2)
+  cat('\n')
+  
+  cat('\n### Scale-Location \n\n')
+  plot(df_analyte1, which = 3)
+  cat('\n')
+  
+  cat('\n### Residuals vs. Leverage \n\n')
+  plot(df_analyte1, which = 5)
+  cat('\n')
+}
+```
+
+```{r}
+qrfit
+```
+
+# Other Graphs {.tabset .tabset-fade .tabset-pills}
+```{r results='asis', echo = FALSE}
+for (analyte in other_analytes){
+  df_analyte <-
+    discrete7 %>%
+    filter(
+      Analyte == analyte,
+    )
+  
+  df_analyte1<-aov(log(df_analyte$Result)~df_analyte$FlowPulseType*df_analyte$FlowPeriod +df_analyte$Region*df_analyte$FlowPeriod+ df_analyte$Region*df_analyte$FlowPulseType)
+
+  # By Analyte
+  cat('\n##', analyte, '{.tabset .tabset-fade .tabset-pills}')
+  
+  cat('\n### Residuals Histogram \n\n')
+  hist(df_analyte1$residuals)
+  cat('\n')
+  
+  cat('\n### Residuals vs. Fitted \n\n')
+  plot(df_analyte1, which = 1)
+  cat('\n')
+  
+  cat('\n### Q-Q Plot (Normality) \n\n')
+  plot(df_analyte1, which = 2)
+  cat('\n')
+  
+  cat('\n### Scale-Location \n\n')
+  plot(df_analyte1, which = 3)
+  cat('\n')
+  
+  cat('\n### Residuals vs. Leverage \n\n')
+  plot(df_analyte1, which = 5)
+  cat('\n')
+}
+```
+
+
+```{r}
+# qrfit1 <- anova.rq(qrfit$coefficients[2],qrfit$coefficients[3],qrfit$coefficients[4],qrfit$coefficients[1])
+# qrfit <- rq(eq)
+# 
+# print(summary(qrfit))
+# sumQR <- summary(qrfit)
+# plot(sumQR)
+# 
+# eq <- df_analyte$Result~df_analyte$FlowPulseType*df_analyte$FlowPeriod +df_analyte$Region*df_analyte$FlowPeriod+ df_analyte$Region*df_analyte$FlowPulseType
+# 
+# library(reticulate)
+# #initialize conda env for python use
+# use_condaenv('rStudio')
+# 
+# ```
+# 
+# ```{python}
+# import numpy as np
+# import pandas as pd
+# import statsmodels.api as sm
+# import statsmodels.formula.api as smf
+# import matplotlib.pyplot as plt
+# 
+# # assign R variable to python
+# df = r.df_analyte
+# 
+# mod = smf.quantreg('Result ~ FlowPulseType*FlowPeriod + Region*FlowPeriod + Region*FlowPulseType', df)
+# 
+# res = mod.fit(q=0.5)
+# 
+# print(res.summary())
+# ```
+# 
+# 
+# ```{r}
+# anova(qrfit, lm(eq))
+# qrfit[1]
+# ```
+# ```{python}
+# 
+# ```
+# ```{r}
+# summary(df_analyte1)
+# ```
+# ```{r}
+# summ <- summary(qrfit)
+# 
+# print(summ)
+# ```
+# 
+# 
+# ```{r}
+# summary(lm(eq))
+# ```
+# 
+# ```{r}
+# ggplot() + 
+#   geom_point(aes(df_analyte$DateTime, df_analyte$Result))
+# ```
+# 
+# 
+# ```{r}
+# summary(qrfit)
+# ```
+# 
+# ```{r}
+# summary(lm(eq))
+```
+
+
