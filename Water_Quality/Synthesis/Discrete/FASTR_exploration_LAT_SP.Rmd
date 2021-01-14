@@ -1,0 +1,527 @@
+---
+output: 
+  html_document: 
+    code_folding: hide
+    toc: true
+    toc_depth: 1
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r echo = FALSE}
+# FASTR exploratory Analyses
+# Author: Laura Twardochleb
+# Date created: 10/12/2020
+# Purpose: ANOVAS/Regression explorations for FASTR
+
+# functions
+# Define absolute file path for SharePoint
+get_abs_path <- function(fp_rel){
+  fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_rel))
+  
+  return(fp_abs)
+}
+
+blank_theme <- function(){
+  theme_bw() +
+    theme(
+      panel.grid.major.y = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.text = element_text(color = 'black', size = 10, family = 'sans'),
+      axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
+      strip.text = element_text(size = 11),
+      axis.title = element_text(size = 15, face = 'bold'),
+      plot.title = element_text(size = 17, hjust = 0.5, face = 'bold'),
+      legend.position = 'top',
+      legend.title = element_blank(),
+      legend.box.margin = margin(-10,0,-10,0),
+      legend.text = element_text(size = 9)
+    )
+}
+```
+
+```{r message=FALSE, warning=FALSE, echo = FALSE}
+################# read in and clean data #######################################################################################################################
+#clears the global environment (loaded packages, stored objects, etc.)
+library(tidyverse)
+library(lubridate)
+
+# define relative filepaths 
+fp_fastr <- 'California Department of Water Resources/North Delta Flow Action - Documents/WQ_Subteam/'
+
+fp_rel_discrete <- paste0(fp_fastr,'Processed_Data/Discrete/WQ_OUTPUT_Discrete_Lab_formatted.csv')
+fp_rel_distance <- paste0(fp_fastr,'Processed_Data/Discrete/Analysis/NDFA_map.csv')
+fp_rel_wy <- paste0(fp_fastr,'Processed_Data/Discrete/Analysis/FlowDatesDesignations.csv')
+fp_rel_fm <- paste0(fp_fastr,'Processed_Data/Discrete/Analysis/flow_magnitude.csv')
+
+# define absolute filepaths
+fp_abs_discrete <- get_abs_path(fp_rel_discrete)
+fp_abs_distance <- get_abs_path(fp_rel_distance)
+fp_abs_wy <- get_abs_path(fp_rel_wy)
+fp_abs_fm <- get_abs_path(fp_rel_fm)
+
+discrete <- read_csv(fp_abs_discrete)
+distance <- read_csv(fp_abs_distance)
+water_year <- read_csv(fp_abs_wy)
+flow_magnitude <-read_csv(fp_abs_fm)
+```
+
+```{r message=FALSE, warning=FALSE, echo = FALSE}
+#merge distance from source and discrete data
+
+discrete2 <- left_join(discrete, distance, by=c('StationCode' = 'Station'))
+
+#data cleaning in prep for analyses
+#remove rows with only NA
+discrete3 <- discrete2[rowSums(is.na(discrete2)) != ncol(discrete2), ]
+
+#remove sites we aren't including (not available for all years), create a column for year
+remove<-c("DWT", "SRH", "SDI", "SHR", "SRV", "WWT")
+discrete3$DateTime2<-discrete3$DateTime
+discrete4<-filter(discrete3, !StationCode%in% remove)%>%separate(DateTime2, c("Year", "Month", "Day"), sep="/")%>%separate(Day, c("Day", "Time"), sep=" ") # changed order
+
+
+#join with water year and flow_magnitude data sets
+flow_magnitude$Year<-as.character(flow_magnitude$Year)
+discrete5<-left_join(discrete4, flow_magnitude)
+water_year$Year<-as.character(water_year$Year)
+discrete6<-left_join(discrete5, water_year)
+
+
+#create factor for flow action period using PreFlowStart, PreFlowEnd, PostFlowStart, PostFlowEnd columns
+discrete6$DateTime2<-as.Date(discrete6$DateTime, format = "%Y/%m/%d %H:%M:%S") # changed order
+discrete6$PreFlowStart<-as.Date(discrete6$PreFlowStart, "%m/%d/%Y")
+discrete6$PreFlowEnd<-as.Date(discrete6$PreFlowEnd, "%m/%d/%Y")
+discrete6$PostFlowStart<-as.Date(discrete6$PostFlowStart, "%m/%d/%Y")
+discrete6$PostFlowEnd<-as.Date(discrete6$PostFlowEnd, "%m/%d/%Y")
+
+discrete6$FlowPeriod<-if_else(discrete6$DateTime2<=discrete6$PreFlowEnd & discrete6$DateTime2>=discrete6$PreFlowStart, "Before",
+                             if_else(discrete6$DateTime2>=discrete6$PostFlowStart&discrete6$DateTime2<=discrete6$PostFlowEnd, "After",
+                                    if_else(discrete6$DateTime2>=discrete6$PreFlowEnd&discrete6$DateTime2<=discrete6$PostFlowStart, "During", discrete6$FlowPeriod)))
+
+#all nas are before or after the monitoring period- so can remove
+nas<-unique(discrete6$DateTime2[which(is.na(discrete6$FlowPeriod))])
+#drop na values
+discrete7<-discrete6[!is.na(discrete6$FlowPeriod),]
+
+#subset to chla- discrete7 has cleaned nutrient data 
+# chla<-discrete7%>%filter(Analyte=="Chla")
+
+#create different flow pulse types?
+names(discrete7)[names(discrete7) == 'Total.Average.Net/Volume.AF'] <- 'Total.Average.Net.Volume.AF'
+```
+
+# Main Graphs {.tabset .tabset-fade .tabset-pills}
+```{r results='asis', echo = FALSE}
+###################################### explore the data ###################################################################################################################
+analytes <- unique(discrete7$Analyte)
+main_analytes <- c('DisAmmonia','DisNitrateNitrite','DOP')
+other_analytes <- analytes[!analytes %in% main_analytes]
+flowtypes <- c('Max.Daily.Ave.Net.Flow_cfs','Total.Average.Net.Volume.AF','NetFlowDays')
+
+for (analyte in main_analytes){
+  df_analyte <-
+    discrete7 %>%
+    filter(
+      Analyte == analyte,
+    )
+  
+  df_analyte1 <- aov(log(df_analyte$Result)~df_analyte$FlowPulseType*df_analyte$FlowPeriod +df_analyte$Region*df_analyte$FlowPeriod+ df_analyte$Region*df_analyte$FlowPulseType)
+
+  # By Analyte
+  cat('\n##', analyte, '{.tabset .tabset-fade .tabset-pills}')
+  
+  cat('\n### Residuals Histogram \n\n')
+  hist(df_analyte1$residuals)
+  cat('\n')
+  
+  cat('\n### Residuals vs. Fitted \n\n')
+  plot(df_analyte1, which = 1)
+  cat('\n')
+  
+  cat('\n### Q-Q Plot (Normality) \n\n')
+  plot(df_analyte1, which = 2)
+  cat('\n')
+  
+  cat('\n### Scale-Location \n\n')
+  plot(df_analyte1, which = 3)
+  cat('\n')
+  
+  cat('\n### Residuals vs. Leverage \n\n')
+  plot(df_analyte1, which = 5)
+  cat('\n')
+  
+  # # By Analyte
+  # cat('\n##', analyte, '{.tabset .tabset-fade .tabset-pills}')
+  # 
+  # # - General
+  # cat('\n### General {.tabset .tabset-fade .tabset-pills}')
+  # 
+  # # -- Flow Pulse Type
+  # cat('\n#### Flow Pulse Type \n\n')
+  #   
+  # p <- ggplot() +
+  #   geom_point(data=df_analyte, aes(x=FlowPulseType, y=Result), size = 2) +
+  #   xlab('flow pulse type') +
+  #   ylab(analyte)
+  # 
+  # if (!length(p) == 0) {
+  #   plot(p)
+  #   cat('\n')
+  # }
+  # 
+  # # -- Water Year Type
+  # cat('\n#### Water Year Type \n\n')
+  #   
+  # p <- ggplot() +
+  #   geom_point(data=df_analyte, aes(x=WYType, y=Result), size = 2) +
+  #   xlab('water year') +
+  #   ylab(analyte)
+  # 
+  # if (!length(p) == 0) {
+  #   plot(p)
+  #   cat('\n')
+  # }
+  # 
+  # # - Max Daily Flow
+  # for (type in flowtypes){
+  #   cat('\n###',type,'{.tabset .tabset-fade .tabset-pills}')
+  # 
+  #   # -- All Sites
+  #   cat('\n#### All Sites \n\n')
+  #     
+  #   p <- ggplot() +
+  #     geom_point(data = df_analyte, aes_string(x=type, y='Result'), size = 2) +
+  #     xlab(type) +
+  #     ylab(analyte)
+  #   
+  #   if (!length(p) == 0) {
+  #     plot(p)
+  #     cat('\n')
+  #   }
+  #   
+  #   # -- RVB
+  #   cat('\n#### RVB \n\n')
+  #     
+  #   p <- ggplot() +
+  #     geom_point(data=df_analyte[df_analyte$StationCode=="RVB",], aes_string(x=type, y='Result'), size = 2) +
+  #     xlab(type) +
+  #     ylab(analyte)
+  #   
+  #   if (!length(p) == 0) {
+  #     plot(p)
+  #     cat('\n')
+  #   }
+  #   
+  #   # -- Low Sac River
+  #   cat('\n#### Lower Sac River \n\n')
+  #     
+  #   p <- ggplot() +
+  #     geom_point(data=df_analyte[df_analyte$Region=="LowerSac",], aes_string(x=type, y='Result'), size = 2) +
+  #     xlab(type) +
+  #     ylab(analyte)
+  #   
+  #   if (!length(p) == 0) {
+  #     plot(p)
+  #     cat('\n')
+  #   }
+  #   
+  #   # -- Cache Slough Complex
+  #   cat('\n#### Cache Slough Complex \n\n')
+  #     
+  #   p <- ggplot() +
+  #     geom_point(data=df_analyte[df_analyte$Region=="CacheSloughComplex",], aes_string(x=type, y='Result'), size = 2) +
+  #     xlab(type) +
+  #     ylab(analyte)
+  #   
+  #   if (!length(p) == 0) {
+  #     plot(p)
+  #     cat('\n')
+  #   }
+  #   
+  #   # -- Lower Yolo
+  #   cat('\n#### Lower Yolo \n\n')
+  #     
+  #   p <- ggplot() +
+  #     geom_point(data=df_analyte[df_analyte$Region=="LowerYolo",], aes_string(x=type, y='Result'), size = 2) +
+  #     xlab(type) +
+  #     ylab(analyte)
+  #   
+  #   if (!length(p) == 0) {
+  #     plot(p)
+  #     cat('\n')
+  #   }
+  # }
+
+}
+```
+
+# Other Graphs {.tabset .tabset-fade .tabset-pills}
+```{r results='asis', echo = FALSE}
+for (analyte in other_analytes){
+  df_analyte <-
+    discrete7 %>%
+    filter(
+      Analyte == analyte,
+    )
+  
+  df_analyte1<-aov(log(df_analyte$Result)~df_analyte$FlowPulseType*df_analyte$FlowPeriod +df_analyte$Region*df_analyte$FlowPeriod+ df_analyte$Region*df_analyte$FlowPulseType)
+
+  # By Analyte
+  cat('\n##', analyte, '{.tabset .tabset-fade .tabset-pills}')
+  
+  cat('\n### Residuals Histogram \n\n')
+  hist(df_analyte1$residuals)
+  cat('\n')
+  
+  cat('\n### Residuals vs. Fitted \n\n')
+  plot(df_analyte1, which = 1)
+  cat('\n')
+  
+  cat('\n### Q-Q Plot (Normality) \n\n')
+  plot(df_analyte1, which = 2)
+  cat('\n')
+  
+  cat('\n### Scale-Location \n\n')
+  plot(df_analyte1, which = 3)
+  cat('\n')
+  
+  cat('\n### Residuals vs. Leverage \n\n')
+  plot(df_analyte1, which = 5)
+  cat('\n')
+  
+  # - General
+  # cat('\n### General {.tabset .tabset-fade .tabset-pills}')
+  
+  # -- Flow Pulse Type
+  # cat('\n#### Flow Pulse Type \n\n')
+    
+  # p <- ggplot() +
+  #   geom_point(data=df_analyte, aes(x=FlowPulseType, y=Result), size = 2) +
+  #   xlab('flow pulse type') +
+  #   ylab(analyte)
+  # 
+  # if (!length(p) == 0) {
+  #   plot(p)
+  #   cat('\n')
+  # }
+  
+  # # -- Water Year Type
+  # cat('\n#### Water Year Type \n\n')
+  #   
+  # p <- ggplot() +
+  #   geom_point(data=df_analyte, aes(x=WYType, y=Result), size = 2) +
+  #   xlab('water year') +
+  #   ylab(analyte)
+  # 
+  # if (!length(p) == 0) {
+  #   plot(p)
+  #   cat('\n')
+  # }
+  # 
+  # # - Max Daily Flow
+  # for (type in flowtypes){
+  #   cat('\n###',type,'{.tabset .tabset-fade .tabset-pills}')
+  # 
+  #   # -- All Sites
+  #   cat('\n#### All Sites \n\n')
+  #     
+  #   p <- ggplot() +
+  #     geom_point(data = df_analyte, aes_string(x=type, y='Result'), size = 2) +
+  #     xlab(type) +
+  #     ylab(analyte)
+  #   
+  #   if (!length(p) == 0) {
+  #     plot(p)
+  #     cat('\n')
+  #   }
+  #   
+  #   # -- RVB
+  #   cat('\n#### RVB \n\n')
+  #     
+  #   p <- ggplot() +
+  #     geom_point(data=df_analyte[df_analyte$StationCode=="RVB",], aes_string(x=type, y='Result'), size = 2) +
+  #     xlab(type) +
+  #     ylab(analyte)
+  #   
+  #   if (!length(p) == 0) {
+  #     plot(p)
+  #     cat('\n')
+  #   }
+  #   
+  #   # -- Low Sac River
+  #   cat('\n#### Lower Sac River \n\n')
+  #     
+  #   p <- ggplot() +
+  #     geom_point(data=df_analyte[df_analyte$Region=="LowerSac",], aes_string(x=type, y='Result'), size = 2) +
+  #     xlab(type) +
+  #     ylab(analyte)
+  #   
+  #   if (!length(p) == 0) {
+  #     plot(p)
+  #     cat('\n')
+  #   }
+  #   
+  #   # -- Cache Slough Complex
+  #   cat('\n#### Cache Slough Complex \n\n')
+  #     
+  #   p <- ggplot() +
+  #     geom_point(data=df_analyte[df_analyte$Region=="CacheSloughComplex",], aes_string(x=type, y='Result'), size = 2) +
+  #     xlab(type) +
+  #     ylab(analyte)
+  #   
+  #   if (!length(p) == 0) {
+  #     plot(p)
+  #     cat('\n')
+  #   }
+  #   
+  #   # -- Lower Yolo
+  #   cat('\n#### Lower Yolo \n\n')
+  #     
+  #   p <- ggplot() +
+  #     geom_point(data=df_analyte[df_analyte$Region=="LowerYolo",], aes_string(x=type, y='Result'), size = 2) +
+  #     xlab(type) +
+  #     ylab(analyte)
+  #   
+  #   if (!length(p) == 0) {
+  #     plot(p)
+  #     cat('\n')
+  #   }
+  # }
+
+}
+```
+
+
+```{r results='asis', echo = FALSE}
+#   # - Total Avg Net Flow
+#   cat('\n### Total Average Net Vol {.tabset .tabset-fade .tabset-pills}')
+#   for (station in stations){
+#     cat('\n####', station, '\n\n')
+#     
+#     ggplot(
+#       data=df_analyte,
+#       aes(x=df_analyte[df_analyte$StationCode==station,]$Total.Average.Net.Volume.AF, y=df_analyte[df_analyte$StationCode==station,]$Result)) +
+#       geom_point() +
+#       xlab('net vol') +
+#       ylab(analyte) +
+#       blank_theme()
+#   }
+#   
+#   # - Net Flow Days
+#   cat('\n### Net Flow Days {.tabset .tabset-fade .tabset-pills}')
+#   for (station in stations){
+#     cat('\n####', station, '\n\n')
+#     
+#     ggplot(
+#       data=df_analyte,
+#       aes(x=df_analyte[df_analyte$StationCode==station,]$NetFlowDays, y=df_analyte[df_analyte$StationCode==station,]$Result)) +
+#       geom_point() +
+#       xlab('net flow days') +
+#       ylab(analyte)
+#   }
+# }
+  
+  #plot flow metrics by flow pulse type
+  # ggplot(data=df_analyte, aes(x=FlowPulseType, y=Max.Daily.Ave.Net.Flow_cfs))+geom_point()
+  # ggplot(data=df_analyte, aes(x=FlowPulseType, y=Total.Average.Net.Volume.AF))+geom_point()
+  # ggplot(data=df_analyte, aes(x=FlowPulseType, y=NetFlowDays))+geom_point()
+  # 
+  #plot df_analyte across all sites by flow
+#   plot(x=df_analyte$Max.Daily.Ave.Net.Flow_cfs, y=df_analyte$Result) #no obvious pattern but a little higher in middle of the range?
+#   plot(x=df_analyte$Total.Average.Net.Volume.AF, y=df_analyte$Result) #no obvious pattern but a little higher in middle of the range?
+#   plot(x=df_analyte$NetFlowDays, y=df_analyte$Result) #no obvious pattern but a little higher in middle of the range?
+#   
+#   #plot df_analyte by flow pulse type 
+#   ggplot(data=df_analyte, aes(x=FlowPulseType, y=Result))+geom_point() #highest in years with no flow pulse, lowest in years with construction
+#   #plot df_analyte by water year type
+#   ggplot(data=df_analyte, aes(x=WYType, y=Result))+geom_point() #no pattern
+#   
+#   #plot df_analyte at RVB by flow
+#   plot(x=df_analyte[df_analyte$StationCode=="RVB",]$Max.Daily.Ave.Net.Flow_cfs, y=df_analyte[df_analyte$StationCode=="RVB",]$Result)
+#   plot(x=df_analyte[df_analyte$StationCode=="RVB",]$Total.Average.Net.Volume.AF, y=df_analyte[df_analyte$StationCode=="RVB",]$Result) #seems to be higher at lower volume, or middle of the range?
+#   plot(x=df_analyte[df_analyte$StationCode=="RVB",]$NetFlowDays, y=df_analyte[df_analyte$StationCode=="RVB",]$Result) #higher with fewer flow days
+#   
+#   #plot df_analyte in lower sac river (lower sites)
+#   plot(x=df_analyte[df_analyte$Region=="LowerSac",]$Max.Daily.Ave.Net.Flow_cfs, y=df_analyte[df_analyte$Region=="LowerSac",]$Result)
+#   plot(x=df_analyte[df_analyte$Region=="LowerSac",]$NetFlowDays, y=df_analyte[df_analyte$Region=="LowerSac",]$Result) #higher with fewer flow days
+#   
+#   #plot df_analyte in csc
+#   plot(x=df_analyte[df_analyte$Region=="CacheSloughComplex",]$Max.Daily.Ave.Net.Flow_cfs, y=df_analyte[df_analyte$Region=="CacheSloughComplex",]$Result) #higher with higher flow
+#   plot(x=df_analyte[df_analyte$Region=="CacheSloughComplex",]$NetFlowDays, y=df_analyte[df_analyte$Region=="CacheSloughComplex",]$Result) #higher with fewer flow days
+#   
+#   #plot df_analyte in loweryolo
+#   plot(x=df_analyte[df_analyte$Region=="LowerYolo",]$Max.Daily.Ave.Net.Flow_cfs, y=df_analyte[df_analyte$Region=="LowerYolo",]$Result) #higher with higher flow
+#   plot(x=df_analyte[df_analyte$Region=="LowerYolo",]$NetFlowDays, y=log(df_analyte[df_analyte$Region=="LowerYolo",]$Result)) #higher with fewer flow days
+#   
+#   #relationship between average volume and flow days
+#   plot(x=df_analyte$NetFlowDays, y=df_analyte$Total.Average.Net.Volume.AF)
+#   plot(x=df_analyte$NetFlowDays, y=df_analyte$Max.Daily.Ave.Net.Flow_cfs) #somewhat higher net flow for middle of the range with days
+#   
+#   #plot df_analyte by flow pulse type 
+#   ggplot(data=df_analyte, aes(x=FlowPulseType, y=Result))+geom_point() #highest in years with no flow pulse, lowest in years with construction
+#   #plot df_analyte by water year type
+#   ggplot(data=df_analyte, aes(x=WYType, y=Result))+geom_point() #no pattern
+#   
+#   
+#   hist(df_analyte$NetFlowDays)
+#   hist(df_analyte$Total.Average.Net.Volume.AF)
+#   hist(df_analyte$Max.Daily.Ave.Net.Flow_cfs)
+#   
+#   #correlation of max ave daily net flow and net flow days
+#   cor(df_analyte$NetFlowDays, df_analyte$Max.Daily.Ave.Net.Flow_cfs) #no strong correlation, can use both
+#   
+#   #look at previous water year
+#   
+#   #plot df_analyte by managed, non-managed +, non-managed -: doesn't seem to be a good way to do this
+#   
+#   #run ANOVA using regions on discrete chl-a, flow pulse type, and net flow days, max ave daily net flow
+#   
+#   #three-factor anova with three-way interactions
+#   df_analyte4<-aov(log(df_analyte$Result)~df_analyte$FlowPulseType*df_analyte$FlowPeriod*df_analyte$Region)
+# 
+#   summary(df_analyte4)
+#   plot(df_analyte4, which = 1)
+# 
+#   lsmeans(df_analyte4, list(pairwise~ FlowPulseType|Region|FlowPeriod)) #not enough power to compare all combinations
+# 
+# 
+#   #three-factor anova with two-way interactions
+#   #interactions b/w flow duration and other variables, so can't use ancova:re-run here
+#   df_analyte1<-aov(log(df_analyte$Result)~df_analyte$FlowPulseType*df_analyte$FlowPeriod +df_analyte$Region*df_analyte$FlowPeriod+ df_analyte$Region*df_analyte$FlowPulseType)
+# 
+#   summary(df_analyte1)
+#   hist(df_analyte1$residuals)
+#   plot(df_analyte4, which = 5)
+#     
+#   lsmeans(df_analyte1, list(pairwise~ FlowPulseType|Region|FlowPeriod))
+# #   break
+# # }
+# 
+# ######################## regressions using distance from source ###################################################################################################################################################
+# chla_reg<-lm(log(chla$Result)~I(chla$distance_between_km^2)+chla$FlowPeriod+chla$FlowPulseType+chla$distance_between_km*chla$FlowPeriod+chla$distance_between_km*chla$FlowPulseType+chla$NetFlowDays)
+# summary(chla_reg)
+# chla_reg[3]
+# #plot partial residuals
+# plot(x=I(chla$distance_between_km^2),y=chla_reg[2]$residuals)
+# step(chla_reg, direction = "both")
+# 
+# library(car)
+# crPlots(chla_reg)
+# 
+# 
+# chla_reg2<-lm(log(chla$Result)~chla$distance_between_km+chla$FlowPeriod+chla$FlowPulseType+chla$distance_between_km*chla$FlowPeriod+chla$distance_between_km*chla$FlowPulseType+chla$NetFlowDays)
+# summary(chla_reg2)
+# chla_reg[3]
+# #plot partial residuals
+# plot(x=chla$distance_between_km,y=chla_reg2[2]$residuals)
+# step(chla_reg, direction = "both")
+# 
+# 
+# save.image("FASTR_exploration.RData")
+
+```
+
