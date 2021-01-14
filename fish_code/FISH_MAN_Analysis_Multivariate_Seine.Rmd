@@ -1,0 +1,1360 @@
+---
+title: "Analysis_Multivariate_Seine"
+author: "Catarina Pien"
+date: "5/19/2020"
+output: 
+  html_document:
+    code_folding: hide
+    editor_options: 
+      chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Preparation {.tabset}
+### Load Packages
+
+```{r load, echo = FALSE, results = FALSE, warning = FALSE, message = FALSE}
+
+rm(list=ls(all=TRUE))
+if(!require(tidyverse)){install.packages("tidyverse")
+    library(tidyverse)}
+if(!require(lubridate)){install.packages("lubridate")
+    library(lubridate)} # Datetime
+if(!require(GGally)){install.packages("GGally")
+    library(GGally)} # Correlation Plots
+if(!require(gridExtra)){install.packages("gridExtra")
+    library(gridExtra)} # Multiple Plots
+if(!require(plotly)){install.packages("plotly")
+    library(plotly)} # Multiple Plots
+source("HighstatLibV10.R")
+```
+
+### Import data
+* Fish_ndfa: integrated fish dataset
+* Merge flow data into rest of data
+* Define variable structures
+* Order action phases
+
+
+```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
+Fish_ndfa <- read.csv("R_write/FISH_MAN_allIEPsurveys_20201030.csv")
+FlowDesignation <- read.csv("Data/FlowDatesDesignations.csv")
+Regions <- read.csv("R_write/Stations_Fish_NDFA_2020-07-28.csv")
+
+# Look at data
+head(Fish_ndfa)
+str(Fish_ndfa)
+
+# Add variables
+Fish_ndfa$Date <- ymd(Fish_ndfa$Date)
+Fish_ndfa$Month <- month(Fish_ndfa$Date)
+Fish_ndfa$Day <- day(Fish_ndfa$Date)
+Fish_ndfa$Year <- ordered(Fish_ndfa$Year)
+FlowDesignation$Year <- ordered(FlowDesignation$Year)
+FlowDesignation$PreFlowStart <- mdy(FlowDesignation$PreFlowStart)
+FlowDesignation$PreFlowEnd <- mdy(FlowDesignation$PreFlowEnd)
+FlowDesignation$PostFlowStart <- mdy(FlowDesignation$PostFlowStart)
+FlowDesignation$PostFlowEnd <- mdy(FlowDesignation$PostFlowEnd)
+
+# Merge data from FlowDesignation Table (Water Year Type, Flow days and type)
+# Filter only Pre-During-Post Flow Action Data. 
+# We have a during action, and then Pre = 30 days before/Post = 30 days after
+Fish_all0 <- inner_join(Fish_ndfa,FlowDesignation, by = "Year")
+Fish_all1 <- left_join(Fish_all0, Regions)
+Fish_all <- Fish_all1 %>%
+   mutate(ActionPhase = ifelse(Date > PreFlowStart & Date<PreFlowEnd, "Pre", NA)) %>%
+   mutate(ActionPhase = replace(ActionPhase, Date > PreFlowEnd & Date < PostFlowStart, "During")) %>% 
+   mutate(ActionPhase = replace(ActionPhase, Date > PostFlowStart & Date < PostFlowEnd, "Post")) %>%
+  filter(!is.na(ActionPhase)) %>%
+   select(-c(PreFlowStart:PostFlowEnd)) %>%
+   arrange(Date, Survey, StationCode, CommonName)
+
+
+# Order Action Phases
+Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
+Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhase)[c(3,1,2)])
+
+# Define variable structures
+Fish_all$Date <- ymd(Fish_all$Date)
+Fish_all$Month <- ordered(Fish_all$Month)
+Fish_all$Year <- ordered(Fish_all$Year)
+Fish_all$WYType <- as.factor(Fish_all$WYType)
+Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
+Fish_all$X1 <- NULL
+Fish_all$Survey <- as.factor(Fish_all$Survey)
+Fish_all$StationCode <- as.factor(Fish_all$StationCode)
+
+str(Fish_all)
+
+```
+
+## Plotting Functions
+```{r Functions, warning = FALSE, message = FALSE}
+## FUNCTIONS FOR PLOTTING -------------------------------------------------------------
+VisPoint <-  function(data,y) {
+    y <- enquo(y)
+  data %>%
+    ggplot() +
+    geom_point(mapping = aes(Date,!! y), size = 2) +
+    theme_bw() +
+  scale_colour_manual(values = c("coral3", "lightseagreen"))+
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 11), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 11),
+        legend.position = "bottom")
+} 
+
+# Boxplots by variable of interest
+VisBox <-  function(data, x, y) {
+    x <- enquo(x)
+    y <- enquo(y)
+  data %>%
+    ggplot() +
+    geom_boxplot(mapping = aes(!! x,!! y), fill = "lightseagreen", colour = "lightgray") +
+    theme_bw() +
+  scale_colour_manual(values = c("coral3", "lightseagreen"))+
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 11), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 11))
+} 
+#----------------------------------------------------------------------------------------------------
+####################################################################################################
+
+```
+
+## Exploration of overall dataset
+* Station distribution
+* Time span
+* Number of fish per survey
+* Total counts per survey
+* Locations
+
+```{r explore, warning = FALSE, message = FALSE}
+library(leaflet)
+# Look at locations
+
+# Define palette
+pal <- colorFactor(c("slateblue", "darkseagreen", "orange", "orangered", "hotpink"), domain = c("DJFMP", "Yolo", "Townet", "EDSM", "FMWT"))
+
+leaflet(Fish_all) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    color = ~pal(Survey),
+    opacity = 0.5,
+    lng = ~Longitude,
+    lat = ~Latitude,
+    label = ~StationCode) %>%
+  addLegend(pal = pal,
+            values = ~Survey,
+            position = "bottomright")
+
+                                     
+pal2 <- colorFactor(c("violet", "navyblue", "darkseagreen", "orange", "orangered", "hotpink"), domain = c("MiddleSacRiver", "ColusaDrainRCS", "CentralYolo", "LowerYolo", "CacheSloughComples", "LowerSacRiver"))
+
+leaflet(Fish_all)%>%
+  addTiles() %>%
+  addCircleMarkers(
+    color = ~pal2(Region),
+    opacity = 0.5,
+    lng = ~Longitude,
+    lat = ~Latitude,
+    label = ~paste(StationCode, "Lat:", Latitude, "Long:", Longitude)) %>%
+  addLegend(pal = pal2,
+            values = ~Region,
+            position = "bottomright")
+
+# Time span 
+time <- Fish_all%>%
+  group_by(Survey, Year) %>%
+  summarize(sum.count = sum(totalCount))
+ggplot(time, aes(x = Survey, y = Year, fill = sum.count)) + geom_tile() + theme_minimal()
+
+# Look at datasets
+Fishsp <- Fish_all %>%
+  group_by(CommonName) %>% summarize(count = n())
+
+Fish_all %>%
+  plot_ly(x = ~Survey,
+          y = ~totalCount,
+          type = "box")
+
+Fishsp %>%
+  plot_ly(x = ~CommonName, 
+          y = ~count,
+          type = "bar")
+  
+```
+
+# Seine Data 
+## Data Prep{.tabset}
+* Filter to just seine data
+* Fill in zeros for unlisted sptwoecies
+* Calculate CPUE 
+* Organize data the way you want it
+
+```{r seine, warning = FALSE, message = FALSE}
+# Filter Dataset
+Seine <-  Fish_all %>% filter(MethodCode == "SEIN" | MethodCode == "BSEIN") %>%
+  select(-c(24:26))
+
+str(Seine)
+
+### Complete Cases
+# For each Date, Survey, StationCode combination, make sure each fish species is represented with 
+# either positive count or zero. 
+Seine_completecase <- Seine %>%
+  group_by(Date, Survey, StationCode, CommonName) %>%
+  summarize(sum.count = sum(totalCount)) %>%
+  ungroup() %>%
+  complete(CommonName, nesting(Date, Survey, StationCode), fill = list(sum.count = 0)) %>%
+  arrange(Date,Survey, StationCode,CommonName)
+
+### Merge back together with rest of data
+
+# Get distinct samples for looking at Water Quality 
+Seine_samples <- Seine %>% select(-c(CommonName, totalCount)) %>% distinct()
+
+# Merge 
+Seine_complete <- left_join(Seine_completecase, Seine_samples, by = c("Date", "Survey", "StationCode"))
+# There is a Yolo sample with two volumes... this is why there are more rows of Seine_complete
+
+### Calculate CPUE
+# Remove samples with no volume 
+Seine_CPUE <- Seine_complete %>%
+  filter(!is.na(VolumeSampled))%>%
+  mutate(CPUE = round(sum.count/VolumeSampled,2))
+
+### Rearrange columns 
+Seine_f <- Seine_CPUE[, c("Date", "Year", "Month", "Day", "Survey", "StationCode", 
+                          "Latitude", "Longitude","MethodCode",
+                         "WYType", "FlowPulseType", "NetFlowDays","ActionPhase", "Region",
+                         "Secchi", "Turbidity", "Conductivity", "WaterTemp", "DO", "Tow",
+                         "Depth", "VolumeSampled",  "CommonName", "sum.count", "CPUE")]
+
+### Mean CPUE 
+## Calculate means for each species by year-location-actionphase
+CPUE_means_seine_phase <- Seine_f %>%
+  group_by(Year, Survey, StationCode, ActionPhase, CommonName) %>% 
+  summarize(mean.CPUE = mean(CPUE)) 
+
+```
+
+## Data Exploration
+### Water Quality
+* Simple point plots and histograms, correlation matrix
+```{r envexplore, warning = FALSE, message = FALSE, fig.height=11, fig.width=10}
+
+############ OUTLIERS #################
+# Boxplots
+WTvis1 <- VisPoint(Seine_samples, WaterTemp)
+WTvis2 <- VisBox(Seine_samples, Month, WaterTemp)
+WTvis3 <- VisBox(Seine_samples, Year, WaterTemp)
+Cvis1 <- VisPoint(Seine_samples, Conductivity)
+Cvis2 <- VisBox(Seine_samples, Month, Conductivity)
+Cvis3 <- VisBox(Seine_samples, Year, Conductivity)
+Svis1 <- VisPoint(Seine_samples, Secchi)
+Svis2 <- VisBox(Seine_samples, Month, Secchi)
+Svis3 <- VisBox(Seine_samples, Year, Secchi)
+Tvis1 <- VisPoint(Seine_samples, Turbidity)
+Tvis2 <- VisBox(Seine_samples, Month, Turbidity)
+Tvis3 <- VisBox(Seine_samples, Year, Turbidity)
+DOvis1 <- VisPoint(Seine_samples, DO)
+DOvis2 <- VisBox(Seine_samples, Month, DO)
+DOvis3 <- VisBox(Seine_samples, Year, DO)
+
+# Plot together
+grid.arrange(WTvis1, WTvis2, WTvis3, Cvis1, Cvis2, Cvis3, Svis1, Svis2, Svis3, 
+             Tvis1, Tvis2, Tvis3, DOvis1, DOvis2, DOvis3, ncol = 3)
+
+# Boxplots
+plot_ly(data = Seine_samples, x = ~StationCode, y = ~WaterTemp, color = ~Region, type = 'box')
+plot_ly(data = Seine_samples, x = ~StationCode, y = ~Conductivity, color = ~Region, type = 'box')
+plot_ly(data = Seine_samples, x = ~StationCode, y = ~Secchi, color = ~Region, type = 'box')
+plot_ly(data = Seine_samples, x = ~StationCode, y = ~Turbidity, color = ~Region, type = 'box')
+plot_ly(data = Seine_samples, x = ~StationCode, y = ~DO, color = ~Region, type = 'box')
+
+############ CORRELATIONS ####################
+# Correlation Matrix WQ
+Corr.wq <- Seine_samples %>% select(WaterTemp, Conductivity, Secchi, Turbidity, DO)
+ggpairs(Corr.wq)
+
+# Variance Inflation Factor (VIF)
+corvif(Corr.wq) # Want to get rid of the variable if VIF > 4
+
+
+```
+
+## Clean up WQ data (QC)
+* Edit anything that needs to be removed, flagged, changed.
+* Replace Missing Data
+
+```{r clean, warning = FALSE, message = FALSE}
+# Clean up wq data
+# QC Check - does anything look weird?
+Seine_samples %>% filter(WaterTemp>40 | WaterTemp<1)
+Seine_samples %>% filter(Secchi > 0.95)
+Seine_samples %>% filter(Turbidity > 250) # Slightly sketchy but will leave in
+Seine_f$WaterTemp[Seine$WaterTemp == 50.6] <- NA # Remove this because really out of range
+
+# Function to fill in missing values with mean 
+impute.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+
+# Filling in missing values using impute.mean function from above. 
+# Variables are renamed because using mutate adds on new columns to the matrix.
+# Use impute.mean to fill in NAs, rename updated variables using mutate
+Seine_f <- Seine_f %>%
+  group_by(WYType) %>%
+  mutate(
+    Cond = impute.mean(Conductivity),
+    WTemp = impute.mean(WaterTemp),
+    SecDepth = impute.mean(Secchi),
+    Turb = impute.mean(Turbidity),
+    DOx = impute.mean(DO)) %>%
+  ungroup()
+```
+
+# Seine Data Analysis {.tabset}
+## Preparation 
+1. Filter for species or sets of species
+```{r Seine filters, warning = FALSE, message = FALSE}
+# Lists
+list_native <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish")
+list_smeltish <- c("Wakasagi", "Inland Silverside")
+list_smeltpred <- c("Largemouth Bass", "Smallmouth Bass", "Striped Bass", "Spotted Bass")
+list_cyprinid <- c("Sacramento Pikeminnow", "Sacramento Splittail", "Hitch", "Fathead Minnow",
+                           "Golden Shiner", "Hardhead", "Carp", "Goldfish")
+list_nmds <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish",
+               "Wakasagi", "Inland Silverside", "Delta Smelt", 
+               "Carp", "Goldfish", "Hardhead", "Golden Shiner", "Fathead Minnow", "Hitch",
+               "Rainwater Killifish", "Western Mosquitofish", "Black Crappie", "White Crappie", "Bluegill", "Bigscale Logperch",
+               "Largemouth Bass", "Smallmouth Bass", "Striped Bass", "Spotted Bass",
+               "Threadfin Shad", "American Shad")
+list_nmds_small <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish",
+               "Wakasagi", "Inland Silverside", "Delta Smelt", "Longfin Smelt", 
+               "Largemouth Bass", "Smallmouth Bass", "Striped Bass", "Spotted Bass",
+               "Threadfin Shad", "American Shad", "Bluegill", "Black Crappie", "Bigscale Logperch")
+
+Seine_tf <- Seine_f %>% filter(CommonName == "Threadfin Shad")
+Seine_sucker <- Seine_f %>% filter(CommonName == "Sacramento Sucker")
+Seine_lmb <- Seine_f %>% filter(CommonName == "Largemouth Bass")
+Seine_black <- Seine_f %>% filter(CommonName == "Sacramento Blackfish")
+Seine_pike <- Seine_f %>% filter(CommonName == "Sacramento Pikeminnow")
+Seine_natives <- Seine_f %>%filter(CommonName %in% list_native)
+Seine_nmds_larger <- Seine_f%>% filter(CommonName %in%list_nmds)
+Seine_nmds_0 <- Seine_f %>% filter(CommonName %in% list_nmds_small)
+```
+
+2. Some summary stats 
+
+### Summary Stats
+```{r stats, warning = FALSE, message = FALSE}
+snstatsall <- Seine_nmds_larger%>% 
+  group_by(CommonName) %>%
+  summarize(mean = mean(CPUE), 
+            max = max(CPUE),
+            min = min(CPUE), 
+            sum = sum(CPUE),
+            CV = sd(CPUE)/mean,
+            zeros = sum(CPUE == 0),
+            n = n(), 
+            prop.absent = round(zeros/n,2))
+
+snstats <- Seine_nmds_0 %>% 
+  group_by(CommonName) %>%
+  summarize(mean = mean(CPUE), 
+            max = max(CPUE),
+            min = min(CPUE), 
+            sum = sum(CPUE),
+            CV = sd(CPUE)/mean,
+            zeros = sum(CPUE == 0),
+            n = n(), 
+            prop.absent = round(zeros/n,2))
+```
+
+3. Remove low abundance, high abundance species. In this case:
+* Remove species that are not present: Hardhead, Smallmouth Bass, Longfin Smelt
+* Species < 5% of samples: Hitch, Wakasagi, Delta Smelt, Sacramento Blackfish
+
+```{r clean species}
+notabund <- c("Hardhead", "Smallmouth Bass", "Longfin Smelt", "Hitch", "Wakasagi", "Delta Smelt", "Sacramento Blackfish")
+Seine_nmds <- filter(Seine_nmds_0, !(CommonName %in% notabund))
+```
+
+
+
+## Exploration/QC
+1. Look for outliers in species data
+* Click species to remove, look at each individual species for any obvious outliers
+
+```{r sp outliers, warning = FALSE, message = FALSE}
+# Overall CPUE
+par(mfrow = c(1,1))
+index= seq(1,length(Seine_nmds$CPUE))
+
+# Explore each species - look for outliers here by adding and removing species
+Seine_nmds%>%
+  plot_ly() %>%
+  add_trace(x = ~index, 
+            y = ~CPUE, 
+            color = ~CommonName,
+            colors = "Set3",
+            type = "scatter")
+
+
+```
+
+Plots of species composition
+* Lots of species 
+* Species used in NMDS
+* No ISS
+```{r speciesComp, warning = FALSE, message = FALSE, fig.width = 12, fig.height = 10}
+Seine_noiss <- Seine_nmds %>%filter(CommonName != "Inland Silverside")
+
+ggplot(Seine_f, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity", position = "fill") +
+     scale_fill_brewer(palette = "Paired") +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15),
+        legend.position = "bottom",
+        strip.text = element_text(size = 15))
+
+ggplot(Seine_nmds, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity", position = "fill") +
+  labs(y = "Proportional CPUE") +
+     scale_fill_brewer(palette = "Paired") +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        strip.text = element_text(size = 15))
+
+ggplot(Seine_nmds, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity", position = "fill") + facet_wrap(~Region) +
+  labs(y = "Proportional CPUE") +
+    scale_fill_brewer(palette = "Paired") +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15),
+        legend.position = "bottom",
+        strip.text = element_text(size = 15))
+
+ggplot(Seine_noiss, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity", position = "fill") +
+  labs(y = "Proportional CPUE") +
+     scale_fill_brewer(palette = "Paired") +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        strip.text = element_text(size = 15))
+
+# Real CPUE
+ggplot(Seine_noiss, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  facet_wrap(~Region) +
+  geom_bar(stat = "identity") +
+  labs(y = "CPUE") +
+     scale_fill_brewer(palette = "Paired") +
+  theme_bw() +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        strip.text = element_text(size = 15))
+
+ggplot(Seine_noiss, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity", position = "fill") +
+  labs(y = "Proportional CPUE")+
+facet_wrap(~Region) +
+     scale_fill_brewer(palette = "Paired") +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        strip.text = element_text(size = 15))
+
+# Sacramento Sucker, Striped Bass 
+```
+
+
+2. Look at initial trends - environment vs. species
+
+```{r trends, warning = FALSE, message = FALSE}
+# Threadfin vs environmental
+threadfin1 <- ggplot(Seine_tf, aes(x = WTemp, y = CPUE)) + geom_point() + theme_bw()
+threadfin2 <- ggplot(Seine_tf, aes(x = Cond, y = CPUE)) + geom_point() + theme_bw()
+threadfin3 <- ggplot(Seine_tf, aes(x = Turb, y = CPUE)) + geom_point() + theme_bw()
+threadfin4 <- ggplot(Seine_tf, aes(x = DOx, y = CPUE)) + geom_point() + theme_bw()
+grid.arrange(threadfin1, threadfin2, threadfin3, threadfin4, top = "Threadfin CPUE by Environmental Variable")
+
+# Sac Sucker vs environmental
+sucker1 <- ggplot(Seine_sucker, aes(x = WTemp, y = CPUE)) + geom_point() + theme_bw()
+sucker2 <- ggplot(Seine_sucker, aes(x = Cond, y = CPUE)) + geom_point() + theme_bw()
+sucker3 <- ggplot(Seine_sucker, aes(x = Turb, y = CPUE)) + geom_point() + theme_bw()
+sucker4 <- ggplot(Seine_sucker, aes(x = DOx, y = CPUE)) + geom_point() + theme_bw()
+grid.arrange(sucker1, sucker2, sucker3,sucker4, top = "Sac Sucker CPUE by Environmental Variable")
+
+# Largemouth Bass vs environmental
+lmb1 <- ggplot(Seine_lmb, aes(x = WTemp, y = CPUE)) + geom_point() + theme_bw()
+lmb2 <- ggplot(Seine_lmb, aes(x = Cond, y = CPUE)) + geom_point() + theme_bw()
+lmb3 <- ggplot(Seine_lmb, aes(x = Turb, y = CPUE)) + geom_point() + theme_bw()
+lmb4 <- ggplot(Seine_lmb, aes(x = DOx, y = CPUE)) + geom_point() + theme_bw()
+grid.arrange(lmb1, lmb2, lmb3, lmb4, top = "Largemouth Bass CPUE by Environmental Variable")
+```
+
+## Transformations
+1. Log of sqrt for highly skewed data, or ranging >2 order magnitude
+2. Arcsine sqrt for proportional data
+3. Use same transformation for same variable set (e.g. species)
+4. Consider binary transformation when percent of zero values is high (>50%) or distinct values low (<10)
+
+```{r transformtests, warning = FALSE, message = FALSE}
+
+# Environmental Matrix
+Seine_env <- Seine_nmds %>% dplyr::select(c(26:30))
+
+# Check for normality of variables
+cond <- Seine_env$Cond
+temp <- Seine_env$WTemp
+sd <- Seine_env$SecDepth
+turb <- Seine_env$Turb
+do <- Seine_env$DOx
+
+hist(cond)
+hist(log(cond+1)) # Use this
+qqnorm(log(cond+1))
+
+hist(temp)
+hist(log(temp+1)) # Use this
+hist(sqrt(temp))
+qqnorm(temp)
+qqnorm(log(temp+1))
+
+hist(sd) # Keep it?
+hist(log(sd+1))
+qqnorm(sd)
+qqnorm(log(sd+1))
+
+hist(turb)
+hist(sqrt(turb))
+hist(log(turb+1))
+qqnorm(log(turb+1)) # Use this
+
+hist(do) # Keep it
+qqnorm(do)
+```
+ 
+## PCA {.tabset}
+### Run PCA
+1.  Apply transformations to variables 
+2.  If you have variables with different units/scales, choose the correlation matrix (scale = TRUE). Then you do not need to scale your data beforehand.
+3. Run PCA
+4. Check PCA (Scree plot, Randomization Tests)
+
+* https://cran.r-project.org/web/packages/ggfortify/vignettes/plot_pca.html
+```{r pca, warning = FALSE, message = FALSE}
+source('biostats.R')
+library(vegan)
+library(ggfortify)
+
+### Transform to get close to normality assumptions
+Seine_env_t <- Seine_env %>% mutate(Cond = log(Cond + 1),
+                                    WTemp = log(WTemp + 1),
+                                    Turb = log(Turb + 1)) %>%
+  as.data.frame()
+row.names(Seine_env_t) <- row.names(Seine_nmds)
+
+### Run PCA. Center and Scale the data (correlation matrix).
+pca.env <- prcomp(Seine_env_t, center=T, scale.=T)
+summary(pca.env)
+
+### Check how well PCA worked
+# Scree Plot with Broken Stick values. 
+# If eigenvalue is greater than broken stick value it is "significant"
+screeplot(pca.env, bstick = TRUE) # According to this, don't keep PC1 and PC2
+
+# Monte Carlo Randomization
+# ordi.monte(Seine_env_t, ord = 'pca', dim = 5) # According to this, keep PC1 and PC2
+
+### Check which variables matter
+# Loadings. Generally, if magnitude >/= 0.3 this is important.
+pca.env$rotation
+# Structure coefficients: linear correlations between original variables and PC scores
+pca.structure(pca.env, Seine_env_t, dim = 5, cutoff = 0.4)
+
+```
+
+### Plot
+5. Plot and interpret PCA
+
+```{r PlotPCA, warning = FALSE, message = FALSE}
+
+# Autoplot has best customization, looks nice
+  # use the "data = " to bring in original dataset so we can 
+  # color-code by factors
+autoplot(pca.env, data = Seine_nmds, colour = 'ActionPhase', loadings = TRUE,
+         loadings.label = TRUE,
+         loadings.colour = "black",
+         loadings.label.vjust = -.5,
+         loadings.label.col = "black",
+         loadings.label.size = 4,
+         loadings.label.font = 4) +
+  theme_bw()
+autoplot(pca.env, data = Seine_nmds, colour = 'WYType', loadings = TRUE,
+         loadings.label = TRUE,
+         loadings.colour = "black",
+         loadings.label.vjust = -.5,
+         loadings.label.col = "black",
+         loadings.label.size = 4,
+         loadings.label.font = 4) + 
+  theme_bw()
+```
+
+## NMDS {.tabset}
+1. Pick your variables
+2. Switch to wide format (species listed across the top)
+3. Remove any row where nothing was caught
+
+#### Matrix
+```{r matrix for nmds, warning = FALSE, message = FALSE}
+Seine_f_sp <- Seine_nmds %>% dplyr::select(c("Survey", "StationCode", "Region", "Date", "FlowPulseType", "WYType", "ActionPhase", "Month", "CommonName", "CPUE", "Cond",
+                                    "WTemp", "SecDepth", "Turb", "DOx"))
+# Species Matrix
+Seine_sp_w <- Seine_f_sp %>% pivot_wider(names_from = CommonName, values_from = CPUE, values_fill = list(CPUE=0)) %>% ungroup()
+
+# Remove any row where there is no catch for the sample.
+Seine_sp_sum <- Seine_sp_w %>% mutate(Total = dplyr::select(., 14:25) %>%  rowSums(na.rm = TRUE)) %>%
+  filter(Total !=0)
+```
+
+#### Transform and/or standardize for nMDS
+* Some options for transformations: sqrt, log, absence/presence
+```{r nmdstransform, warning = FALSE, message = FALSE}
+# Sqrt transform data
+sqrt.seine <- Seine_sp_sum %>% mutate_if(is.numeric, function(x) {
+  sqrt(x)
+})
+                   
+# Log transform data
+log.seine <- Seine_sp_sum %>% mutate_if(is.numeric, function(x) {
+  log(x + 1) })
+
+# Absence/Presence data
+bin.seine <- Seine_sp_sum %>% mutate_if(is.numeric, function(x) {
+  case_when(x>0 ~0,
+            x ==0 ~1)})
+
+# Proportional 
+prop.seine <- Seine_sp_sum
+prop.seine[,14:25] <- prop.seine[,14:25]/prop.seine$Total
+
+```
+ 
+### Run NMDS
+1. Run
+* Currently a subset of data since otherwise even 2000 iterations won't converge :(
+* Went with sqrt transformation - least change
+
+
+```{r seine nmds, warning = FALSE, message = FALSE, results = FALSE}
+library(vegan)
+
+# Subset data
+test.seine <- sample_n(prop.seine, 120)
+str(test.seine)
+
+# NMDS Seine
+# This can be slow
+seine.nmds <- metaMDS(test.seine[,14:25], distance="bray", k=2, trymax=300, autotransform = FALSE)
+seine.nmds
+
+```
+
+### Check
+2. Check NMDS
+* Stress < 0.15 is acceptable fit.
+* Check stressplot.
+
+```{r nmdsInterp, message = FALSE, warning = FALSE}
+# Scree Plot - what should k=? 
+# This can be slow
+nmds.scree(test.seine[,14:25], distance='bray', k=5, trymax = 300, autotransform = FALSE) 
+
+### Check NMDS solution 
+# Large scatter is not good
+stressplot(seine.nmds)
+```
+
+### Plot
+3. Plot Results. 
+* Resources:
+- https://jonlefcheck.net/2012/10/24/nmds-tutorial-in-r/
+- https://rpubs.com/collnell/manova
+- https://chrischizinski.github.io/rstats/vegan-ggplot2/
+```{r nmdsplot, message = FALSE, warning = FALSE}
+### NMDS scores
+seine.scores <- as.data.frame(scores(seine.nmds))
+species.scores <- as.data.frame(scores(seine.nmds, "species"))
+species.scores$species <- rownames(species.scores)
+
+# Need a category to merge scores with the rest of env data
+row.names(seine.scores) <- row.names(test.seine)
+seine.nmdsplot <- cbind(seine.scores, test.seine)
+
+# Prettier Plots
+# Option 1
+ggplot(seine.nmdsplot, aes(NMDS1, NMDS2, color = ActionPhase)) + 
+  geom_point(position = position_jitter(.1)) +
+  geom_text(aes(label = WYType)) +
+  stat_ellipse(type = 't', size = 1) +
+  annotate("text", x = min(seine.nmdsplot$NMDS1), y = min(seine.nmdsplot$NMDS2), label = paste('Stress = ', round(seine.nmds$stress,3))) + # Add stress to plot
+  theme_minimal() 
+
+# Prettier Plots
+# Option 1
+ggplot(seine.nmdsplot, aes(NMDS1, NMDS2, color = Region)) + 
+  geom_point(position = position_jitter(.1)) +
+  geom_text(aes(label = WYType)) +
+  stat_ellipse(type = 't', size = 1) +
+  annotate("text", x = min(seine.nmdsplot$NMDS1), y = min(seine.nmdsplot$NMDS2), label = paste('Stress = ', round(seine.nmds$stress,3))) + # Add stress to plot
+  theme_minimal()
+
+
+# Option 2
+# With species scores and boxes
+
+# Make the datasets for the boxes
+grp.a <- seine.nmdsplot[seine.nmdsplot$ActionPhase == "Pre", ][chull(seine.nmdsplot[seine.nmdsplot$ActionPhase == 
+    "Pre", c("NMDS1", "NMDS2")]), ]  # hull values for grp A
+grp.b <- seine.nmdsplot[seine.nmdsplot$ActionPhase == "During", ][chull(seine.nmdsplot[seine.nmdsplot$ActionPhase == 
+    "During", c("NMDS1", "NMDS2")]), ]  # hull values for grp B
+grp.c<- seine.nmdsplot[seine.nmdsplot$ActionPhase == "Post", ][chull(seine.nmdsplot[seine.nmdsplot$ActionPhase == 
+    "Post", c("NMDS1", "NMDS2")]), ]  # hull values for grp C
+hull.data0 <- rbind(grp.a, grp.b)  #combine grp.a and grp.b
+hull.data <- rbind(hull.data0,grp.c)
+
+# Plot
+ggplot() + 
+  geom_point(data = seine.nmdsplot, aes(x = NMDS1, y = NMDS2, color = ActionPhase),
+             position = position_jitter(.1)) +
+  geom_text(data = seine.nmdsplot, aes(NMDS1, NMDS2, label = WYType, color = ActionPhase)) +
+  geom_text(data = species.scores, aes(x = NMDS1, y = NMDS2, label= species), color = "black", size = 5) +
+  theme_minimal() +
+  annotate("text", x = min(seine.nmdsplot$NMDS1), y = min(seine.nmdsplot$NMDS2), label = paste('Stress = ', round(seine.nmds$stress,3))) + # Add stress to plot
+  geom_polygon(data=hull.data,aes(x=NMDS1,y=NMDS2,fill=ActionPhase,group=ActionPhase),alpha=0.30) 
+
+```
+
+### Try binning by month
+```{r SeineWeek, eval = FALSE}
+# Sum data by week
+Seine_f_sp$Week <- week(Seine_f_sp$Date)
+Seine_f_sp$Year <- year(Seine_f_sp$Date)
+Seine_month <- Seine_f_sp %>% group_by(Survey, FlowPulseType, WYType, ActionPhase, Region, StationCode, Year, Month, CommonName) %>%
+                  summarize(mean.CPUE = mean(CPUE),
+                            mean.Cond = mean(Cond),
+                            mean.WTemp = mean(WTemp),
+                            mean.SD = mean(SecDepth),
+                            mean.Turb = mean(Turb),
+                            mean.DO = mean(DOx))
+
+# Species Matrix
+Seine_month_w <- Seine_month %>% pivot_wider(names_from = CommonName, values_from = mean.CPUE, values_fill = list(mean.CPUE=0)) %>% ungroup()
+
+# Remove any row where there is no catch for the day.
+Seine_month_sum <- Seine_month_w %>% mutate(Total = dplyr::select(., 14:25) %>%  rowSums(na.rm = TRUE)) %>%
+  filter(Total !=0)
+
+# Transform
+sqrt.seine2 <- Seine_month_sum %>% mutate_if(is.numeric, function(x) {
+  sqrt(x)
+})
+
+```
+ 
+### Try Running NMDS by Region
+#### Cache Slough Complex
+```{r nmdsCache, warning = FALSE, message = FALSE, eval = FALSE}
+Cache_sp <- Seine_nmds_larger %>% filter(Region == "CacheSloughComplex")
+
+snstatsCache <- Cache_sp %>% 
+  group_by(CommonName) %>%
+  summarize(mean = mean(CPUE), 
+            max = max(CPUE),
+            min = min(CPUE), 
+            sum = sum(CPUE),
+            CV = sd(CPUE)/mean,
+            zeros = sum(CPUE == 0),
+            n = n(), 
+            prop.absent = round(zeros/n,2))
+
+# Remove species
+notabundCache <- c("Black Crappie", "Delta Smelt", "Fathead Minnow", "Golden Shiner",  "Goldfish", "Hardhead", "Hitch", "Rainwater Killifish", "Sacramento Blackfish", "Sacramento Sucker",  "Spotted Bass",  "Smallmouth Bass", "Wakasagi", "White Crappie")
+
+Cache_nmds <- filter(Cache_sp, !(CommonName %in% notabundCache))
+
+# Rearrange
+Cache_f_sp <- Cache_nmds %>% dplyr::select(c("Survey", "StationCode", "Region", "Date", "FlowPulseType", "WYType", "ActionPhase", "Month", "CommonName", "CPUE", "Cond",
+                                    "WTemp", "SecDepth", "Turb", "DOx"))
+# Species Matrix
+Cache_sp_w <- Cache_f_sp %>% pivot_wider(names_from = CommonName, values_from = CPUE, values_fill = list(CPUE=0)) %>% ungroup()
+
+
+# Remove any row where there is no catch for the sample.
+Cache_sp_sum <- Cache_sp_w %>% mutate(Total = dplyr::select(., 14:23) %>%  rowSums(na.rm = TRUE)) %>% filter(Total !=0)
+
+# Transform data
+sqrt.cache <- Cache_sp_sum %>% mutate_if(is.numeric, function(x) {
+  sqrt(x)
+})
+
+# Run NMDS
+cache.nmds <- metaMDS(sqrt.cache[,14:23], distance="bray", k=3, trymax=500, autotransform = FALSE)
+cache.nmds
+
+########### Evaluate ################
+
+# Scree Plot - what should k=? 
+# This can be slow
+nmds.scree(sqrt.cache[,14:23], distance='bray', k=5, trymax = 500, autotransform = FALSE) 
+
+### Check NMDS solution 
+# Large scatter is not good
+stressplot(cache.nmds)
+
+######### Plot ##############
+### NMDS scores
+cache.scores <- as.data.frame(scores(cache.nmds))
+species.scores <- as.data.frame(scores(cache.nmds, "species"))
+species.scores$species <- rownames(species.scores)
+
+# Need a category to merge scores with the rest of env data
+row.names(cache.scores) <- row.names(sqrt.cache)
+cache.nmdsplot <- cbind(cache.scores, sqrt.cache)
+
+# Plot
+ggplot(cache.nmdsplot, aes(NMDS1, NMDS2, color = ActionPhase)) + 
+  geom_point(position = position_jitter(.1)) +
+  geom_text(aes(label = WYType)) +
+  stat_ellipse(type = 't', size = 1) +
+  annotate("text", x = min(cache.nmdsplot$NMDS1), y = min(cache.nmdsplot$NMDS2), label = paste('Stress = ', round(cache.nmds$stress,3))) + # Add stress to plot
+  theme_minimal()
+```
+ 
+#### NMDS for Lower Yolo
+```{r nmdsLyolo, warning = FALSE, message = FALSE, eval = FALSE}
+#### Lower Yolo
+
+LYolo_sp <- Seine_nmds_larger %>% filter(Region == "LowerYolo")
+
+snstatsLYolo <- LYolo_sp %>% 
+  group_by(CommonName) %>%
+  summarize(mean = mean(CPUE), 
+            max = max(CPUE),
+            min = min(CPUE), 
+            sum = sum(CPUE),
+            CV = sd(CPUE)/mean,
+            zeros = sum(CPUE == 0),
+            n = n(), 
+            prop.absent = round(zeros/n,2))
+
+# Remove species
+notabundLYolo <- c("Delta Smelt", "Golden Shiner",  "Goldfish", "Hardhead", "Rainwater Killifish", "Sacramento Pikeminnow", "Sacramento Sucker", "Splittail", "Spotted Bass",  "Smallmouth Bass", "Wakasagi", "White Crappie")
+
+LYolo_nmds <- filter(LYolo_sp, !(CommonName %in% notabundLYolo))
+
+# Rearrange
+LYolo_f_sp <- LYolo_nmds %>% dplyr::select(c("Survey", "StationCode", "Region", "Date", "FlowPulseType", "WYType", "ActionPhase", "Month", "CommonName", "CPUE", "Cond",
+                                    "WTemp", "SecDepth", "Turb", "DOx"))
+# Species Matrix
+LYolo_sp_w <- LYolo_f_sp %>% pivot_wider(names_from = CommonName, values_from = CPUE, values_fill = list(CPUE=0)) %>% ungroup()
+
+# Remove any row where there is no catch for the sample.
+LYolo_sp_sum <- LYolo_sp_w %>% mutate(Total = dplyr::select(., 14:25) %>%  rowSums(na.rm = TRUE)) %>% filter(Total !=0)
+
+# Transform data
+sqrt.lyolo <- LYolo_sp_sum %>% mutate_if(is.numeric, function(x) {
+  sqrt(x)
+})
+
+bin.lyolo <- LYolo_sp_sum %>% mutate_if(is.numeric, function(x) {
+  case_when(x>0 ~0,
+            x ==0 ~1)})
+
+# Run NMDS
+lyolo.nmds <- metaMDS(sqrt.lyolo[,14:25], distance="bray", k=3, trymax=500, autotransform = FALSE)
+lyolo.nmds
+
+########### Evaluate ################
+
+# Scree Plot - what should k=? 
+# This can be slow
+nmds.scree(sqrt.lyolo[,14:25], distance='bray', k=5, trymax = 500, autotransform = FALSE) 
+
+### Check NMDS solution 
+# Large scatter is not good
+stressplot(lyolo.nmds)
+
+
+######### Plot ##############
+### NMDS scores
+lyolo.scores <- as.data.frame(scores(lyolo.nmds))
+species.scores <- as.data.frame(scores(lyolo.nmds, "species"))
+species.scores$species <- rownames(species.scores)
+
+
+# Need a category to merge scores with the rest of env data
+row.names(lyolo.scores) <- row.names(sqrt.lyolo)
+lyolo.nmdsplot <- cbind(lyolo.scores, sqrt.lyolo)
+
+# Plot
+ggplot(lyolo.nmdsplot, aes(NMDS1, NMDS2, color = ActionPhase)) + 
+  geom_point(position = position_jitter(.1)) +
+  geom_text(aes(label = WYType)) +
+  stat_ellipse(type = 't', size = 1) +
+  annotate("text", x = min(lyolo.nmdsplot$NMDS1), y = min(lyolo.nmdsplot$NMDS2), label = paste('Stress = ', round(lyolo.nmds$stress,3))) + # Add stress to plot
+  theme_minimal()
+
+ggplot(lyolo.nmdsplot, aes(NMDS1, NMDS3, color = ActionPhase)) + 
+  geom_point(position = position_jitter(.1)) +
+  geom_text(aes(label = WYType)) +
+  stat_ellipse(type = 't', size = 1) +
+  annotate("text", x = min(lyolo.nmdsplot$NMDS1), y = min(lyolo.nmdsplot$NMDS2), label = paste('Stress = ', round(lyolo.nmds$stress,3))) + # Add stress to plot
+  theme_minimal()
+
+ggplot(lyolo.nmdsplot, aes(NMDS3, NMDS2, color = ActionPhase)) + 
+  geom_point(position = position_jitter(.1)) +
+  geom_text(aes(label = WYType)) +
+  stat_ellipse(type = 't', size = 1) +
+  annotate("text", x = min(lyolo.nmdsplot$NMDS1), y = min(lyolo.nmdsplot$NMDS2), label = paste('Stress = ', round(lyolo.nmds$stress,3))) + # Add stress to plot
+  theme_minimal()
+
+
+# Option 2
+# With species scores and boxes
+
+# Make the datasets for the boxes
+grp.a <- lyolo.nmdsplot[lyolo.nmdsplot$ActionPhase == "Pre", ][chull(lyolo.nmdsplot[lyolo.nmdsplot$ActionPhase == 
+    "Pre", c("NMDS1", "NMDS2")]), ]  # hull values for grp A
+grp.b <- lyolo.nmdsplot[lyolo.nmdsplot$ActionPhase == "During", ][chull(lyolo.nmdsplot[lyolo.nmdsplot$ActionPhase == 
+    "During", c("NMDS1", "NMDS2")]), ]  # hull values for grp B
+grp.c<- lyolo.nmdsplot[lyolo.nmdsplot$ActionPhase == "Post", ][chull(lyolo.nmdsplot[lyolo.nmdsplot$ActionPhase == 
+    "Post", c("NMDS1", "NMDS2")]), ]  # hull values for grp C
+hull.data0 <- rbind(grp.a, grp.b)  #combine grp.a and grp.b
+hull.data <- rbind(hull.data0,grp.c)
+
+# Plot
+ggplot() + 
+  geom_point(data = lyolo.nmdsplot, aes(x = NMDS1, y = NMDS2, color = ActionPhase),
+             position = position_jitter(.1)) +
+  geom_text(data = lyolo.nmdsplot, aes(NMDS1, NMDS2, label = WYType, color = ActionPhase)) +
+  geom_text(data = species.scores, aes(x = NMDS1, y = NMDS2, label= species), color = "black", size = 5) +
+  theme_minimal() +
+  annotate("text", x = min(lyolo.nmdsplot$NMDS1), y = min(lyolo.nmdsplot$NMDS2), label = paste('Stress = ', round(lyolo.nmds$stress,3))) + # Add stress to plot
+  geom_polygon(data=hull.data,aes(x=NMDS1,y=NMDS2,fill=ActionPhase,group=ActionPhase),alpha=0.30) 
+
+
+ggplot() + 
+  geom_point(data = lyolo.nmdsplot, aes(x = NMDS1, y = NMDS3, color = ActionPhase),
+             position = position_jitter(.1)) +
+  geom_text(data = lyolo.nmdsplot, aes(NMDS1, NMDS3, label = WYType, color = ActionPhase)) +
+  geom_text(data = species.scores, aes(x = NMDS1, y = NMDS3, label= species), color = "black", size = 5) +
+  theme_minimal() +
+  annotate("text", x = min(lyolo.nmdsplot$NMDS1), y = min(lyolo.nmdsplot$NMDS3), label = paste('Stress = ', round(lyolo.nmds$stress,3))) + # Add stress to plot
+  geom_polygon(data=hull.data,aes(x=NMDS1,y=NMDS3,fill=ActionPhase,group=ActionPhase),alpha=0.30) 
+
+
+ggplot() + 
+  geom_point(data = lyolo.nmdsplot, aes(x = NMDS3, y = NMDS2, color = ActionPhase),
+             position = position_jitter(.1)) +
+  geom_text(data = lyolo.nmdsplot, aes(NMDS3, NMDS2, label = WYType, color = ActionPhase)) +
+  geom_text(data = species.scores, aes(x = NMDS3, y = NMDS2, label= species), color = "black", size = 5) +
+  theme_minimal() +
+  annotate("text", x = min(lyolo.nmdsplot$NMDS3), y = min(lyolo.nmdsplot$NMDS2), label = paste('Stress = ', round(lyolo.nmds$stress,3))) + # Add stress to plot
+  geom_polygon(data=hull.data,aes(x=NMDS3,y=NMDS2,fill=ActionPhase,group=ActionPhase),alpha=0.30) 
+
+```
+ 
+#### NMDS Lower Sacramento River 
+```{r nmdsLsac, warning = FALSE, message = FALSE}
+LSac_sp <- Seine_nmds_larger %>% filter(Region == "LowerSacRiver")
+
+snstatsLSac <- LSac_sp %>% 
+  group_by(CommonName) %>%
+  summarize(mean = mean(CPUE), 
+            max = max(CPUE),
+            min = min(CPUE), 
+            sum = sum(CPUE),
+            CV = sd(CPUE)/mean,
+            zeros = sum(CPUE == 0),
+            n = n(), 
+            prop.absent = round(zeros/n,2))
+
+# Remove species
+notabundLSac <- c("Black Crappie", "Delta Smelt", "Fathead Minnow",  "Golden Shiner",  "Goldfish", "Hardhead", "Hitch", "Rainwater Killifish", "Sacramento Blackfish", "Sacramento Sucker", "Splittail", "Spotted Bass",  "Smallmouth Bass", "Wakasagi", "White Crappie")
+
+LSac_nmds <- filter(LSac_sp, !(CommonName %in% notabundLSac))
+
+# Rearrange
+LSac_f_sp <- LSac_nmds %>% dplyr::select(c("Survey", "StationCode", "Region", "Date", "FlowPulseType", "WYType", "ActionPhase", "Month", "CommonName", "CPUE", "Cond",
+                                    "WTemp", "SecDepth", "Turb", "DOx"))
+# Species Matrix
+LSac_sp_w <- LSac_f_sp %>% pivot_wider(names_from = CommonName, values_from = CPUE, values_fill = list(CPUE=0)) %>% ungroup()
+
+# Remove any row where there is no catch for the sample.
+LSac_sp_sum <- LSac_sp_w %>% mutate(Total = dplyr::select(., 14:22) %>%  rowSums(na.rm = TRUE)) %>% filter(Total !=0)
+
+# Transform data
+sqrt.lsac <- LSac_sp_sum %>% mutate_if(is.numeric, function(x) {
+  sqrt(x)
+})
+
+# Run NMDS
+lsac.nmds <- metaMDS(sqrt.lsac[,14:22], distance="bray", k=2, trymax=500, autotransform = FALSE)
+lsac.nmds
+
+
+########### Evaluate ################
+
+# Scree Plot - what should k=? 
+# This can be slow
+nmds.scree(sqrt.lsac[,14:22], distance='bray', k=5, trymax = 500, autotransform = FALSE) 
+
+### Check NMDS solution 
+# Large scatter is not good
+stressplot(lsac.nmds)
+
+######### Plot ##############
+### NMDS scores
+lsac.scores <- as.data.frame(scores(lsac.nmds))
+species.scores <- as.data.frame(scores(lsac.nmds, "species"))
+species.scores$species <- rownames(species.scores)
+
+
+# Need a category to merge scores with the rest of env data
+row.names(lsac.scores) <- row.names(sqrt.lsac)
+lsac.nmdsplot <- cbind(lsac.scores, sqrt.lsac)
+
+# Plot
+ggplot(lsac.nmdsplot, aes(NMDS1, NMDS2, color = ActionPhase)) + 
+  geom_point(position = position_jitter(.1)) +
+  geom_text(aes(label = WYType)) +
+  stat_ellipse(type = 't', size = 1) +
+  annotate("text", x = min(lsac.nmdsplot$NMDS1), y = min(lsac.nmdsplot$NMDS2), label = paste('Stress = ', round(lsac.nmds$stress,3))) + # Add stress to plot
+  theme_minimal()
+
+# Option 2
+# With species scores and boxes
+
+# Make the datasets for the boxes
+grp.a <- lsac.nmdsplot[lsac.nmdsplot$ActionPhase == "Pre", ][chull(lsac.nmdsplot[lsac.nmdsplot$ActionPhase == 
+    "Pre", c("NMDS1", "NMDS2")]), ]  # hull values for grp A
+grp.b <- lsac.nmdsplot[lsac.nmdsplot$ActionPhase == "During", ][chull(lsac.nmdsplot[lsac.nmdsplot$ActionPhase == 
+    "During", c("NMDS1", "NMDS2")]), ]  # hull values for grp B
+grp.c<- lsac.nmdsplot[lsac.nmdsplot$ActionPhase == "Post", ][chull(lsac.nmdsplot[lsac.nmdsplot$ActionPhase == 
+    "Post", c("NMDS1", "NMDS2")]), ]  # hull values for grp C
+hull.data0 <- rbind(grp.a, grp.b)  #combine grp.a and grp.b
+hull.data <- rbind(hull.data0,grp.c)
+
+# Plot
+ggplot() + 
+  geom_point(data = lsac.nmdsplot, aes(x = NMDS1, y = NMDS2, color = ActionPhase),
+             position = position_jitter(.1)) +
+  geom_text(data = lsac.nmdsplot, aes(NMDS1, NMDS2, label = WYType, color = ActionPhase)) +
+  geom_text(data = species.scores, aes(x = NMDS1, y = NMDS2, label= species), color = "black", size = 5) +
+  theme_minimal() +
+  annotate("text", x = min(lsac.nmdsplot$NMDS1), y = min(lsac.nmdsplot$NMDS2), label = paste('Stress = ', round(lsac.nmds$stress,3))) + # Add stress to plot
+  geom_polygon(data=hull.data,aes(x=NMDS1,y=NMDS2,fill=ActionPhase,group=ActionPhase),alpha=0.30) 
+```
+ 
+
+## PERMANOVA {.tabset}
+
+### Run models
+1. Standardize species data (basically becomes proportional data) to reduce influence of large numbers. Could also do sqrt transformation.
+2. Run PERMANOVA with each variable separately. Only keep significant variables.
+3. Create model that is significant with greatest R2, move down the list until new variables are not signficant.
+4. For any categorical variables, test interactions as well.
+
+```{r permanova, warning = FALSE, message = FALSE}
+# Row standardization
+seine.st <- data.stand(Seine_sp_sum[,14:25], method = 'total', margin = 'row', plot = F)
+
+# Individual permanova models
+
+(perm.all <- adonis(formula = seine.st ~ Region + Month + Survey + WYType + ActionPhase + FlowPulseType + WTemp + Cond + Turb + DOx+ Region:Month, data = Seine_sp_sum, method = "bray",
+                   permutations = 99))
+
+
+(perm.Region <- adonis(formula = seine.st~Region, data = Seine_sp_sum, method = "bray", permutations = 99))
+
+(perm.WY <- adonis(formula = seine.st~WYType, data = Seine_sp_sum, method = "bray", permutations = 99))
+
+(perm.WTemp <- adonis(formula = seine.st~WTemp, data = Seine_sp_sum, method = "bray", permutations = 99))
+
+(perm.Month <- adonis(formula = seine.st~Month, data = Seine_sp_sum, method = "bray", permutations = 99))
+
+(perm.Survey <- adonis(formula = seine.st~Survey, data = Seine_sp_sum, method = "bray", permutations = 99))
+
+(perm.WY <- adonis(formula = seine.st~WYType, data = Seine_sp_sum, method = "bray", permutations = 99))
+
+(perm.Action <- adonis(formula = seine.st~ActionPhase, data = Seine_sp_sum, method = "bray", permutations = 99))
+
+(perm.FlowPulse <- adonis(formula = seine.st~FlowPulseType, data = Seine_sp_sum, method = "bray", permutations = 99))
+
+
+```
+
+### Homogeneity of Variance
+5. Test for Homogeneity of Variance
+* Choose variables in your model
+* You want the anova not to be significant (significant means variances are not homogeneous)
+* Boxplots should be pretty equal
+```{r betadispersion, warning = FALSE, message = FALSE}
+# Make dissimilarity matrix
+spe.d <- vegdist(seine.st, "bray")
+
+# StationCode
+(sp.bdp <- betadisper(spe.d, Seine_sp_sum$Region))
+anova(sp.bdp)
+permutest(sp.bdp,pairwise=TRUE)
+plot(sp.bdp, ellipse = TRUE)
+boxplot(sp.bdp)
+
+# Month
+(sp.bdp2 <- betadisper(spe.d, Seine_sp_sum$Month))
+anova(sp.bdp2)
+permutest(sp.bdp2,pairwise=TRUE)
+plot(sp.bdp2, ellipse = TRUE)
+boxplot(sp.bdp2)
+
+# WYType
+sp.bdp3 <- betadisper(spe.d, Seine_sp_sum$WYType)
+sp.bdp3
+anova(sp.bdp3)
+permutest(sp.bdp3,pairwise=TRUE)
+plot(sp.bdp3, ellipse = TRUE)
+boxplot(sp.bdp3)
+
+# ActionPhase
+sp.bdp4 <- betadisper(spe.d, Seine_sp_sum$ActionPhase)
+sp.bdp4
+anova(sp.bdp4)
+permutest(sp.bdp4,pairwise=TRUE)
+plot(sp.bdp4, ellipse = TRUE)
+boxplot(sp.bdp4)
+
+# FlowPulseType
+sp.bdp5 <- betadisper(spe.d, Seine_sp_sum$FlowPulseType)
+sp.bdp5
+anova(sp.bdp5)
+permutest(sp.bdp5,pairwise=TRUE)
+plot(sp.bdp5, ellipse = TRUE)
+boxplot(sp.bdp5)
+
+```
+
+## CCA {.tabset}
+* Format: 1 matrix of predictors, 1 matrix of species data
+1. Transform and standardize continuous variables
+2. Transform species data - sqrt
+3. Check if unimodal distribution. If yes, run CCA.
+
+### Run
+```{r cca, warning = FALSE, message = FALSE}
+
+# Prepare continuous data
+seine.env.scaled <- as.data.frame(scale(Seine_sp_sum[,c(9:10, 12:13)]),center = "TRUE", scale = "TRUE")
+seine.env.f <- cbind(seine.env.scaled, Seine_sp_sum[,c("Region", "WYType", "ActionPhase", "FlowPulseType", "Month")])
+unique(Seine_sp_sum$Region)
+
+# Prepare species data
+seine.sp <- sqrt.seine[,14:25]
+
+# Check unimodal distribution
+# Axis length > 4 = unimodal (CCA)
+# 2-4 probably unimodal
+# <2 = linear model
+decorana(seine.sp, ira=0)
+
+# Run CCA
+spe.cca <- cca(seine.sp ~.,seine.env.f)
+summary(spe.cca)
+```
+
+### Interpretation
+4. Interpretation of CCA axis, terms
+* global model
+* axis
+* terms (order matters)
+* Can use a step  model to create final CCA model
+```{r cca.interp, message = FALSE, warning = FALSE}
+
+# Test the significance of the CCA
+anova(spe.cca)
+anova(spe.cca, by = "axis")
+anova(spe.cca, by = "terms")
+anova(spe.cca, by = 'margin')
+
+# Forward stepping
+cca.step <- ordistep(cca(seine.sp ~ 1, data = seine.env.f), scope = formula(spe.cca), 
+                        direction = "forward", pstep = 1000)
+```
+
+### Plot
+5. Plot CCA
+```{r ccaplot, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7}
+plot(spe.cca, choices = c(1,2), display = c('wa', 'sp', 'bp'), scaling = 2)
+# Plot the CCA
+
+cca.biplot = function(cca){
+  
+  #find plot dimensions (changed these so all the points would fit)
+  xmin = min(summary((cca))$species[, 1]) * 1.2
+  xmax = max(summary((cca))$species[, 1]) * 1.2
+  ymin = min(summary((cca))$species[, 2]) * 1.3
+  ymax = max(summary((cca))$species[, 2]) * 1.1
+  
+  par(bty='l')
+  
+  # plot(cca,disp='species',scaling=1) #scale to show species the best
+  plot(summary((cca))$species[, 1], summary((cca))$species[, 2],
+       type = 'n', xlim = c(xmin, xmax), ylim = c(ymin, ymax), 
+       ylab = 'CA2 (3.7% Variation Explained)', xlab = 'CA1 (8.9% Variation Explained)')
+  axis(side = 1, lwd = 2)
+  axis(side = 2, lwd = 2)
+  box(lwd = 2)
+  
+  #draw origin lines
+  segments(-2, 0, 2, 0, lwd = 1, lty = 3)
+  segments(0, -4, 0, 2, lwd = 1, lty = 3)
+  
+  #Add species names
+  text(summary((cca))$species[, 1],summary((cca))$species[, 2], labels = rownames(summary((cca))$species), cex = 0.9)
+  
+  #define continuous variables possibly used
+  cont.vars=c('Cond','WTemp','DOx','Turb')
+  
+  bi.names = row.names(summary(cca)$biplot) #names of environmental variables
+  # centroid.names=row.names(summary(cca)$centroid) 
+  centroid.names = data.frame(Rows = rownames(summary((cca))$centroid))
+  
+  #Pain in the a$$ way to do this, but I created abbreviated names for each level of
+  #my categorical variable so that they would look nicer when plotted
+  #Else I would have names like HabitatC on the biplot
+  # 
+  centroid.names$New[centroid.names$Rows == 'ActionPhasePre'] = 'PreAction'
+  centroid.names$New[centroid.names$Rows == 'ActionPhaseDuring'] = 'DuringAction'
+  centroid.names$New[centroid.names$Rows == 'ActionPhasePost'] = 'PostAction'
+
+  centroid.names$New[centroid.names$Rows == 'WYTypeC'] = 'CriticalWY'
+  centroid.names$New[centroid.names$Rows == 'WYTypeD'] = 'DryWY'
+  centroid.names$New[centroid.names$Rows == 'WYTypeW'] = 'WetWY'
+
+  centroid.names$New[centroid.names$Rows == 'FlowPulseTypeMA-Ag'] = 'AgPulse'
+  centroid.names$New[centroid.names$Rows == 'FlowPulseTypeMA-SR'] = 'SRPulse'
+  centroid.names$New[centroid.names$Rows == 'FlowPulseTypeNF'] = 'NoFA'
+  
+  centroid.names$New[centroid.names$Rows == 'Month4'] = 'Apr'
+  centroid.names$New[centroid.names$Rows == 'Month5'] = 'May'
+  centroid.names$New[centroid.names$Rows == 'Month6'] = 'June'
+  centroid.names$New[centroid.names$Rows == 'Month7'] = 'July'
+  centroid.names$New[centroid.names$Rows == 'Month8'] = 'Aug'
+  centroid.names$New[centroid.names$Rows == 'Month9'] = 'Sep'
+  centroid.names$New[centroid.names$Rows == 'Month10'] = 'Oct'
+  centroid.names$New[centroid.names$Rows == 'Month11'] = 'Nov'
+  centroid.names$New[centroid.names$Rows == 'Month12'] = 'Dec'
+  centroid.names$New[centroid.names$Rows == 'Month1'] = 'Jan'
+  centroid.names$New[centroid.names$Rows == 'Month2'] = 'Feb'
+  centroid.names$New[centroid.names$Rows == 'Month3'] = 'Mar'
+  
+  centroid.names$New[centroid.names$Rows == 'RegionCacheSloughComplex'] = 'CacheSloughComplex'
+  centroid.names$New[centroid.names$Rows == 'RegionCentralYolo'] = 'CentralYolo'
+  centroid.names$New[centroid.names$Rows == 'RegionColusaDrainRCS'] = 'ColusaDrainRCS'
+  centroid.names$New[centroid.names$Rows == 'RegionLowerSacRiver'] = 'LowerSacRiver'
+  centroid.names$New[centroid.names$Rows == 'RegionLowerYolo'] = 'LowerYolo'
+  centroid.names$New[centroid.names$Rows == 'RegionMiddleSacRiver'] = 'MiddleSacRiver'
+  
+  
+  #This could possibly be slimmed down, but it plots arrows if the variable is continuous (part of the list above)
+  # and plots a point for the categorical variables instead
+  
+  for(i in 1:length(summary(cca)$biplot[, 1])){
+    
+    #Test that the row name is one of the continuous variables before plotting arrows
+    if(bi.names[i] %in% cont.vars){
+      arrows(0, 0, summary(cca)$biplot[i, 1], summary(cca)$biplot[i, 2],
+             lwd = 1, angle = 25, length = 0.10, col = "#F4aa42")
+      text(summary(cca)$biplot[i, 1] * 2, 
+           summary(cca)$biplot[i, 2] * 2, labels = bi.names[i], col = '#F4aa42', cex = 0.9, font = 4)
+    }
+    
+  }
+  
+  #now plot the centered mean value of each nominal variable
+  #Use if statement to test for case where I don't have any categorical variables
+  
+  if(is.numeric(summary(cca)$centroids) == TRUE){
+    
+    points(summary(cca)$centroids[, 1] * 0.9, summary(cca)$centroids[, 2] * 0.9, pch = 15, col = 'black')
+    
+    text(summary(cca)$centroids[, 1] * 0.9, (summary(cca)$centroids[, 2] * 0.9 + 0.15), labels = centroid.names$New,
+         col = 'darkcyan', cex = 0.7, adj = .5)
+  }
+  
+}
+
+cca.biplot(spe.cca)
+```

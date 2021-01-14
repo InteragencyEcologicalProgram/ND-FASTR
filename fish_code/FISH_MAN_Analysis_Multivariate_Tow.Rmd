@@ -1,0 +1,1060 @@
+---
+title: "Analysis_Multivariate_Tow"
+author: "Catarina Pien"
+date: "5/19/2020"
+output: 
+  html_document:
+    code_folding: hide
+    editor_options: 
+      chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Preparation {.tabset}
+### Load Packages
+
+```{r load, echo = FALSE, results = FALSE, warning = FALSE, message = FALSE}
+
+rm(list=ls(all=TRUE))
+if(!require(tidyverse)){install.packages("tidyverse")
+    library(tidyverse)}
+if(!require(lubridate)){install.packages("lubridate")
+    library(lubridate)} # Datetime
+if(!require(GGally)){install.packages("GGally")
+    library(GGally)} # Correlation Plots
+if(!require(gridExtra)){install.packages("gridExtra")
+    library(gridExtra)} # Multiple Plots
+if(!require(plotly)){install.packages("plotly")
+    library(plotly)} # Multiple Plots
+source("HighstatLibV10.R")
+```
+
+### Import data
+* Fish_ndfa: integrated fish dataset
+* Merge flow data into rest of data
+* Define variable structures
+* Order action phases
+
+```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
+Fish_ndfa_0 <- read.csv("R_write/FISH_MAN_allIEPsurveys_20201030.csv")
+Fish_ndfa <- select(Fish_ndfa_0, -c(Turbidity, DO, Latitude, Longitude))
+FlowDesignation <- read.csv("Data/FlowDatesDesignations.csv")
+Regions <- read.csv("R_write/Stations_Fish_NDFA_2020-10-30.csv")
+Regions_min <- Regions %>%
+  rename(Survey = Survey.x) %>%
+  select(-c(Intersect, geometry))
+
+# Look at data
+head(Fish_ndfa)
+str(Fish_ndfa)
+
+# Add variables
+Fish_ndfa$Date <- ymd(Fish_ndfa$Date)
+Fish_ndfa$Month <- month(Fish_ndfa$Date)
+Fish_ndfa$Day <- day(Fish_ndfa$Date)
+FlowDesignation$PreFlowStart <- mdy(FlowDesignation$PreFlowStart)
+FlowDesignation$PreFlowEnd <- mdy(FlowDesignation$PreFlowEnd)
+FlowDesignation$PostFlowStart <- mdy(FlowDesignation$PostFlowStart)
+FlowDesignation$PostFlowEnd <- mdy(FlowDesignation$PostFlowEnd)
+
+# Merge data from FlowDesignation Table (Water Year Type, Flow days and type)
+# Filter only Pre-During-Post Flow Action Data. 
+# We have a during action, and then Pre = 30 days before/Post = 30 days after
+Fish_all0 <- inner_join(Fish_ndfa,FlowDesignation, by = "Year")
+Fish_all1 <- left_join(Fish_all0, Regions_min, by = c("StationCode", "Survey"))
+
+# anti_join(Fish_all1, Fish_all0, by = colnames(Fish_all0))
+
+Fish_all <- Fish_all1 %>%
+   mutate(ActionPhase = ifelse(Date > PreFlowStart & Date<PreFlowEnd, "Pre", NA)) %>%
+   mutate(ActionPhase = replace(ActionPhase, Date > PreFlowEnd & Date < PostFlowStart, "During")) %>% 
+   mutate(ActionPhase = replace(ActionPhase, Date > PostFlowStart & Date < PostFlowEnd, "Post")) %>%
+  filter(!is.na(ActionPhase)) %>%
+   select(-c(PreFlowStart:PostFlowEnd)) %>%
+   arrange(Date, Survey, StationCode, CommonName)
+
+
+# Order Action Phases
+Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
+Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhase)[c(3,1,2)])
+
+# Define variable structures
+str(Fish_all)
+
+Fish_all$Date <- ymd(Fish_all$Date)
+Fish_all$fMonth <- ordered(Fish_all$Month)
+Fish_all$fYear <- ordered(Fish_all$Year)
+Fish_all$WYType <- as.factor(Fish_all$WYType)
+Fish_all$FlowPulseType <- as.factor(Fish_all$FlowPulseType)
+Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
+Fish_all$X1 <- NULL
+Fish_all$Survey <- as.factor(Fish_all$Survey)
+Fish_all$StationCode <- as.factor(Fish_all$StationCode)
+Fish_all$MethodCode <- as.factor(Fish_all$MethodCode)
+Fish_all$Region <- as.factor(Fish_all$Region)
+
+str(Fish_all)
+
+```
+
+## Plotting Functions
+```{r Functions, warning = FALSE, message = FALSE}
+## FUNCTIONS FOR PLOTTING -------------------------------------------------------------
+VisPoint <-  function(data,y) {
+    y <- enquo(y)
+  data %>%
+    ggplot() +
+    geom_point(mapping = aes(Date,!! y), size = 2) +
+    theme_bw() +
+  scale_colour_manual(values = c("coral3", "lightseagreen"))+
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 11), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 11),
+        legend.position = "bottom")
+} 
+
+# Boxplots by variable of interest
+VisBox <-  function(data, x, y) {
+    x <- enquo(x)
+    y <- enquo(y)
+  data %>%
+    ggplot() +
+    geom_boxplot(mapping = aes(!! x,!! y), fill = "lightseagreen", colour = "lightgray") +
+    theme_bw() +
+  scale_colour_manual(values = c("coral3", "lightseagreen"))+
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 11), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.title = element_text(size = 12),
+        legend.text = element_text(size = 11))
+} 
+#----------------------------------------------------------------------------------------------------
+###########
+
+```
+
+## Exploration of overall dataset
+* Station distribution
+* Time span
+
+
+```{r explore, warning = FALSE, message = FALSE}
+library(leaflet)
+library(plotly)
+# Look at locations
+
+# Define palette
+pal <- colorFactor(c("slateblue", "darkseagreen", "orange", "orangered", "hotpink"), domain = c("DJFMP", "Yolo", "Townet", "EDSM", "FMWT"))
+
+leaflet(Fish_all) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    color = ~pal(Survey),
+    opacity = 0.5,
+    lng = ~Longitude,
+    lat = ~Latitude,
+    label = ~StationCode) %>%
+  addLegend(pal = pal,
+            values = ~Survey,
+            position = "bottomright")
+
+                                     
+pal2 <- colorFactor(c("purple3", "blue3", "forestgreen", "orange", "orangered", "hotpink"), domain = c("MiddleSacRiver", "ColusaDrainRCS", "UpperYolo", "LowerYolo", "CacheSloughComplex", "LowerSacRiver"))
+
+leaflet(Fish_all)%>%
+  addTiles() %>%
+  addCircleMarkers(
+    color = ~pal2(Region),
+    opacity = 0.5,
+    lng = ~Longitude,
+    lat = ~Latitude,
+    label = ~paste(StationCode, "Lat:", Latitude, "Long:", Longitude)) %>%
+  addLegend(pal = pal2,
+            values = ~Region,
+            position = "bottomright")
+
+# Time span 
+time <- Fish_all%>%
+  group_by(Survey, fYear) %>%
+  summarize(sum.count = sum(totalCount))
+ggplot(time, aes(x = Survey, y = fYear, fill = sum.count)) + geom_tile() + theme_minimal()
+
+```
+
+* Number of fish per survey
+* Total counts per survey
+```{r}
+# Look at datasets
+Fishsp <- Fish_all %>%
+  group_by(CommonName) %>% summarize(count = n())
+
+Fishsp %>%
+  plot_ly(x = ~CommonName, 
+          y = ~count,
+          type = "bar")
+
+
+fishP <- ggplot(Fish_all, aes(x = CommonName, y = totalCount, fill = Survey)) + geom_col() + theme_bw() + theme(
+                    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ggplotly(fishP)
+
+Fishsp %>%
+  plot_ly(x = ~CommonName, 
+          y = ~count,
+          type = "bar")
+```
+
+# Tow Data 
+## Data Prep{.tabset}
+* Filter to just tow data
+* Fill in zeros for unlisted species
+* Calculate CPUE 
+* Organize data the way you want it
+
+```{r seine, warning = FALSE, message = FALSE}
+# Filter Dataset
+Tow <- Fish_all %>% filter(Survey %in% c("EDSM", "Townet", "FMWT")) %>%
+  arrange(Survey, Date, StationCode, Tow, Depth)
+
+### Complete Cases
+# For each Date, Survey, StationCode combination, make sure each fish species is represented with 
+# either positive count or zero. 
+Tow_completecase <- Tow %>%
+  group_by(Date, Survey, StationCode, Tow, Depth, CommonName) %>%
+  summarize(sum.count = sum(totalCount)) %>%
+  ungroup() %>%
+  complete(CommonName, nesting(Date, Survey, StationCode, Tow, Depth), fill = list(sum.count = 0)) %>%
+  arrange(Date,Survey, StationCode,CommonName)
+
+### Merge back together with rest of data
+
+# Get distinct samples for looking at Water Quality 
+Tow_samples <- Tow %>% select(-c(CommonName, totalCount)) %>% distinct()
+
+# Merge 
+Tow_complete <- left_join(Tow_completecase, Tow_samples, by = c("Date", "Survey", "StationCode", "Tow", "Depth"))
+
+### Calculate CPUE
+# Remove samples with no volume 
+Tow_CPUE <- Tow_complete %>%
+  filter(!is.na(VolumeSampled))%>%
+  mutate(CPUE = round(sum.count/VolumeSampled,3))
+
+### Rearrange columns 
+Tow_f <- Tow_CPUE[, c("Date", "Year", "Month", "Day", "Survey", "StationCode", 
+                          "Latitude", "Longitude","Region","MethodCode",
+                         "WYType", "FlowPulseType", "NetFlowDays","ActionPhase", 
+                         "Secchi",  "Conductivity", "WaterTemp",  "Tow",
+                         "Depth", "VolumeSampled",  "CommonName", "sum.count", "CPUE")]
+
+### Mean CPUE 
+## Calculate means for each species by year-location-actionphase
+CPUE_means_Tow_phase <- Tow_f %>%
+  group_by(Year, Survey, StationCode, Tow, ActionPhase, CommonName) %>% 
+  summarize(mean.CPUE = mean(CPUE)) 
+
+```
+
+## Data Exploration
+### Water Quality
+* Simple point plots and histograms, correlation matrix
+```{r envexplore, warning = FALSE, message = FALSE, fig.height=11, fig.width=10}
+# Look at locations
+
+# Define palette
+pal2 <- colorFactor(c("orange", "orangered", "hotpink"), domain = c("Townet", "EDSM", "FMWT"))
+
+leaflet(Tow_f) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    color = ~pal2(Survey),
+    opacity = 0.5,
+    radius=2,
+    lng = ~Longitude,
+    lat = ~Latitude,
+    label = ~StationCode) %>%
+  addLegend(pal = pal2,
+            values = ~Survey,
+            position = "bottomright")
+
+############ OUTLIERS #################
+# Boxplots
+WTvis1 <- VisPoint(Tow_samples, WaterTemp)
+WTvis2 <- VisBox(Tow_samples, Month, WaterTemp)
+WTvis3 <- VisBox(Tow_samples, Year, WaterTemp)
+Cvis1 <- VisPoint(Tow_samples, Conductivity)
+Cvis2 <- VisBox(Tow_samples, Month, Conductivity)
+Cvis3 <- VisBox(Tow_samples, Year, Conductivity)
+Svis1 <- VisPoint(Tow_samples, Secchi)
+Svis2 <- VisBox(Tow_samples, Month, Secchi)
+Svis3 <- VisBox(Tow_samples, Year, Secchi)
+
+# Plot together
+grid.arrange(WTvis1, WTvis2, WTvis3, Cvis1, Cvis2, Cvis3, Svis1, Svis2, Svis3,  ncol = 3)
+
+# Boxplots
+plot_ly(data = Tow_samples, x = ~StationCode, y = ~WaterTemp, color = ~Region, type = 'box')
+plot_ly(data = Tow_samples, x = ~StationCode, y = ~Conductivity, color = ~Region, type = 'box')
+plot_ly(data = Tow_samples, x = ~StationCode, y = ~Secchi, color = ~Region, type = 'box')
+
+############ CORRELATIONS ####################
+# Correlation Matrix WQ
+Corr.wqT <- Tow_samples %>% select(WaterTemp, Conductivity, Secchi)
+ggpairs(Corr.wqT)
+
+# Variance Inflation Factor (VIF)
+corvif(Corr.wqT) # Want to get rid of the variable if VIF > 4
+
+
+```
+
+## Clean up WQ data (QC)
+* Edit anything that needs to be removed, flagged, changed.
+* Replace Missing Data
+
+```{r clean, warning = FALSE, message = FALSE}
+# Clean up wq data
+# QC Check - does anything look weird?
+Tow_samples %>% filter(WaterTemp>30 | WaterTemp<1) # High but will leave in
+Tow_samples %>% filter(Conductivity > 5000) # High but will leave in
+
+# Function to fill in missing values with mean 
+impute.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+
+# Filling in missing values using impute.mean function from above. 
+# Variables are renamed because using mutate adds on new columns to the matrix.
+# Use impute.mean to fill in NAs, rename updated variables using mutate
+Tow_f <- Tow_f %>%
+  group_by(WYType) %>%
+  mutate(
+    Cond = impute.mean(Conductivity),
+    WTemp = impute.mean(WaterTemp),
+    SecDepth = impute.mean(Secchi)) %>%
+  ungroup()
+```
+
+# Tow Data Analysis {.tabset}
+## Preparation 
+1. Filter for species or sets of species
+```{r Tow filters, warning = FALSE, message = FALSE}
+# Which species are relatively abundant?
+Tow_f %>%
+  plot_ly(x = ~CommonName, 
+          y = ~sum.count,
+          type = "bar")
+
+fig <- plot_ly(Tow_f, x = ~ActionPhase, y = ~CPUE, color = ~CommonName, type = 'bar', name = ~CommonName)
+fig <- fig %>% layout(yaxis = list(title = 'CPUE'), barmode = 'stack')
+fig
+
+# Lists
+list_native <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish")
+list_smeltish <- c("Wakasagi", "Inland Silverside")
+list_smeltpred <- c("Largemouth Bass", "Smallmouth Bass", "Striped Bass", "Spotted Bass")
+list_cyprinid <- c("Sacramento Pikeminnow", "Sacramento Splittail", "Hitch", "Fathead Minnow",
+                           "Golden Shiner", "Hardhead", "Carp", "Goldfish")
+list_nmds <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish",
+               "Wakasagi", "Inland Silverside", "Delta Smelt", 
+               "Carp", "Goldfish", "Hardhead", "Golden Shiner", "Fathead Minnow", "Hitch",
+               "Rainwater Killifish", "Western Mosquitofish", "Black Crappie", "White Crappie", "Bluegill", "Bigscale Logperch",
+               "Largemouth Bass", "Smallmouth Bass", "Striped Bass", "Spotted Bass",
+               "Threadfin Shad", "American Shad", "Tridentiger spp_", "Shimofuri Goby", "White Catfish")
+list_nmds_small <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish",
+               "Wakasagi", "Inland Silverside", "Delta Smelt", "Longfin Smelt", 
+               "Largemouth Bass", "Smallmouth Bass", "Striped Bass", "Spotted Bass",
+               "Threadfin Shad", "American Shad", "Bluegill", "Black Crappie", "Bigscale Logperch")
+
+Tow_tf <- Tow_f %>% filter(CommonName == "Threadfin Shad")
+Tow_iss <- Tow_f %>% filter(CommonName == "Inland Silverside")
+Tow_ashad <- Tow_f %>% filter(CommonName == "American Shad")
+Tow_natives <- Tow_f %>%filter(CommonName %in% list_native)
+Tow_nmds_larger <- Tow_f%>% filter(CommonName %in%list_nmds)
+Tow_nmds_0 <- Tow_f %>% filter(CommonName %in% list_nmds_small)
+
+```
+
+2. Some summary stats 
+
+### Summary Stats
+```{r stats, warning = FALSE, message = FALSE}
+towstatsall <- Tow_nmds_larger%>% 
+  group_by(CommonName) %>%
+  summarize(mean = mean(CPUE), 
+            max = max(CPUE),
+            min = min(CPUE), 
+            sum = sum(CPUE),
+            CV = sd(CPUE)/mean,
+            zeros = sum(CPUE == 0),
+            n = n(), 
+            prop.absent = round(zeros/n,2))
+
+```
+
+3. Remove low abundance, high abundance species. In this case:
+* Remove species that are not present
+* Species < 5% of samples, left Delta Smelt in at 0.96 since we are interested in them
+
+```{r clean species}
+notabund <- c("Bigscale Logperch", "Black Crappie", "Bluegill", "Golden Shiner", "Hitch", "Largemouth Bass", "Sacramento Blackfish", "Rainwater Killifish", "Sacramento Sucker",
+              "Splittail", "Striped Bass", "Spotted Bass", "White Catfish", "White Crappie")
+Tow_nmds <- filter(Tow_nmds_0, !(CommonName %in% notabund))
+```
+
+
+## Exploration/QC
+1. Look for outliers in species data
+* Click species to remove, look at each individual species for any obvious outliers
+* Potential Threadfin outliers? 
+
+```{r sp outliers, warning = FALSE, message = FALSE}
+# Overall CPUE
+index= seq(1,length(Tow_nmds$CPUE))
+
+# Explore each species - look for outliers here by adding and removing species
+Tow_nmds%>%
+  plot_ly() %>%
+  add_trace(x = ~index, 
+            y = ~CPUE, 
+            color = ~CommonName,
+            colors = "Set3",
+            type = "scatter")
+
+Tow_nmds %>% 
+  plot_ly() %>%
+  add_trace(x = ~CommonName,
+            y = ~CPUE,
+            color = ~Survey,
+            type = "box")
+
+
+```
+
+Plots of species composition
+* Lots of species 
+* Species used in NMDS
+* No Threadfin Shad
+```{r Plots of species comp, warning = FALSE, message = FALSE, fig.width= 10, fig.height = 6.5}
+library(RColorBrewer)
+Tow_noTFS <- Tow_nmds %>% filter(CommonName != "Threadfin Shad")
+
+# More plots
+ggplot(Tow_nmds_larger, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity", position = "fill") + 
+    scale_fill_brewer(palette = "Paired") +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15),
+        legend.position = "bottom")
+  
+
+ggplot(Tow_nmds_larger, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity", position = "fill") + facet_wrap(~Region) +
+    scale_fill_brewer(palette = "Paired") +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15),
+        legend.position = "bottom")
+
+# Proportional CPUE
+ggplot(Tow_nmds, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity", position = "fill") +
+  labs(y = "Proportional CPUE") + 
+  scale_fill_brewer(palette = "Paired") +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15),
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        strip.text = element_text(size = 15))
+
+# Proportional CPUE - Regions
+ggplot(Tow_nmds, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity", position = "fill") + facet_wrap(~Region) +
+    scale_fill_brewer(palette = "Paired") +
+  labs(y = "Proportional CPUE") +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.title = element_text(size = 15),
+        
+        strip.text = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_blank(),
+        legend.position = "bottom")
+
+# CPUE - Regions
+ggplot(Tow_nmds, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity") + facet_wrap(~Region) +
+    scale_fill_brewer(palette = "Paired") +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.title = element_text(size = 15),
+        
+        strip.text = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_blank(),
+        legend.position = "bottom")
+
+# Proportional CPUE - Regions
+ggplot(Tow_noTFS, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity", position = "fill") + facet_wrap(~Region) +
+    scale_fill_brewer(palette = "Paired") +
+  labs(y = "Proportional CPUE") +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.title = element_text(size = 15),
+        
+        strip.text = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_blank(),
+        legend.position = "bottom")
+
+# Actual CPUE values
+ggplot(Tow_noTFS, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity") + facet_wrap(~Region) +
+    scale_fill_brewer(palette = "Paired") +
+  theme_bw()+
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.title = element_text(size = 15),
+        legend.title = element_text(size = 13),
+        legend.text = element_text(size = 13),
+        legend.position = "bottom",
+        strip.text = element_text(size = 15))
+
+
+ggplot(Tow_noTFS, aes(x = ActionPhase, y = CPUE, fill = CommonName)) + 
+  geom_bar(stat = "identity", position = "fill") +
+    scale_fill_brewer(palette = "Paired") +
+    theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        axis.line = element_line(colour = "black"),
+        plot.title = element_text(hjust=0.5),
+        axis.text = element_text(size = 15), 
+        axis.text.x = element_text(angle = 90, hjust = 1),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 15),
+        legend.position = "bottom")
+```
+
+2. Look at initial trends - environment vs. species
+
+```{r trends, warning = FALSE, message = FALSE}
+# Threadfin vs environmental
+threadfin1 <- ggplot(Tow_tf, aes(x = WTemp, y = CPUE)) + geom_point() + theme_bw()
+threadfin2 <- ggplot(Tow_tf, aes(x = Cond, y = CPUE)) + geom_point() + theme_bw()
+threadfin3 <- ggplot(Tow_tf, aes(x = SecDepth, y = CPUE)) + geom_point() + theme_bw()
+grid.arrange(threadfin1, threadfin2, threadfin3, top = "Threadfin CPUE by Environmental Variable")
+
+# Inland Silverside vs environmental
+iss1 <- ggplot(Tow_iss, aes(x = WTemp, y = CPUE)) + geom_point() + theme_bw()
+iss2 <- ggplot(Tow_iss, aes(x = Cond, y = CPUE)) + geom_point() + theme_bw()
+iss3 <- ggplot(Tow_iss, aes(x = SecDepth, y = CPUE)) + geom_point() + theme_bw()
+grid.arrange(iss1, iss2, iss3, top = "Inland Silverside CPUE by Environmental Variable")
+
+# American Shad vs environmental
+ashad1 <- ggplot(Tow_ashad, aes(x = WTemp, y = CPUE)) + geom_point() + theme_bw()
+ashad2 <- ggplot(Tow_ashad, aes(x = Cond, y = CPUE)) + geom_point() + theme_bw()
+ashad3 <- ggplot(Tow_ashad, aes(x = SecDepth, y = CPUE)) + geom_point() + theme_bw()
+grid.arrange(ashad1, ashad2, ashad3,  top = "American Shad CPUE by Environmental Variable")
+```
+
+## Transformations
+1. Log of sqrt for highly skewed data, or ranging >2 order magnitude
+2. Arcsine sqrt for proportional data
+3. Use same transformation for same variable set (e.g. species)
+4. Consider binary transformation when percent of zero values is high (>50%) or distinct values low (<10)
+
+```{r transformtests, warning = FALSE, message = FALSE}
+# Environmental Matrix
+Tow_env <- Tow_nmds %>% dplyr::select(c(24:26))
+
+# Check for normality of variables
+cond <- Tow_env$Cond
+temp <- Tow_env$WTemp
+sd <- Tow_env$SecDepth
+
+hist(cond)
+hist(log(cond+1)) # Use this
+hist(sqrt(cond+0.5))
+qqnorm(log(cond+1))
+
+hist(temp)
+hist(log(temp+1)) # Use this
+hist(sqrt(temp))
+qqnorm(temp)
+qqnorm(log(temp+1))
+
+hist(sd) # Keep it?
+hist(log(sd+1))
+qqnorm(sd)
+qqnorm(log(sd+1))
+```
+ 
+## PCA {.tabset}
+### Run PCA
+1.  Apply transformations to variables 
+2.  If you have variables with different units/scales, choose the correlation matrix (scale = TRUE). Then you do not need to scale your data beforehand.
+3. Run PCA
+4. Check PCA (Scree plot, Randomization Tests)
+
+* https://cran.r-project.org/web/packages/ggfortify/vignettes/plot_pca.html
+```{r pca, warning = FALSE, message = FALSE}
+source('biostats.R')
+library(vegan)
+library(ggfortify)
+
+### Transform to get close to normality assumptions
+Tow_env_t <- Tow_env %>% mutate(Cond = log(cond + 1),
+                                    WTemp = log(WTemp + 1),
+                                    SecDepth = log(SecDepth + 1)) %>%
+  as.data.frame()
+row.names(Tow_env_t) <- row.names(Tow_nmds)
+
+### Run PCA. Center and Scale the data (correlation matrix).
+pca.env <- prcomp(Tow_env_t, center=T, scale.=T)
+summary(pca.env)
+
+### Check how well PCA worked
+# Scree Plot with Broken Stick values. 
+# If eigenvalue is greater than broken stick value it is "significant"
+screeplot(pca.env, bstick = TRUE) # According to this, don't keep PC1 and PC2
+
+# Monte Carlo Randomization
+ordi.monte(Tow_env_t, ord = 'pca', dim = 3) # 2 axes is good
+
+### Check which variables matter
+# Loadings. Generally, if magnitude >/= 0.3 this is important.
+pca.env$rotation
+# Structure coefficients: linear correlations between original variables and PC scores
+pca.structure(pca.env, Tow_env_t, dim = 5, cutoff = 0.4)
+
+```
+
+### Plot
+5. Plot and interpret PCA
+
+```{r interpretPCA, warning = FALSE, message = FALSE}
+
+# Autoplot has best customization, looks nice
+  # use the "data = " to bring in original dataset so we can 
+  # color-code by factors
+autoplot(pca.env, data = Tow_nmds, colour = 'ActionPhase', loadings = TRUE,
+         loadings.label = TRUE,
+         loadings.colour = "black",
+         loadings.label.vjust = -.5,
+         loadings.label.col = "black",
+         loadings.label.size = 4,
+         loadings.label.font = 4) +
+  theme_bw()
+autoplot(pca.env, data = Tow_nmds, colour = 'Region', loadings = TRUE,
+         loadings.label = TRUE,
+         loadings.colour = "black",
+         loadings.label.vjust = -.5,
+         loadings.label.col = "black",
+         loadings.label.size = 4,
+         loadings.label.font = 4) + 
+  theme_bw()
+```
+
+## NMDS {.tabset}
+1. Pick your variables
+2. Switch to wide format (species listed across the top)
+3. Remove any row where nothing was caught
+
+#### Matrix
+```{r matrix for nmds, warning = FALSE, message = FALSE}
+Tow_f_sp <-Tow_nmds %>% dplyr::select(c("Survey", "StationCode", "Tow", "Depth", "Date", "FlowPulseType", "WYType", "Region",
+                                    "ActionPhase", "Month", "CommonName", "CPUE", "Cond",
+                                    "WTemp", "SecDepth"))
+# Species Matrix
+Tow_sp_w <- Tow_f_sp %>% pivot_wider(names_from = CommonName, values_from = CPUE, values_fill = list(CPUE=0)) %>% ungroup()
+
+# Remove any row where there is no catch for the day.
+Tow_sp_sum <- Tow_sp_w %>% mutate(Total = dplyr::select(., 14:19) %>%  rowSums(na.rm = TRUE)) %>%
+  filter(Total !=0)
+```
+
+#### Transform and/or standardize for nMDS
+* Some options for transformations: sqrt, log, absence/presence
+```{r nmdstransform, warning = FALSE, message = FALSE}
+# Sqrt transform data
+sqrt.tow <- Tow_sp_sum %>% mutate_if(is.numeric, function(x) {
+  sqrt(x)
+})
+                   
+# Log transform data
+log.tow <- Tow_sp_sum %>% mutate_if(is.numeric, function(x) {
+  log(x + 1) })
+
+# Absence/Presence data
+bin.Tow <- Tow_sp_sum %>% mutate_if(is.numeric, function(x) {
+  case_when(x>0 ~0,
+            x ==0 ~1)})
+
+# Proportional data
+
+```
+ 
+### Run NMDS
+1. Run
+* Currently a subset of data since otherwise even 2000 iterations won't converge :(
+* Went with sqrt transformation - least change
+
+
+```{r Tow nmds, warning = FALSE, message = FALSE, results = FALSE}
+library(vegan)
+
+test.tow <- sample_n(sqrt.tow, 120)
+
+# NMDS Tow
+# This can be slow
+tow.nmds <- metaMDS(test.tow[,14:19], distance="bray", k=2, trymax=500, autotransform = FALSE)
+tow.nmds
+
+```
+
+### Check
+2. Check NMDS
+* Stress < 0.15 is acceptable fit.
+* Check stressplot.
+
+```{r nmdsInterp, message = FALSE, warning = FALSE}
+# Scree Plot - what should k=? 
+# This can be slow
+nmds.scree(test.tow[,14:19], distance='bray', k=5, trymax = 200, autotransform = FALSE) 
+
+### Check NMDS solution 
+# Large scatter is not good
+stressplot(tow.nmds)
+```
+
+### Plot
+3. Plot Results. 
+* Resources:
+- https://jonlefcheck.net/2012/10/24/nmds-tutorial-in-r/
+- https://rpubs.com/collnell/manova
+- https://chrischizinski.github.io/rstats/vegan-ggplot2/
+```{r nmdsplot, message = FALSE, warning = FALSE}
+### NMDS scores
+tow.scores <- as.data.frame(scores(tow.nmds))
+species.scores <- as.data.frame(scores(tow.nmds, "species"))
+species.scores$species <- rownames(species.scores)
+
+# Need a category to merge scores with the rest of env data
+row.names(tow.scores) <- row.names(test.tow)
+tow.nmdsplot <- cbind(tow.scores, test.tow)
+
+# Prettier Plots
+# Option 1
+ggplot(tow.nmdsplot, aes(NMDS1, NMDS2, color = ActionPhase)) + 
+  geom_point(position = position_jitter(.1)) +
+  geom_text(aes(label = WYType)) +
+  stat_ellipse(type = 't', size = 1) +
+  annotate("text", x = min(tow.nmdsplot$NMDS1), y = min(tow.nmdsplot$NMDS2), label = paste('Stress = ', round(tow.nmds$stress,3))) + # Add stress to plot
+  theme_minimal() 
+
+# Option 2
+# With species scores and boxes
+
+# Make the datasets for the boxes
+grp.a <- tow.nmdsplot[tow.nmdsplot$ActionPhase == "Pre", ][chull(tow.nmdsplot[tow.nmdsplot$ActionPhase == 
+    "Pre", c("NMDS1", "NMDS2")]), ]  # hull values for grp A
+grp.b <- tow.nmdsplot[tow.nmdsplot$ActionPhase == "During", ][chull(tow.nmdsplot[tow.nmdsplot$ActionPhase == 
+    "During", c("NMDS1", "NMDS2")]), ]  # hull values for grp B
+grp.c<- tow.nmdsplot[tow.nmdsplot$ActionPhase == "Post", ][chull(tow.nmdsplot[tow.nmdsplot$ActionPhase == 
+    "Post", c("NMDS1", "NMDS2")]), ]  # hull values for grp C
+hull.data0 <- rbind(grp.a, grp.b)  #combine grp.a and grp.b
+hull.data <- rbind(hull.data0,grp.c)
+
+# Plot
+ggplot() + 
+  geom_point(data = tow.nmdsplot, aes(x = NMDS1, y = NMDS2, color = ActionPhase),
+             position = position_jitter(.1)) +
+  geom_text(data = tow.nmdsplot, aes(NMDS1, NMDS2, label = WYType, color = ActionPhase)) +
+  geom_text(data = species.scores, aes(x = NMDS1, y = NMDS2, label= species), color = "black", size = 5) +
+  theme_minimal() +
+  annotate("text", x = min(tow.nmdsplot$NMDS1), y = min(tow.nmdsplot$NMDS2), label = paste('Stress = ', round(tow.nmds$stress,3))) + # Add stress to plot
+  geom_polygon(data=hull.data,aes(x=NMDS1,y=NMDS2,fill=ActionPhase,group=ActionPhase),alpha=0.30) 
+
+```
+
+## PERMANOVA {.tabset}
+
+### Run models
+1. Standardize species data (basically becomes proportional data) to reduce influence of large numbers. Could also do sqrt transformation.
+2. Run PERMANOVA with each variable separately. Only keep significant variables.
+3. Create model that is significant with greatest R2, move down the list until new variables are not signficant.
+4. For any categorical variables, test interactions as well.
+
+```{r permanova, warning = FALSE, message = FALSE}
+# Row standardization
+tow.st <- data.stand(Tow_sp_sum[,14:19], method = 'total', margin = 'row', plot = F)
+
+# Individual permanova models
+(perm.all <- adonis(formula = tow.st ~ Region + Month + Survey + WYType + ActionPhase + FlowPulseType + WTemp + Cond + SecDepth + Region:Month, data = Tow_sp_sum, method = "bray",
+                   permutations = 99))
+
+(perm.WY <- adonis(formula = tow.st~Region, data = Tow_sp_sum, method = "bray", permutations = 99))
+
+(perm.Month <- adonis(formula = tow.st~Month, data = Tow_sp_sum, method = "bray", permutations = 99))
+
+(perm.Survey <- adonis(formula = tow.st~Survey, data = Tow_sp_sum, method = "bray", permutations = 99))
+
+(perm.WY <- adonis(formula = tow.st~WYType, data = Tow_sp_sum, method = "bray", permutations = 99))
+
+(perm.Action <- adonis(formula = tow.st~ActionPhase, data = Tow_sp_sum, method = "bray", permutations = 99))
+
+(perm.FlowPulse <- adonis(formula = tow.st~FlowPulseType, data = Tow_sp_sum, method = "bray", permutations = 99))
+
+```
+
+### Homogeneity of Variance
+5. Test for Homogeneity of Variance
+* Choose variables in your model
+* You want the anova not to be significant (significant means variances are not homogeneous)
+* Boxplots should be pretty equal
+```{r betadispersion, warning = FALSE, message = FALSE}
+# Make dissimilarity matrix
+spe.d <- vegdist(tow.st, "bray")
+
+# StationCode
+(sp.bdp <- betadisper(spe.d, Tow_sp_sum$Region))
+anova(sp.bdp)
+permutest(sp.bdp,pairwise=TRUE)
+plot(sp.bdp, ellipse = TRUE)
+boxplot(sp.bdp)
+
+# Month
+(sp.bdp2 <- betadisper(spe.d, Tow_sp_sum$Month))
+anova(sp.bdp2)
+permutest(sp.bdp2,pairwise=TRUE)
+plot(sp.bdp2, ellipse = TRUE)
+boxplot(sp.bdp2)
+
+# WYType
+sp.bdp3 <- betadisper(spe.d, Tow_sp_sum$WYType)
+sp.bdp3
+anova(sp.bdp3)
+permutest(sp.bdp3,pairwise=TRUE)
+plot(sp.bdp3, ellipse = TRUE)
+boxplot(sp.bdp3)
+
+# ActionPhase
+sp.bdp4 <- betadisper(spe.d, Tow_sp_sum$ActionPhase)
+sp.bdp4
+anova(sp.bdp4)
+permutest(sp.bdp4,pairwise=TRUE)
+plot(sp.bdp4, ellipse = TRUE)
+boxplot(sp.bdp4)
+
+# FlowPulseType
+sp.bdp5 <- betadisper(spe.d, Tow_sp_sum$FlowPulseType)
+sp.bdp5
+anova(sp.bdp5)
+permutest(sp.bdp5,pairwise=TRUE)
+plot(sp.bdp5, ellipse = TRUE)
+boxplot(sp.bdp5)
+
+```
+
+## CCA {.tabset}
+* Format: 1 matrix of predictors, 1 matrix of species data
+1. Transform and standardize continuous variables
+2. Transform species data - sqrt
+3. Check if unimodal distribution. If yes, run CCA.
+
+### Run
+```{r cca, warning = FALSE, message = FALSE}
+
+# Prepare continuous data
+tow.env.scaled <- as.data.frame(scale(Tow_sp_sum[,11:13]),center = "TRUE", scale = "TRUE")
+tow.env.f <- cbind(tow.env.scaled, Tow_sp_sum[,c("Region", "WYType", "ActionPhase","FlowPulseType", "Month")])
+
+# Prepare species data
+tow.sp <- sqrt.tow[,14:19]
+
+# Check unimodal distribution
+# Axis length > 4 = unimodal (CCA)
+# 2-4 probably unimodal
+# <2 = linear model
+decorana(tow.sp, ira=0)
+
+# Run CCA
+spe.cca <- cca(tow.sp ~.,tow.env.f)
+summary(spe.cca)
+```
+
+### Interpretation
+4. Interpretation of CCA axis, terms
+* Can use a step  model to create final CCA model
+```{r cca.interp, message = FALSE, warning = FALSE}
+
+# Test the significance of the CCA
+anova(spe.cca)
+anova(spe.cca, by = "axis")
+anova(spe.cca, by = "terms")
+anova(spe.cca, by = 'margin')
+
+# Forward stepping
+cca.step <- ordistep(cca(tow.sp ~ 1, data = tow.env.f), scope = formula(spe.cca), 
+                        direction = "forward", pstep = 1000)
+```
+
+### Plot
+5. Plot CCA
+```{r ccaplot, message = FALSE, warning = FALSE, fig.width=10, fig.height = 7}
+# Plot the CCA
+
+cca.biplot = function(cca){
+  
+  #find plot dimensions (changed these so all the points would fit)
+  xmin = min(summary((cca))$species[, 1]) * 1.2
+  xmax = max(summary((cca))$species[, 1]) * 1.7
+  ymin = min(summary((cca))$species[, 2]) * 1.1
+  ymax = max(summary((cca))$species[, 2]) * 1.5
+  
+  par(bty='l')
+  
+  # plot(cca,disp='species',scaling=1) #scale to show species the best
+  plot(summary((cca))$species[, 1], summary((cca))$species[, 2],
+       type = 'n', xlim = c(xmin, xmax), ylim = c(ymin, ymax), 
+       ylab = 'CA2 (3.3% Variation Explained)', xlab = 'CA1 (10.5% Variation Explained)')
+  axis(side = 1, lwd = 2)
+  axis(side = 2, lwd = 2)
+  box(lwd = 2)
+  
+  #draw origin lines
+  segments(-2, 0, 2, 0, lwd = 1, lty = 3)
+  segments(0, -4, 0, 2, lwd = 1, lty = 3)
+  
+  #Add species names
+  text(summary((cca))$species[, 1],summary((cca))$species[, 2], labels = rownames(summary((cca))$species), cex = 0.9)
+  
+  #define continuous variables possibly used
+  cont.vars=c('Cond','WTemp','DOx','SecDepth','Turb')
+  
+  bi.names = row.names(summary(cca)$biplot) #names of environmental variables
+  # centroid.names=row.names(summary(cca)$centroid) 
+  centroid.names = data.frame(Rows = rownames(summary((cca))$centroid))
+  
+  #Pain in the a$$ way to do this, but I created abbreviated names for each level of
+  #my categorical variable so that they would look nicer when plotted
+  #Else I would have names like HabitatC on the biplot
+  # 
+  centroid.names$New[centroid.names$Rows == 'ActionPhasePre'] = 'PreAction'
+  centroid.names$New[centroid.names$Rows == 'ActionPhaseDuring'] = 'DuringAction'
+  centroid.names$New[centroid.names$Rows == 'ActionPhasePost'] = 'PostAction'
+
+  centroid.names$New[centroid.names$Rows == 'WYTypeC'] = 'CriticalWY'
+  centroid.names$New[centroid.names$Rows == 'WYTypeD'] = 'DryWY'
+  centroid.names$New[centroid.names$Rows == 'WYTypeW'] = 'WetWY'
+
+  centroid.names$New[centroid.names$Rows == 'FlowPulseTypeMA-Ag'] = 'AgPulse'
+  centroid.names$New[centroid.names$Rows == 'FlowPulseTypeMA-SR'] = 'SRPulse'
+  centroid.names$New[centroid.names$Rows == 'FlowPulseTypeNF'] = 'NoFA'
+  
+  centroid.names$New[centroid.names$Rows == 'Month4'] = 'Apr'
+  centroid.names$New[centroid.names$Rows == 'Month5'] = 'May'
+  centroid.names$New[centroid.names$Rows == 'Month6'] = 'June'
+  centroid.names$New[centroid.names$Rows == 'Month7'] = 'July'
+  centroid.names$New[centroid.names$Rows == 'Month8'] = 'Aug'
+  centroid.names$New[centroid.names$Rows == 'Month9'] = 'Sep'
+  centroid.names$New[centroid.names$Rows == 'Month10'] = 'Oct'
+  centroid.names$New[centroid.names$Rows == 'Month11'] = 'Nov'
+  centroid.names$New[centroid.names$Rows == 'Month12'] = 'Dec'
+  centroid.names$New[centroid.names$Rows == 'Month1'] = 'Jan'
+  centroid.names$New[centroid.names$Rows == 'Month2'] = 'Feb'
+  centroid.names$New[centroid.names$Rows == 'Month3'] = 'Mar'
+  
+    centroid.names$New[centroid.names$Rows == 'RegionCacheSloughComplex'] = 'CacheSloughComplex'
+  centroid.names$New[centroid.names$Rows == 'RegionCentralYolo'] = 'CentralYolo'
+  centroid.names$New[centroid.names$Rows == 'RegionColusaDrainRCS'] = 'ColusaDrainRCS'
+  centroid.names$New[centroid.names$Rows == 'RegionLowerSacRiver'] = 'LowerSacRiver'
+  centroid.names$New[centroid.names$Rows == 'RegionLowerYolo'] = 'LowerYolo'
+  centroid.names$New[centroid.names$Rows == 'RegionMiddleSacRiver'] = 'MiddleSacRiver'
+  
+  #This could possibly be slimmed down, but it plots arrows if the variable is continuous (part of the list above)
+  # and plots a point for the categorical variables instead
+  
+  for(i in 1:length(summary(cca)$biplot[, 1])){
+    
+    #Test that the row name is one of the continuous variables before plotting arrows
+    if(bi.names[i] %in% cont.vars){
+      arrows(0, 0, summary(cca)$biplot[i, 1], summary(cca)$biplot[i, 2],
+             lwd = 1, angle = 25, length = 0.10, col = "#F4aa42")
+      text(summary(cca)$biplot[i, 1] * 1.1, 
+           summary(cca)$biplot[i, 2] * 1.1, labels = bi.names[i], col = '#F4aa42', cex = 0.8, font = 7)
+    }
+    
+  }
+  
+  #now plot the centered mean value of each nominal variable
+  #Use if statement to test for case where I don't have any categorical variables
+  
+  if(is.numeric(summary(cca)$centroids) == TRUE){
+    
+    points(summary(cca)$centroids[, 1] * 0.9, summary(cca)$centroids[, 2] * 0.9, pch = 15, col = 'black')
+    
+    text(summary(cca)$centroids[, 1] * 0.9, (summary(cca)$centroids[, 2] * 0.9 + 0.15), labels = centroid.names$New,
+         col = 'darkcyan', cex = 0.9, adj = .5)
+  }
+  
+}
+
+cca.biplot(spe.cca)
+
+
+
+```
+

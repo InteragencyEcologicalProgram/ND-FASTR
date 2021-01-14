@@ -1,0 +1,63 @@
+---
+title: "Raw Data Plots template - 2015"
+author: "Dave Bosworth"
+date: "11/6/2020"
+output: html_document
+---
+
+## {{parameter}} {.tabset .tabset-pills}
+
+```{r filter indiv {{parameter}} plots, include = FALSE}
+filt_param <- "{{parameter}}"
+
+df_plots_indiv_yr_filt <- filter(df_plots_indiv_yr, parameter == filt_param)
+```
+
+### All Years
+
+```{r plot {{parameter}} all yrs, echo = FALSE}
+df_plots_all_yrs %>% 
+  filter(parameter == filt_param) %>% 
+  print_plot()
+```
+
+### 2015
+
+```{r plot {{parameter}} 2015, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2015) %>% 
+  print_plot()
+```
+
+### 2016
+
+```{r plot {{parameter}} 2016, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2016) %>% 
+  print_plot()
+```
+
+### 2017
+
+```{r plot {{parameter}} 2017, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2017) %>% 
+  print_plot()
+```
+
+### 2018
+
+```{r plot {{parameter}} 2018, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2018) %>% 
+  print_plot()
+```
+
+### 2019
+
+```{r plot {{parameter}} 2019, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2019) %>% 
+  print_plot()
+```
+

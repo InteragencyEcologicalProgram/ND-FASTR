@@ -1,0 +1,165 @@
+---
+title: "Test outlier detection methods on NDFA RTM data - Chla"
+author: "Dave Bosworth"
+date: "12/8/2020"
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_depth: 1
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+library(ODWGtools)
+library(plotly)
+library(knitr)
+```
+
+```{r import prepared data, message = FALSE, warning = FALSE}
+# Define directory for local repository
+fp_local_repo <- "C:/Repositories/ND-FASTR/Water_Quality/Continuous_WQ/Data_cleaning"
+
+# Import prepared data
+source(file.path(fp_local_repo, "rtm_test_outlier_detect_import_data.R"))
+
+# Source functions for this file
+source(file.path(fp_local_repo, "rtm_test_outlier_detect_funcs.R"))
+```
+
+# Test outlier detection methods
+
+```{r run methods chla, message = FALSE}
+df_outlier_test <- df_clean_nest %>% 
+  filter(parameter == "Chla") %>% 
+  mutate(
+    odwg_test_calc = map(
+      data_full_dt, 
+      ~mutate(
+        .x,
+        # spike test with fixed thresholds
+        qual_spike_fixed = rtqc_spike(value, c(15, 30)),
+        # spike test with dynamic thresholds (50 and 100% of the spike reference)
+        qual_spike_dyn = rtqc_spike(
+          value,
+          list(
+            (lag(value) + lead(value))/2 * 0.5,
+            (lag(value) + lead(value))/2
+          )
+        ),
+        # value increases by over 100% from the prior value
+        qual_incr = outlier_test_factor(
+          case_when(
+            is.na(value) | is.na(lag(value)) | is.na(lead(value)) ~ NA_integer_,
+            (value - lag(value))/lag(value) > 1 ~ 4L,
+            TRUE ~ 1L
+          )
+        ),
+        # value decreases by over 50% from the prior value
+        qual_decr = outlier_test_factor(
+          case_when(
+            is.na(value) | is.na(lag(value)) | is.na(lead(value)) ~ NA_integer_,
+            (value - lag(value))/lag(value) < -0.5 ~ 4L,
+            TRUE ~ 1L
+          )
+        ),
+        # rate of change test (using 3 standard deviations, SD is of the prior 25-hour period)
+        qual_rate = rtqc_rate(value, 3, 50)
+      )
+    ),
+    # Remove missing data values and replace qual codes that have NA values - for plots
+    odwg_test_v1 = map(
+      odwg_test_calc,
+      ~filter(.x, !is.na(value)) %>% 
+        replace_na(
+          list(
+            qual_spike_fixed = "pass",
+            qual_spike_dyn = "pass",
+            qual_incr = "pass",
+            qual_decr = "pass",
+            qual_rate = "pass"
+          )
+        )
+    ),
+    # Add a variable identifying if a majority of tests (3 or more) resulted in a "suspect" or "fail"
+    odwg_test_maj = map(
+      odwg_test_v1,
+      ~mutate(.x, across(where(is.factor), ~if_else(. == "pass", 0L, 1L))) %>% 
+        select(-value) %>% 
+        mutate(
+          qual_total = rowSums(across(where(is.numeric))),
+          qual_majority = outlier_test_factor(if_else(qual_total > 2, 4L, 1L))
+        ) %>% 
+        select(DateTime, qual_majority)
+    ),
+    odwg_test_f = map2(odwg_test_v1, odwg_test_maj, .f = left_join)
+  ) %>% 
+  select(parameter, yr, odwg_test_f)
+```
+
+# Create plots
+
+```{r create plots}
+df_outlier_test_plots <- df_outlier_test %>% 
+  mutate(
+    plot_spike_fixed = map(
+      odwg_test_f, 
+      .f = outlier_test_plot, 
+      qual_var = qual_spike_fixed,
+      plot_title = "Spike test - 15 and 30"
+    ),
+    plot_spike_dyn = map(
+      odwg_test_f, 
+      .f = outlier_test_plot, 
+      qual_var = qual_spike_dyn,
+      plot_title = "Spike test - 50 and 100% of spike ref"
+    ),
+    plot_incr = map(
+      odwg_test_f, 
+      .f = outlier_test_plot, 
+      qual_var = qual_incr,
+      plot_title = "Value increases by over 100% from prior value"
+    ),
+    plot_decr = map(
+      odwg_test_f, 
+      .f = outlier_test_plot, 
+      qual_var = qual_decr,
+      plot_title = "Value decreases by over 50% from prior value"
+    ),
+    plot_rate = map(
+      odwg_test_f, 
+      .f = outlier_test_plot, 
+      qual_var = qual_rate,
+      plot_title = "3 SD, over past 25 hours"
+    ),
+    plot_maj = map(
+      odwg_test_f, 
+      .f = outlier_test_plot, 
+      qual_var = qual_majority,
+      plot_title = "3 or more tests are suspect or fail"
+    )
+  )
+```
+
+# Visualize Chla results {.tabset .tabset-pills}
+
+```{r print plots, include = FALSE}
+# Create a list of plot templates to use for each year
+produce_plots <- 
+  map(
+    df_outlier_test_plots$yr,
+    ~knit_expand(file = "rtm_test_outlier_detect_plots_template.Rmd", yr = .x)
+  )
+```
+
+`r knit(text = unlist(produce_plots))`
+
