@@ -1,11 +1,14 @@
 ---
-title: "FASTR_Fish_ANOVA"
+title: "FISH_MAN_Analysis_Models_Seine"
 author: "Catarina Pien"
 date: "12/15/2020"
 output: html_document
 editor_options: 
   chunk_output_type: console
 ---
+
+Code for FASTR fish models for seine data
+Fish ~ Region + Action Phase + Year
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -25,6 +28,7 @@ library(viridis) # Color palette
 ```
 
 ## Import data
+
 * Fish_ndfa: integrated fish dataset
 * Merge flow data into rest of data
 * Define variable structures
@@ -95,6 +99,7 @@ str(Fish_all)
 
 
 ## Data Prep
+
 * Filter to just Seine data
 * Fill in zeros for unlisted species
 * Calculate CPUE 
@@ -244,6 +249,7 @@ lrtest(zip1, zinb1)
 ```
 
 Diagnostic Plots
+
 * Still need to figure out how to do this
 
 ```{r}
@@ -277,7 +283,7 @@ visreg(zinb1)
 
 ### Native fishes
 
-Sum smeltish into one CPUE/seine
+Sum natives into one CPUE/seine
 ```{r}
 Seine_natives <- Seine_natives0 %>%
   group_by(Date, Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, VolumeSampled) %>%
@@ -286,6 +292,7 @@ Seine_natives <- Seine_natives0 %>%
 ```
 
 Look at data
+
 * Good proportions - mostly Sucker, Pikeminnow, some years Splittail
 * Lots of zeros, usually low catch when there is catch
 * More fish from DJFMP

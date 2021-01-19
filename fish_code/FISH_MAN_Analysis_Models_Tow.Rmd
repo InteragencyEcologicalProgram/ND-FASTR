@@ -1,12 +1,13 @@
 ---
-title: "FISH_MAN_Analysis_Models"
+title: "FISH_MAN_Analysis_Models_Tow"
 author: "Catarina Pien"
 date: "12/15/2020"
 output: html_document
 editor_options: 
   chunk_output_type: console
 ---
-Code for fish models
+
+Code for FASTR fish models for tow data
 Fish ~ Region + Action Phase + Year
 
 ```{r setup, include=FALSE}
@@ -22,6 +23,7 @@ library(tidyverse)
 library(lubridate) # Datetime
 library(pscl) # Run zips and zinbs
 library(visreg) # Visualize models
+library(dplyr)
 ```
 
 ## Import data
@@ -33,8 +35,9 @@ library(visreg) # Visualize models
 * Order action phases
 
 ```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
+setwd("C:/Users/cpien/OneDrive - California Department of Water Resources/Work/FASTR/FASTR/ND-FASTR")
 Fish_ndfa_0 <- read.csv("fish data/FISH_MAN_allIEPsurveys_20201030.csv")
-Fish_ndfa <- select(Fish_ndfa_0, -c(Turbidity, DO, Latitude, Longitude))
+Fish_ndfa <- select(Fish_ndfa_0, -c(Latitude, Longitude, DO, Turbidity))
 FlowDesignation <- read.csv("fish data/FlowDatesDesignations_45days.csv")
 Regions <- read.csv("fish data/Stations_Fish_NDFA_2021-01-13.csv")
 Regions_min <- Regions %>%
@@ -144,14 +147,6 @@ CPUE_means_Tow_phase <- Tow_f %>%
   summarize(mean.CPUE = mean(CPUE)) 
 ```
 
-## Calculate how often fish is present in samples
-```{r}
-Tow_f %>%
-  group_by(Survey, StationCode, CommonName) %>%
-  summarize()
-```
-
-
 ## Filter for species sets
 
 ```{r Tow filters, warning = FALSE, message = FALSE}
@@ -160,31 +155,55 @@ list_native <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sac
 list_smeltish <- c("Wakasagi", "Inland Silverside")
 list_nmds <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish","Wakasagi", "Inland Silverside", "Delta Smelt", "Carp", "Goldfish", "Hardhead", "Golden Shiner", "Fathead Minnow", "Hitch","Rainwater Killifish", "Western Mosquitofish", "Black Crappie", "White Crappie", "Bluegill", "Bigscale Logperch","Largemouth Bass", "Smallmouth Bass", "Striped Bass", "Spotted Bass","Threadfin Shad", "American Shad", "Tridentiger spp_", "Shimofuri Goby", "White Catfish")
 
-Tow_natives <- Tow_f %>%filter(CommonName %in% list_native)
+Tow_natives0 <- Tow_f %>%filter(CommonName %in% list_native)
 Tow_nmds_larger <- Tow_f%>% filter(CommonName %in%list_nmds)
-Tow_smeltish <- Tow_f %>% filter(CommonName %in% list_smeltish)
+Tow_smeltish0 <- Tow_f %>% filter(CommonName %in% list_smeltish)
 ```
 
 ## Run ANOVA {.tabset}
 
 ### Smeltish
 
+Sum smeltish into one CPUE/Tow
 ```{r}
-ggplot(Tow_smeltish, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + theme_bw()
+Tow_smeltish <- Tow_smeltish0 %>%
+  group_by(Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, Date,  VolumeSampled, Tow) %>%
+  summarize(sumCPUE = sum(CPUE),
+            sumCount = sum(sum.count))
+```
 
-ggplot(Tow_smeltish, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + theme_bw()
+Look at data
+
+* Mostly silversides
+* More fish from EDSM
+* More upstream
+
+```{r}
+# Proportion ISS vs Wakasagi
+ggplot(Tow_smeltish0, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw()
+
+# Histogram
+ggplot(Tow_smeltish, aes(sumCPUE)) + geom_histogram(binwidth = .001) + theme_bw()
+
+# Survey
+ggplot(Tow_smeltish, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
+
+# Action Phase
+ggplot(Tow_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Region
+ggplot(Tow_smeltish, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Year 
+ggplot(Tow_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
 
 Using transformations - doesn't work well
 ```{r}
-(M.smeltish1 <- glm(log(CPUE+1)~FlowPulseType + ActionPhase + Region, data  = Tow_smeltish))
+(M.smeltish1 <- glm(log(sumCPUE+1)~FlowPulseType + ActionPhase + Region, data  = Tow_smeltish))
 summary(M.smeltish1)
 par(mfrow = c(2,2))
 plot(M.smeltish1)
-
-logCPUE <-  log(Tow_smeltish$CPUE + 1)
-hist(logCPUE)
-
 ```
 
 Zero-inflated model
@@ -194,11 +213,11 @@ Zero-inflated model
 Tow_smeltish$Samp <- log(Tow_smeltish$VolumeSampled)
 
 # Formula
-f1 <- formula(sum.count ~ Region + fYear + ActionPhase + offset(Samp))
+f1 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
 
 # Overdispersion = Variance much larger than mean. 
-var(Tow_smeltish$sum.count)
-mean(Tow_smeltish$sum.count)
+var(Tow_smeltish$sumCount)
+mean(Tow_smeltish$sumCount)
 
 # Negbin
 zinb1 <- zeroinfl(f1, na.action = "na.fail", dist="negbin", link = "logit", data = Tow_smeltish) ; summary(zinb1)
@@ -239,29 +258,56 @@ visreg(zinb1)
 
 **Conclusions**
 
-* More smeltish in phase "pre" followed by "post" followed by "during"
-* More smeltish upstream, then downstream then Middle Sac River (much less)
-* Variability by year but nothing too big
-* No effect of region or year on the extra zeroes
-* More zeroes in during then post then pre
+* More smeltish post>pre>during (but very small difference)
+* More smeltish upstream>downstream
+* Variability by year
+* More zeroes upstream than downstream
+* More zeroes during than pre
+
+
 
 ### Native fishes
 
+Sum natives into one CPUE/tow
 ```{r}
-ggplot(Tow_natives, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + theme_bw()
+Tow_natives <- Tow_natives0 %>%
+  group_by(Date, Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, VolumeSampled, Tow) %>%
+  summarize(sumCPUE = sum(CPUE),
+            sumCount = sum(sum.count))
+```
 
-ggplot(Tow_natives, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + theme_bw()
+Look at plots
+
+* Very little catch
+```{r}
+# Proportion Species
+ggplot(Tow_natives0, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw() + scale_fill_viridis(discrete = TRUE, option = "plasma")
+
+# Histogram
+ggplot(Tow_natives, aes(sumCPUE)) + geom_histogram(binwidth = .0001) + theme_bw()
+
+# Survey
+ggplot(Tow_natives, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
+
+# Action Phase
+ggplot(Tow_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Region
+ggplot(Tow_natives, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Year 
+ggplot(Tow_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
 
 Zero-inflated model
-# Doesn't work - not enough samples?
+* Doesn't work - not enough samples?
 ```{r}
 
 # For CPUE, use offset to account for sampling effort
 Tow_natives$Samp <- log(Tow_natives$VolumeSampled)
 
 # Formula
-f2 <- formula(sum.count ~ Region + fYear + ActionPhase + offset(Samp))
+f2 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
 
 # Negbin
 zinb2 <- zeroinfl(f2, na.action = "na.fail", dist="negbin", link = "logit", data = Tow_natives) ; summary(zinb2)
@@ -296,38 +342,93 @@ visreg(zinb2)
 ```
 
 ### Overall CPUE
-* Think about if you want to sum overall CPUE or do individual species? - can do regular ANOVA if you combine all species for overall CPUE
-* If you do modeling as above, consider using the Tow_nmds_larger grouping or calculate species that are in at least 5% of samples so there aren't *quite* so many zeroes. 
-* Below code is modeling for including **all** fish
 
 Sum Overall CPUE
 ```{r}
-Tow_allfish <- Tow_f %>%
-  group_by(Survey,fYear, Date, Region, StationCode, ActionPhase, MethodCode, Tow, VolumeSampled) %>%
-  summarize(CPUE_total = sum(CPUE),
-            Count_total = sum(sum.count))
+Tow_all <- Tow_f %>%
+  group_by(Survey,fYear, Date, Region, StationCode, ActionPhase, MethodCode, VolumeSampled, Tow) %>%
+  summarize(sumCPUE = sum(CPUE),
+            sumCount = sum(sum.count))
 ```
 
-Zero-inflated model
-Could probably try a normal negative binomial as well
+Look at data
+
+
+```{r}
+# Proportion Species
+ggplot(Tow_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw()  + theme(legend.position = "bottom")
+
+# Histogram
+ggplot(Tow_all, aes(sumCPUE)) + geom_histogram(binwidth = .001) + theme_bw()
+
+# Survey
+ggplot(Tow_all, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
+
+# Action Phase
+ggplot(Tow_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Region
+ggplot(Tow_all, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Year 
+ggplot(Tow_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+```
+
+Model - normal glm
+```{r}
+m1all <- glm(sumCPUE~Region + fYear + ActionPhase, data = Tow_all); summary(m1all)
+
+par(mfrow = c(2,2))
+plot(m1all)
+
+```
+
+Model with log transformation
+```{r}
+Tow_all$logCPUE = log(Tow_all$sumCPUE + 1)
+m2all <- glm(logCPUE~Region + fYear + ActionPhase, data = Tow_all); summary(m2all)
+
+par(mfrow = c(2,2))
+plot(m2all)
+
+hist(Tow_all$logCPUE)
+```
+
+Model with poisson distribution
 ```{r}
 
 # For CPUE, use offset to account for sampling effort
-Tow_f$Samp <- log(Tow_f$VolumeSampled)
+Tow_all$Samp <- log(Tow_all$VolumeSampled)
 
 # Formula
-f3 <- formula(sum.count ~ Region + fYear + ActionPhase + offset(Samp))
+f3 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
 
-# Negbin
-zinb3 <- zeroinfl(f3, na.action = "na.fail", dist="negbin", link = "logit", data = Tow_f) ; summary(zinb3)
+# Check overdispersion (var>mean)
+var(Tow_all$sumCPUE)
+mean(Tow_all$sumCPUE)
 
-# Poisson
-zip3 <- zeroinfl(f3, dist = "poisson", link = "logit", data = Tow_f); summary(zip3)
+# Poisson distribution or quasipoisson (overdispersed)
+m3all <- glm(f3, data = Tow_all, family = quasipoisson); summary(m3all)
+# See dispersion parameter
+
+par(mfrow = c(2,2))
+plot(m3all)
+
+visreg(m3all)
 ```
 
-Compare zero-inflated poisson with zero-inflated negbin
+Model with negative binomial distribution
+* https://stats.idre.ucla.edu/r/dae/negative-binomial-regression/
 ```{r}
+library(MASS)
+m4all <- glm.nb(f3, data = Tow_all); summary(m4all)
+plot(m4all)
 
+# Confidence Intervals 
+(est <- cbind(Estimate = coef(m4all), confint(m4all)))
+
+# Incidence Rates (Count)
+exp(est)
 ```
 
 Diagnostic Plots
@@ -335,18 +436,23 @@ Diagnostic Plots
 # Diagnostic Plots -------------------------------------
 # Model Validation 
 # Calculate residuals
-EP3 <- resid(zinb3, type = "pearson")
+EP3 <- resid(m4all, type = "pearson")
 
 # Diagnostic Plots
 par(mfrow = c(2,2))
-plot(x=zinb3$fitted.values, y = EP3, main = "Pearson residuals")
-# qqrplot(EP3) # Don't know why not working
-plot(x=Tow_f$ActionPhase,y = EP3, main = "Action Phase")
-plot(x=Tow_f$Region, y = EP3, main = "Region")
-plot(x=Tow_f$fYear, y = EP3, main = "Year")
+plot(x=m4all$fitted.values, y = EP3, main = "Pearson residuals")
+plot(x=Tow_all$ActionPhase,y = EP3, main = "Action Phase")
+plot(x=Tow_all$Region, y = EP3, main = "Region")
+plot(x=Tow_all$fYear, y = EP3, main = "Year")
 
 par(mfrow = c(2,2))
-visreg(zinb3)
+visreg(m4all)
 ```
 
+**Conclusions**
 
+* More samples in 2017-2019 (EDSM started?) 
+* Not sure about residual distribution
+* More fish Upstream > Downstream > Middle Sac
+* More fish Pre > Post > During 
+* Year variability - not sure if reading correctly (compare plot vs numbers)
