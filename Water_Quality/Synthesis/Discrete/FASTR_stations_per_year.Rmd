@@ -1,0 +1,160 @@
+---
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 1
+    toc_float:
+      collapsed: false
+editor_options:
+  chunk_output_type: console
+---
+
+```{r Import Packages, echo = FALSE, include = FALSE}
+# FASTR Stations Per Year
+# Author: Sarah Perry
+# Date created: 12/18/2020
+
+
+# import packages and scripts
+library(tidyverse)
+library(quantreg)
+library(lubridate)
+library(knitr)
+library(pander)
+library(kableExtra)
+source('global_ndfa_funcs.R')
+
+# define functions
+blank_theme <- function(){
+  theme_bw() +
+    theme(
+      panel.grid.major.y = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.text = element_text(color = 'black', size = 8, family = 'sans'),
+      # axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
+      strip.text = element_text(size = 10),
+      axis.title = element_text(size = 15, face = 'bold'),
+      plot.title = element_text(size = 10, hjust = 0.5, face = 'bold'),
+      legend.position = 'top',
+      legend.title = element_blank(),
+      legend.box.margin = margin(-10,0,-10,0),
+      legend.text = element_text(size = 10)
+    )
+}
+```
+
+```{r Data Cleaning, message=FALSE, warning=FALSE, echo = FALSE, include = FALSE}
+# define absolute filepaths
+fp_abs_discrete <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/WQ_OUTPUT_Discrete_Lab_formatted.csv')
+fp_abs_wy <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/Analysis/FlowDatesDesignations.csv')
+fp_abs_region <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/Analysis/NDFA_map.csv')
+
+# read in data
+df_discrete <- read_csv(fp_abs_discrete)
+df_water_year <- read_csv(fp_abs_wy)
+df_region <- read_csv(fp_abs_region)
+
+# remove excess cols in df_region
+df_region <- subset(df_region, select = c(Station, Region))
+
+#remove sites we aren't including (not available for all years), create a column for year
+# remove <- c('DWT', 'SRH', 'SDI', 'SHR', 'SRV', 'WWT')
+# df_discrete <- filter(df_discrete, !StationCode %in% remove)
+
+# standardize/rename Date col
+df_discrete$DateTime <- as.Date(df_discrete$DateTime)
+df_discrete <- rename(df_discrete, c('Date' = 'DateTime'))
+
+# rename Station col
+df_discrete <- rename(df_discrete, c('Station' = 'StationCode'))
+
+# add flow action dates
+df_discrete <- ndfa_action_periods(df_discrete, na_action_remove = TRUE, keep_action_dates = FALSE)
+
+# add metadata cols
+df_wq <- merge(df_discrete, df_water_year, by = c('Year')) 
+df_wq <- merge(df_wq, df_region, by = c('Station')) 
+
+# organize stations by region (not an efficient way)
+lvl_factors <- c('RMB','RCS','RD22','I80','LIS','STTD','BL5','LIB','RYI','RVB')
+df_wq$Station <- factor(df_wq$Station, levels = lvl_factors)
+
+# # export tally csv
+# df_wq_csv <- df_wq %>%
+#   group_by(Analyte, Year, Station, FlowActionPeriod) %>%
+#   count()
+# 
+# write.csv(df_wq_csv,'Water_Quality/Synthesis/discrete_tallys.csv', row.names = FALSE)
+```
+
+# Main Graphs {.tabset .tabset-fade .tabset-pills}
+```{r results='asis', message=FALSE, warning=FALSE, echo = TRUE, fig.width=10, fig.height=8}
+analytes <- unique(df_wq$Analyte)
+main_analytes <- c('Chla','DisAmmonia','DisNitrateNitrite','DOP')
+other_analytes <- analytes[!analytes %in% main_analytes]
+
+for (analyte in main_analytes){
+  df_analyte <-
+    df_wq %>%
+    filter(
+      Analyte == analyte
+    )
+  
+  # By Analyte
+  cat('\n##', analyte, '{.tabset .tabset-fade .tabset-pills} \n\n')
+  
+  # cat('\n### Plot \n\n')
+   plt <- ggplot(df_analyte, aes(x=Station, fill=Region)) + 
+     geom_bar() +
+     facet_wrap(. ~ Year, ncol = 3) #+
+     #blank_theme()
+   
+   plot(plt)
+   cat('\n')
+   
+  # cleanup df
+#  df_analyte <- subset(df_filt, select = -c(Note, Year, Analyte))
+#    df_table <- df_analyte %>%
+#      group_by(Analyte, Year, Station, FlowActionPeriod) %>%
+#      count()
+#   
+#   kable(df_table, align = 'c', caption = '<center><strong>Graph Interpretations</strong></center>')
+# }
+#    
+#    cat('\n')
+}
+```
+
+# Other Graphs {.tabset .tabset-fade .tabset-pills}
+```{r results='asis', echo = TRUE, fig.width=10, fig.height=8}
+for (analyte in other_analytes){
+  df_analyte <-
+    df_wq %>%
+    filter(
+      Analyte == analyte
+    )
+  
+  # By Analyte
+  cat('\n##', analyte, '{.tabset .tabset-fade .tabset-pills} \n\n')
+  
+  cat('\n### Plot \n\n')
+   plt <- ggplot(df_analyte, aes(x=Station, fill=Region)) + 
+     geom_bar() +
+     facet_wrap(. ~ Year, ncol = 3) #+
+     #blank_theme()
+   
+   plot(plt)
+   cat('\n')
+   
+   # df_table <- df_analyte %>%
+     # group_by(Analyte, Year, Station, FlowActionPeriod) %>%
+     # count()
+   
+   # kable(df_table, align = 'c', caption = '<center><strong>Graph Interpretations</strong></center>')
+   
+  # cat('\n')
+}
+```
+

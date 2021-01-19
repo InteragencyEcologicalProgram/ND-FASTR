@@ -1,0 +1,150 @@
+---
+# output:
+#   html_document:
+#     code_folding: hide
+#     toc: true
+#     toc_depth: 1
+#     toc_float:
+#       collapsed: false
+# editor_options:
+#   chunk_output_type: console
+---
+
+```{r Import Packages, echo = FALSE, include = FALSE}
+# FASTR WQ Quantile Regression
+# Author: Sarah Perry
+# Date created: 11/23/2020
+# Purpose: Quantile Regression of Discrete WQ Data
+
+# import packages and scripts
+library(tidyverse)
+library(quantreg)
+library(lubridate)
+library(knitr)
+library(pander)
+library(kableExtra)
+source('global_ndfa_funcs.R')
+
+# define functions
+blank_theme <- function(){
+  theme_bw() +
+    theme(
+      panel.grid.major.y = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.text = element_text(color = 'black', size = 10, family = 'sans'),
+      axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
+      strip.text = element_text(size = 11),
+      axis.title = element_text(size = 15, face = 'bold'),
+      plot.title = element_text(size = 17, hjust = 0.5, face = 'bold'),
+      legend.position = 'top',
+      legend.title = element_blank(),
+      legend.box.margin = margin(-10,0,-10,0),
+      legend.text = element_text(size = 9)
+    )
+}
+```
+
+```{r Data Cleaning, message=FALSE, warning=FALSE, echo = FALSE, include = FALSE}
+# define absolute filepaths
+fp_abs_discrete <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/WQ_OUTPUT_Discrete_Lab_formatted.csv')
+fp_abs_wy <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/Analysis/FlowDatesDesignations.csv')
+fp_abs_region <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/Analysis/NDFA_map.csv')
+
+# read in data
+df_discrete <- read_csv(fp_abs_discrete)
+df_water_year <- read_csv(fp_abs_wy)
+df_region <- read_csv(fp_abs_region)
+
+# remove excess cols in df_region
+df_region <- subset(df_region, select = c(Station, Region))
+
+#remove sites we aren't including (not available for all years), create a column for year
+remove <- c('DWT', 'SRH', 'SDI', 'SHR', 'SRV', 'WWT')
+df_discrete <- filter(df_discrete, !StationCode %in% remove)
+
+# standardize/rename Date col
+df_discrete$DateTime <- as.Date(df_discrete$DateTime)
+df_discrete <- rename(df_discrete, c('Date' = 'DateTime'))
+
+# rename Station col
+df_discrete <- rename(df_discrete, c('Station' = 'StationCode'))
+
+# add flow action dates
+df_discrete <- ndfa_action_periods(df_discrete, na_action_remove = TRUE, keep_action_dates = FALSE)
+
+# add metadata cols
+df_wq <- merge(df_discrete, df_water_year, by = c('Year')) 
+df_wq <- merge(df_wq, df_region, by = c('Station')) 
+```
+
+# Main Graphs {.tabset .tabset-fade .tabset-pills}
+```{r results='asis', message=FALSE, warning=FALSE, echo = TRUE, fig.width=17, fig.height=15}
+analytes <- unique(df_wq$Analyte)
+main_analytes <- c('Chla','DisAmmonia','DisNitrateNitrite','DOP')
+other_analytes <- analytes[!analytes %in% main_analytes]
+analyte <- analytes[6]
+for (analyte in main_analytes){
+  df_analyte <-
+    df_wq %>%
+    filter(
+      Analyte == analyte
+    )
+  
+  # model
+  eq <- with(df_analyte, Result ~ FlowPulseType*FlowActionPeriod + Region*FlowActionPeriod + Region*FlowPulseType)
+
+  # By Analyte
+  cat('\n##', analyte, '{.tabset .tabset-fade .tabset-pills}')
+  
+  cat('\n### QR Results \n\n')
+  qrfit <- rq(eq)
+  print(summary(qrfit, se = 'iid'))
+  cat('\n')
+  
+  cat('\n### QR Plot \n\n')
+  qrfit_multi <- rq(eq, tau =  4:6/10)
+  plot(summary(qrfit_multi, se = 'iid'), level = 0.95)
+  cat('\n')
+  
+  cat('\n### ANOVA \n\n')
+  aov_mod <- aov(eq)
+  # t <- knitr::kable(summary(aov_mod), format = 'html') # make into dataframe first
+  # print(t)
+  cat('\n')
+}
+```
+
+# Other Graphs {.tabset .tabset-fade .tabset-pills}
+```{r results='asis', echo = TRUE, fig.width=17, fig.height=15}
+for (analyte in other_analytes){
+  df_analyte <-
+    df_wq %>%
+    filter(
+      Analyte == analyte
+    )
+  
+  # model
+  eq <- with(df_analyte, Result ~ FlowPulseType*FlowActionPeriod + Region*FlowActionPeriod + Region*FlowPulseType)
+
+  # By Analyte
+  cat('\n##', analyte, '{.tabset .tabset-fade .tabset-pills}')
+  
+  cat('\n### QR Results \n\n')
+  qrfit <- rq(eq)
+  print(summary(qrfit, se = 'iid'))
+  cat('\n')
+  
+  cat('\n### QR Plot \n\n')
+  qrfit_multi <- rq(eq, tau =  1:9/10)
+  plot(summary(qrfit_multi, se = 'iid'), level = 0.95)
+  cat('\n')
+  
+  cat('\n### ANOVA \n\n')
+  aov_mod <- aov(eq)
+  # t <- knitr::kable(summary(aov_mod), format = 'html')
+  # print(t)
+  cat('\n')
+}
+```
+

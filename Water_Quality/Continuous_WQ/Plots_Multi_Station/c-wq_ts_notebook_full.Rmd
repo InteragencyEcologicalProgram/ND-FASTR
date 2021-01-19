@@ -1,0 +1,382 @@
+---
+title: 'NDFA - Continuous WQ Time Series'
+author: 'Sarah Perry & Traci Treleaven'
+date: '10/21/2020'
+
+output: 
+  html_document: 
+    code_folding: hide
+    toc: true
+    toc_depth: 1
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+This file provides time series graphs for the discrete water quality stations of the FASTR project. They include time periods before, during, and after a flow action.
+
+# Code {.tabset .tabset-fade .tabset-pills}
+## Functions
+```{r message=FALSE, warning=FALSE}
+# import packages
+library(scales)
+library(ggplot2)
+library(tidyverse)
+
+# --- Import Data from SharePoint ---
+get_abs_path <- function(fp_rel){
+  # define absolute filepath
+  fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_rel))
+  
+  return(fp_abs)
+}
+
+# --- Add Full Analyte Names ---
+add_analyte_names <- function(df){
+  # add AnalyteFull column
+  df <- df %>%
+    mutate(
+      AnalyteFull =
+        case_when(
+          Analyte == 'Chla' ~ 'Chlorophyll a',
+          Analyte == 'SpCnd' ~ 'Specific Conductance',
+          Analyte == 'WaterTemp' ~ 'Water Temperature',
+          Analyte == 'Turbidity' ~ 'Turbidity',
+          Analyte == 'pH' ~ 'pH',
+          Analyte == 'DO' ~ 'Dissolved Oxygen',
+          Analyte == 'Flow' ~ 'Flow',
+          Analyte == 'FlowTF' ~ 'Flow TF',
+          Analyte == 'Chla_RFU' ~ 'Chla RFU',
+          Analyte == 'fDOM' ~ 'fDOM',
+          Analyte == 'NitrateNitrite' ~ 'Nitrate Nitrite'
+        )
+    )
+  return(df)
+}
+
+# --- Add Analyte Units ---
+add_analyte_units <- function(df){
+  # add AnalyteFull column
+  df <- df %>%
+    mutate(
+      Units =
+        case_when(
+          Analyte == 'Chla' ~ 'ug/L',
+          Analyte == 'SpCnd' ~ 'uS/cm',
+          Analyte == 'WaterTemp' ~ 'degrees C',
+          Analyte == 'Turbidity' ~ 'NTU',
+          Analyte == 'pH' ~ 'pH',
+          Analyte == 'DO' ~ 'mg/L',
+          Analyte == 'Flow' ~ 'cfs',
+          Analyte == 'FlowTF' ~ 'cfs',
+          Analyte == 'Chla_RFU' ~ 'RFU',
+          Analyte == 'fDOM' ~ 'ug/L as QSE',
+          Analyte == 'NitrateNitrite' ~ 'mg/L'
+        )
+    )
+  return(df)
+}
+
+# --- Add Regions ---
+add_region <- function(df){
+  # add AnalyteFull column
+  df <- df %>%
+    mutate(
+      Region =
+        case_when(
+          StationCode == 'BL5' ~ 'Cache Slough Complex',
+          StationCode == 'LIB' ~ 'Cache Slough Complex',
+          StationCode == 'LIBCUT' ~ 'Cache Slough Complex',
+          StationCode == 'SGG' ~ 'Cache Slough Complex',
+          StationCode == 'RYI' ~ 'Cache Slough Complex',
+          StationCode == 'LIS' ~ 'Lower Yolo Bypass',
+          StationCode == 'STTD' ~ 'Lower Yolo Bypass',
+          StationCode == 'TOE' ~ 'Lower Yolo Bypass',
+          StationCode == 'SHR' ~ 'Middle Sacramento River',
+          StationCode == 'SRH' ~ 'Middle Sacramento River',
+          StationCode == 'SRV' ~ 'Middle Sacramento River',
+          StationCode == 'RVB' ~ 'Lower Sacramento River',
+          StationCode == 'SDI' ~ 'Lower Sacramento River',
+          StationCode == 'RCS' ~ 'Colusa Basin/Ridge Cut Slough',
+          StationCode == 'RMB' ~ 'Colusa Basin/Ridge Cut Slough',
+          StationCode == 'WWT' ~ 'Central Yolo Bypass',
+          StationCode == 'DWT' ~ 'Central Yolo Bypass',
+          StationCode == 'RD22' ~ 'Central Yolo Bypass',
+          StationCode == 'I80' ~ 'Central Yolo Bypass',
+        )
+    )
+  return(df)
+}
+
+# --- Add Phase Actions ---
+# adapted from Cat Pien's code
+add_phase_actions <- function(df_wq, df_dates){
+  # change 'Year' column to character
+  df_dates$Year <- as.character(df_dates$Year)
+  
+  # combine the two dfs
+  df_combined <- inner_join(df_wq, df_dates, by  = 'Year')
+  
+  # convert date columns to date type
+  cols_date <- c('Date','PreFlowStart','PreFlowEnd','PostFlowStart','PostFlowEnd')
+  
+  df_combined[cols_date] <- lapply(df_combined[cols_date], as.Date, format = '%m/%d/%Y')
+  
+  # add ActionPhase column and remove non-NDFA data
+  df_combined <- df_combined %>%
+    mutate(
+      ActionPhase =
+        case_when(
+          Date >= PreFlowStart & Date <= PreFlowEnd ~ 'Pre',
+          Date >= PreFlowEnd & Date <= PostFlowStart ~ 'During',
+          Date >= PostFlowStart & Date <= PostFlowEnd ~ 'Post'
+        )
+    ) %>%
+    filter(!is.na(ActionPhase))
+  
+  return(df_combined)
+}
+
+# --- Check for all NA's per Station ---
+check_station_nas <- function(df){
+  # initiate empty vector
+  remove_stations <- NULL
+  
+  # loop over stations
+  for (station in unique(df$StationCode)) {
+    df_w_nas <- df[df$StationCode == station,]
+    all_na <- all(is.na(unique(df_w_nas$Result)))
+    # determine stations w/ all NAs
+    if (all_na) {
+      remove_stations <- c(remove_stations, station)
+    }
+  
+    # remove those stations
+    df_no_nas <- filter(df, !StationCode %in% remove_stations)
+  }
+  return(df_no_nas)
+}
+
+# --- Blank Theme for Timeseries Graphs ---
+blank_theme <- function(){
+  theme_bw() +
+    theme(
+      panel.grid.major.y = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.text = element_text(color = 'black', size = 10, family = 'sans'),
+      axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
+      strip.text = element_text(size = 11),
+      axis.title = element_text(size = 15, face = 'bold'),
+      plot.title = element_text(size = 17, hjust = 0.5, face = 'bold'),
+      legend.position = 'top',
+      legend.title = element_blank(),
+      legend.box.margin = margin(-10,0,-10,0),
+      legend.text = element_text(size = 10)
+    )
+}
+
+# --- Create Facet Scatterplots  ---
+create_facet <- function(df){
+  # import blank theme
+  blank_theme <- blank_theme()
+  
+  # filter df by analyte
+  df_filt <-
+    df %>%
+    filter(
+      Analyte == analyte,
+      Year == year
+    )
+  
+  # remove stations w/ NA values
+  df_filt <- check_station_nas(df_filt)
+  
+  # check if all values are NA
+  all_na <- all(is.na(unique(df_filt$Result)))
+  
+  if(all_na) {
+  }
+  else{
+    # define flow action duration
+    action_max <- paste(unique(df_filt$PostFlowStart), '00:00:00')
+    action_max <- as.POSIXct(action_max, '%Y/%m/%d %H:%M:%S')
+    action_min <- paste(unique(df_filt$PreFlowEnd), '23:45:00')
+    action_min <- as.POSIXct(action_min, '%Y/%m/%d %H:%M:%S')
+    
+    # define relevant values for naming
+    analyte_full <- unique(df_filt$AnalyteFull[df_filt$Analyte == analyte])
+    analyte_unit <- unique(df_filt$Units[df_filt$Analyte == analyte])
+    cmap_colors <- c('#999999', '#f781bf', '#B79F00', '#984ea3', '#377eb8', '#e41a1c') # #ffff33
+    
+    # plot timeseries
+    p <- ggplot() +
+      facet_grid(StationCode ~ ., scales = 'free_y', drop = TRUE) +
+      annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
+
+    # 
+    # add timeseries data
+    p <- p +
+      geom_line( # line
+        df_filt,
+        mapping = aes(x = DateTime, y = Result, group = StationCode, color = Region),
+        size = 0.4
+      )
+    
+    # fix asthetics
+    p <- p +
+      blank_theme + # theme
+      # scale_x_datetime(breaks = date_breaks("15 min")) +
+      scale_fill_manual(values = cmap_colors) +
+      scale_color_manual(
+        values = c('Cache Slough Complex' = cmap_colors[1],
+                   'Central Yolo Bypass' = cmap_colors[2],
+                   'Colusa Basin/Ridge Cut Slough' = cmap_colors[3],
+                   'Lower Sacramento River' = cmap_colors[4],
+                   'Lower Yolo Bypass' = cmap_colors[5],
+                   'Middle Sacramento River' = cmap_colors[6]
+        )
+      ) +
+      guides(color = guide_legend(ncol = 3, byrow = TRUE)) +
+      xlab('Date') +
+      ylab(analyte_unit) +
+      ggtitle(paste(analyte_full,'-',year))
+    
+    return(p)
+  }
+}
+```
+
+## Data Cleaning
+```{r, message=FALSE, warning=FALSE, results='asis', fig.width=8, fig.height=14}
+# import packages
+library(ggplot2)
+library(tidyverse)
+library(lubridate)
+
+# source functions
+# source('Continuous_WQ/Plots_Multi_Station/Code_cont_timeseries analysis_func.R')
+
+# --- Import Data ---
+# define main FASTR filepath (assumes sync'd with Sharepoint)
+fp_fastr <- 'California Department of Water Resources/North Delta Flow Action - Documents/'
+
+# define filepaths 
+fp_rel_wq <- paste(fp_fastr,'WQ_Subteam/Processed_Data/Continuous/Combined_Files/combined_flow.csv', sep = '')
+fp_abs_wq <- get_abs_path(fp_rel_wq)
+
+# read in data
+df_wq <- read_csv(
+  fp_abs_wq,
+  col_types = cols(
+    .default = 'n',
+    DateTime = 'T',
+    Date = 'D',
+    Year = 'c',
+    PreFlowStart = 'c',
+    PreFlowEnd = 'c',
+    PostFlowStart = 'c',
+    PostFlowEnd = 'c',
+    ActionPhase = 'c',
+    StationCode = 'c'
+    )
+  )
+
+# remove extra cols
+df_wq <- subset(df_wq, select = -c(WYType, FlowPulseType, NetFlowDays))
+
+# pivot longer
+df_wq_long <- df_wq %>% 
+  select(!ends_with('_Qual')) %>% 
+  pivot_longer(
+    cols = -c(DateTime, StationCode, Date, ActionPhase, PreFlowStart, PreFlowEnd, PostFlowStart, PostFlowEnd, Year),
+    names_to = 'Analyte',
+    values_to = 'Result')
+
+# --- Clean Data ---
+# add full analyte name column
+df_wq_long <- add_analyte_names(df_wq_long)
+
+# add unit column
+df_wq_long <- add_analyte_units(df_wq_long)
+
+# add region column
+df_wq_long <- add_region(df_wq_long)
+```
+
+## Graphs
+```{r, message=FALSE, warning=FALSE, eval=FALSE, results='asis'}
+# --- Prep for Graphs ---
+# list of analytes/stations
+analytes <- unique(df_wq_long$Analyte)
+years <- unique(df_wq_long$Year)
+
+# change station col to factor type and order it
+stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','SHR','LIS','SRH','STTD','TOE','LIBCUT','SGG','BL5','LIB','RYI','SRV','RVB','SDI')
+df_wq_long$StationCode <- factor(df_wq_long$StationCode, levels = stat_lvls)
+
+# --- Create Timeseries --
+# create plots
+for (year in years){
+  for (analyte in analytes){ 
+
+    # create timeseries 
+    p <- create_facet(df_wq_long)
+
+    # save graphs
+    fp_rel_save <- paste(fp_fastr,'WQ_Subteam/Plots/Continuous/time_series/',year,sep = '')
+    fp_abs_save <- get_abs_path(fp_rel_save)
+
+    ggsave(
+      #paste(fp_abs_save,'/Timeseries_',year,'_',analyte,'.png',sep = ''),
+      paste('C:/Users/sperry/Desktop/time_series/',year,'/Timeseries_',year,'_',analyte,'.png',sep=''),
+      p,
+      width = 8,
+      height = 12,
+      unit = 'in'
+    )
+  }
+}
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='asis'}
+cat('\n# Graphs {.tabset .tabset-fade .tabset-pills}')
+```
+
+```{r, message=FALSE, warning=FALSE, results='asis', echo=FALSE, fig.width=6.3, fig.height=10.7, fig.align='center'}
+# --- Prep for Graphs ---
+# list of analytes/stations
+analytes <- unique(df_wq_long$Analyte)
+years <- unique(df_wq_long$Year)
+
+# change station col to factor type and order it
+stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','SHR','LIS','SRH','STTD','TOE','LIBCUT','SGG','BL5','LIB','RYI','SRV','RVB','SDI')
+df_wq_long$StationCode <- factor(df_wq_long$StationCode, levels = stat_lvls)
+
+# --- Create Timeseries --
+# create plots
+for (year in years[4]){
+  cat('\n##', year, '{.tabset .tabset-fade .tabset-pills}')
+  for (analyte in analytes){ 
+    p <- create_facet(df_wq_long)
+    
+    # create timeseries 
+    if (!length(p) == 0) {
+      cat('\n###', analyte,'\n\n')
+      plot(p)
+      cat('\n')
+      break
+    }
+    break
+  }
+  break
+}
+```
+
