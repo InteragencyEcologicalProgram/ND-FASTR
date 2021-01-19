@@ -31,6 +31,7 @@ library(viridis) # Color palette
 * Order action phases
 
 ```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
+setwd("C:/Users/cpien/OneDrive - California Department of Water Resources/Work/FASTR/FASTR/ND-FASTR")
 Fish_ndfa_0 <- read.csv("fish data/FISH_MAN_allIEPsurveys_20201030.csv")
 Fish_ndfa <- select(Fish_ndfa_0, -c(Turbidity, DO, Latitude, Longitude))
 FlowDesignation <- read.csv("fish data/FlowDatesDesignations_45days.csv")
@@ -164,31 +165,59 @@ list_nmds <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacra
                "Largemouth Bass", "Smallmouth Bass", "Striped Bass", "Spotted Bass",
                "Threadfin Shad", "American Shad")
 
-Seine_natives <- Seine_f %>%filter(CommonName %in% list_native)
+Seine_natives0 <- Seine_f %>%filter(CommonName %in% list_native)
 Seine_nmds <- Seine_f%>% filter(CommonName %in%list_nmds)
-Seine_smeltish <- Seine_f %>% filter(CommonName %in% list_smeltish)
+Seine_smeltish0 <- Seine_f %>% filter(CommonName %in% list_smeltish) %>%
+  arrange(CommonName, CPUE)
 ```
 
 ## Run ANOVA {.tabset}
 
 ### Smeltish
-```{r}
-ggplot(Seine_smeltish, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
-ggplot(Seine_smeltish, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+Sum smeltish into one CPUE/seine
+```{r}
+Seine_smeltish <- Seine_smeltish0 %>%
+  group_by(Date, Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, VolumeSampled) %>%
+  summarize(sumCPUE = sum(CPUE),
+            sumCount = sum(sum.count))
 ```
 
+Look at data
+* Pretty much all Silversides (6 Wakasagi caught total)
+* Lots of zeros
+* More fish from DJFMP
+* No clear pattern Action Phase, Region
+
+```{r}
+# Proportion ISS vs Wakasagi
+ggplot(Seine_smeltish0, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw()
+
+# Histogram
+ggplot(Seine_smeltish, aes(sumCPUE)) + geom_histogram(binwidth = 1) + theme_bw()
+
+# Survey
+ggplot(Seine_smeltish, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
+
+# Action Phase
+ggplot(Seine_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Region
+ggplot(Seine_smeltish, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Year 
+ggplot(Seine_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+```
 
 Using transformations - doesn't work well
 ```{r}
-(M.smeltish1 <- glm(log(CPUE+1)~FlowPulseType + fYear + ActionPhase + Region, data  = Seine_smeltish))
+(M.smeltish1 <- glm(log(sumCPUE+1)~FlowPulseType + fYear + ActionPhase + Region, data  = Seine_smeltish))
 summary(M.smeltish1)
 par(mfrow = c(2,2))
 plot(M.smeltish1)
 
-logCPUE <-  log(Seine_smeltish$CPUE + 1)
+logCPUE <-  log(Seine_smeltish$sumCPUE + 1)
 hist(logCPUE)
-
 ```
 
 Zero-inflated model
@@ -197,7 +226,7 @@ Zero-inflated model
 Seine_smeltish$Samp <- log(Seine_smeltish$VolumeSampled)
 
 # Formula
-f1 <- formula(sum.count ~ Region + fYear + ActionPhase + offset(Samp))
+f1 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
 
 # Negbin
 zinb1 <- zeroinfl(f1, na.action = "na.fail", dist="negbin", link = "logit", data = Seine_smeltish) ; summary(zinb1)
@@ -208,11 +237,13 @@ zip1 <- zeroinfl(f1, dist = "poisson", link = "logit", data = Seine_smeltish); s
 
 Compare zero-inflated poisson with zero-inflated negbin
 ```{r}
+library(lmtest)
+lrtest(zip1, zinb1)
 
+# Significantly different 
 ```
 
 Diagnostic Plots
-
 * Still need to figure out how to do this
 
 ```{r}
@@ -234,6 +265,9 @@ visreg(zinb1)
 ```
 
 **Conclusions**
+
+* Not sure if we need to alter model - residuals x fitted looks bad
+* Keep in mind this is mostly Inland Silversides 
 * More smeltish downstream, then middle Sac, then upstream
 * More smeltish pre, then during, then post
 * Year variability
@@ -243,12 +277,39 @@ visreg(zinb1)
 
 ### Native fishes
 
+Sum smeltish into one CPUE/seine
 ```{r}
-ggplot(Seine_natives, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
-
-ggplot(Seine_natives, aes(x = ActionPhase, y = CPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+Seine_natives <- Seine_natives0 %>%
+  group_by(Date, Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, VolumeSampled) %>%
+  summarize(sumCPUE = sum(CPUE),
+            sumCount = sum(sum.count))
 ```
 
+Look at data
+* Good proportions - mostly Sucker, Pikeminnow, some years Splittail
+* Lots of zeros, usually low catch when there is catch
+* More fish from DJFMP
+* More pre, Middle-Sac River
+
+```{r}
+# Proportion Species
+ggplot(Seine_natives0, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw() + scale_fill_viridis(discrete = TRUE, option = "plasma")
+
+# Histogram
+ggplot(Seine_natives, aes(sumCPUE)) + geom_histogram(binwidth = .1) + theme_bw()
+
+# Survey
+ggplot(Seine_natives, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
+
+# Action Phase
+ggplot(Seine_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Region
+ggplot(Seine_natives, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Year 
+ggplot(Seine_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+```
 
 Zero-inflated model
 ```{r}
@@ -257,7 +318,7 @@ Zero-inflated model
 Seine_natives$Samp <- log(Seine_natives$VolumeSampled)
 
 # Formula
-f2 <- formula(sum.count ~ Region + fYear + ActionPhase + offset(Samp))
+f2 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
 
 # Negbin
 zinb2 <- zeroinfl(f2, na.action = "na.fail", dist="negbin", link = "logit", data = Seine_natives) ; summary(zinb2)
@@ -268,7 +329,10 @@ zip2 <- zeroinfl(f2, dist = "poisson", link = "logit", data = Seine_natives); su
 
 Compare zero-inflated poisson with zero-inflated negbin
 ```{r}
+library(lmtest)
+lrtest(zip2, zinb2)
 
+# Significantly different 
 ```
 
 Diagnostic Plots
@@ -281,7 +345,6 @@ EP2 <- resid(zinb2, type = "pearson")
 # Diagnostic Plots
 par(mfrow = c(2,2))
 plot(x=zinb2$fitted.values, y = EP2, main = "Pearson residuals")
-# qqrplot(EP2) # Don't know why not working
 plot(x=Seine_natives$ActionPhase,y = EP2, main = "Action Phase")
 plot(x=Seine_natives$Region, y = EP2, main = "Region")
 plot(x=Seine_natives$fYear, y = EP2, main = "Year")
@@ -298,43 +361,103 @@ levels(Seine_natives$fYear)
 * More natives Pre > Post > During
 * Having hard time reading the years
 * More zeros Downstream > Middle Sac > Upstream
-* More zeros During > Pre
+* More zeros Pre>post
 
 
 
 
 ### Overall CPUE
-* Think about if you want to sum overall CPUE or do individual species? - can do regular ANOVA if you combine all species for overall CPUE
-* If you do modeling as above, consider using the Seine_nmds_larger grouping or calculate species that are in at least 5% of samples so there aren't *quite* so many zeroes. 
-* Below code is modeling for including **all** fish
+* Not zero-inflated
 
 Sum Overall CPUE
 ```{r}
-Seine_allfish <- Seine_f %>%
+Seine_all <- Seine_f %>%
   group_by(Survey,fYear, Date, Region, StationCode, ActionPhase, MethodCode, VolumeSampled) %>%
-  summarize(CPUE_total = sum(CPUE),
-            Count_total = sum(sum.count))
+  summarize(sumCPUE = sum(CPUE),
+            sumCount = sum(sum.count))
 ```
 
-Zero-inflated model
+Look at data
+* Lots of silversides
+* Definite overdispersion
+* More catch DJFMP
+* Doesn't look uch different between phases, but a few high catches in Pre
+* More downstream
+
+```{r}
+# Proportion Species
+ggplot(Seine_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw()  + theme(legend.position = "bottom")
+
+# Histogram
+ggplot(Seine_all, aes(sumCPUE)) + geom_histogram(binwidth = .1) + theme_bw()
+
+# Survey
+ggplot(Seine_all, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
+
+# Action Phase
+ggplot(Seine_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Region
+ggplot(Seine_all, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Year 
+ggplot(Seine_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+```
+
+Model - normal glm
+```{r}
+m1all <- glm(sumCPUE~Region + fYear + ActionPhase, data = Seine_all); summary(m1all)
+
+par(mfrow = c(2,2))
+plot(m1all)
+
+```
+
+Model with log transformation
+```{r}
+Seine_all$logCPUE = log(Seine_all$sumCPUE + 1)
+m2all <- glm(logCPUE~Region + fYear + ActionPhase, data = Seine_all); summary(m2all)
+
+par(mfrow = c(2,2))
+plot(m2all)
+
+hist(Seine_all$logCPUE)
+```
+
+Model with poisson distribution
 ```{r}
 
 # For CPUE, use offset to account for sampling effort
-Seine_f$Samp <- log(Seine_f$VolumeSampled)
+Seine_all$Samp <- log(Seine_all$VolumeSampled)
 
 # Formula
-f3 <- formula(sum.count ~ Region + fYear + ActionPhase + offset(Samp))
+f3 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
 
-# Negbin
-zinb3 <- zeroinfl(f3, na.action = "na.fail", dist="negbin", link = "logit", data = Seine_f) ; summary(zinb3)
+# Check overdispersion (var>mean)
+var(Seine_all$sumCPUE)
+mean(Seine_all$sumCPUE)
 
-# Poisson
-zip3 <- zeroinfl(f3, dist = "poisson", link = "logit", data = Seine_f); summary(zip3)
+# Poisson distribution or quasipoisson (overdispersed)
+m3all <- glm(f3, data = Seine_all, family = quasipoisson); summary(m3all)
+
+par(mfrow = c(2,2))
+plot(m3all)
+
+visreg(m3all)
 ```
 
-Compare zero-inflated poisson with zero-inflated negbin
+Model with negative binomial distribution
+* https://stats.idre.ucla.edu/r/dae/negative-binomial-regression/
 ```{r}
+library(MASS)
+m4all <- glm.nb(f3, data = Seine_all); summary(m4all)
+plot(m4all)
 
+# Confidence Intervals 
+(est <- cbind(Estimate = coef(m4all), confint(m4all)))
+
+# Incidence Rates (Count)
+exp(est)
 ```
 
 Diagnostic Plots
@@ -342,17 +465,22 @@ Diagnostic Plots
 # Diagnostic Plots -------------------------------------
 # Model Validation 
 # Calculate residuals
-EP3 <- resid(zinb3, type = "pearson")
+EP3 <- resid(m4all, type = "pearson")
 
 # Diagnostic Plots
 par(mfrow = c(2,2))
-plot(x=zinb3$fitted.values, y = EP3, main = "Pearson residuals")
-# qqrplot(EP3) # Don't know why not working
-plot(x=Seine_f$ActionPhase,y = EP3, main = "Action Phase")
-plot(x=Seine_f$Region, y = EP3, main = "Region")
+plot(x=m4all$fitted.values, y = EP3, main = "Pearson residuals")
+plot(x=Seine_all$ActionPhase,y = EP3, main = "Action Phase")
+plot(x=Seine_all$Region, y = EP3, main = "Region")
+plot(x=Seine_all$fYear, y = EP3, main = "Year")
 
 par(mfrow = c(2,2))
-visreg(zinb3)
+visreg(m4all)
 ```
 
+**Conclusions**
 
+* Still not sure about residual distribution
+* More fish Downstream > Upstream > Middle Sac
+* More fish Pre > Post 
+* Year variability - not sure if reading correctly (compare plot vs numbers)
