@@ -24,6 +24,7 @@ library(lubridate) # Datetime
 library(pscl) # Run zips and zinbs
 library(visreg) # Visualize models
 library(dplyr)
+library(viridis)
 ```
 
 ## Import data
@@ -160,11 +161,11 @@ Tow_nmds_larger <- Tow_f%>% filter(CommonName %in%list_nmds)
 Tow_smeltish0 <- Tow_f %>% filter(CommonName %in% list_smeltish)
 ```
 
-## Run ANOVA {.tabset}
+## Run Models {.tabset}
 
 ### Smeltish
 
-Sum smeltish into one CPUE/Tow
+#### Sum smeltish into one CPUE/Tow
 ```{r}
 Tow_smeltish <- Tow_smeltish0 %>%
   group_by(Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, Date,  VolumeSampled, Tow) %>%
@@ -172,7 +173,7 @@ Tow_smeltish <- Tow_smeltish0 %>%
             sumCount = sum(sum.count))
 ```
 
-Look at data
+#### Look at data
 
 * Mostly silversides
 * More fish from EDSM
@@ -198,7 +199,7 @@ ggplot(Tow_smeltish, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = Act
 ggplot(Tow_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
 
-Using transformations - doesn't work well
+#### Using transformations - doesn't work well
 ```{r}
 (M.smeltish1 <- glm(log(sumCPUE+1)~FlowPulseType + ActionPhase + Region, data  = Tow_smeltish))
 summary(M.smeltish1)
@@ -206,7 +207,7 @@ par(mfrow = c(2,2))
 plot(M.smeltish1)
 ```
 
-Zero-inflated model
+#### Zero-inflated model
 ```{r}
 
 # For CPUE, use offset to account for sampling effort
@@ -236,7 +237,7 @@ lrtest(zip1, zinb1)
 # Significantly different 
 ```
 
-Diagnostic Plots
+#### Diagnostic Plots
 
 ```{r}
 # Diagnostic Plots -------------------------------------
@@ -268,7 +269,9 @@ visreg(zinb1)
 
 ### Native fishes
 
-Sum natives into one CPUE/tow
+**Couldn't really run these because not enough data?**
+
+#### Sum natives into one CPUE/tow
 ```{r}
 Tow_natives <- Tow_natives0 %>%
   group_by(Date, Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, VolumeSampled, Tow) %>%
@@ -299,7 +302,8 @@ ggplot(Tow_natives, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = Acti
 ggplot(Tow_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
 
-Zero-inflated model
+#### Zero-inflated model
+
 * Doesn't work - not enough samples?
 ```{r}
 
@@ -322,7 +326,7 @@ library(lmtest)
 lrtest(zip2, zinb2)
 ```
 
-Diagnostic Plots
+#### Diagnostic Plots
 ```{r}
 # Diagnostic Plots -------------------------------------
 # Model Validation 
@@ -341,9 +345,12 @@ par(mfrow = c(2,2))
 visreg(zinb2)
 ```
 
+
+
+
 ### Overall CPUE
 
-Sum Overall CPUE
+#### Sum Overall CPUE
 ```{r}
 Tow_all <- Tow_f %>%
   group_by(Survey,fYear, Date, Region, StationCode, ActionPhase, MethodCode, VolumeSampled, Tow) %>%
@@ -351,7 +358,7 @@ Tow_all <- Tow_f %>%
             sumCount = sum(sum.count))
 ```
 
-Look at data
+#### Look at data
 
 
 ```{r}
@@ -374,7 +381,7 @@ ggplot(Tow_all, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPh
 ggplot(Tow_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
 
-Model - normal glm
+#### Model - normal glm
 ```{r}
 m1all <- glm(sumCPUE~Region + fYear + ActionPhase, data = Tow_all); summary(m1all)
 
@@ -383,7 +390,7 @@ plot(m1all)
 
 ```
 
-Model with log transformation
+#### Model with log transformation
 ```{r}
 Tow_all$logCPUE = log(Tow_all$sumCPUE + 1)
 m2all <- glm(logCPUE~Region + fYear + ActionPhase, data = Tow_all); summary(m2all)
@@ -394,7 +401,7 @@ plot(m2all)
 hist(Tow_all$logCPUE)
 ```
 
-Model with poisson distribution
+#### Model with poisson distribution
 ```{r}
 
 # For CPUE, use offset to account for sampling effort
@@ -417,11 +424,13 @@ plot(m3all)
 visreg(m3all)
 ```
 
-Model with negative binomial distribution
+#### Model with negative binomial distribution
+
 * https://stats.idre.ucla.edu/r/dae/negative-binomial-regression/
 ```{r}
 library(MASS)
 m4all <- glm.nb(f3, data = Tow_all); summary(m4all)
+par(mfrow = c(2,2))
 plot(m4all)
 
 # Confidence Intervals 
@@ -431,7 +440,7 @@ plot(m4all)
 exp(est)
 ```
 
-Diagnostic Plots
+#### Diagnostic Plots
 ```{r}
 # Diagnostic Plots -------------------------------------
 # Model Validation 

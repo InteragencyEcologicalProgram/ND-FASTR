@@ -176,11 +176,11 @@ Seine_smeltish0 <- Seine_f %>% filter(CommonName %in% list_smeltish) %>%
   arrange(CommonName, CPUE)
 ```
 
-## Run ANOVA {.tabset}
+## Run Models {.tabset}
 
 ### Smeltish
 
-Sum smeltish into one CPUE/seine
+#### Sum smeltish into one CPUE/seine
 ```{r}
 Seine_smeltish <- Seine_smeltish0 %>%
   group_by(Date, Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, VolumeSampled) %>%
@@ -188,8 +188,10 @@ Seine_smeltish <- Seine_smeltish0 %>%
             sumCount = sum(sum.count))
 ```
 
-Look at data
-* Pretty much all Silversides (6 Wakasagi caught total)
+#### Look at data
+
+**Pretty much all Silversides (6 Wakasagi caught total)**
+
 * Lots of zeros
 * More fish from DJFMP
 * No clear pattern Action Phase, Region
@@ -225,7 +227,7 @@ logCPUE <-  log(Seine_smeltish$sumCPUE + 1)
 hist(logCPUE)
 ```
 
-Zero-inflated model
+#### Zero-inflated model
 ```{r}
 # For CPUE, use offset to account for sampling effort
 Seine_smeltish$Samp <- log(Seine_smeltish$VolumeSampled)
@@ -248,7 +250,7 @@ lrtest(zip1, zinb1)
 # Significantly different 
 ```
 
-Diagnostic Plots
+#### Diagnostic Plots
 
 * Still need to figure out how to do this
 
@@ -283,7 +285,7 @@ visreg(zinb1)
 
 ### Native fishes
 
-Sum natives into one CPUE/seine
+#### Sum natives into one CPUE/seine
 ```{r}
 Seine_natives <- Seine_natives0 %>%
   group_by(Date, Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, VolumeSampled) %>%
@@ -291,7 +293,7 @@ Seine_natives <- Seine_natives0 %>%
             sumCount = sum(sum.count))
 ```
 
-Look at data
+#### Look at data
 
 * Good proportions - mostly Sucker, Pikeminnow, some years Splittail
 * Lots of zeros, usually low catch when there is catch
@@ -318,7 +320,7 @@ ggplot(Seine_natives, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = Ac
 ggplot(Seine_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
 
-Zero-inflated model
+#### Zero-inflated model
 ```{r}
 
 # For CPUE, use offset to account for sampling effort
@@ -342,7 +344,7 @@ lrtest(zip2, zinb2)
 # Significantly different 
 ```
 
-Diagnostic Plots
+#### Diagnostic Plots
 ```{r}
 # Diagnostic Plots -------------------------------------
 # Model Validation 
@@ -376,7 +378,7 @@ levels(Seine_natives$fYear)
 ### Overall CPUE
 * Not zero-inflated
 
-Sum Overall CPUE
+#### Sum Overall CPUE
 ```{r}
 Seine_all <- Seine_f %>%
   group_by(Survey,fYear, Date, Region, StationCode, ActionPhase, MethodCode, VolumeSampled) %>%
@@ -384,7 +386,8 @@ Seine_all <- Seine_f %>%
             sumCount = sum(sum.count))
 ```
 
-Look at data
+#### Look at data  
+
 * Lots of silversides
 * Definite overdispersion
 * More catch DJFMP
@@ -411,7 +414,7 @@ ggplot(Seine_all, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = Action
 ggplot(Seine_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
 
-Model - normal glm
+#### Model - normal glm
 ```{r}
 m1all <- glm(sumCPUE~Region + fYear + ActionPhase, data = Seine_all); summary(m1all)
 
@@ -420,7 +423,7 @@ plot(m1all)
 
 ```
 
-Model with log transformation
+#### Model with log transformation
 ```{r}
 Seine_all$logCPUE = log(Seine_all$sumCPUE + 1)
 m2all <- glm(logCPUE~Region + fYear + ActionPhase, data = Seine_all); summary(m2all)
@@ -431,7 +434,7 @@ plot(m2all)
 hist(Seine_all$logCPUE)
 ```
 
-Model with poisson distribution
+#### Model with poisson distribution
 ```{r}
 
 # For CPUE, use offset to account for sampling effort
@@ -453,11 +456,12 @@ plot(m3all)
 visreg(m3all)
 ```
 
-Model with negative binomial distribution
+#### Model with negative binomial distribution
 * https://stats.idre.ucla.edu/r/dae/negative-binomial-regression/
 ```{r}
 library(MASS)
 m4all <- glm.nb(f3, data = Seine_all); summary(m4all)
+par(mfrow = c(2,2))
 plot(m4all)
 
 # Confidence Intervals 
@@ -467,7 +471,7 @@ plot(m4all)
 exp(est)
 ```
 
-Diagnostic Plots
+#### Diagnostic Plots
 ```{r}
 # Diagnostic Plots -------------------------------------
 # Model Validation 
