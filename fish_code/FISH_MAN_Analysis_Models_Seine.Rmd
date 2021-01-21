@@ -216,6 +216,27 @@ ggplot(Seine_smeltish, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = A
 ggplot(Seine_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
 
+# Barplot
+# Summarize - Mean + Standard Error
+```{r}
+Seine_summary <- Seine_smeltish %>% 
+  group_by(Region, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Seine_summary, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "none")
+```
+
+
 Using transformations - doesn't work well
 ```{r}
 (M.smeltish1 <- glm(log(sumCPUE+1)~FlowPulseType + fYear + ActionPhase + Region, data  = Seine_smeltish))
@@ -320,6 +341,27 @@ ggplot(Seine_natives, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = Ac
 ggplot(Seine_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
 
+# Barplot
+# Summarize - Mean + Standard Error
+```{r}
+Seine_summary2 <- Seine_natives %>% 
+  group_by(Region, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Seine_summary2, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "none")
+```
+
+
 #### Zero-inflated model
 ```{r}
 
@@ -413,6 +455,27 @@ ggplot(Seine_all, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = Action
 # Year 
 ggplot(Seine_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
+
+# Barplot
+# Summarize - Mean + Standard Error
+```{r}
+Seine_summary3 <- Seine_all %>% 
+  group_by(Region, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Seine_summary3, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
+```
+
 
 #### Model - normal glm
 ```{r}
