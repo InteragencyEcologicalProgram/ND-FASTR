@@ -83,8 +83,8 @@ Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhas
 str(Fish_all)
 
 Fish_all$Date <- ymd(Fish_all$Date)
-Fish_all$fMonth <- ordered(Fish_all$Month)
-Fish_all$fYear <- ordered(Fish_all$Year)
+Fish_all$fMonth <- as.factor(Fish_all$Month)
+Fish_all$fYear <- as.factor(Fish_all$Year)
 Fish_all$WYType <- as.factor(Fish_all$WYType)
 Fish_all$FlowPulseType <- as.factor(Fish_all$FlowPulseType)
 Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
@@ -377,6 +377,22 @@ ggplot(Tow_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Reg
 # Region
 ggplot(Tow_all, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
+# Boxplot
+
+Tow_all2 <- filter(Tow_all, sumCPUE<3)
+ggplot(Tow_all2, aes(x = Region, y = sumCPUE)) + geom_boxplot(aes(fill = ActionPhase)) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+ggplot(Tow_all2, aes(x = ActionPhase, y = sumCPUE)) + geom_boxplot(aes(fill = Region)) + scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+# Barplot
+# Summarize - Mean + Standard Error
+
+Tow_all2 <- filter(Tow_all, sumCPUE<3)
+ggplot(Tow_all2, aes(x = Region, y = sumCPUE)) + geom_col(aes(fill = ActionPhase), position = "dodge2") + scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+ggplot(Tow_all2, aes(x = ActionPhase, y = sumCPUE)) + geom_col(aes(fill = Region)) + scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+
 # Year 
 ggplot(Tow_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
@@ -464,4 +480,4 @@ visreg(m4all)
 * Not sure about residual distribution
 * More fish Upstream > Downstream > Middle Sac
 * More fish Pre > Post > During 
-* Year variability - not sure if reading correctly (compare plot vs numbers)
+* Run post-hoc tests on Year to compare years between each other - Tukey or GLHT

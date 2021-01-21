@@ -82,8 +82,8 @@ Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhas
 str(Fish_all)
 
 Fish_all$Date <- ymd(Fish_all$Date)
-Fish_all$fMonth <- ordered(Fish_all$Month)
-Fish_all$fYear <- ordered(Fish_all$Year)
+Fish_all$fMonth <- as.factor(Fish_all$Month)
+Fish_all$fYear <- as.factor(Fish_all$Year)
 Fish_all$WYType <- as.factor(Fish_all$WYType)
 Fish_all$FlowPulseType <- as.factor(Fish_all$FlowPulseType)
 Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
