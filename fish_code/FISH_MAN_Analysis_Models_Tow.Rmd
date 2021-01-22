@@ -83,8 +83,8 @@ Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhas
 str(Fish_all)
 
 Fish_all$Date <- ymd(Fish_all$Date)
-Fish_all$fMonth <- ordered(Fish_all$Month)
-Fish_all$fYear <- ordered(Fish_all$Year)
+Fish_all$fMonth <- as.factor(Fish_all$Month)
+Fish_all$fYear <- as.factor(Fish_all$Year)
 Fish_all$WYType <- as.factor(Fish_all$WYType)
 Fish_all$FlowPulseType <- as.factor(Fish_all$FlowPulseType)
 Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
@@ -199,6 +199,27 @@ ggplot(Tow_smeltish, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = Act
 ggplot(Tow_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
 
+# Barplot
+# Summarize - Mean + Standard Error
+```{r}
+Tow_summary1 <- Tow_smeltish %>% 
+  group_by(Region, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Tow_summary1, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "none")
+```
+
+
 #### Using transformations - doesn't work well
 ```{r}
 (M.smeltish1 <- glm(log(sumCPUE+1)~FlowPulseType + ActionPhase + Region, data  = Tow_smeltish))
@@ -302,6 +323,26 @@ ggplot(Tow_natives, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = Acti
 ggplot(Tow_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
 
+# Barplot
+# Summarize - Mean + Standard Error
+```{r}
+Tow_summary2 <- Tow_natives %>% 
+  group_by(Region, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Tow_summary2, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "none")
+```
+
 #### Zero-inflated model
 
 * Doesn't work - not enough samples?
@@ -377,9 +418,39 @@ ggplot(Tow_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Reg
 # Region
 ggplot(Tow_all, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
+# Boxplot
+
+Tow_all2 <- filter(Tow_all, sumCPUE<3)
+ggplot(Tow_all2, aes(x = Region, y = sumCPUE)) + geom_boxplot(aes(fill = ActionPhase)) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+ggplot(Tow_all2, aes(x = ActionPhase, y = sumCPUE)) + geom_boxplot(aes(fill = Region)) + scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+
+
 # Year 
 ggplot(Tow_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 ```
+
+# Barplot
+# Summarize - Mean + Standard Error
+```{r}
+Tow_summary3 <- Tow_all %>% 
+  group_by(Region, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Tow_summary3, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
+```
+
 
 #### Model - normal glm
 ```{r}
@@ -464,4 +535,4 @@ visreg(m4all)
 * Not sure about residual distribution
 * More fish Upstream > Downstream > Middle Sac
 * More fish Pre > Post > During 
-* Year variability - not sure if reading correctly (compare plot vs numbers)
+* Run post-hoc tests on Year to compare years between each other - Tukey or GLHT

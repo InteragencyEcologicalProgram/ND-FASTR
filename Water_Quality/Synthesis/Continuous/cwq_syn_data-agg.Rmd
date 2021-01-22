@@ -1,0 +1,171 @@
+```{r}
+# FASTR Cont. WQ Data Aggregations
+# Author: Sarah Perry
+# Date created: 01/18/2020
+
+
+# import packages and scripts
+library(tidyverse)
+library(lubridate)
+library(forecast)
+library(data.table)
+library(tseries)
+source('global_ndfa_funcs.R')
+```
+
+```{r Import Data}
+# function
+get_abs_path <- function(fp_rel){
+  # define absolute filepath
+  fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_rel))
+  
+  return(fp_abs)
+}
+
+# define main FASTR filepath (assumes sync'd with Sharepoint)
+fp_fastr <- 'California Department of Water Resources/North Delta Flow Action - Documents/'
+
+# define filepaths 
+fp_rel_wq <- paste(fp_fastr,'WQ_Subteam/Processed_Data/Continuous/Combined_Files/combined_flow.csv', sep = '')
+fp_abs_wq <- get_abs_path(fp_rel_wq)
+
+# read in data
+df_wq <- fread(
+  fp_abs_wq,
+  colClasses = cols(
+    .default = 'n',
+    DateTime = 'T',
+    Date = 'D',
+    Year = 'c',
+    PreFlowStart = 'c',
+    PreFlowEnd = 'c',
+    PostFlowStart = 'c',
+    PostFlowEnd = 'c',
+    ActionPhase = 'c',
+    StationCode = 'c'
+    )
+  )
+
+# remove extra cols
+df_wq <- subset(df_wq, select = -c(WYType, FlowPulseType, NetFlowDays))
+
+# pivot longer
+df_wq <- df_wq %>% 
+  select(!ends_with('_Qual')) %>% 
+  pivot_longer(
+    cols = -c(DateTime, StationCode, Date, ActionPhase, PreFlowStart, PreFlowEnd, PostFlowStart, PostFlowEnd, Year),
+    names_to = 'Analyte',
+    values_to = 'Result')
+
+# subset to chla
+df_chla <- df_wq[df_wq$Analyte == 'Chla',]
+rm(df_wq)
+```
+
+Test time intervals:
+```{r}
+df_chla_12hr <- df_chla %>%
+  filter(hour(DateTime) == 0 | hour(DateTime) == 12) %>%
+  filter(minute(DateTime) == 00)
+
+df_chla_day <- df_chla %>%
+  filter(hour(DateTime) == 0 & minute(DateTime) == 00)
+
+df_chla_week <- df_chla %>%
+  filter(wday(DateTime) == 1 & hour(DateTime) == 0 & minute(DateTime) == 00)
+
+df_chla_month <- df_chla %>%
+  filter(day(DateTime) == 15 & hour(DateTime) == 0 & minute(DateTime) == 00)
+```
+
+Testing if raw data is iid:
+```{r Stationary/Autocorrelation Check}
+# define stations
+stations <- unique(df_chla$StationCode)
+
+# check if data is stationary
+for (station in stations){
+  df_subset <- df_chla[df_chla$StationCode == station,]
+  result <- df_subset$Result[!is.na(df_subset$Result)]
+  if (!all(is.na(df_subset$Result))){
+    # print('--------')
+    # print(station)
+    # print(adf.test(result, alternative = c("stationary")))
+    result %>% diff() %>% ggtsdisplay(main='')
+  }
+}
+```
+
+12 hours:
+```{r Stationary/Autocorrelation Check}
+# define stations
+stations <- unique(df_chla_12hr$StationCode)
+
+# check if data is stationary
+for (station in stations){
+  df_subset <- df_chla_12hr[df_chla_12hr$StationCode == station,]
+  result <- df_subset$Result[!is.na(df_subset$Result)]
+  if (!all(is.na(df_subset$Result))){
+    # print('--------')
+    # print(station)
+    # print(adf.test(result, alternative = c("stationary")))
+    result %>% diff() %>% ggtsdisplay(main='')
+  }
+}
+```
+
+Day: 
+```{r}
+# define stations
+stations <- unique(df_chla_day$StationCode)
+
+# check if data is stationary
+for (station in stations){
+  df_subset <- df_chla_day[df_chla_day$StationCode == station,]
+  result <- df_subset$Result[!is.na(df_subset$Result)]
+  if (!all(is.na(df_subset$Result))){
+    # print('--------')
+    # print(station)
+    # print(adf.test(result, alternative = c("stationary")))
+    # result %>% diff() %>% ggtsdisplay(main="")
+    result %>% diff() %>% ggtsdisplay(main='')
+  }
+}
+```
+
+Week:
+```{r Stationary/Autocorrelation Check}
+# define stations
+stations <- unique(df_chla_week$StationCode)
+
+# check if data is stationary
+for (station in stations){
+  df_subset <- df_chla_week[df_chla_week$StationCode == station,]
+  result <- df_subset$Result[!is.na(df_subset$Result)]
+  if (!all(is.na(df_subset$Result))){
+    # print('--------')
+    # print(station)
+    # print(adf.test(result, alternative = c("stationary")))
+    # result %>% diff() %>% ggtsdisplay(main="")
+    result %>% diff() %>% ggtsdisplay(main='')
+  }
+}
+```
+
+Month:
+```{r Stationary/Autocorrelation Check}
+# define stations
+stations <- unique(df_chla_month$StationCode)
+
+# check if data is stationary
+for (station in stations){
+  df_subset <- df_chla_month[df_chla_month$StationCode == station,]
+  result <- df_subset$Result[!is.na(df_subset$Result)]
+  if (!all(is.na(df_subset$Result))){
+    # print('--------')
+    # print(station)
+    # print(adf.test(result, alternative = c("stationary")))
+    result %>% diff() %>% ggtsdisplay(main='')
+  }
+}
+```
