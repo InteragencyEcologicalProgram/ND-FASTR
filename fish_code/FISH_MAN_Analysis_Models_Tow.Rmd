@@ -24,7 +24,8 @@ library(lubridate) # Datetime
 library(pscl) # Run zips and zinbs
 library(visreg) # Visualize models
 library(dplyr)
-library(viridis)
+library(viridis) # Color palette
+library(emmeans) # post hoc
 ```
 
 ## Import data
@@ -278,6 +279,13 @@ par(mfrow = c(2,2))
 visreg(zinb1)
 ```
 
+Post-hoc
+
+```{r}
+m_means1 <- emmeans(zinb1, ~fYear)
+multcomp::cld(m_means1, Letters = letters)
+```
+
 **Conclusions**
 
 * More smeltish post>pre>during (but very small difference)
@@ -527,6 +535,13 @@ plot(x=Tow_all$fYear, y = EP3, main = "Year")
 
 par(mfrow = c(2,2))
 visreg(m4all)
+```
+
+Post-hoc
+
+```{r}
+m_means3 <- emmeans(m4all, ~fYear)
+multcomp::cld(m_means3, Letters = letters)
 ```
 
 **Conclusions**

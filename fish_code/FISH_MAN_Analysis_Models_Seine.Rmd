@@ -25,6 +25,7 @@ library(lubridate) # Datetime
 library(pscl) # Run zips and zinbs
 library(visreg) # Visualize models
 library(viridis) # Color palette
+library(emmeans) # post hoc
 ```
 
 ## Import data
@@ -233,7 +234,8 @@ ggplot(Seine_summary, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPU
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
         legend.title = element_text(size = 15),
-        legend.position = "none")
+        legend.position = "bottom")
+
 ```
 
 
@@ -292,6 +294,14 @@ plot(x=Seine_smeltish$fYear, y = EP1, main = "Year")
 par(mfrow = c(2,2))
 visreg(zinb1)
 ```
+
+Post-hoc
+
+```{r}
+m_means1 <- emmeans(zinb1, ~fYear)
+multcomp::cld(m_means1, Letters = letters)
+```
+
 
 **Conclusions**
 
@@ -405,6 +415,14 @@ visreg(zinb2)
 
 levels(Seine_natives$fYear)
 ```
+
+Post-hoc
+
+```{r}
+m_means2 <- emmeans(zinb2, ~fYear)
+multcomp::cld(m_means2, Letters = letters)
+```
+
 
 **Conclusions**
 
@@ -552,9 +570,16 @@ par(mfrow = c(2,2))
 visreg(m4all)
 ```
 
+Post-hoc
+
+```{r}
+m_means3 <- emmeans(m4all, ~fYear)
+multcomp::cld(m_means3, Letters = letters)
+```
+
 **Conclusions**
 
 * Still not sure about residual distribution
 * More fish Downstream > Upstream > Middle Sac
 * More fish Pre > Post 
-* Year variability - not sure if reading correctly (compare plot vs numbers)
+* Years: highest 2015, 2017-2019, 2016
