@@ -776,7 +776,7 @@ walk2(
   usgs_clean_f_exp$sta_code,
   .f = ~write_excel_csv(
     .x,
-    path = paste0(fp_abs_wq_proc_all, "/RTM_OUTPUT_", .y, "_formatted_all.csv"),
+    file = paste0(fp_abs_wq_proc_all, "/RTM_OUTPUT_", .y, "_formatted_all.csv"),
     na = ""
   )
 )
@@ -805,7 +805,7 @@ walk2(
   usgs_clean_f_exp$sta_code,
   .f = ~write_excel_csv(
     .x,
-    path = paste0(fp_abs_wq_proc_filt, "/RTM_OUTPUT_", .y, "_formatted_filt.csv"),
+    file = paste0(fp_abs_wq_proc_filt, "/RTM_OUTPUT_", .y, "_formatted_filt.csv"),
     na = ""
   )
 )
@@ -1134,7 +1134,7 @@ walk2(
   ncro_clean_f$sta_code,
   .f = ~write_excel_csv(
     .x,
-    path = paste0(fp_abs_wq_proc_all, "/RTM_OUTPUT_", .y, "_formatted_all.csv"),
+    file = paste0(fp_abs_wq_proc_all, "/RTM_OUTPUT_", .y, "_formatted_all.csv"),
     na = ""
   )
 )
@@ -1163,7 +1163,7 @@ walk2(
   ncro_clean_f$sta_code,
   .f = ~write_excel_csv(
     .x,
-    path = paste0(fp_abs_wq_proc_filt, "/RTM_OUTPUT_", .y, "_formatted_filt.csv"),
+    file = paste0(fp_abs_wq_proc_filt, "/RTM_OUTPUT_", .y, "_formatted_filt.csv"),
     na = ""
   )
 )
@@ -1440,7 +1440,7 @@ walk2(
   emp_clean_f$sta_code,
   .f = ~write_excel_csv(
     .x,
-    path = paste0(fp_abs_wq_proc_all, "/RTM_OUTPUT_", .y, "_formatted_all.csv"),
+    file = paste0(fp_abs_wq_proc_all, "/RTM_OUTPUT_", .y, "_formatted_all.csv"),
     na = ""
   )
 )
@@ -1469,7 +1469,7 @@ walk2(
   emp_clean_f$sta_code,
   .f = ~write_excel_csv(
     .x,
-    path = paste0(fp_abs_wq_proc_filt, "/RTM_OUTPUT_", .y, "_formatted_filt.csv"),
+    file = paste0(fp_abs_wq_proc_filt, "/RTM_OUTPUT_", .y, "_formatted_filt.csv"),
     na = ""
   )
 )

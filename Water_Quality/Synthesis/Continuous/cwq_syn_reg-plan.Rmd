@@ -7,6 +7,9 @@
 # import packages and scripts
 library(tidyverse)
 library(lubridate)
+library(forecast)
+library(data.table)
+library(tseries)
 source('global_ndfa_funcs.R')
 ```
 
@@ -27,9 +30,9 @@ fp_rel_wq <- paste(fp_fastr,'WQ_Subteam/Processed_Data/Continuous/Combined_Files
 fp_abs_wq <- get_abs_path(fp_rel_wq)
 
 # read in data
-df_wq <- read_csv(
+df_wq <- fread(
   fp_abs_wq,
-  col_types = cols(
+  colClasses = cols(
     .default = 'n',
     DateTime = 'T',
     Date = 'D',
@@ -59,18 +62,7 @@ df_chla <- df_wq[df_wq$Analyte == 'Chla',]
 rm(df_wq)
 ```
 
-Goal is to test significance of region, time period, and year (and interaction terms).
-
-Cannot do out of hand with OLS because of time-dependent component. Time independent component can only be analyzed once data is iid, ie., stationary w/o autocorrelation.
-
-Note: Since testing "region" requires the combination of multiple time series, average the relevant station timeseries together. Will end up with 2, R_upper and R_lower (hasn't bene implmented yet).
-  - useful to reduce spatial autocorrelation
-  - possibly average at a coarser lvl (ie. daily) -- can help with data processing
-    - can play around with the interval (12 hrs also, week, etc.) TODO: play with time intervals
-  - time stamps are perfectly aligned already, so averaging will be easy
-  - wait for final data to play time stamps
-
-Testing if data is iid (per region, doing first difference):
+Testing if raw data is iid:
 ```{r Stationary/Autocorrelation Check}
 # define stations
 stations <- unique(df_chla$StationCode)
@@ -80,14 +72,14 @@ for (station in stations){
   df_subset <- df_chla[df_chla$StationCode == station,]
   result <- df_subset$Result[!is.na(df_subset$Result)]
   if (!all(is.na(df_subset$Result))){
-    print('--------')
-    print(station)
-    print(adf.test(result, alternative = c("stationary")))
-    result %>% diff() %>% ggtsdisplay(main="")
+    # print('--------')
+    # print(station)
+    # print(adf.test(result, alternative = c("stationary")))
+    # result %>% diff() %>% ggtsdisplay(main="")
+    result %>% diff() %>% ggtsdisplay(main='')
   }
 }
 ```
-Data is stationary with significant autocorrelation -- not iid. But, with lag terms, the data (possibly) becomes iid.
 
 First, must determine if data does indeed become iid once lag (the timeseries component) is accounted for.
 
@@ -101,44 +93,11 @@ Transform to iid:
 ```
 
 If residuals are iid (should be), can now account for the non-timeseries variables and finish analysis by determing which coefficients are significant.
-
-Other predictors:
-  - temp, SpC, turbidity, DO, pH, etc. (DO/pH - chicken and egg problem)
-  - flow (not for all though) <- should have representative for each region even if not for each station (pro-averaging argument)
-      - substitute for pulse period? test
-      - tidal filter flow exists as well ("net flow" as the result), on an hrly basis
-  - temp - growth rate of chla
-  - turbidity - affects light penetration
-  - region
-  
-Gaps exist
-  - reasoning to use coarser data -- decreases the influence of gaps
-  - dif analysis each year (gets rid of the widest gap data)
-  - do some more research
-
-Model comparison
-  - start with with x-y plots (single predictor against the repsonse)
-    - determine which has interesting patterns
-  - hypothesis testing -- AIC model selection
-    - AICcmodagg <- also allows for model averaging 
-  - could also just throw everything in, step-wise  
-  - TODO: model comparison as next step
-  - data matrices to look at correlation of the predictors
-    - don't want highly correlated predictors (multicollinearity)
-    - corr package for correlation matrices <- a tidy-based package
-  - test for when things are borderline multicollinearity (Laura will give more details) -- variance inflation factor
-    - a way to look for MC
-    
     
 TODO: Next Steps
   1) look at time interval to use
   2) start writing the structure of the code
   
-  Discrete:
-  3) finish writing structure for discrete data
-  4) run it once Dave finishes the dataset
-    
-
 ARMA:
 ```{r}
 # chla = R_upper + R_lower + Y_17 + T_before + ... + R_u*Y_17 + R_u*T_before + ... + lag1 + lag2 + lag1*lag2...
@@ -147,8 +106,6 @@ ARMA:
 
 # see which coefficients are significant
 ```
-
-Look into break point models.
 
 --- Extra Stuff ---
 ```{r}
@@ -175,13 +132,3 @@ DT[, shift(.SD, 1:2, NA, "lead", TRUE), .SDcols=2:4]
 #   break
 # }
 ```
-
-
-Breka point models:
-1) two dif models, specify the slopes
-  - two disjointed lines
-  - R book (Laura will send more info)
-2) also use MLE to get one funciton that includes the change
-  - continuous func discribing the areas
-  - michael j crawley
-  - ecological models and data in R (ben balker)
