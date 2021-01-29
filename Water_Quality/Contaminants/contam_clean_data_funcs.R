@@ -14,7 +14,13 @@ library(readxl)
 import_nwis_data <- function(file_path) {
   df <- read_csv(
     file = file_path,
-    col_types = "c--c------c--------n-----n----------"
+    col_types = cols_only(
+      StationCode = col_character(),
+      sample_dt = col_character(),
+      medium_cd = col_character(),
+      parm_cd = col_double(),
+      rpt_lev_va = col_double()
+    )
   )
   
   return(df)
@@ -36,7 +42,7 @@ convert_na_val <- function(df, var_start, var_end) {
       across(
         !!var_start_enquo:!!var_end_enquo,
         ~case_when(
-          is.na(.x) ~ "Non-detect",
+          is.na(.x) ~ "< MDL",
           .x == "NA" ~ "Not analyzed",
           TRUE ~ .x
         )
