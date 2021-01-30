@@ -23,9 +23,13 @@ library(tidyverse)
 library(lubridate) # Datetime
 library(pscl) # Run zips and zinbs
 library(visreg) # Visualize models
-library(dplyr)
 library(viridis) # Color palette
 library(emmeans) # post hoc
+library(MASS) # negbin modelv
+library(countreg) # zeroinfl and hurdle functions, qqrplot
+library(gridExtra)
+library(grid)
+library(dplyr)
 ```
 
 ## Import data
@@ -39,12 +43,12 @@ library(emmeans) # post hoc
 ```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
 setwd("C:/Users/cpien/OneDrive - California Department of Water Resources/Work/FASTR/FASTR/ND-FASTR")
 Fish_ndfa_0 <- read.csv("fish data/FISH_MAN_allIEPsurveys_20201030.csv")
-Fish_ndfa <- select(Fish_ndfa_0, -c(Latitude, Longitude, DO, Turbidity))
+Fish_ndfa <- dplyr::select(Fish_ndfa_0, -c(Latitude, Longitude, DO, Turbidity))
 FlowDesignation <- read.csv("fish data/FlowDatesDesignations_45days.csv")
 Regions <- read.csv("fish data/Stations_Fish_NDFA_2021-01-13.csv")
 Regions_min <- Regions %>%
   rename(Survey = Survey.x) %>%
-  select(-c(Intersect, geometry, RegionMult))
+  dplyr::select(-c(Intersect, geometry, RegionMult))
 
 # Look at data
 head(Fish_ndfa)
@@ -72,7 +76,7 @@ Fish_all <- Fish_all1 %>%
    mutate(ActionPhase = replace(ActionPhase, Date > PreFlowEnd & Date < PostFlowStart, "During")) %>% 
    mutate(ActionPhase = replace(ActionPhase, Date > PostFlowStart & Date < PostFlowEnd, "Post")) %>%
   filter(!is.na(ActionPhase)) %>%
-   select(-c(PreFlowStart:PostFlowEnd)) %>%
+   dplyr::select(-c(PreFlowStart:PostFlowEnd)) %>%
    arrange(Date, Survey, StationCode, CommonName)
 
 
@@ -106,7 +110,7 @@ str(Fish_all)
 * Calculate CPUE 
 * Organize data
 
-```{r seine, warning = FALSE, message = FALSE}
+```{r tow, warning = FALSE, message = FALSE}
 # Filter Dataset
 Tow <- Fish_all %>% 
   filter(Survey %in% c("EDSM", "Townet", "FMWT")) %>%
@@ -125,7 +129,7 @@ Tow_completecase <- Tow %>%
 ### Merge back together with rest of data
 
 # Get distinct samples for looking at Water Quality 
-Tow_samples <- Tow %>% select(-c(CommonName, totalCount)) %>% distinct()
+Tow_samples <- Tow %>% dplyr::select(-c(CommonName, totalCount)) %>% distinct()
 
 # Merge 
 Tow_complete <- left_join(Tow_completecase, Tow_samples, by = c("Date", "Survey", "StationCode", "Tow", "Depth"))
@@ -209,17 +213,16 @@ Tow_summary1 <- Tow_smeltish %>%
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-ggplot(Tow_summary1, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+plot4 <- ggplot(Tow_summary1, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
-        legend.title = element_text(size = 15),
-        legend.position = "none")
-```
+        legend.title = element_text(size = 15))
 
+```
 
 #### Using transformations - doesn't work well
 ```{r}
@@ -231,7 +234,6 @@ plot(M.smeltish1)
 
 #### Zero-inflated model
 ```{r}
-
 # For CPUE, use offset to account for sampling effort
 Tow_smeltish$Samp <- log(Tow_smeltish$VolumeSampled)
 
@@ -247,6 +249,10 @@ zinb1 <- zeroinfl(f1, na.action = "na.fail", dist="negbin", link = "logit", data
 
 # Poisson
 zip1 <- zeroinfl(f1, dist = "poisson", link = "logit", data = Tow_smeltish); summary(zip1)
+
+# Hurdle 
+hrd1 <- hurdle(f1, dist="negbin", data = Tow_smeltish); summary(hrd1)
+
 ```
 
 Compare zero-inflated poisson with zero-inflated negbin using likelihood ratio test
@@ -257,24 +263,46 @@ library(lmtest)
 lrtest(zip1, zinb1)
 
 # Significantly different 
+
+# check all 3
+BIC(zip1, zinb1, hrd1)
 ```
+ZINB is the best. 
+Compare zinb with nb, make sure zero inflation is the way to go
+Compare zinb with nb, make sure zero inflation is the way to go
+```{r}
+# No zero inflation
+nb1 <- glm.nb(f1,  data = Tow_smeltish) ; summary(nb1) 
+vuong(nb1, zinb1)
+```
+It is. 
 
 #### Diagnostic Plots
 
+https://stackoverflow.com/questions/43075911/examining-residuals-and-visualizing-zero-inflated-poission-r
+
+Rootograms - should like like a typical overdispersed distribution
+This compares observed and fitted frequencies
+QQRplot
 ```{r}
-# Diagnostic Plots -------------------------------------
-# Model Validation 
-# Calculate residuals
+par(mfrow = c(1,2))
+rootogram(zinb1, main = "ZINB", ylim = c(-5, 15), max = 50)
+qqrplot(zinb1)
+```
+
+Distribution of residuals by variable
+```{r}
 EP1 <- resid(zinb1, type = "pearson")
 
 # Diagnostic Plots
 par(mfrow = c(2,2))
-plot(x=zinb1$fitted.values, y = EP1, main = "Pearson residuals")
-# qqrplot(EP1) # Don't know why not working
-plot(x=Tow_smeltish$ActionPhase,y = EP1, main = "Resid vs Action Phase")
-plot(x=Tow_smeltish$Region, y = EP1, main = "Resid vs Region")
-plot(x=Tow_smeltish$fYear, y = EP1, main = "Resid vs Year")
+plot(x=Tow_smeltish$ActionPhase,y = EP1, main = "Action Phase")
+plot(x=Tow_smeltish$Region, y = EP1, main = "Region")
+plot(x=Tow_smeltish$fYear, y = EP1, main = "Year")
+```
 
+Look at overall relationships
+```{r}
 par(mfrow = c(2,2))
 visreg(zinb1)
 ```
@@ -290,10 +318,9 @@ multcomp::cld(m_means1, Letters = letters)
 
 * More smeltish post>pre>during (but very small difference)
 * More smeltish upstream>downstream
-* Variability by year
+* 2016, 2017, 2019 > 2013> 2018> 2014-2015
 * More zeroes upstream than downstream
 * More zeroes during than pre
-
 
 
 ### Native fishes
@@ -340,15 +367,14 @@ Tow_summary2 <- Tow_natives %>%
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-ggplot(Tow_summary2, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+plot5 <- ggplot(Tow_summary2, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
-        legend.title = element_text(size = 15),
-        legend.position = "none")
+        legend.title = element_text(size = 15))
 ```
 
 #### Zero-inflated model
@@ -367,33 +393,62 @@ zinb2 <- zeroinfl(f2, na.action = "na.fail", dist="negbin", link = "logit", data
 
 # Poisson
 zip2 <- zeroinfl(f2, dist = "poisson", link = "logit", data = Tow_natives); summary(zip2)
+
+# Hurdle
+hrd2 <- hurdle(f2, dist="negbin", data = Tow_natives); summary(hrd2)
 ```
 
 Compare zero-inflated poisson with zero-inflated negbin
 ```{r}
 library(lmtest)
 lrtest(zip2, zinb2)
+
+BIC(zip2, zinb2, hrd2)
 ```
 
-#### Diagnostic Plots
+ZINB is the best. 
+Compare zinb with nb, make sure zero inflation is the way to go
 ```{r}
-# Diagnostic Plots -------------------------------------
-# Model Validation 
+# No zero inflation
+nb2 <- glm.nb(f2,  data = Tow_natives) ; summary(nb2) 
+vuong(nb2, zinb2)
+```
+NB better.  
+
+#### Diagnostic Plots
+
+Rootograms - should like like a typical overdispersed distribution
+This compares observed and fitted frequencies
+```{r}
+par(mfrow = c(1,2))
+rootogram(zinb2, main = "ZINB", ylim = c(-5, 15), max = 50)
+qqrplot(zinb2)
+```
+
+Distribution of residuals by variable
+```{r}
+
 # Calculate residuals
 EP2 <- resid(zinb2, type = "pearson")
 
 # Diagnostic Plots
 par(mfrow = c(2,2))
-plot(x=zinb2$fitted.values, y = EP2, main = "Pearson residuals")
-# qqrplot(EP2) # Don't know why not working
 plot(x=Tow_natives$ActionPhase,y = EP2, main = "Action Phase")
 plot(x=Tow_natives$Region, y = EP2, main = "Region")
 plot(x=Tow_natives$fYear, y = EP2, main = "Year")
+```
 
+View Results
+```{r}
 par(mfrow = c(2,2))
 visreg(zinb2)
 ```
 
+Post-hoc
+```{r}
+m_means2 <- emmeans(zinb2, ~fYear)
+multcomp::cld(m_means2, Letters = letters)
+```
 
 
 
@@ -448,15 +503,52 @@ Tow_summary3 <- Tow_all %>%
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-ggplot(Tow_summary3, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+plot6 <- ggplot(Tow_summary3, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
-        legend.title = element_text(size = 15),
-        legend.position = "bottom")
+        legend.title = element_text(size = 15))
+
+```
+
+Merge plots
+https://github.com/tidyverse/ggplot2/wiki/Share-a-legend-between-two-ggplot2-graphs
+```{r}
+
+grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, position = c("bottom", "right")) {
+
+  plots <- list(...)
+  position <- match.arg(position)
+  g <- ggplotGrob(plots[[1]] + theme(legend.position = position))$grobs
+  legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+  lheight <- sum(legend$height)
+  lwidth <- sum(legend$width)
+  gl <- lapply(plots, function(x) x + theme(legend.position="none"))
+  gl <- c(gl, ncol = ncol, nrow = nrow)
+
+  combined <- switch(position,
+                     "bottom" = arrangeGrob(do.call(arrangeGrob, gl),
+                                            legend,
+                                            ncol = 1,
+                                            heights = unit.c(unit(1, "npc") - lheight, lheight)),
+                     "right" = arrangeGrob(do.call(arrangeGrob, gl),
+                                           legend,
+                                           ncol = 2,
+                                           widths = unit.c(unit(1, "npc") - lwidth, lwidth)))
+
+  grid.newpage()
+  grid.draw(combined)
+
+  # return gtable invisibly
+  invisible(combined)
+}
+
+
+grid_arrange_shared_legend(plot4, plot5, plot6, ncol = 1, nrow = 3)
+
 ```
 
 
@@ -494,13 +586,11 @@ var(Tow_all$sumCPUE)
 mean(Tow_all$sumCPUE)
 
 # Poisson distribution or quasipoisson (overdispersed)
-m3all <- glm(f3, data = Tow_all, family = quasipoisson); summary(m3all)
+m3all <- glm(f3, data = Tow_all, family = poisson); summary(m3all)
 # See dispersion parameter
 
-par(mfrow = c(2,2))
-plot(m3all)
+m3all$deviance/m3all$df.residual #overdispersed
 
-visreg(m3all)
 ```
 
 #### Model with negative binomial distribution
@@ -509,8 +599,6 @@ visreg(m3all)
 ```{r}
 library(MASS)
 m4all <- glm.nb(f3, data = Tow_all); summary(m4all)
-par(mfrow = c(2,2))
-plot(m4all)
 
 # Confidence Intervals 
 (est <- cbind(Estimate = coef(m4all), confint(m4all)))
@@ -519,7 +607,21 @@ plot(m4all)
 exp(est)
 ```
 
+# Compare the two
+```{r}
+BIC(m3all, m4all)
+```
+Negative Binomial preferred.
+
 #### Diagnostic Plots
+Rootogram
+```{r}
+par(mfrow = c(1,2))
+rootogram(m4all)
+qqrplot(m4all)
+```
+
+Plot residuals
 ```{r}
 # Diagnostic Plots -------------------------------------
 # Model Validation 
@@ -533,6 +635,10 @@ plot(x=Tow_all$ActionPhase,y = EP3, main = "Action Phase")
 plot(x=Tow_all$Region, y = EP3, main = "Region")
 plot(x=Tow_all$fYear, y = EP3, main = "Year")
 
+```
+
+View plot
+```{r}
 par(mfrow = c(2,2))
 visreg(m4all)
 ```
@@ -547,6 +653,7 @@ multcomp::cld(m_means3, Letters = letters)
 **Conclusions**
 
 * More samples in 2017-2019 (EDSM started?) 
+* 2015-2016 > 2013-2017 > 2014 > 2018-2019
 * Not sure about residual distribution
 * More fish Upstream > Downstream > Middle Sac
 * More fish Pre > Post > During 
