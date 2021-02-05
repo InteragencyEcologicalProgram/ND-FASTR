@@ -1,6 +1,7 @@
 # NDFA Water Quality
 # Purpose: Download the USGS continuous water quality data
 # Author: Dave Bosworth
+# Final download of data on 2/3/2021
 
 # Load packages
 library(tidyverse)
@@ -66,7 +67,7 @@ iwalk(
   usgs_data,
   .f = ~write_excel_csv(
     .x, 
-    path = paste0(fp_abs_rtm_wq_raw, "/RTM_RAW_USGS_", .y, ".csv"),
+    file = paste0(fp_abs_rtm_wq_raw, "/RTM_RAW_USGS_", .y, ".csv"),
     na = ""
   )
 )
