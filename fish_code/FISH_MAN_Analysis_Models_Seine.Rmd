@@ -97,7 +97,7 @@ Fish_all$X1 <- NULL
 Fish_all$Survey <- as.factor(Fish_all$Survey)
 Fish_all$StationCode <- as.factor(Fish_all$StationCode)
 Fish_all$MethodCode <- as.factor(Fish_all$MethodCode)
-Fish_all$Region <- as.factor(Fish_all$Region)
+Fish_all$Region <- factor(Fish_all$Region, levels = c("Upstream", "Downstream", "MiddleSacRiver"))
 
 str(Fish_all)
 
@@ -520,10 +520,16 @@ ggplot(Seine_summary4, aes(x = fYear, y = Region, fill = meanCPUE)) + geom_tile(
 
 #### Sum Overall CPUE
 ```{r}
+Seine_f <- filter(Seine_f, !CommonName %in% c("NoCatch", "Crangon spp.", "Siberian Prawn", "Mississippi Grass Shrimp"))
 Seine_all <- Seine_f %>%
   group_by(Survey,fYear, Date, Region, StationCode, ActionPhase, MethodCode, VolumeSampled) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
+
+SeineSpCPUE <- Seine_f %>% 
+  group_by(CommonName) %>%
+  summarize(sumCPUE = sum(CPUE))
+SeineSpCPUEA <- filter(SeineSpCPUE, sumCPUE>0.1)
 ```
 
 #### Look at data  
@@ -536,7 +542,15 @@ Seine_all <- Seine_f %>%
 
 ```{r}
 # Proportion Species
-ggplot(Seine_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw()  + theme(legend.position = "bottom")
+SeineSp <- ggplot(Seine_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw()  + theme(legend.position = "bottom") +
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        axis.title.x = element_blank(),
+        legend.text = element_text(size = 11),
+        legend.title = element_blank())
+SeineSp
+
+
 
 # Histogram
 ggplot(Seine_all, aes(sumCPUE)) + geom_histogram(binwidth = .1) + theme_bw()
@@ -599,7 +613,44 @@ get_legend<-function(myggplot){
 legend <- get_legend(plot1)
 plot1 <- plot1 + theme(legend.position = "none")
 grid.arrange(plot1, plot2, plot3, legend)
-grid.arrange(arrangeGrob(plot1, plot4, plot2, top = "Seine"), arrangeGrob(plot5, plot3, plot6, top = "Tow"), legend, ncol = 2)
+#grid.arrange(arrangeGrob(plot1, plot4, plot2, top = "Seine"), arrangeGrob(plot5, plot3, plot6, top = "Tow"), legend, ncol = 2)
+```
+
+```{r}
+grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, position = c("bottom", "right")) {
+
+  plots <- list(...)
+  position <- match.arg(position)
+  g <- ggplotGrob(plots[[1]] + theme(legend.position = position))$grobs
+  legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+  lheight <- sum(legend$height)
+  lwidth <- sum(legend$width)
+  gl <- lapply(plots, function(x) x + theme(legend.position="none"))
+  gl <- c(gl, ncol = ncol, nrow = nrow)
+
+  combined <- switch(position,
+                     "bottom" = arrangeGrob(do.call(arrangeGrob, gl),
+                                            legend,
+                                            ncol = 1,
+                                            heights = unit.c(unit(1, "npc") - lheight, lheight)),
+                     "right" = arrangeGrob(do.call(arrangeGrob, gl),
+                                           legend,
+                                           ncol = 2,
+                                           widths = unit.c(unit(1, "npc") - lwidth, lwidth)))
+
+  grid.newpage()
+  grid.draw(combined)
+
+  # return gtable invisibly
+  invisible(combined)
+
+}
+
+grid_arrange_shared_legend(plot1, plot4, plot2, plot5, plot3, plot6, ncol = 2,nrow = 3)
+grid_arrange_shared_legend(SeineSp, TowSp, ncol = 1, nrow = 2)
+
+SeineSp
+grid.arrange(SeineSp, TowSp)
 ```
 
 
@@ -630,6 +681,9 @@ Seine_all$Samp <- log(Seine_all$VolumeSampled)
 
 # Formula
 f3 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
+f4 <- formula(sumCount ~ Region + fYear + ActionPhase + Region:ActionPhase+  offset(Samp))
+f5 <- formula(sumCount ~ Region + fYear + ActionPhase + Region:fYear+  offset(Samp))
+f6 <- formula(sumCount ~ Region + fYear + ActionPhase + ActionPhase:fYear+  offset(Samp))
 
 # Check overdispersion (var>mean)
 var(Seine_all$sumCPUE)
@@ -647,8 +701,12 @@ deviance(m3all)/m3all$df.residual # very overdispersed
 
 #### Model with negative binomial distribution
 * https://stats.idre.ucla.edu/r/dae/negative-binomial-regression/
+
+
 ```{r}
 m4all <- glm.nb(f3, data = Seine_all); summary(m4all)
+
+```
 
 # Confidence Intervals 
 (est <- cbind(Estimate = coef(m4all), confint(m4all)))
@@ -662,6 +720,15 @@ exp(est)
 BIC(m3all, m4all)
 ```
 Negative Binomial preferred.
+
+Try interactions: m4all (no interactions) still best model
+```{r}
+m5all <- glm.nb(f4, data = Seine_all); summary(m5all)
+m6all <- glm.nb(f5, data = Seine_all); summary(m6all)
+m7all <- glm.nb(f6, data = Seine_all); summary(m7all)
+
+BIC(m4all, m5all, m6all, m7all)
+```
 
 #### Diagnostic Plots
 

@@ -97,7 +97,7 @@ Fish_all$X1 <- NULL
 Fish_all$Survey <- as.factor(Fish_all$Survey)
 Fish_all$StationCode <- as.factor(Fish_all$StationCode)
 Fish_all$MethodCode <- as.factor(Fish_all$MethodCode)
-Fish_all$Region <- as.factor(Fish_all$Region)
+Fish_all$Region <- factor(Fish_all$Region, levels = c("Upstream", "Downstream", "MiddleSacRiver"))
 
 str(Fish_all)
 
@@ -217,6 +217,7 @@ plot4 <- ggplot(Tow_summary1, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+    annotate("text", x = "Post", y = .006, label = "D", size = 8)  + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
@@ -239,6 +240,9 @@ Tow_smeltish$Samp <- log(Tow_smeltish$VolumeSampled)
 
 # Formula
 f1 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
+f4 <- formula(sumCount ~ Region + fYear + ActionPhase + Region:ActionPhase+  offset(Samp))
+f5 <- formula(sumCount ~ Region + fYear + ActionPhase + Region:fYear+  offset(Samp))
+f6 <- formula(sumCount ~ Region + fYear + ActionPhase + ActionPhase:fYear+  offset(Samp))
 
 # Overdispersion = Variance much larger than mean. 
 var(Tow_smeltish$sumCount)
@@ -370,7 +374,9 @@ Tow_summary2 <- Tow_natives %>%
 plot5 <- ggplot(Tow_summary2, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
-  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + 
+      annotate("text", x = "Post", y = 2e-05, label = "E", size = 8)  + 
+  theme_bw() + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
@@ -456,6 +462,7 @@ multcomp::cld(m_means2, Letters = letters)
 
 #### Sum Overall CPUE
 ```{r}
+Tow_f <- filter(Tow_f, !(CommonName %in% c("Crangon spp.", "Siberian Prawn", "NoCatch", "Mississippi Grass Shrimp")))
 Tow_all <- Tow_f %>%
   group_by(Survey,fYear, Date, Region, StationCode, ActionPhase, MethodCode, VolumeSampled, Tow) %>%
   summarize(sumCPUE = sum(CPUE),
@@ -467,7 +474,15 @@ Tow_all <- Tow_f %>%
 
 ```{r}
 # Proportion Species
-ggplot(Tow_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw()  + theme(legend.position = "bottom")
+TowSp <- ggplot(Tow_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw()  + theme(legend.position = "bottom") + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        axis.title.x = element_blank(),
+        legend.text = element_text(size = 11),
+        legend.title = element_blank())
+ggplotly(TowSp)
+
+library(plotly)
 
 # Histogram
 ggplot(Tow_all, aes(sumCPUE)) + geom_histogram(binwidth = .001) + theme_bw()
@@ -506,7 +521,9 @@ Tow_summary3 <- Tow_all %>%
 plot6 <- ggplot(Tow_summary3, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
-  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + 
+      annotate("text", x = "Post", y = .1, label = "F", size = 8)  + 
+  theme_bw() + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
@@ -600,8 +617,9 @@ m3all$deviance/m3all$df.residual #overdispersed
 library(MASS)
 m4all <- glm.nb(f3, data = Tow_all); summary(m4all)
 
+
 # Confidence Intervals 
-(est <- cbind(Estimate = coef(m4all), confint(m4all)))
+(est <- cbind(Estimate = coef(m5all), confint(m5all)))
 
 # Incidence Rates (Count)
 exp(est)
@@ -613,12 +631,21 @@ BIC(m3all, m4all)
 ```
 Negative Binomial preferred.
 
+Try interactions: m5all preferred
+```{r}
+m5all <- glm.nb(f4, data = Tow_all); summary(m5all)
+m6all <- glm.nb(f5, data = Tow_all); summary(m6all)
+m7all <- glm.nb(f6, data = Tow_all); summary(m7all)
+
+BIC(m4all, m5all, m6all, m7all)
+```
+
 #### Diagnostic Plots
 Rootogram
 ```{r}
 par(mfrow = c(1,2))
-rootogram(m4all)
-qqrplot(m4all)
+rootogram(m5all)
+qqrplot(m5all)
 ```
 
 Plot residuals
@@ -626,11 +653,11 @@ Plot residuals
 # Diagnostic Plots -------------------------------------
 # Model Validation 
 # Calculate residuals
-EP3 <- resid(m4all, type = "pearson")
+EP3 <- resid(m5all, type = "pearson")
 
 # Diagnostic Plots
 par(mfrow = c(2,2))
-plot(x=m4all$fitted.values, y = EP3, main = "Pearson residuals")
+plot(x=m5all$fitted.values, y = EP3, main = "Pearson residuals")
 plot(x=Tow_all$ActionPhase,y = EP3, main = "Action Phase")
 plot(x=Tow_all$Region, y = EP3, main = "Region")
 plot(x=Tow_all$fYear, y = EP3, main = "Year")
@@ -640,13 +667,13 @@ plot(x=Tow_all$fYear, y = EP3, main = "Year")
 View plot
 ```{r}
 par(mfrow = c(2,2))
-visreg(m4all)
+visreg(m5all)
 ```
 
 Post-hoc
 
 ```{r}
-m_means3 <- emmeans(m4all, ~fYear)
+m_means3 <- emmeans(m5all, ~fYear)
 multcomp::cld(m_means3, Letters = letters)
 ```
 
