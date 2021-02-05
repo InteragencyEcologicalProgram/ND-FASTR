@@ -19,7 +19,7 @@ options(knitr.kable.NA = "")
 
 # Purpose
 
-Create plots of the raw continuous water quality data for the RYI station. The data in these plots has been cleaned and formatted, but not inspected for suspect values. The purpose of these plots is to allow for us to visually inspect the data for suspect or unreliable values during the study period (2011-2019). The final QA/QC steps for this data can be found in the xxx.Rmd file.
+Create plots of the raw continuous water quality data for the RYI station. The data in these plots has been cleaned and formatted, but not inspected for suspect values. The purpose of these plots is to allow for us to visually inspect the data for suspect or unreliable values during the study period (2011-2019). The final QA/QC steps for this data can be found in the rtm_QA_and_combine_data_all.Rmd file.
 
 # Global code and functions
 
@@ -142,65 +142,18 @@ df_qual_code_summ <- df_clean_nest_indiv_yr %>%
 
 # Raw Data Plots {.tabset .tabset-pills}
 
-## Chla {.tabset .tabset-pills}
-
-```{r filter indiv chla plots, include = FALSE}
-filt_param <- "Chla"
-
-df_plots_indiv_yr_filt <- filter(df_plots_indiv_yr, parameter == filt_param)
-```
-
-### All Years
-
-```{r plot chla all yrs, echo = FALSE}
-df_plots_all_yrs %>% 
-  filter(parameter == filt_param) %>% 
-  print_plot()
-```
-
-### 2018
-
-```{r plot chla 2018, echo = FALSE}
-df_plots_indiv_yr_filt %>% 
-  filter(yr == 2018) %>% 
-  print_plot()
-```
-
-### 2019
-
-```{r plot chla 2019, echo = FALSE}
-df_plots_indiv_yr_filt %>% 
-  filter(yr == 2019) %>% 
-  print_plot()
-```
-
-
-## DO {.tabset .tabset-pills}
-
-### All Years - only collected in 2018
-
-```{r plot do all yrs, echo = FALSE}
-filt_param <- "DO"
-
-df_plots_indiv_yr %>% 
-  filter(
-    parameter == filt_param,
-    yr == 2018
-  ) %>% 
-  print_plot()
-```
-
-
-```{r print fdom and flow plots, include = FALSE}
-# Create a list of plot templates to use for fDOM and flow plots
-produce_plots_fdom_flow <- list(
+```{r print chla do fdom and flow plots, include = FALSE}
+# Create a list of plot templates to use for Chla, DO, fDOM, and flow plots
+produce_plots_chla_do_fdom_flow <- list(
+  knit_expand(file = "rtm_raw_plots_template_2018.Rmd", parameter = "Chla"),
+  knit_expand(file = "rtm_raw_plots_template_2018.Rmd", parameter = "DO"),
   knit_expand(file = "rtm_raw_plots_template_2018.Rmd", parameter = "fDOM"),
   knit_expand(file = "rtm_raw_plots_template_2011.Rmd", parameter = "Flow"),
   knit_expand(file = "rtm_raw_plots_template_2011.Rmd", parameter = "FlowTF")
 )
 ```
 
-`r knit(text = unlist(produce_plots_fdom_flow))`
+`r knit(text = unlist(produce_plots_chla_do_fdom_flow))`
 
 
 ## NitrateNitrite {.tabset .tabset-pills}
