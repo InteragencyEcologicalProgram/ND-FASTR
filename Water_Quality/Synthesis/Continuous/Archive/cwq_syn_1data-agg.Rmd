@@ -59,14 +59,15 @@ df_wq <- df_wq %>%
 
 # subset by day
 df_wq <- df_wq %>%
-  filter(hour(DateTime) == 0 & minute(DateTime) == 00)
-
+  group_by(StationCode, Analyte, Date, Year) %>%
+  summarize(Result = mean(Result, na.rm = TRUE))
+             
 # add region variable
 df_wq <- df_wq %>%
   mutate(
     Region = case_when(
-      StationCode %in% c('RCS','RD22','I80','LIS','STTD') ~ 'Upstream',
-      StationCode %in% c('BL5','LIB','RYI','RVB') ~ 'Downstream'
+      StationCode %in% c('RCS','RD22','I80','LIS','STTD') ~ 'Upstream', # LIS, RCS, RD22 have flow, others don't
+      StationCode %in% c('BL5','LIB','RYI','RVB') ~ 'Downstream' # LIB, RYI, and RVB all have flow, not BL5
     )
   )
 
@@ -81,14 +82,25 @@ df_wq <- spread(df_wq, Analyte, Result)
 df_wq_regonly <- df_wq[!is.na(df_wq$Region),]
 ```
 
+Flow downstream is more variable due to tidal influence, probably.
 ```{r}
+df_wq_regonly$Year <- as.factor(df_wq_regonly$Year)
+
 # visually inspect by region (NA removed)
 for (analyte in analytes){
   plt <- ggplot(df_wq_regonly, aes(x = Chla, y = !!sym(analyte))) +
-    geom_point(aes(color = Region), size = 2)
+    geom_point(aes(color = Year), size = 2)
   print(plt)
 }
 ```
+Variables: Flow (in some form, does it capture WYT?), pH? (those migth be affected by chla, instead of opposite), WaterTemp (proxy for seasonality), Turbidity, SpC, Year
+
+TODO: correlation matrices among the predictors
+- read Peggy's papers 
+    - she does include pH in her models
+    - if we include one of DO or pH, include pH
+
+
 ```{r}
 # visually inspect by region (all)
 for (analyte in analytes){
@@ -98,6 +110,9 @@ for (analyte in analytes){
 }
 ```
 
+```{r}
+head(df_wq)
+```
 
 ```{r}
 # visually inspect by station (NA region removed)

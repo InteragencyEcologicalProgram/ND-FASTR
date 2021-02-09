@@ -1,0 +1,133 @@
+```{r}
+# FASTR Cont. WQ Predictors vs. Chla
+# Author: Sarah Perry
+# Date created: 01/20/2020
+
+
+# import packages and scripts
+library(tidyverse)
+library(lubridate)
+library(forecast)
+library(data.table)
+library(tseries)
+source('global_ndfa_funcs.R')
+```
+
+```{r Import Data}
+# function
+get_abs_path <- function(fp_rel){
+  # define absolute filepath
+  fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_rel))
+  
+  return(fp_abs)
+}
+
+# define main FASTR filepath (assumes sync'd with Sharepoint)
+fp_fastr <- 'California Department of Water Resources/North Delta Flow Action - Documents/'
+
+# define filepaths 
+fp_rel_wq <- paste(fp_fastr,'WQ_Subteam/Processed_Data/Continuous/Combined_Files/combined_flow.csv', sep = '')
+fp_abs_wq <- get_abs_path(fp_rel_wq)
+
+# read in data
+df_wq <- fread(
+  fp_abs_wq,
+  colClasses = cols(
+    .default = 'n',
+    DateTime = 'T',
+    Date = 'D',
+    Year = 'c',
+    PreFlowStart = 'c',
+    PreFlowEnd = 'c',
+    PostFlowStart = 'c',
+    PostFlowEnd = 'c',
+    ActionPhase = 'c',
+    StationCode = 'c'
+    )
+  )
+
+# remove extra cols
+df_wq <- subset(df_wq, select = -c(WYType, FlowPulseType, NetFlowDays))
+
+# pivot longer
+df_wq <- df_wq %>% 
+  select(!ends_with('_Qual')) %>% 
+  pivot_longer(
+    cols = -c(DateTime, StationCode, Date, ActionPhase, PreFlowStart, PreFlowEnd, PostFlowStart, PostFlowEnd, Year),
+    names_to = 'Analyte',
+    values_to = 'Result')
+
+# subset by day
+df_wq <- df_wq %>%
+  group_by(StationCode, Analyte, Date, Year) %>%
+  summarize(Result = mean(Result, na.rm = TRUE))
+             
+# add region variable
+df_wq <- df_wq %>%
+  mutate(
+    Region = case_when(
+      StationCode %in% c('RCS','RD22','I80','LIS','STTD') ~ 'Upstream', # LIS, RCS, RD22 have flow, others don't
+      StationCode %in% c('BL5','LIB','RYI','RVB') ~ 'Downstream' # LIB, RYI, and RVB all have flow, not BL5
+    )
+  )
+
+# define response variables
+analytes <- unique(df_wq$Analyte)
+analytes <- analytes[!analytes %in% c('Chla','Chla_RFU')]
+
+# long to wide
+df_wq <- spread(df_wq, Analyte, Result)
+
+# subset by region
+df_wq_regonly <- df_wq[!is.na(df_wq$Region),]
+```
+
+Flow downstream is more variable due to tidal influence, probably.
+```{r}
+df_wq_regonly$Year <- as.factor(df_wq_regonly$Year)
+
+# visually inspect by region (NA removed)
+for (analyte in analytes){
+  plt <- ggplot(df_wq_regonly, aes(x = Chla, y = !!sym(analyte))) +
+    geom_point(aes(color = Year), size = 2)
+  print(plt)
+}
+```
+Variables: Flow (in some form, does it capture WYT?), pH? (those migth be affected by chla, instead of opposite), WaterTemp (proxy for seasonality), Turbidity, SpC, Year
+
+TODO: correlation matrices among the predictors
+- read Peggy's papers 
+    - she does include pH in her models
+    - if we include one of DO or pH, include pH
+
+
+```{r}
+# visually inspect by region (all)
+for (analyte in analytes){
+  plt <- ggplot(df_wq, aes(x = Chla, y = !!sym(analyte))) +
+    geom_point(aes(color = Region), size = 2)
+  print(plt)
+}
+```
+
+```{r}
+head(df_wq)
+```
+
+```{r}
+# visually inspect by station (NA region removed)
+for (analyte in analytes){
+  plt <- ggplot(df_wq_regonly, aes(x = Chla, y = !!sym(analyte))) +
+    geom_point(aes(color = StationCode), size = 2)
+  print(plt)
+}
+```
+
+```{r}
+# visually inspect by station (all)
+for (analyte in analytes){
+  plt <- ggplot(df_wq, aes(x = Chla, y = !!sym(analyte))) +
+    geom_point(aes(color = StationCode), size = 2)
+  print(plt)
+}
+```
