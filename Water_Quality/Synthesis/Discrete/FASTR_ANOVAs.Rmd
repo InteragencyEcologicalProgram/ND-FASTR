@@ -65,16 +65,6 @@ df_wq <- df_wq %>%
   ungroup()
 ```
 
-- need to account for unbalanced design (type 3 or different combos)
-- want to do two-way interactions or less
-- need to account for NDs (run different combinations)
-
-
-
-- run in each order to account for unbalanced design
-    - REML - can include the two-way interactions, can include station as an error term/nested error term
-    - ** aov can't handle random error terms if unbalanced design
-
 ```{r ANOVA - set to RL}
 aov_all <- list()
 
