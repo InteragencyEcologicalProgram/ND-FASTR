@@ -5,7 +5,6 @@
 
 # Load packages
 library(tidyverse)
-library(readxl)
 
 
 # Data Import Functions ---------------------------------------------------
@@ -51,9 +50,8 @@ convert_na_val <- function(df, var_start, var_end) {
 }
 
 # Round values to appropriate number of significant figures
-  # 1 significant figure for values less than 1
-  # 2 significant figures for values less than 10 
-  # 3 significant figures for values greater than 10
+  # 1 number to the right of the decimal for values less than 100
+  # 3 significant figures for values greater than or equal to 100
 round_val <- function(df, val_var) {
   # Convert val_var to symbol and quosure for tidy evaluation
   val_var_ensym <- ensym(val_var)
@@ -62,10 +60,10 @@ round_val <- function(df, val_var) {
   # Round values in val_var
   df %>% 
     mutate(
-      !!val_var_ensym := case_when(
-        !!val_var_enquo < 1 ~ signif(!!val_var_enquo, 1),
-        !!val_var_enquo < 10 ~ signif(!!val_var_enquo, 2),
-        TRUE ~ signif(!!val_var_enquo, 3)
+      !!val_var_ensym := if_else(
+        !!val_var_enquo < 100,
+        round(!!val_var_enquo, 1),
+        signif(!!val_var_enquo, 3)
       )
     )
 }
