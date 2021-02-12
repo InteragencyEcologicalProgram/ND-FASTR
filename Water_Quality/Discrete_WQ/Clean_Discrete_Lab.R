@@ -207,10 +207,10 @@ dis_lab_data_clean2 <- dis_lab_data_clean1 %>%
     ),
     # Convert Result variable from character to numeric, convert <RL and <MDL data to NA values
     Result = signif(as.numeric(Result), 3),  #round to 3 significant digits
-    # Add "J-DNQ" to ResultQual variable for values <RL but >MDL
+    # Add "J- estimated" to ResultQual variable for values <RL but >MDL
     ResultQual = case_when(
       is.na(Result) ~ ResultQual,
-      Result < RL ~ "J-DNQ"
+      Result < RL ~ "J- estimated"
     )
   )
 
@@ -292,8 +292,8 @@ dis_lab_reps_f %>%
       TRUE ~ as.character(Result_2)
     )
   ) %>% 
-  # Only keep "J-DNQ" in ResultQual variables
-  mutate(across(starts_with("ResultQual"), ~if_else(.x == "J-DNQ", "J-DNQ", NA_character_))) %>% 
+  # Only keep "J- estimated" in ResultQual variables
+  mutate(across(starts_with("ResultQual"), ~if_else(.x == "J- estimated", "J- estimated", NA_character_))) %>% 
   select(
     SampleCode,
     StationCode,
@@ -387,8 +387,8 @@ dis_field_dup_pairs_f <- dis_field_dup_pairs %>%
       TRUE ~ as.character(Result_FD)
     )
   ) %>% 
-  # Only keep "J-DNQ" in ResultQual variables
-  mutate(across(starts_with("ResultQual"), ~if_else(.x == "J-DNQ", "J-DNQ", NA_character_)))
+  # Only keep "J- estimated" in ResultQual variables
+  mutate(across(starts_with("ResultQual"), ~if_else(.x == "J- estimated", "J- estimated", NA_character_)))
 
 # Are there any Field Duplicate pairs with RPD values greater than 20%?
 dis_field_dup_pairs_f %>% filter(RPD > 0.2)  
@@ -417,8 +417,8 @@ dis_lab_data_clean_f <- dis_lab_data_clean5 %>%
       ResultQual == "< MDL" ~ "< MDL",
       TRUE ~ as.character(Result)
     ),
-    # Only keep "J-DNQ" in ResultQual variable
-    ResultQual = if_else(ResultQual == "J-DNQ", "J-DNQ", NA_character_)
+    # Only keep "J- estimated" in ResultQual variable
+    ResultQual = if_else(ResultQual == "J- estimated", "J- estimated", NA_character_)
   ) %>% 
   # Select variables to keep
   select(
