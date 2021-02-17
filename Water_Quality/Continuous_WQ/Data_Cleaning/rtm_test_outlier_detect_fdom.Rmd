@@ -77,7 +77,7 @@ df_outlier_test <- df_clean_nest %>%
       )
     ),
     # Remove missing data values and replace qual codes that have NA values - for plots
-    odwg_test_f = map(
+    odwg_test_v1 = map(
       odwg_test_calc,
       ~filter(.x, !is.na(value)) %>% 
         replace_na(
@@ -89,7 +89,19 @@ df_outlier_test <- df_clean_nest %>%
             qual_rate = "pass"
           )
         )
-    )
+    ),
+    # Add a variable identifying if a majority of tests (3 or more) resulted in a "suspect" or "fail"
+    odwg_test_maj = map(
+      odwg_test_v1,
+      ~mutate(.x, across(where(is.factor), ~if_else(. == "pass", 0L, 1L))) %>% 
+        select(-value) %>% 
+        mutate(
+          qual_total = rowSums(across(where(is.numeric))),
+          qual_majority = outlier_test_factor(if_else(qual_total > 2, 4L, 1L))
+        ) %>% 
+        select(DateTime, qual_majority)
+    ),
+    odwg_test_f = map2(odwg_test_v1, odwg_test_maj, .f = left_join)
   ) %>% 
   select(parameter, yr, odwg_test_f)
 ```
@@ -128,6 +140,12 @@ df_outlier_test_plots <- df_outlier_test %>%
       .f = outlier_test_plot, 
       qual_var = qual_rate,
       plot_title = "3 SD, over past 25 hours"
+    ),
+    plot_maj = map(
+      odwg_test_f, 
+      .f = outlier_test_plot, 
+      qual_var = qual_majority,
+      plot_title = "3 or more tests are suspect or fail"
     )
   )
 ```

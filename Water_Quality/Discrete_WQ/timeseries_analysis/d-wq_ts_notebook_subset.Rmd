@@ -1,0 +1,378 @@
+---
+title: 'NDFA - Discrete WQ Time Series'
+author: 'Sarah Perry'
+date: '09/10/2020'
+
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 1
+    toc_float:
+      collapsed: false
+editor_options:
+  chunk_output_type: console
+---
+
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+This file provides time series graphs for the discrete water quality stations of the FASTR project. They include time periods before, during, and after a flow action.
+
+# Code {.tabset .tabset-fade .tabset-pills}
+## Functions
+```{r message=FALSE, warning=FALSE}
+# --- Import Packages ---
+# import packages
+library(knitr)
+library(crayon)
+library(scales)
+library(ggplot2)
+library(data.table)
+library(tidyverse)
+source('global_ndfa_funcs.R')
+
+# --- Import Data from SharePoint ---
+get_abs_path <- function(fp_rel){
+  # define absolute filepath
+  fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_rel))
+  
+  return(fp_abs)
+}
+
+# --- Add Full Analyte Names ---
+add_analyte_names <- function(df){
+  # add AnalyteFull column
+  df <- df %>%
+    mutate(
+      AnalyteFull =
+        case_when(
+          Analyte == 'DisAmmonia' ~ 'Dissolved Ammonia',
+          Analyte == 'DisCalcium' ~ 'Dissolved Calcium',
+          Analyte == 'DisChloride' ~ 'Dissolved Chloride',
+          Analyte == 'Chla' ~ 'Chlorophyll a',
+          Analyte == 'DisNitrateNitrite' ~ 'Dissolved Nitrate Nitrite',
+          Analyte == 'DOC' ~ 'Dissolved Oraganic Carbon',
+          Analyte == 'TOC' ~ 'Total Organic Carbon',
+          Analyte == 'DON' ~ 'Dissolved Organic Nitrogen',
+          Analyte == 'DOP' ~ 'Dissolved Organic Phosphate',
+          Analyte == 'Pheo' ~ 'Pheophytin',
+          Analyte == 'TOP' ~ 'Total Organic Phosphate',
+          Analyte == 'DisSilica' ~ 'Dissolved Silica',
+          Analyte == 'TSS' ~ 'Total Suspended Solids',
+          Analyte == 'VSS' ~ 'Volatile Suspended Solids',
+          Analyte == 'TDS' ~ 'Total Dissolved Solids',
+          Analyte == 'TKN' ~ 'Total Kjeldahl Nitrogen'
+        )
+    )
+  return(df)
+}
+
+# --- Add Phase Actions ---
+# adapted from Cat Pien's code
+add_phase_actions <- function(df_wq, df_dates){
+  # change 'Year' column to character
+  df_dates$Year <- as.character(df_dates$Year)
+
+  # combine the two dfs
+  df_combined <- inner_join(df_wq, df_dates, by  = 'Year')
+
+  # convert date columns to date type
+  cols_date <- c('Date','PreFlowStart','PreFlowEnd','PostFlowStart','PostFlowEnd')
+
+  df_combined[cols_date] <- lapply(df_combined[cols_date], as.Date, format = '%m/%d/%Y')
+
+  # add ActionPhase column and remove non-NDFA data
+  df_combined <- df_combined %>%
+    mutate(
+      ActionPhase =
+        case_when(
+          Date >= PreFlowStart & Date <= PreFlowEnd ~ 'Pre',
+          Date >= PreFlowEnd & Date <= PostFlowStart ~ 'During',
+          Date >= PostFlowStart & Date <= PostFlowEnd ~ 'Post'
+        )
+    ) %>%
+    filter(!is.na(ActionPhase))
+
+  return(df_combined)
+}
+
+# --- Create df for RL Segments ---
+create_seg_df <- function(df){
+  # subset out the ND data into own df (based on NA values in 'values' column)
+  df_subset <- subset(df, is.na(df$Result))
+
+  # check if any non-detect data
+  any_data <- 'Non-detect' %in% df_subset$LabDetect
+  if (any_data){
+    # create new df for the vertical and horizontal segments
+    df_seg <- data.frame(
+      x_vert = df_subset$Date,
+      xend_vert = df_subset$Date,
+      y_vert = 0,
+      yend_vert = df_subset$RptLimit,
+      x_horz = df_subset$Date-1.7, # 1.7 is arbitrary, change this to change the length of the line
+      xend_horz = df_subset$Date+1.7,
+      y_horz = df_subset$RptLimit,
+      yend_horz = df_subset$RptLimit,
+      StationCode = df_subset$StationCode,
+      Region = df_subset$Region
+    )
+    return(df_seg)
+  }
+  else{
+    return(df_subset)
+  }
+}
+
+# --- Blank Theme for Timeseries Graphs ---
+blank_theme <- function(){
+  theme_bw() +
+    theme(
+      panel.grid.major.y = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor = element_blank(),
+      axis.text = element_text(color = 'black', size = 10, family = 'sans'),
+      axis.text.x = element_text(angle = 45, vjust=0.5, margin = margin(t = 1)),
+      strip.text = element_text(size = 11),
+      axis.title = element_text(size = 15, face = 'bold'),
+      plot.title = element_text(size = 17, hjust = 0.5, face = 'bold'),
+      legend.position = 'top',
+      legend.title = element_blank(),
+      legend.box.margin = margin(-10,0,-10,0),
+      legend.text = element_text(size = 9)
+    )
+}
+
+# --- Create Facet Scatterplots  ---
+create_facet <- function(df){
+  # import blank theme
+  blank_theme <- blank_theme()
+  
+  # filter df by analyte
+  df_filt <-
+    df %>%
+    filter(
+      AnalyteFull == analyte,
+      Year == year
+    )
+
+  # create segment (RL) df
+  df_seg <- create_seg_df(df_filt)
+  
+  # define flow action duration
+  action_max <- unique(df_filt$PostFlowStart)
+  action_min <- unique(df_filt$PreFlowEnd)
+  
+  # check if any/RL data exists
+  any_dat <- nrow(df_filt) > 0
+  rl_dat <- nrow(df_seg) > 0
+  
+  # define relevant values
+  analyte_unit <- unique(df_filt$Units[df_filt$AnalyteFull == analyte])
+  cmap_colors <- c('#999999', '#f781bf', '#B79F00', '#984ea3', '#377eb8', '#e41a1c')
+  
+  # plot timeseries
+  if (any_dat) {
+    
+    # set limits by region
+    buffer <- 0.01
+    
+    df_filt <- data.table(df_filt)
+    
+    df_filt <- df_filt[,y_min := min(Result, na.rm = TRUE) - 0.01, by = Region]
+    df_filt <- df_filt[,y_max := max(Result, na.rm = TRUE) + .01, by = Region]
+    
+    df_filt$y_min[df_filt$y_min < 0] <- 0
+    
+    # create plot
+    p <- ggplot() +
+      facet_grid(StationCode ~ ., scales = 'free') +
+      annotate('rect', xmin = action_min, xmax = action_max, ymin = -Inf, ymax = Inf, alpha = .08)
+    
+    if (rl_dat) {
+      
+      # add RL segments
+      p <- p +
+        geom_segment( # vertical segment
+          data = df_seg,
+          mapping = aes(x = x_vert, xend = xend_vert, y = y_vert, yend = yend_vert, group = StationCode, color = Region),
+          size = 1.1
+        ) +
+        geom_segment( # horizontal segment
+          data = df_seg,
+          mapping = aes(x = x_horz, xend = xend_horz, y = y_horz, yend = yend_horz, group = StationCode, color = Region),
+          size = .8,
+          lineend = 'square'
+        )
+    }
+    
+    # add timeseries data
+    p <- p +
+      geom_point( # points
+        df_filt,
+        mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
+        size = 3.0
+      ) +
+      geom_line( # line
+        df_filt,
+        mapping = aes(x = Date, y = Result, group = StationCode, color = Region),
+        size = 1.1
+      ) +
+      geom_point(data = df_filt, aes(y = y_max, x = Date, color = NA)) +
+      geom_point(data = df_filt, aes(y = y_min, x = Date, color = NA))
+    
+    # fix asthetics
+    p <- p +
+      blank_theme + # theme
+      scale_x_date(labels = date_format('%d-%b'), breaks = pretty_breaks(10)) +
+      scale_fill_manual(values = cmap_colors) +
+      scale_color_manual(values = cmap_colors) +
+      xlab('Date') +
+      ylab(analyte_unit) +
+      ggtitle(paste(analyte,'-',year))
+    
+    return(p)
+  }
+}
+
+# --- Create Table ---
+add_table <- function(df){
+  # filter df by analyte and year
+  df_filt <-
+    df %>%
+    filter(
+      Analyte == analyte,
+      Year == year
+    )
+  
+  # cleanup df
+  df_filt <- subset(df_filt, select = -c(Note, Year, Analyte))
+  
+  # make table
+  table <- kable(df_filt, align = 'c', caption = '<center><strong>Graph Interpretations</strong></center>')
+  
+  return(table)
+}
+```
+
+## Data Cleaning
+```{r, message=FALSE, warning=FALSE, results='asis', fig.width=8, fig.height=14}
+# --- Import Packages ---
+# import packages
+library(ggplot2)
+library(tidyverse)
+
+# source functions
+# source('Water_Quality/Discrete_WQ/timeseries_analysis/d-wq_ts_station_plots_funcs.R')
+
+# --- Import Data ---
+# define main FASTR filepath (assumes sync'd with Sharepoint)
+fp_fastr <- 'California Department of Water Resources/North Delta Flow Action - Documents/'
+
+# define relative filepaths 
+fp_rel_wq <- paste0(fp_fastr,'WQ_Subteam/Processed_Data/Discrete/WQ_OUTPUT_Discrete_Lab_formatted.csv')
+fp_rel_hypo <- paste0(fp_fastr,'WQ_Subteam/Processed_Data/Discrete/Discrete_Hypothesis_Table_MR.csv')
+fp_rel_dates <- paste0(fp_fastr,'Data Management/FlowDatesDesignations.csv')
+fp_rel_regions = paste0(fp_fastr, 'WQ_Subteam/Processed_Data/NDFA_WQ_Stations.csv')
+
+# define absolute filepaths
+fp_abs_wq <- get_abs_path(fp_rel_wq)
+fp_abs_hypo <- get_abs_path(fp_rel_hypo)
+fp_abs_dates <- get_abs_path(fp_rel_dates)
+fp_abs_regions <- get_abs_path(fp_rel_regions)
+
+# read in data
+df_wq <- read_csv(fp_abs_wq)
+df_hypo <- read_csv(fp_abs_hypo)
+df_dates <- read_csv(fp_abs_dates)
+df_regions <- read_csv(fp_abs_regions)
+
+# --- Clean Data In Order To Create Timeseries Plots w/ RLs ---
+# create date/year columns (character type)
+df_wq$Date <- as.Date(format(strptime(df_wq$DateTime, '%Y/%m/%d'),'%Y-%m-%d'))
+df_wq$Year <- format(strptime(df_wq$DateTime, '%Y/%m/%d'),'%Y')
+
+df_wq <- merge(x = df_wq, y = df_regions[, c('StationCode', 'Region')], by = 'StationCode')
+
+# add full analyte name column
+df_wq <- add_analyte_names(df_wq)
+
+# add in phase actions (will also convert 'Date' column to date type)
+df_wq <- add_phase_actions(df_wq, df_dates)
+
+# --- Convert NDs to NA --- 
+df_wq$Result[df_wq$LabDetect == 'Non-detect'] <- NA
+```
+
+## Graphs
+```{r, message=FALSE, warning=FALSE, eval=FALSE, results='asis'}
+# --- Prep for Graphs ---
+# list of analytes/stations
+analytes <- unique(df_wq$AnalyteFull)
+years <- sort(unique(df_wq$Year))
+
+# change station col to factor type and order it
+stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','LIS','STTD','BL5','LIB','RYI','RVB','SDI','SHR','SRH','SRV')
+df_wq$StationCode <- factor(df_wq$StationCode, levels = stat_lvls)
+
+# --- Create Time Series --
+# create plots
+for (year in years){
+  cat('\n##', year, '{.tabset .tabset-fade .tabset-pills}')
+  for (analyte in analytes) { 
+    
+    # create time series graphs
+    p <- create_facet(df_wq)
+
+    # plot
+    if (!length(p) == 0) {
+      cat('\n###', analyte, '\n')
+      plot(p)
+      cat('\n')
+    }
+  }
+}
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='asis'}
+cat('\n# Graphs {.tabset .tabset-fade .tabset-pills}')
+```
+
+```{r, message=FALSE, warning=FALSE, results='asis', echo=FALSE, fig.width=6.3, fig.height=10.7, fig.align='center'}
+# --- Prep for Graphs ---
+# list of analytes/stations
+analytes <- unique(df_wq$AnalyteFull)
+years <- sort(unique(df_wq$Year))
+
+# change station col to factor type and order it
+stat_lvls <- c('RMB','RCS','WWT','RD22','DWT','I80','LIS','STTD','BL5','LIB','RYI','RVB','SDI','SHR','SRH','SRV')
+df_wq$StationCode <- factor(df_wq$StationCode, levels = stat_lvls)
+
+# --- Create Time Series --
+# create plots
+for (year in years){
+  cat('\n##', year, '{.tabset .tabset-fade .tabset-pills}')
+  for (analyte in analytes) {
+
+    # create time series graphs
+    p <- create_facet(df_wq)
+
+    # plot
+    if (!length(p) == 0) {
+      cat('\n###', analyte,'\n\n')
+      plot(p)
+      cat('\n')
+
+      # add table
+      t <- add_table(df_hypo)
+      print(t)
+      cat('\n')
+    }
+  }
+}
+```
+

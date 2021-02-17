@@ -1,0 +1,855 @@
+---
+title: "NDFA Contaminants Data: Cleaning"
+author: "Dave Bosworth"
+date: "2/11/2021"
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_depth: 4
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+This document provides the code and decisions made to clean and standardize all contaminants data used for the North Delta Flow Action synthesis project. The data were collected by USGS, and includes concentration data for water, suspended sediment, and zooplankton samples. 
+
+Jim Orlando from the USGS provided all of the contaminants data for 2016-2019 in a couple of Excel spreadsheets that are stored on the NDFA SharePoint site. The water and suspended sediment datasets provided by Jim Orlando did not include Method Detection Limits (MDL) for each parameter. To obtain the MDL values, we downloaded the contaminants data from the [USGS NWIS website](https://nwis.waterdata.usgs.gov/usa/nwis/qwdata) and added the MDL values to the data provided in the Excel spreadsheets.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(readxl)
+library(lubridate)
+library(knitr)
+library(kableExtra)
+```
+
+```{r load functions, message = FALSE}
+# Source global NDFA functions
+source("global_ndfa_funcs.R")
+
+# Source contaminants data cleaning functions
+source("Water_Quality/Contaminants/contam_clean_data_funcs.R")
+```
+
+```{r define file paths}
+# Define relative file paths for raw and processed contaminants data files
+fp_rel_raw <- "WQ_Subteam/Raw_Data/Contaminants"
+fp_rel_proc <- "WQ_Subteam/Processed_Data/Contaminants"
+
+# Define absolute file paths
+fp_abs_raw <- ndfa_abs_sp_path(fp_rel_raw)
+fp_abs_proc <- ndfa_abs_sp_path(fp_rel_proc)
+
+# Clean up
+rm(fp_rel_raw, fp_rel_proc)
+```
+
+The data downloaded from NWIS has 5-digit numeric codes to represent each parameter measured. We developed a crosswalk table to convert these numeric codes to standardized names of the parameters. We also used this crosswalk table to standardize the parameter names in the Excel spreadsheets provided by Jim Orlando.
+
+```{r import param code crosswalk}
+# Import dataframe to be used as a crosswalk for the parameter codes and standardized names
+param_code_cw <- 
+  read_excel(
+    file.path(fp_abs_raw, "USGS_Data_Download_metadata.xlsx"), 
+    sheet = "Parameter Codes"
+  )
+```
+
+# Water Concentration Data
+
+## Import Data
+
+Import the water concentration data in the two Excel spreadsheets provided by Jim Orlando.
+
+```{r import raw water data excel}
+# Import water concentration data for 2016-2018:
+water_conc16_18_orig <- 
+  read_excel(
+    path = file.path(fp_abs_raw, "PesticideResults_YoloDWR_2016_18Data_ForDWR.xlsx"),
+    sheet =  "Water",
+    range = "B1:GB175",
+    col_types = c(
+      "text",
+      rep("skip", 2),
+      rep("date", 2),
+      rep("skip", 3),
+      rep("text", 175)
+    )
+  )
+  
+# Import water concentration data for 2019:
+water_conc19_orig <- 
+  read_excel(
+    path = file.path(fp_abs_raw, "2019YoloBypass_Pesticide Results_forDWR.xlsx"),
+    sheet =  "Water",
+    range = "C1:FS93",
+    col_types = c(
+      "text",
+      rep("skip", 3),
+      rep("date", 2),
+      rep("skip", 3),
+      rep("text", 164)
+    )
+  )
+```
+
+Import the MDL information downloaded from NWIS.
+
+```{r import nwis water data mdl}
+water_nwis_orig <-
+  import_nwis_data(file.path(fp_abs_raw, "CONTAM_RAW_NWIS_2015-2019.csv")) %>% 
+  filter(medium_cd == "WS")
+```
+
+## Clean Data
+
+### Clean up NA values
+
+In both of the Excel spreadsheets provided by Jim Orlando, `NA` values represent measurements below the Method Detection Limit and "NA" values represent instances when the parameter wasn't analyzed. This needs to be cleaned up before proceeding with other data cleaning tasks.
+
+```{r clean na values water}
+# 2016-2018 data:
+water_conc16_18_clean1 <- water_conc16_18_orig %>% 
+  # first remove completely empty rows within the dataset
+  filter(!is.na(Site)) %>%
+  # use convert_na_val function to define NA values correctly
+  convert_na_val(`3,4-DCA`, Zoxamide) %>% 
+  # restructure dataframe and remove values that weren't analyzed
+  pivot_longer(
+    cols = -c(Site, Date, Time), 
+    names_to = "Analyte", 
+    values_to = "Result"
+  ) %>% 
+  filter(Result != "Not analyzed")
+
+# 2019 data:
+water_conc19_clean1 <- water_conc19_orig %>% 
+  # first remove completely empty rows within the dataset
+  filter(!is.na(Site)) %>%
+  # use convert_na_val function to define NA values correctly
+  convert_na_val(`3,4-Dichloroaniline`, Zoxamide) %>% 
+  # restructure dataframe and remove values that weren't analyzed
+  pivot_longer(
+    cols = -c(Site, Date, Time), 
+    names_to = "Analyte", 
+    values_to = "Result"
+  ) %>% 
+  filter(Result != "Not analyzed") %>% 
+  # remove data collected in 2020 from dataset
+  filter(year(Date) != 2020)
+```
+
+### Standardize Parameter names
+
+Next we need to standardize the contaminant parameter names before combining all of the water concentration data.
+
+```{r standard param names water}
+# 2016-2018 data:
+water_conc16_18_clean2 <- water_conc16_18_clean1 %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_water_16_18_xlsx")) %>% 
+  select(
+    Site,
+    Date,
+    Time,
+    Analyte = parameter_std,
+    Result
+  ) %>% 
+  # remove parameters we aren't keeping in the dataset (Clothianidin des methyl)
+  filter(Analyte != "remove")
+
+# 2019 data:
+water_conc19_clean2 <- water_conc19_clean1 %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_water_19_xlsx")) %>% 
+  select(
+    Site,
+    Date,
+    Time,
+    Analyte = parameter_std,
+    Result
+  ) %>% 
+  # remove parameters we aren't keeping in the dataset (Clothianidin des methyl and Imidacloprid desnitro)
+  filter(Analyte != "remove")
+```
+
+### Combine data
+
+The contaminant concentrations in water from 2016-2018 and 2019 can now be combined into one dataframe. We will also need to standardize the `Site` variable and convert the `Date` variable to a date object.
+
+```{r combine water data}
+water_conc_all1 <- 
+  bind_rows(water_conc16_18_clean2, water_conc19_clean2) %>% 
+  mutate(
+    Site = case_when(
+      Site == "I-80" ~ "I80",
+      Site == "RY1" ~ "RYI",
+      TRUE ~ Site
+    ),
+    Date = as_date(Date)
+  )
+```
+
+### Add MDL values
+
+We need to add the Method Detection Limit (MDL) values downloaded from NWIS to the main dataset. According to communications with Jim Orlando, the MDL values are the same throughout the entire project. Therefore, we need to summarize the MDL values of each parameter in `water_nwis_orig` to determine their values. We will also check to make sure that the MDL values were consistent for each parameter throughout the period of record. 
+
+The contaminant data downloaded from NWIS has 5-digit numeric codes to represent each parameter measured. We need to convert these numeric codes in `water_nwis_orig` to the standardized parameter names so that this data can be joined to the main dataset correctly.
+
+```{r summarize mdl val water}
+# Summarize the MDL values for each parameter
+water_mdl_val <- water_nwis_orig %>% 
+  left_join(param_code_cw, by = c("parm_cd" = "usgs_parameter_code")) %>%
+  rename(
+    Analyte = parameter_std,
+    MDL = rpt_lev_va
+  ) %>% 
+  count(Analyte, MDL)
+
+# Determine if any parameters had more than one MDL value during the period of record
+water_mdl_val %>% 
+  count(Analyte) %>% 
+  filter(n > 1) %>% 
+  kable(
+    col.names = c("Parameter", "Count of unique MDL values"),
+    caption = "Parameters with more than one MDL value"
+  ) %>% 
+  kable_styling(
+    "striped", 
+    full_width = FALSE
+  )
+```
+
+Unfortunately, 14 parameters had 2 MDL values during the period of record. We need to look at these 14 parameters more closely to decide which MDL value to assign to these parameters.
+
+```{r look at duplicate mdl val water, message = FALSE}
+# Create a vector of the parameters with 2 MDL values during the period of record
+water_mdl_val_dup_params <- water_mdl_val %>% 
+  count(Analyte) %>% 
+  filter(n > 1) %>% 
+  pull(Analyte)
+
+# Filter out these 14 parameters to take a closer look at them
+water_mdl_val %>% 
+  filter(Analyte %in% water_mdl_val_dup_params) %>% 
+  kable(
+    col.names = c("Parameter", "MDL value", "Count"),
+    caption = "Summary of Parameters with 2 MDL values"
+  ) %>% 
+  kable_styling(
+    "striped", 
+    full_width = FALSE
+  )
+```
+
+All of the parameters with 2 MDL values had one MDL value that was lower and very frequent and another that was a higher value and rare. According to communications with Jim Orlando, the more frequent and lower MDL values are correct and should be used for all samples in this project.
+
+```{r create df for mdl val water}
+# Keep the lower and more frequent MDL values for the 14 parameters with 2 MDL values
+water_mdl_val_corr <- water_mdl_val %>% 
+  filter(
+    Analyte %in% water_mdl_val_dup_params,
+    n > 10
+  )
+
+# Create a dataframe to use to assign MDL values to each parameter for the water concentration data
+water_mdl_val_f <- water_mdl_val %>% 
+  filter(!Analyte %in% water_mdl_val_dup_params) %>% 
+  bind_rows(water_mdl_val_corr) %>% 
+  select(-n)
+```
+
+We can now use the `water_mdl_val_f` dataframe to assign MDL values to each parameter in the main dataset.
+
+```{r add mdl val water, message = FALSE}
+# Add MDL values to the main dataset
+water_conc_all2 <- left_join(water_conc_all1, water_mdl_val_f)
+```
+
+### Finish Cleaning data
+
+We'll finish cleaning the dataframe with the 2016-2019 water concentrations by:
+
+* Adding the Date and Time variables together to a datetime object - `DateTime`
+* Creating a new variable `ResultQual` to identify estimated values (reported values below the MDL)
+* Creating a new variable `Units` for the measurement units
+* Rounding the `Result` variable to 1 number to the right of the decimal for values less than 100 and 3 significant figures for values greater than or equal to 100 to be consistent with the data in NWIS
+* Changing some variable names to standardized names for the NDFA synthesis
+
+```{r finish cleaning water df, warning = FALSE}
+water_conc_all_f <- water_conc_all2 %>% 
+  mutate(
+    # Create temporary variables for hours and minutes from the Time variable
+    h = hour(Time), 
+    m = minute(Time),
+    # Create a new variable DateTime with the Date and h and m variables added together
+    DateTime = as_datetime(Date + hours(h) + minutes(m)),
+    # Create a temporary variable Conc with results converted to numeric
+    Conc = as.numeric(Result),
+    # Create a variable for measurement units
+    Units = "ng/L"
+  ) %>% 
+  # Round the Conc variable to the appropriate number of significant figures
+  round_val(Conc) %>% 
+  mutate(
+    # Create ResultQual variable to flag reported values that are less than the MDL as "J- estimated"
+    ResultQual = if_else(Conc < MDL, "J- estimated", NA_character_),
+    # Convert Conc variable back to character with rounded values
+    Result = if_else(Result == "< MDL", "< MDL", as.character(Conc))
+  ) %>% 
+  # Standardize variable names
+  select(
+    StationCode = Site,
+    DateTime,
+    Analyte,
+    Result,
+    ResultQual,
+    MDL,
+    Units
+  )
+```
+
+## Export Data
+
+Export the contaminant concentration data in water as a .csv file to the Processed_Data/Contaminants folder on SharePoint.
+
+```{r export water data as csv, eval = FALSE}
+# Code chunk is set to eval = FALSE, so this code is not executed when this file is knitted
+# change eval option to TRUE when you want to export the data when knitting this file
+water_conc_all_f %>% 
+  write_excel_csv(
+    file = file.path(fp_abs_proc, "WQ_INPUT_Contam_Water_2021-02-11.csv"),
+    na = ""
+  )
+```
+
+Clean up objects in the global environment to only keep necessary objects at this point.
+
+```{r clean obj from global env water}
+# Remove all objects related to cleaning the water concentration data
+rm(list = ls()[str_detect(ls(), "^water")])
+```
+
+
+# Suspended Sediment Concentration Data
+
+## Import Data
+
+Import the suspended sediment concentration data in the two Excel spreadsheets provided by Jim Orlando.
+
+```{r import raw susp sed data excel}
+# Import suspended sediment concentration data for 2016-2018:
+ss_conc16_18_orig <- 
+  read_excel(
+    path = file.path(fp_abs_raw, "PesticideResults_YoloDWR_2016_18Data_ForDWR.xlsx"),
+    sheet =  "Suspended Sed",
+    range = "B1:EU175",
+    col_types = c(
+      "text",
+      rep("skip", 2),
+      rep("date", 2),
+      rep("skip", 2),
+      rep("numeric", 2),
+      rep("text", 141)
+    )
+  )
+  
+# Import suspended sediment concentration data for 2019:
+ss_conc19_orig <- 
+  read_excel(
+    path = file.path(fp_abs_raw, "2019YoloBypass_Pesticide Results_forDWR.xlsx"),
+    sheet =  "Suspended Sediment",
+    range = "C1:EJ93",
+    col_types = c(
+      "text",
+      rep("skip", 3),
+      rep("date", 2),
+      rep("skip", 2),
+      rep("numeric", 2),
+      "skip",
+      rep("text", 127)
+    )
+  )
+```
+
+Import the MDL information downloaded from NWIS.
+
+```{r import nwis susp sed data mdl}
+ss_nwis_orig <-
+  import_nwis_data(file.path(fp_abs_raw, "CONTAM_RAW_NWIS_2015-2019.csv")) %>% 
+  filter(medium_cd == "SS")
+```
+
+## Clean Data
+
+### Clean up NA values
+
+In both of the Excel spreadsheets provided by Jim Orlando, `NA` values represent measurements below the Method Detection Limit and "NA" values represent instances when the parameter wasn't analyzed. This needs to be cleaned up before proceeding with other data cleaning tasks.
+
+```{r clean na values susp sed}
+# 2016-2018 data:
+ss_conc16_18_clean1 <- ss_conc16_18_orig %>% 
+  # first remove completely empty rows within the dataset
+  filter(!is.na(Site)) %>%
+  # use convert_na_val function to define NA values correctly
+  convert_na_val(`3,4-DCA`, Zoxamide) %>% 
+  # rename mass and volume variables
+  rename(
+    Vol = "Volume (L)",
+    Mass = "Mass (g)"
+  ) %>% 
+  # restructure dataframe and remove values that weren't analyzed
+  pivot_longer(
+    cols = -c(Site, Date, Time, Vol, Mass), 
+    names_to = "Analyte", 
+    values_to = "Result"
+  ) %>% 
+  filter(Result != "Not analyzed") %>% 
+  # convert one result with a value of "." to "< MDL"
+  mutate(Result = if_else(Result == ".", "< MDL", Result))
+
+# 2019 data:
+ss_conc19_clean1 <- ss_conc19_orig %>% 
+  # first remove completely empty rows within the dataset
+  filter(!is.na(Site)) %>%
+  # use convert_na_val function to define NA values correctly
+  convert_na_val(`3,4-Dichloroaniline`, Zoxamide) %>% 
+  # rename mass and volume variables
+  rename(
+    Vol = "Filtered Volume for Sed Analysis (ml)",
+    Mass = "Mass (g)"
+  ) %>%
+  # restructure dataframe and remove values that weren't analyzed
+  pivot_longer(
+    cols = -c(Site, Date, Time, Mass, Vol), 
+    names_to = "Analyte", 
+    values_to = "Result"
+  ) %>% 
+  filter(Result != "Not analyzed") %>% 
+  # remove data collected in 2020 from dataset
+  filter(year(Date) != 2020)
+```
+
+### Standardize Parameter names
+
+Next we need to standardize the contaminant parameter names before combining all of the suspended sediment concentration data.
+
+```{r standard param names susp sed}
+# 2016-2018 data:
+ss_conc16_18_clean2 <- ss_conc16_18_clean1 %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_ss_16_18_xlsx")) %>% 
+  select(
+    Site,
+    Date,
+    Time,
+    Vol,
+    Mass,
+    Analyte = parameter_std,
+    Result
+  ) %>% 
+  # remove parameters we aren't keeping in the dataset (CDEPA)
+  filter(Analyte != "remove")
+
+# 2019 data:
+ss_conc19_clean2 <- ss_conc19_clean1 %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_ss_19_xlsx")) %>% 
+  select(
+    Site,
+    Date,
+    Time,
+    Vol,
+    Mass,
+    Analyte = parameter_std,
+    Result
+  )
+```
+
+### Combine data
+
+The contaminant concentrations in suspended sediment from 2016-2018 and 2019 can now be combined into one dataframe. We will also need to standardize the `Site` variable and convert the `Date` variable to a date object.
+
+```{r combine susp sed data}
+ss_conc_all1 <- 
+  bind_rows(ss_conc16_18_clean2, ss_conc19_clean2) %>% 
+  mutate(
+    Site = case_when(
+      Site == "I-80" ~ "I80",
+      Site == "BLS" ~ "BL5",
+      TRUE ~ Site
+    ),
+    Date = as_date(Date)
+  )
+```
+
+### Add MDL values
+
+We need to add the Method Detection Limit (MDL) values downloaded from NWIS to the main dataset. According to communications with Jim Orlando, the MDL values are the same throughout the entire project. Therefore, we need to summarize the MDL values of each parameter in `ss_nwis_orig` to determine their values. We will also check to make sure that the MDL values were consistent for each parameter throughout the period of record. 
+
+The contaminant data downloaded from NWIS has 5-digit numeric codes to represent each parameter measured. We need to convert these numeric codes in `ss_nwis_orig` to the standardized parameter names so that this data can be joined to the main dataset correctly.
+
+```{r summarize mdl val susp sed}
+# Summarize the MDL values for each parameter
+ss_mdl_val <- ss_nwis_orig %>% 
+  left_join(param_code_cw, by = c("parm_cd" = "usgs_parameter_code")) %>%
+  rename(
+    Analyte = parameter_std,
+    MDL = rpt_lev_va
+  ) %>% 
+  count(Analyte, MDL)
+
+# Determine if any parameters had more than one MDL value during the period of record
+ss_mdl_val %>% 
+  count(Analyte) %>% 
+  filter(n > 1) %>% 
+  kable(
+    col.names = c("Parameter", "Count of unique MDL values"),
+    caption = "Parameters with more than one MDL value"
+  ) %>% 
+  kable_styling(
+    "striped", 
+    full_width = FALSE
+  )
+```
+
+Unfortunately, 15 parameters had 2 MDL values during the period of record. We need to look at these 15 parameters more closely to decide which MDL value to assign to these parameters.
+
+```{r look at duplicate mdl val susp sed, message = FALSE}
+# Create a vector of the parameters with 2 MDL values during the period of record
+ss_mdl_val_dup_params <- ss_mdl_val %>% 
+  count(Analyte) %>% 
+  filter(n > 1) %>% 
+  pull(Analyte)
+
+# Filter out these 15 parameters to take a closer look at them
+ss_mdl_val %>% 
+  filter(Analyte %in% ss_mdl_val_dup_params) %>% 
+  kable(
+    col.names = c("Parameter", "MDL value", "Count"),
+    caption = "Summary of Parameters with 2 MDL values"
+  ) %>% 
+  kable_styling(
+    "striped", 
+    full_width = FALSE
+  )
+```
+
+With the exception of 3,4-Dichloroaniline, all of the parameters with 2 MDL values had one MDL value that was lower and very frequent and another that was a higher value and rare. According to communications with Jim Orlando, the more frequent and lower MDL values are correct and should be used for all samples in this project except for 3,4-Dichloroaniline. According to Jim Orlando, the MDL for 3,4-Dichloroaniline in suspended sediment is 8.3 ng/L for all samples in this project as it’s run on the GC/MS. This was the higher and more frequent MDL value in the NWIS dataset for 3,4-Dichloroaniline.
+
+```{r create df for mdl val susp sed}
+# Keep the lower and more frequent MDL values for the 14 parameters with 2 MDL values and 8.3 ng/L for 3,4-Dichloroaniline (the higher and more frequent MDL value of the two)
+ss_mdl_val_corr <- ss_mdl_val %>% 
+  filter(
+    Analyte %in% ss_mdl_val_dup_params,
+    n > 10
+  )
+
+# Create a dataframe to use to assign MDL values to each parameter for the suspended sediment concentration data
+ss_mdl_val_f <- ss_mdl_val %>% 
+  filter(!Analyte %in% ss_mdl_val_dup_params) %>% 
+  bind_rows(ss_mdl_val_corr) %>% 
+  select(-n)
+```
+
+We can now use the `ss_mdl_val_f` dataframe to assign MDL values to each parameter in the main dataset.
+
+```{r add mdl val susp sed, message = FALSE}
+# Add MDL values to the main dataset
+ss_conc_all2 <- left_join(ss_conc_all1, ss_mdl_val_f)
+```
+
+The Method Detection Limit (MDL) values downloaded from NWIS are reported in ng/L while the suspended sediment concentration data provided by Jim Orlando are reported in ng/g. We need to make these units consistent by converting the MDL values to ng/g by multiplying each MDL value by the volume filtered and dividing by the sediment mass recovered from the whole water sample.
+
+```{r convert mdl val susp sed}
+# Convert MDL values to units of ng/g
+ss_conc_all3 <- ss_conc_all2 %>% 
+  mutate(MDL = MDL * Vol/Mass)
+```
+
+### Finish Cleaning data
+
+We'll finish cleaning the dataframe with the 2016-2019 suspended sediment concentrations by:
+
+* Adding the Date and Time variables together to a datetime object - `DateTime`
+* Creating a new variable `ResultQual` to identify estimated values (reported values below the MDL)
+* Creating a new variable `Units` for the measurement units
+* Rounding the `Result` and `MDL` variables to 1 number to the right of the decimal for values less than 100 and 3 significant figures for values greater than or equal to 100 to be consistent with the data in NWIS
+* Changing some variable names to standardized names for the NDFA synthesis
+
+```{r finish cleaning susp sed df, warning = FALSE}
+ss_conc_all_f <- ss_conc_all3 %>% 
+  mutate(
+    # Create temporary variables for hours and minutes from the Time variable
+    h = hour(Time), 
+    m = minute(Time),
+    # Create a new variable DateTime with the Date and h and m variables added together
+    DateTime = as_datetime(Date + hours(h) + minutes(m)),
+    # Create a temporary variable Conc with results converted to numeric
+    Conc = as.numeric(Result),
+    # Create a variable for measurement units
+    Units = "ng/g"
+  ) %>% 
+  # Round the Conc and MDL variables to the appropriate number of significant figures
+  round_val(Conc) %>% 
+  round_val(MDL) %>% 
+  mutate(
+    # Create ResultQual variable to flag reported values that are less than the MDL as "J- estimated"
+    ResultQual = if_else(Conc < MDL, "J- estimated", NA_character_),
+    # Convert Conc variable back to character with rounded values
+    Result = if_else(Result == "< MDL", "< MDL", as.character(Conc))
+  ) %>% 
+  # Standardize variable names
+  select(
+    StationCode = Site,
+    DateTime,
+    Analyte,
+    Result,
+    ResultQual,
+    MDL,
+    Units
+  )
+```
+
+## Export Data
+
+Export the contaminant concentration data in suspended sediment as a .csv file to the Processed_Data/Contaminants folder on SharePoint.
+
+```{r export susp sed data as csv, eval = FALSE}
+# Code chunk is set to eval = FALSE, so this code is not executed when this file is knitted
+# change eval option to TRUE when you want to export the data when knitting this file
+ss_conc_all_f %>% 
+  write_excel_csv(
+    file = file.path(fp_abs_proc, "WQ_INPUT_Contam_SuspSed_2021-02-11.csv"),
+    na = ""
+  )
+```
+
+Clean up objects in the global environment to only keep necessary objects at this point.
+
+```{r clean obj from global env susp sed}
+# Remove all objects related to cleaning the suspended sediment concentration data
+rm(list = ls()[str_detect(ls(), "^ss")])
+```
+
+
+# Zooplankton Concentration Data
+
+## Import Data
+
+Import the zooplankton concentration data in the two Excel spreadsheets provided by Jim Orlando.
+
+```{r import raw zoop data excel}
+# Import zooplankton concentration data for 2016-2018:
+zoop_conc16_18_orig <- 
+  read_excel(
+    path = file.path(fp_abs_raw, "PesticideResults_YoloDWR_2016_18Data_ForDWR.xlsx"),
+    sheet = "Zooplankton",
+    range = "B1:CO48",
+    col_types = c(
+      "text",
+      rep("skip", 3),
+      rep("date", 2),
+      rep("skip", 2),
+      rep("text", 84)
+    )
+  )
+  
+# Import zooplankton concentration data for 2019:
+zoop_conc19_orig <- 
+  read_excel(
+    path = file.path(fp_abs_raw, "2019YoloBypass_Pesticide Results_forDWR.xlsx"),
+    sheet = "Zooplankton",
+    range = "B1:CT65",
+    col_types = c(
+      "text",
+      rep("skip", 3),
+      rep("date", 2),
+      rep("skip", 3),
+      rep("text", 88)
+    )
+  )
+```
+
+## Clean Data
+
+The top row of the Excel spreadsheet with 2019 data contains the Method Detection Limits for each parameter. We'll pull these out and save them to add to the dataset later in this script. We will also add the MDL values that are missing for two parameters (Fluopyram and Fluxapyroxad) which were provided in email correspondence with Jim Orlando.
+
+```{r pull out mdl val zoop}
+# Pull out MDL values from the 2019 data and restructure data
+zoop_mdl_val <- slice(zoop_conc19_orig, 1) %>% 
+  select(-c(Site:Time)) %>% 
+  pivot_longer(
+    cols = everything(),
+    names_to = "Analyte",
+    values_to = "MDL",
+    values_drop_na = TRUE
+  ) %>% 
+  mutate(MDL = as.numeric(MDL)) %>% 
+  round_val(MDL) %>% 
+  # Add the MDL values that are missing for two parameters
+  add_row(
+    Analyte = c("Fluopyram", "Fluxapyroxad"),
+    MDL = c(3.8, 4.8)
+  )
+```
+
+### Clean up NA values
+
+In both of the Excel spreadsheets provided by Jim Orlando, `NA` values represent measurements below the Method Detection Limit and "NA" values represent instances when the parameter wasn't analyzed. This needs to be cleaned up before proceeding with other data cleaning tasks.
+
+```{r clean na values zoop}
+# 2016-2018 data:
+zoop_conc16_18_clean1 <- zoop_conc16_18_orig %>% 
+  # first remove completely empty rows within the dataset
+  filter(!is.na(Site)) %>%
+  # use convert_na_val function to define NA values correctly
+  convert_na_val(`3,4-DCA`, Zoxamide) %>% 
+  # restructure dataframe and remove values that weren't analyzed
+  pivot_longer(
+    cols = -c(Site, Date, Time), 
+    names_to = "Analyte", 
+    values_to = "Result"
+  ) %>% 
+  filter(Result != "Not analyzed")
+
+# 2019 data:
+zoop_conc19_clean1 <- zoop_conc19_orig %>% 
+  # first remove completely empty rows within the dataset
+  filter(!is.na(Site)) %>%
+  # use convert_na_val function to define NA values correctly
+  convert_na_val(`3,4-Dichloroaniline`, Zoxamide) %>% 
+  # restructure dataframe and remove values that weren't analyzed
+  pivot_longer(
+    cols = -c(Site, Date, Time), 
+    names_to = "Analyte", 
+    values_to = "Result"
+  ) %>% 
+  filter(Result != "Not analyzed") %>% 
+  # remove data collected in 2020 from dataset
+  filter(year(Date) != 2020)
+```
+
+### Standardize Parameter names
+
+Next we need to standardize the contaminant parameter names before combining all of the zooplankton concentration data.
+
+```{r standard param names zoop}
+# 2016-2018 data:
+zoop_conc16_18_clean2 <- zoop_conc16_18_clean1 %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_zoop_16_18_xlsx")) %>% 
+  select(
+    Site,
+    Date,
+    Time,
+    Analyte = parameter_std,
+    Result
+  )
+
+# 2019 data:
+zoop_conc19_clean2 <- zoop_conc19_clean1 %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_zoop_19_xlsx")) %>% 
+  select(
+    Site,
+    Date,
+    Time,
+    Analyte = parameter_std,
+    Result
+  )
+```
+
+### Combine data
+
+The contaminant concentrations in zooplankton from 2016-2018 and 2019 can now be combined into one dataframe. According to communications with Jim Orlando, the USGS decided not to report Chlorfenapyr, Pyriproxyfen, and Vinclozolin for the zooplankton data since they did not work reliably in the method they were using. We will remove these parameters from our zooplankton dataset to be consistent with USGS.
+
+```{r combine zoop data}
+zoop_conc_all1 <- 
+  bind_rows(zoop_conc16_18_clean2, zoop_conc19_clean2) %>% 
+  # Remove Chlorfenapyr, Pyriproxyfen, and Vinclozolin
+  filter(!Analyte %in% c("Chlorfenapyr", "Pyriproxyfen", "Vinclozolin"))
+```
+
+### Add MDL values
+
+Next, we need to add the Method Detection Limit (MDL) values saved earlier in `zoop_mdl_val`. In order to do this, we need to standardize the contaminant parameter names before joining the data to `zoop_conc_all1`.
+
+```{r std zoop_mdl_val}
+zoop_mdl_val_std <- zoop_mdl_val %>% 
+  left_join(param_code_cw, by = c("Analyte" = "parameter_zoop_19_xlsx")) %>% 
+  select(
+    Analyte = parameter_std,
+    MDL
+  )
+```
+
+We can now join the MDL values to the main dataset.
+
+```{r join zoop data mdl, message = FALSE}
+zoop_conc_all2 <- left_join(zoop_conc_all1, zoop_mdl_val_std)
+```
+
+### Finish Cleaning data
+
+We'll finish cleaning the dataframe with the 2016-2019 zooplankton concentrations by:
+
+* Adding the Date and Time variables together to a datetime object - `DateTime`
+* Creating a new variable `ResultQual` to identify estimated values (reported values below the MDL)
+* Creating a new variable `Units` for the measurement units
+* Rounding the `Result` variable to 1 number to the right of the decimal for values less than 100 and 3 significant figures for values greater than or equal to 100 to be consistent with the data in NWIS
+* Changing some variable names to standardized names for the NDFA synthesis
+
+```{r finish cleaning zoop df, warning = FALSE}
+zoop_conc_all_f <- zoop_conc_all2 %>% 
+  mutate(
+    # Create temporary variables for hours and minutes from the Time variable
+    h = hour(Time), 
+    m = minute(Time),
+    # Create a new variable DateTime with the Date and h and m variables added together
+    DateTime = as_datetime(Date + hours(h) + minutes(m)),
+    # Create a temporary variable Conc with results converted to numeric
+    Conc = as.numeric(Result),
+    # Create a variable for measurement units
+    Units = "ng/g"
+  ) %>% 
+  # Round the Conc variable to the appropriate number of significant figures
+  round_val(Conc) %>% 
+  mutate(
+    # Create ResultQual variable to flag reported values that are less than the MDL as "J- estimated"
+    ResultQual = if_else(Conc < MDL, "J- estimated", NA_character_),
+    # Convert Conc variable back to character with rounded values
+    Result = if_else(Result == "< MDL", "< MDL", as.character(Conc))
+  ) %>% 
+  # Standardize variable names
+  select(
+    StationCode = Site,
+    DateTime,
+    Analyte,
+    Result,
+    ResultQual,
+    MDL,
+    Units
+  )
+```
+
+## Export Data
+
+Export the contaminant concentration data in zooplankton as a .csv file to the Processed_Data/Contaminants folder on SharePoint.
+
+```{r export zoop data as csv, eval = FALSE}
+# Code chunk is set to eval = FALSE, so this code is not executed when this file is knitted
+# change eval option to TRUE when you want to export the data when knitting this file
+zoop_conc_all_f %>% 
+  write_excel_csv(
+    file = file.path(fp_abs_proc, "WQ_INPUT_Contam_Zoop_2021-02-11.csv"),
+    na = ""
+  )
+```
+
+End of script
+

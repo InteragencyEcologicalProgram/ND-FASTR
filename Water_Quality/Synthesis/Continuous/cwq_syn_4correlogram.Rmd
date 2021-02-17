@@ -1,0 +1,87 @@
+```{r}
+# FASTR Cont. Correlation Matrices
+# Author: Sarah Perry
+# Date created: 02/03/2021
+
+
+# import packages and scripts
+library(lattice)
+library(tseries)
+library(corrplot)
+library(tidyverse)
+library(RcmdrMisc)
+library(data.table)
+source('global_ndfa_funcs.R')
+```
+
+```{r Import Data}
+# function
+get_abs_path <- function(fp_rel){
+  # define absolute filepath
+  fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_rel))
+  
+  return(fp_abs)
+}
+
+# define main FASTR filepath (assumes sync'd with Sharepoint)
+fp_fastr <- 'California Department of Water Resources/North Delta Flow Action - Documents/'
+
+# define filepaths 
+fp_rel_wq <- paste(fp_fastr,'WQ_Subteam/Processed_Data/Continuous/Combined_Files/combined_flow.csv', sep = '')
+fp_abs_wq <- get_abs_path(fp_rel_wq)
+
+# read in data
+df_wq <- fread(
+  fp_abs_wq,
+  colClasses = cols(
+    .default = 'n',
+    DateTime = 'T',
+    Date = 'D',
+    Year = 'c',
+    PreFlowStart = 'c',
+    PreFlowEnd = 'c',
+    PostFlowStart = 'c',
+    PostFlowEnd = 'c',
+    ActionPhase = 'c',
+    StationCode = 'c'
+    )
+  )
+
+# remove extra cols
+df_wq <- subset(df_wq, select = -c(WYType, FlowPulseType, NetFlowDays))
+
+# pivot longer
+df_wq <- df_wq %>% 
+  select(!ends_with('_Qual')) %>% 
+  pivot_longer(
+    cols = -c(DateTime, StationCode, Date, ActionPhase, PreFlowStart, PreFlowEnd, PostFlowStart, PostFlowEnd, Year),
+    names_to = 'Analyte',
+    values_to = 'Result')
+
+# average to day
+df_wq <- df_wq %>%
+  group_by(StationCode, Analyte, Date, Year) %>%
+  summarize(Result = mean(Result, na.rm = TRUE)) %>%
+  ungroup()
+
+# format for correlation matrix
+df_corr <- spread(df_wq, Analyte, Result)
+df_corr <- df_corr %>% select (-c(StationCode, Date, Year, Flow, FlowTF, NitrateNitrite, Chla_RFU))
+```
+
+```{r Correlation Plots}
+corrgram(df_corr, upper.panel=panel.pts, lower.panel = panel.ellipse, text.panel=panel.txt) 
+```
+
+```{r Correlation Matrix}
+corr <- rcorr.adjust(as.matrix(df_corr), type = 'pearson', use = 'pairwise.complete.obs')
+corr$P.unadj
+```
+Conclusion:
+Everything has a statisitcally significant correlation with each other except Chla:fDOM
+
+```{r Correlogram}
+res <- cor(df_corr, use = 'pairwise.complete.obs')
+corrplot(res, type = 'full', order = 'hclust', tl.col = 'black', tl.srt = 45)
+```
+

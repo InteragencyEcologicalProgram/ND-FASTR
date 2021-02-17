@@ -73,7 +73,7 @@ usgs_fp_f <- str_subset(usgs_fp, "xlsx$", negate = TRUE)
 # Create a tibble of all raw USGS continuous data file paths
 usgs_files <- tibble(
   filepath = usgs_fp_f,
-  n_params = c(18, 10, 4, 6, 12, 9, 11, 7, 10, 3)
+  n_params = c(18, 10, 4, 6, 12, 10, 11, 7, 10, 3)
 )
 
 # Import USGS data into a nested dataframe
@@ -85,7 +85,7 @@ usgs_orig <- usgs_files %>%
   select(sta_code, df)
 
 # Import flow data for SDI
-sdi_flow_orig <- read_excel(paste0(fp_abs_wq_raw, "/RTM_RAW_USGS_SDI Flow_2011-2018.xlsx"))
+sdi_flow_orig <- read_excel(file.path(fp_abs_wq_raw, "RTM_RAW_USGS_SDI Flow_2011-2018.xlsx"))
 ```
 
 ## Clean Data
@@ -123,18 +123,10 @@ Before we proceed with the rest of the data cleaning, we need to remove all rows
 ```{r remove missing data usgs, message = FALSE}
 usgs_clean_v1 <- usgs_dt_clean %>% 
   mutate(
-    # Find rows where all data values are missing in each dataframe
-    df_all_na = map(df, ~filter(.x, across(where(is.numeric), is.na))),
-    # Remove these rows from each dataframe
-    df_remove = map2(df, df_all_na, anti_join)
-  ) %>% 
-  select(sta_code, df = df_remove)
+    df = map(df, ~filter(.x, !if_all(where(is.numeric), is.na)))
+  )
 
-# Find rows where all data values are missing
-sdi_flow_all_na <- sdi_flow_clean %>% filter(across(where(is.numeric), is.na))
-
-# Remove these rows from the dataframe
-sdi_flow_clean_v1 <- anti_join(sdi_flow_clean, sdi_flow_all_na)
+sdi_flow_clean_v1 <- sdi_flow_clean %>% filter(!if_all(where(is.numeric), is.na))
 ```
 
 ### Remove overlapping or duplicated data
@@ -570,9 +562,8 @@ ryi_c_dv_long %>%
 
 The two RYI stations appear to be very similar during the period of overlapping data. We'll resolve the overlapping data by doing the following:
 
-* fDOM, Flow, FlowTF, pH, SpCnd, Turbidity, and WaterTemp - keep all data from RYI_1 (11455350) through 9/4/2018 (which is the end of the period of record for the RYI_1 water quality parameters). Switch to data from RYI_2 (11455385) starting on 9/5/2018.
-* Chla - data for RYI_1 (11455350) appears noisy at the end of its period of record where it overlaps with RYI_2 (11455385). We will switch to using data from RYI_2 (11455385) at the start of its period of record (6/14/2018 12:15), and only use data for RYI_1 (11455350) where there is no overlap in 2017-2018.
-* DO - there is no DO data currently available for RYI_2 (11455385), so we'll only use the data from RYI_1 (11455350) through its period of record.
+* fDOM, Flow, FlowTF, pH, DO, SpCnd, Turbidity, and WaterTemp - keep all data from RYI_1 (11455350) through 9/4/2018 (which is the end of the period of record for the RYI_1 water quality parameters). Switch to data from RYI_2 (11455385) starting on 9/5/2018.
+* Chla - data for RYI_1 (11455350) appears noisy at the end of its period of record where it overlaps with RYI_2 (11455385). We will switch to using data from RYI_2 (11455385) at the start of its period of record (6/14/2018 12:15), and only use data for RYI_1 (11455350) where there is no overlap in 2018.
 * NitrateNitrite - data was collected at both RYI stations but their periods of record don't overlap, so we'll use all available data without removal.
 
 ```{r combine ryi stations, message = FALSE}
@@ -593,9 +584,8 @@ ryi_c_long <- left_join(ryi_c_dv_long, ryi_c_qc_long)
 ryi_c_long_filt <- ryi_c_long %>% 
   # remove NA values which cause problems with overlapping data in the wide format
   filter(!is.na(value)) %>% 
-  # Trim RYI_1 and RYI_2 data so that they don't overlap with 9/5/2018 as the cutoff date, except for Chla, NitrateNitrite and DO
+  # Trim RYI_1 and RYI_2 data so that they don't overlap with 9/5/2018 as the cutoff date, except for Chla and NitrateNitrite
   filter(!(
-    parameter != "DO" & 
     site_no == "11455350" & 
     date(DateTime) >= "2018-09-05"
   )) %>% 
@@ -776,7 +766,7 @@ walk2(
   usgs_clean_f_exp$sta_code,
   .f = ~write_excel_csv(
     .x,
-    path = paste0(fp_abs_wq_proc_all, "/RTM_OUTPUT_", .y, "_formatted_all.csv"),
+    file = paste0(fp_abs_wq_proc_all, "/RTM_OUTPUT_", .y, "_formatted_all.csv"),
     na = ""
   )
 )
@@ -805,7 +795,7 @@ walk2(
   usgs_clean_f_exp$sta_code,
   .f = ~write_excel_csv(
     .x,
-    path = paste0(fp_abs_wq_proc_filt, "/RTM_OUTPUT_", .y, "_formatted_filt.csv"),
+    file = paste0(fp_abs_wq_proc_filt, "/RTM_OUTPUT_", .y, "_formatted_filt.csv"),
     na = ""
   )
 )
@@ -1134,7 +1124,7 @@ walk2(
   ncro_clean_f$sta_code,
   .f = ~write_excel_csv(
     .x,
-    path = paste0(fp_abs_wq_proc_all, "/RTM_OUTPUT_", .y, "_formatted_all.csv"),
+    file = paste0(fp_abs_wq_proc_all, "/RTM_OUTPUT_", .y, "_formatted_all.csv"),
     na = ""
   )
 )
@@ -1163,7 +1153,7 @@ walk2(
   ncro_clean_f$sta_code,
   .f = ~write_excel_csv(
     .x,
-    path = paste0(fp_abs_wq_proc_filt, "/RTM_OUTPUT_", .y, "_formatted_filt.csv"),
+    file = paste0(fp_abs_wq_proc_filt, "/RTM_OUTPUT_", .y, "_formatted_filt.csv"),
     na = ""
   )
 )
@@ -1440,7 +1430,7 @@ walk2(
   emp_clean_f$sta_code,
   .f = ~write_excel_csv(
     .x,
-    path = paste0(fp_abs_wq_proc_all, "/RTM_OUTPUT_", .y, "_formatted_all.csv"),
+    file = paste0(fp_abs_wq_proc_all, "/RTM_OUTPUT_", .y, "_formatted_all.csv"),
     na = ""
   )
 )
@@ -1469,7 +1459,7 @@ walk2(
   emp_clean_f$sta_code,
   .f = ~write_excel_csv(
     .x,
-    path = paste0(fp_abs_wq_proc_filt, "/RTM_OUTPUT_", .y, "_formatted_filt.csv"),
+    file = paste0(fp_abs_wq_proc_filt, "/RTM_OUTPUT_", .y, "_formatted_filt.csv"),
     na = ""
   )
 )

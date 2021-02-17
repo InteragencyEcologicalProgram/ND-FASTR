@@ -1,0 +1,134 @@
+```{r}
+# FASTR Cont. WQ Regressions
+# Author: Sarah Perry
+# Date created: 12/28/2020
+
+
+# import packages and scripts
+library(tidyverse)
+library(lubridate)
+library(forecast)
+library(data.table)
+library(tseries)
+source('global_ndfa_funcs.R')
+```
+
+```{r Import Data}
+# function
+get_abs_path <- function(fp_rel){
+  # define absolute filepath
+  fp_abs <- normalizePath(file.path(Sys.getenv('USERPROFILE'), fp_rel))
+  
+  return(fp_abs)
+}
+
+# define main FASTR filepath (assumes sync'd with Sharepoint)
+fp_fastr <- 'California Department of Water Resources/North Delta Flow Action - Documents/'
+
+# define filepaths 
+fp_rel_wq <- paste(fp_fastr,'WQ_Subteam/Processed_Data/Continuous/Combined_Files/combined_flow.csv', sep = '')
+fp_abs_wq <- get_abs_path(fp_rel_wq)
+
+# read in data
+df_wq <- fread(
+  fp_abs_wq,
+  colClasses = cols(
+    .default = 'n',
+    DateTime = 'T',
+    Date = 'D',
+    Year = 'c',
+    PreFlowStart = 'c',
+    PreFlowEnd = 'c',
+    PostFlowStart = 'c',
+    PostFlowEnd = 'c',
+    ActionPhase = 'c',
+    StationCode = 'c'
+    )
+  )
+
+# remove extra cols
+df_wq <- subset(df_wq, select = -c(WYType, FlowPulseType, NetFlowDays))
+
+# pivot longer
+df_wq <- df_wq %>% 
+  select(!ends_with('_Qual')) %>% 
+  pivot_longer(
+    cols = -c(DateTime, StationCode, Date, ActionPhase, PreFlowStart, PreFlowEnd, PostFlowStart, PostFlowEnd, Year),
+    names_to = 'Analyte',
+    values_to = 'Result')
+
+# subset to chla
+df_chla <- df_wq[df_wq$Analyte == 'Chla',]
+rm(df_wq)
+```
+
+Testing if raw data is iid:
+```{r Stationary/Autocorrelation Check}
+# define stations
+stations <- unique(df_chla$StationCode)
+
+# check if data is stationary
+for (station in stations){
+  df_subset <- df_chla[df_chla$StationCode == station,]
+  result <- df_subset$Result[!is.na(df_subset$Result)]
+  if (!all(is.na(df_subset$Result))){
+    # print('--------')
+    # print(station)
+    # print(adf.test(result, alternative = c("stationary")))
+    # result %>% diff() %>% ggtsdisplay(main="")
+    result %>% diff() %>% ggtsdisplay(main='')
+  }
+}
+```
+
+First, must determine if data does indeed become iid once lag (the timeseries component) is accounted for.
+
+Transform to iid:
+```{r}
+# chla = lag1 + lag2 + lag1*lag2 + ... (which lag terms to use taken from ACF plot)
+
+# run ARIMA
+
+# check residuals
+```
+
+If residuals are iid (should be), can now account for the non-timeseries variables and finish analysis by determing which coefficients are significant.
+    
+TODO: Next Steps
+  1) look at time interval to use
+  2) start writing the structure of the code
+  
+ARMA:
+```{r}
+# chla = R_upper + R_lower + Y_17 + T_before + ... + R_u*Y_17 + R_u*T_before + ... + lag1 + lag2 + lag1*lag2...
+
+# run ARIMA, check residuals
+
+# see which coefficients are significant
+```
+
+--- Extra Stuff ---
+```{r}
+DT = data.table(year=2010:2014, v1=runif(5), v2=1:5, v3=letters[1:5])
+# DT[, shift(.SD, 1:2, NA, "lead", TRUE), .SDcols=2:4]
+DT
+```
+```{r}
+DT[, shift(.SD, 1:2, NA, "lead", TRUE), .SDcols=2:4]
+```
+
+```{r}
+# for (station in stations){
+#   df_subset <- df_chla[df_chla$StationCode == station,]
+#   df[lag]
+#   
+#   if (!all(is.na(df_subset$Result))){
+#     result <- df_subset$Result[!is.na(df_subset$Result)]
+#     print('--------')
+#     print(station)
+#     fit <- auto.arima(df_subset$Result, xreg = df_subset[,ActionPhase]) #binary encode
+#     checkresiduals(fit)
+#   }
+#   break
+# }
+```

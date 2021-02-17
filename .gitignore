@@ -1,6 +1,6 @@
 .Rproj.user
 .Rhistory
-<<<<<<< HEAD
+
 .RData
 .Ruserdata
 =======
@@ -37,10 +37,15 @@ vignettes/*.pdf
 *.knit.md
 # R Environment Variables
 .Renviron
+
 # specific files
 test_code.Rmd
 d-wq_boxplots.Rmd
 d-wq_ts_station_plots.Rmd
 d-wq_ts_regional_plots.Rmd
 d-wq_chl-nh3_plots.Rmd
->>>>>>> 56b08a460d4cef26917653a90faea03bd5d3987a
+Nutrient_Detects.csv
+
+# folders
+fish_code/R_write/
+fish data/USA_Rivers_and_Streams/

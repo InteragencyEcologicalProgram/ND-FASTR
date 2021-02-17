@@ -19,7 +19,7 @@ options(knitr.kable.NA = "")
 
 # Purpose
 
-Create plots of the raw continuous water quality data for the LIB station. The data in these plots has been cleaned and formatted, but not inspected for suspect values. The purpose of these plots is to allow for us to visually inspect the data for suspect or unreliable values during the study period (2011-2019). The final QA/QC steps for this data can be found in the xxx.Rmd file.
+Create plots of the raw continuous water quality data for the LIB station. The data in these plots has been cleaned and formatted, but not inspected for suspect values. The purpose of these plots is to allow for us to visually inspect the data for suspect or unreliable values during the study period (2011-2019). The final QA/QC steps for this data can be found in the rtm_QA_and_combine_data_all.Rmd file.
 
 # Global code and functions
 
@@ -33,15 +33,15 @@ library(kableExtra)
 
 ```{r load functions, message = FALSE, warning = FALSE}
 # Define directory for local repository
-fp_local_repo <- "C:/Repositories/ND-FASTR/"
+fp_local_repo <- "C:/Repositories/ND-FASTR"
 
 # Source global WQ functions
-source(paste0(fp_local_repo, "global_ndfa_funcs.R"))
-source(paste0(fp_local_repo, "Water_Quality/global_wq_funcs.R"))
+source(file.path(fp_local_repo, "global_ndfa_funcs.R"))
+source(file.path(fp_local_repo, "Water_Quality/global_wq_funcs.R"))
 
 # Source continuous WQ raw data plot functions - look at this R script file for greater detail 
   # regarding the functions used in this Rmd file
-source(paste0(fp_local_repo, "Water_Quality/Continuous_WQ/Plots_Raw_Data/rtm_raw_plots_funcs.R"))
+source(file.path(fp_local_repo, "Water_Quality/Continuous_WQ/Plots_Raw_Data/rtm_raw_plots_funcs.R"))
 ```
 
 ```{r define file paths}
@@ -407,79 +407,15 @@ df_plots_indiv_yr_filt %>%
 ```
 
 
-```{r print turbidity plots, include = FALSE}
-# Create a list of the plot template to use for Turbidity plots
-produce_plots_turb <- list(
-  knit_expand(file = "rtm_raw_plots_template_2013.Rmd", parameter = "Turbidity")
+```{r print turbidity and water temp plots, include = FALSE}
+# Create a list of the plot template to use for Turbidity and WaterTemp plots
+produce_plots_turb_wt <- list(
+  knit_expand(file = "rtm_raw_plots_template_2013.Rmd", parameter = "Turbidity"),
+  knit_expand(file = "rtm_raw_plots_template_2013.Rmd", parameter = "WaterTemp")
 )
 ```
 
-`r knit(text = unlist(produce_plots_turb))`
-
-
-## WaterTemp {.tabset .tabset-pills}
-
-```{r filter indiv water temp plots, include = FALSE}
-filt_param <- "WaterTemp"
-
-df_plots_indiv_yr_filt <- filter(df_plots_indiv_yr, parameter == filt_param)
-```
-
-### All Years
-
-```{r plot water temp all yrs, echo = FALSE}
-df_plots_all_yrs %>% 
-  filter(parameter == filt_param) %>% 
-  print_plot()
-```
-
-### 2013
-
-```{r plot water temp 2013, echo = FALSE}
-df_plots_indiv_yr_filt %>% 
-  filter(yr == 2013) %>% 
-  print_plot()
-```
-
-### 2014
-
-```{r plot water temp 2014, echo = FALSE}
-df_plots_indiv_yr_filt %>% 
-  filter(yr == 2014) %>% 
-  print_plot()
-```
-
-### 2015
-
-```{r plot water temp 2015, echo = FALSE}
-df_plots_indiv_yr_filt %>% 
-  filter(yr == 2015) %>% 
-  print_plot()
-```
-
-### 2016
-
-```{r plot water temp 2016, echo = FALSE}
-df_plots_indiv_yr_filt %>% 
-  filter(yr == 2016) %>% 
-  print_plot()
-```
-
-### 2018
-
-```{r plot water temp 2018, echo = FALSE}
-df_plots_indiv_yr_filt %>% 
-  filter(yr == 2018) %>% 
-  print_plot()
-```
-
-### 2019
-
-```{r plot water temp 2019, echo = FALSE}
-df_plots_indiv_yr_filt %>% 
-  filter(yr == 2019) %>% 
-  print_plot()
-```
+`r knit(text = unlist(produce_plots_turb_wt))`
 
 
 # Summary of Qual Codes {.tabset .tabset-pills}
