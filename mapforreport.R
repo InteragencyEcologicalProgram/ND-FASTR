@@ -71,7 +71,9 @@ ggplot()+
   scale_shape_manual(values = c(15, 16, 17, 18, 11, 7, 10, 8), name = "Survey")+
   scale_fill_brewer(palette = "Pastel1", guide = NULL)+
   scale_color_brewer(palette = "Dark2", name = "Survey")+
-  geom_sf_text(data = regions, aes(label = notes),  nudge_x = c(0, -0.05, -0.03, -0.03, -0.06, 0), 
+  geom_sf_text(data = regions, aes(label = notes),  
+               fontface = "bold",
+               nudge_x = c(0, -0.05, -0.03, -0.03, -0.06, 0), 
                nudge_y =  c(0, 0, 0.03, 0.05, 0, -.05))+
   coord_sf(xlim = c(-121.8, -121.48), ylim = c(38, 38.9))+
   theme_bw()
