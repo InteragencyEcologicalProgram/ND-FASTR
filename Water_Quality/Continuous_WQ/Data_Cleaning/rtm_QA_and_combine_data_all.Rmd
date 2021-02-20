@@ -1,0 +1,702 @@
+---
+title: 'NDFA Continuous WQ Data: QAQC and Integration'
+author: "Dave Bosworth, Amanda Maguire, Traci Treleaven, Sarah Perry"
+date: "2/19/2021"
+output: 
+  html_document: 
+    code_folding: show
+    toc: yes
+    toc_float: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+This document provides the code and decisions made to perform final QA steps on all continuous water quality data used for the North Delta Flow Action synthesis project. The data were collected by multiple groups including USGS, the WQES section within the NCRO office at DWR, and the EMP section within DES at DWR. The final product of this document is a single integrated csv file containing the continuous water quality data for all stations used in this project.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+```
+
+```{r load functions, message = FALSE, warning = FALSE}
+# Source global NDFA functions
+source("global_ndfa_funcs.R")
+source("Water_Quality/global_wq_funcs.R")
+
+# Source continuous WQ QA processing functions
+source("Water_Quality/Continuous_WQ/Data_Cleaning/rtm_QA_data_funcs.R")
+```
+
+```{r define file paths}
+# Define relative file path for processed continuous WQ data files saved on NDFA SharePoint
+fp_rel_wq_proc_filt <- "WQ_Subteam/Processed_Data/Continuous/Filtered_Dates"
+
+# Define relative file path for the file containing the final QA'ed and integrated continuous WQ data to be saved on NDFA SharePoint
+fp_rel_wq_qa_f <- "WQ_Subteam/Processed_Data/Continuous"
+
+# Define absolute file paths
+fp_abs_wq_proc_filt <- ndfa_abs_sp_path(fp_rel_wq_proc_filt)
+fp_abs_wq_qa_f <- ndfa_abs_sp_path(fp_rel_wq_qa_f)
+```
+
+```{r set system tz as PST}
+# Set System Timezone as "Etc/GMT+8" (PST) to make it consistent with all data 
+Sys.setenv(TZ = "Etc/GMT+8")
+```
+
+# Import and Prepare Data
+
+```{r import data}
+# Create a vector of all file paths for the processed continuous WQ data
+rtm_wq_proc_fp <- dir(fp_abs_wq_proc_filt, full.names = TRUE)
+
+# Remove the file with SDI data since we will need to import that separately (import_rtm_data doesn't work with it)
+rtm_wq_proc_fp_f <- str_subset(rtm_wq_proc_fp, "_SDI_", negate = TRUE)
+
+# Create a vector of the number of parameters within each station's dataset
+n_params <- c(6, 11, 10, 7, 7, 7, 6, 8, 10, 7, 6, 6, 10)
+
+# Import processed continuous WQ data into a dataframe
+rtm_wq_proc_orig <- map2_dfr(rtm_wq_proc_fp_f, n_params, .f = import_rtm_data)
+
+# Import processed continuous WQ data for SDI
+sdi_orig <- read_csv(
+  file.path(fp_abs_wq_proc_filt, "RTM_OUTPUT_SDI_formatted_filt.csv"),
+  col_types = paste0("ccdd", str_dup("dc", 8))
+)
+
+# Add SDI data to all other continuous WQ data
+rtm_wq_proc_orig <- bind_rows(rtm_wq_proc_orig, sdi_orig)
+```
+
+The `DateTime` variable needs to be converted from a character to datetime object forced as PST. We also need to nest the data by `StationCode` to be able to work on the data for each station separately and in an organized way. Finally, we will remove the `Chla_RFU` parameter from the data set since it was only collected at the LIB station for two weeks.
+
+```{r prepare data for indiv qa}
+rtm_wq_proc_clean <- rtm_wq_proc_orig %>% 
+  mutate(DateTime = ymd_hms(DateTime, tz = "Etc/GMT+8")) %>% 
+  select(!starts_with("Chla_RFU")) %>% 
+  nest(df = -StationCode)
+```
+
+# QA Processing
+
+## Individual stations
+
+We will first flag and exclude suspect data for individual stations and parameters through visual inspection of the plots of raw data and through information from the field and sonde verification records.
+
+### I-80
+
+```{r pull out i80 data}
+# Pull out data for I-80
+i80_orig <- pull_df_sta(rtm_wq_proc_clean, "I80")
+```
+
+There are a couple of chlorophyll values in the I-80 data set in Sept 2014 that need to be flagged and excluded since they weren't flagged in the original data review in Hydstra. This data was at the end of a noisy period of chlorophyll data where all but a few values were flagged as unreliable. These remaining few values need to be flagged and excluded as well.
+
+```{r plot i80 chla sept 2014 before}
+# Plot I-80 chlorophyll data for Sept 2014 - raw data
+i80_orig %>% 
+  filter(
+    year(DateTime) == 2014, 
+    month(DateTime) == 9
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r rm i80 chla 2014}
+# Flag and exclude chlorophyll values in Sept 2014
+i80_clean_v1 <- i80_orig %>% rm_flag_val_range(Chla, "2014-09-04 11:15:00", "2014-09-04 12:15:00")
+```
+
+The chlorophyll values are excluded from the data set now:
+```{r plot i80 chla sept 2014 after}
+# Plot I-80 chlorophyll data for Sept 2014 - after exclusion
+i80_clean_v1 %>% 
+  filter(
+    year(DateTime) == 2014, 
+    month(DateTime) == 9
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+
+### LIB
+
+```{r pull out lib data}
+# Pull out data for LIB
+lib_orig <- pull_df_sta(rtm_wq_proc_clean, "LIB")
+```
+
+There was a sudden drop of 1 degree Celsius in the LIB water temperature data during the morning of 9/9/2014. We will flag and exclude all available water quality data (WaterTemp, Turbidity, and DO) collected at this timestamp since all water quality parameters depend upon accurate water temperature measurements and the Turbidity and DO data appeared to be suspect as well.
+
+```{r plot lib wt turbidity do sept 2014 before}
+# Plot LIB WaterTemp, Turbidity, and DO data for Sept 2014 - raw data
+lib_orig %>% 
+  select(DateTime, WaterTemp, Turbidity, DO) %>% 
+  pivot_longer(cols = -DateTime, names_to = "parameter", values_to = "value") %>% 
+  filter(
+    year(DateTime) == 2014, 
+    month(DateTime) == 9
+  ) %>% 
+  ggplot(aes(DateTime, value)) +
+    geom_line() +
+    rtm_xaxis_scale +
+    facet_grid(rows = vars(parameter), scales = "free_y")
+```
+
+```{r rm lib wt turbidity do 2014, message = FALSE}
+# Flag and exclude WaterTemp, Turbidity, and DO values for one timestamp in Sept 2014
+lib_wt_turb_do_2014_f <- lib_orig %>% 
+  select(DateTime, starts_with(c("WaterTemp", "Turbidity", "DO"))) %>% 
+  mutate(across(where(is.numeric), ~replace(.x, DateTime == "2014-09-09 10:15:00", NA_real_))) %>% 
+  mutate(across(where(is.character), ~replace(.x, DateTime == "2014-09-09 10:15:00", "unreliable")))
+
+# Add WaterTemp, Turbidity, and DO data back to main LIB data frame
+lib_clean_v1 <- lib_orig %>% 
+  select(!starts_with(c("WaterTemp", "Turbidity", "DO"))) %>% 
+  left_join(lib_wt_turb_do_2014_f)
+```
+
+The WaterTemp, Turbidity, and DO values are excluded from the data set now:
+```{r plot lib wt turbidity do sept 2014 after}
+# Plot LIB WaterTemp, Turbidity, and DO data for Sept 2014 - after exclusion
+lib_clean_v1 %>% 
+  select(DateTime, WaterTemp, Turbidity, DO) %>% 
+  pivot_longer(cols = -DateTime, names_to = "parameter", values_to = "value") %>% 
+  filter(
+    year(DateTime) == 2014, 
+    month(DateTime) == 9
+  ) %>% 
+  ggplot(aes(DateTime, value)) +
+    geom_line() +
+    rtm_xaxis_scale +
+    facet_grid(rows = vars(parameter), scales = "free_y")
+```
+
+The chlorophyll data is very noisy and suspect at LIB from 7/13/2018 to 8/14/2018. We will flag and exclude this data.
+
+```{r plot lib chla 2018 before}
+# Plot LIB chlorophyll data for 2018 - raw data
+lib_clean_v1 %>% 
+  filter(year(DateTime) == 2018) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r rm lib chla 2018}
+# Flag and exclude chlorophyll values in 2018
+lib_clean_v2 <- lib_clean_v1 %>% 
+  rm_flag_val_range(Chla, "2018-07-13 00:00:00", "2018-08-14 06:15:00")
+```
+
+The chlorophyll data is excluded from the data set now:
+```{r plot lib chla 2018 after}
+# Plot LIB chlorophyll data for 2018 - after exclusion
+lib_clean_v2 %>% 
+  filter(year(DateTime) == 2018) %>% 
+  plot_indiv_param(Chla)
+```
+
+
+### LIBCUT
+
+```{r pull out libcut data}
+# Pull out data for LIBCUT
+libcut_orig <- pull_df_sta(rtm_wq_proc_clean, "LIBCUT")
+```
+
+There is only about 6 days of chlorophyll data available for the LIBCUT station. We will remove this data from our data set since it is inadequate to include in analyses.
+
+```{r rm libcut chla}
+libcut_clean_v1 <- libcut_orig %>% select(!starts_with("Chla"))
+```
+
+
+### LIS
+
+```{r pull out lis data}
+# Pull out data for LIS
+lis_orig <- pull_df_sta(rtm_wq_proc_clean, "LIS")
+```
+
+There is one pH value in the LIS data set in Nov 2013 that needs to be flagged and excluded since it wasn't flagged in the original data review in Hydstra. This data is at the end of an unreliable period of pH data where all but one value were flagged as unreliable. This remaining value needs to be flagged and excluded as well.
+
+```{r plot lis ph nov 2013 before}
+# Plot LIS pH data for Nov 2013 - raw data
+lis_orig %>% 
+  filter(
+    year(DateTime) == 2013,
+    month(DateTime) == 11
+  ) %>% 
+  plot_indiv_param(pH)
+```
+
+```{r rm lis ph 2013}
+# Flag and exclude pH value in Nov 2013
+lis_clean_v1 <- lis_orig %>% rm_flag_val_one(pH, "2013-11-08 09:45:00")
+```
+
+The pH value is excluded from the data set now:
+```{r plot lis ph nov 2013 after}
+# Plot LIS pH data for Nov 2013 - after exclusion
+lis_clean_v1 %>% 
+  filter(
+    year(DateTime) == 2013,
+    month(DateTime) == 11
+  ) %>% 
+  plot_indiv_param(pH)
+```
+
+The water temperature data was biased about 2-3 degrees Celsius low during one deployment from 8/17/2015 to 10/1/2015 at LIS. We will shift this water temperature data by adding 2 degrees Celsius to the entire deployment period.
+
+Plot of just the water temperature data in 2015:
+```{r plot lis water temp 2015 before}
+# Plot LIS WaterTemp data for 2015 - raw data
+lis_clean_v1 %>% 
+  filter(year(DateTime) == 2015) %>% 
+  plot_indiv_param(WaterTemp)
+```
+
+Plot of all water quality data in 2015:
+```{r plot lis all wq 2015 before, fig.width = 8, fig.height = 6}
+# Plot all LIS water quality data in 2015 - raw data
+lis_clean_v1 %>% 
+  select(DateTime, WaterTemp, Turbidity, SpCnd, DO, pH, Chla) %>% 
+  pivot_longer(cols = -DateTime, names_to = "parameter", values_to = "value") %>% 
+  filter(year(DateTime) == 2015) %>% 
+  ggplot(aes(DateTime, value)) +
+    geom_line() +
+    rtm_xaxis_scale +
+    facet_grid(rows = vars(parameter), scales = "free_y")
+```
+
+While all water quality parameters depend upon accurate water temperature measurements, none of them appeared to have been significantly affected during this time period as indicated by data from the deployments before and after.
+
+```{r shift lis water temp 2015}
+# Shift and flag low-biased WaterTemp deployment in 2015 at LIS
+lis_clean_v2 <- lis_clean_v1 %>% 
+  mutate(
+    WaterTemp = if_else(
+      DateTime >= "2015-08-17 16:30:00" & DateTime <= "2015-10-01 11:15:00", 
+      WaterTemp + 2,
+      WaterTemp
+    ),
+    WaterTemp_Qual = if_else(
+      DateTime >= "2015-08-17 16:30:00" & DateTime <= "2015-10-01 11:15:00", 
+      "estimated",
+      WaterTemp_Qual
+    )
+  )
+```
+
+The water temperature data is corrected 2 degrees Celsius upwards now:
+```{r plot lis water temp 2015 after}
+# Plot LIS WaterTemp data for 2015 - corrected data
+lis_clean_v2 %>% 
+  filter(year(DateTime) == 2015) %>% 
+  plot_indiv_param(WaterTemp)
+```
+
+
+### RCS
+
+```{r pull out rcs data}
+# Pull out data for RCS
+rcs_orig <- pull_df_sta(rtm_wq_proc_clean, "RCS")
+```
+
+The pH data was biased about 0.3 units low during one deployment from 8/14/2014 to 9/4/2014 at RCS. We will shift this pH data by adding 0.3 units to the entire deployment period.
+
+```{r plot rcs ph 2014 before}
+# Plot RCS pH data for 2014 - raw data
+rcs_orig %>% 
+  filter(year(DateTime) == 2014) %>% 
+  plot_indiv_param(pH)
+```
+
+```{r shift rcs ph 2014}
+# Shift and flag low-biased pH deployment in 2014 at RCS
+rcs_clean_v1 <- rcs_orig %>% 
+  mutate(
+    pH = if_else(
+      DateTime >= "2014-08-14 08:30:00" & DateTime <= "2014-09-04 07:15:00", 
+      pH + 0.3,
+      pH
+    ),
+    pH_Qual = if_else(
+      DateTime >= "2014-08-14 08:30:00" & DateTime <= "2014-09-04 07:15:00", 
+      "estimated",
+      pH_Qual
+    )
+  )
+```
+
+The pH data is corrected 0.3 units upwards now:
+```{r plot rcs ph 2014 after}
+# Plot RCS pH data for 2014 - corrected data
+rcs_clean_v1 %>% 
+  filter(year(DateTime) == 2014) %>% 
+  plot_indiv_param(pH)
+```
+
+
+### SDI
+
+```{r pull out sdi data}
+# Pull out data for SDI
+sdi_orig <- pull_df_sta(rtm_wq_proc_clean, "SDI")
+```
+
+There are a few issues with the dissolved oxygen data for SDI:
+
+* There was a short period of time on 10/2/2018 with some unusually noisy DO data
+* There were a couple of instances in 2019 (8/6 and 9/17) with sudden increases in DO values
+
+This data will be flagged and excluded from the SDI data set.
+
+```{r plot sdi do oct 2018 before}
+# Plot SDI DO data for Oct 2018 - raw data
+sdi_orig %>% 
+  filter(
+    year(DateTime) == 2018,
+    month(DateTime) == 10
+  ) %>% 
+  plot_indiv_param(DO)
+```
+
+```{r plot sdi do aug sept 2019 before}
+# Plot SDI DO data for Aug and Sept 2019 - raw data
+sdi_orig %>% 
+  filter(
+    year(DateTime) == 2019,
+    month(DateTime) >= 8 & month(DateTime) <= 9
+  ) %>% 
+  plot_indiv_param(DO)
+```
+
+```{r rm sdi do 2018 and 2019}
+# Flag and exclude DO values in Oct 2018, Aug 2019, and Sept 2019
+sdi_clean_v1 <- sdi_orig %>% 
+  rm_flag_val_range(DO, "2018-10-02 8:15:00", "2018-10-02 9:00:00") %>% 
+  rm_flag_val_one(DO, "2019-08-06 8:30:00") %>% 
+  rm_flag_val_range(DO, "2019-09-17 9:45:00", "2019-09-17 10:30:00")
+```
+
+The DO values are excluded from the data set now:
+```{r plot sdi do oct 2018 after}
+# Plot SDI DO data for Oct 2018 - after exclusion
+sdi_clean_v1 %>% 
+  filter(
+    year(DateTime) == 2018,
+    month(DateTime) == 10
+  ) %>% 
+  plot_indiv_param(DO)
+```
+
+```{r plot sdi do aug sept 2019 after}
+# Plot SDI DO data for Aug and Sept 2019 - after exclusion
+sdi_clean_v1 %>% 
+  filter(
+    year(DateTime) == 2019,
+    month(DateTime) >= 8 & month(DateTime) <= 9
+  ) %>% 
+  plot_indiv_param(DO)
+```
+
+There is some suspect fDOM data collected at SDI with multiple large drops in the data to values close to or equal to zero from 7/17/2018 to 7/26/2018. We will flag and exclude all fDOM data within this period.
+
+```{r plot sdi fdom july 2018 before}
+# Plot SDI fDOM data for July 2018 - raw data
+sdi_clean_v1 %>% 
+  filter(
+    year(DateTime) == 2018,
+    month(DateTime) == 7
+  ) %>% 
+  plot_indiv_param(fDOM)
+```
+
+```{r rm sdi fdom 2018}
+# Flag and exclude fDOM values in July 2018
+sdi_clean_v2 <- sdi_clean_v1 %>% 
+  rm_flag_val_range(fDOM, "2018-07-17 09:15:00", "2018-07-26 08:15:00")
+```
+
+The fDOM values are excluded from the data set now:
+```{r plot sdi fdom july 2018 after}
+# Plot SDI fDOM data for July 2018 - after exclusion
+sdi_clean_v2 %>% 
+  filter(
+    year(DateTime) == 2018,
+    month(DateTime) == 7
+  ) %>% 
+  plot_indiv_param(fDOM)
+```
+
+
+### SGG
+
+```{r pull out sgg data}
+# Pull out data for SGG
+sgg_orig <- pull_df_sta(rtm_wq_proc_clean, "SGG")
+```
+
+There was a sudden drop in the SGG dissolved oxygen data to zero on 8/17/2018. We will flag and exclude this DO value from the SGG data set.
+
+```{r plot sgg do aug 2018 before}
+# Plot SGG DO data for Aug 2018 - raw data
+sgg_orig %>% 
+  filter(
+    year(DateTime) == 2018,
+    month(DateTime) == 8
+  ) %>% 
+  plot_indiv_param(DO)
+```
+
+```{r rm sgg do 2018}
+# Flag and exclude DO value in Aug 2018
+sgg_clean_v1 <- sgg_orig %>% rm_flag_val_one(DO, "2018-08-17 13:45:00")
+```
+
+The DO value is excluded from the data set now:
+```{r plot sgg do aug 2018 after}
+# Plot SGG DO data for Aug 2018 - after exclusion
+sgg_clean_v1 %>% 
+  filter(
+    year(DateTime) == 2018,
+    month(DateTime) == 8
+  ) %>% 
+  plot_indiv_param(DO)
+```
+
+
+### SRH
+
+```{r pull out srh data}
+# Pull out data for SRH
+srh_orig <- pull_df_sta(rtm_wq_proc_clean, "SRH")
+```
+
+There are a few negative chlorophyll values in the SRH data set in Oct-Nov 2011 and Aug 2014 that need to be flagged and excluded.
+
+```{r plot srh chla oct nov 2011 before, message = FALSE}
+# Plot SRH chlorophyll data for Oct and Nov 2011 - raw data
+srh_orig %>% 
+  filter(
+    year(DateTime) == 2011,
+    month(DateTime) >= 10 & month(DateTime) <= 11
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r plot srh chla aug 2014 before}
+# Plot SRH chlorophyll data for Aug 2014 - raw data
+srh_orig %>% 
+  filter(
+    year(DateTime) == 2014,
+    month(DateTime) == 8
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r rm srh chla 2011 and 2014}
+# Flag and exclude negative chlorophyll values in Oct-Nov 2011 and Aug 2014
+srh_clean_v1 <- srh_orig %>%
+  mutate(
+    Chla_Qual = replace(Chla_Qual, Chla < 0, "unreliable"),
+    Chla = replace(Chla, Chla < 0, NA_real_)
+  )
+```
+
+The negative chlorophyll values are excluded from the data set now:
+```{r plot srh chla oct nov 2011 after, message = FALSE}
+# Plot SRH chlorophyll data for Oct and Nov 2011 - after exclusion
+srh_clean_v1 %>% 
+  filter(
+    year(DateTime) == 2011,
+    month(DateTime) >= 10 & month(DateTime) <= 11
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r plot srh chla aug 2014 after, message = FALSE}
+# Plot SRH chlorophyll data for Aug 2014 - after exclusion
+srh_clean_v1 %>% 
+  filter(
+    year(DateTime) == 2014,
+    month(DateTime) == 8
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+
+### STTD
+
+```{r pull out sttd data}
+# Pull out data for STTD
+sttd_orig <- pull_df_sta(rtm_wq_proc_clean, "STTD")
+```
+
+There is one DO value and one pH value in the STTD data set in Aug 2017 that need to be flagged and excluded since they weren't flagged in the original data review in Hydstra. This data is at the end of an unreliable period of pH and DO data where all but one value were flagged as unreliable. These remaining values need to be flagged and excluded as well.
+
+```{r plot sttd do ph aug 2017 before}
+# Plot STTD DO and pH data for Aug 2017 - raw data
+sttd_orig %>% 
+  select(DateTime, DO, pH) %>% 
+  pivot_longer(cols = -DateTime, names_to = "parameter", values_to = "value") %>% 
+  filter(
+    year(DateTime) == 2017, 
+    month(DateTime) == 8
+  ) %>% 
+  ggplot(aes(DateTime, value)) +
+    geom_line() +
+    rtm_xaxis_scale +
+    facet_grid(rows = vars(parameter), scales = "free_y")
+```
+
+```{r rm sttd do ph 2017, message = FALSE}
+# Flag and exclude DO and pH values for one timestamp in Aug 2017
+sttd_do_ph_2017_f <- sttd_orig %>% 
+  select(DateTime, starts_with(c("DO", "pH"))) %>% 
+  mutate(across(where(is.numeric), ~replace(.x, DateTime == "2017-08-10 11:30:00", NA_real_))) %>% 
+  mutate(across(where(is.character), ~replace(.x, DateTime == "2017-08-10 11:30:00", "unreliable")))
+
+# Add DO and pH data back to main STTD data frame
+sttd_clean_v1 <- sttd_orig %>% 
+  select(!starts_with(c("DO", "pH"))) %>% 
+  left_join(sttd_do_ph_2017_f)
+```
+
+The DO and pH values are excluded from the data set now:
+```{r plot sttd do ph aug 2017 after}
+# Plot STTD DO and pH data for Aug 2017 - after exclusion
+sttd_clean_v1 %>% 
+  select(DateTime, DO, pH) %>% 
+  pivot_longer(cols = -DateTime, names_to = "parameter", values_to = "value") %>% 
+  filter(
+    year(DateTime) == 2017, 
+    month(DateTime) == 8
+  ) %>% 
+  ggplot(aes(DateTime, value)) +
+    geom_line() +
+    rtm_xaxis_scale +
+    facet_grid(rows = vars(parameter), scales = "free_y")
+```
+
+There is one turbidity value in the STTD data set in Sept 2017 that needs to be flagged and excluded since it wasn't flagged in the original data review in Hydstra. This data is at the end of an unreliable period of turbidity data where all but one value were flagged as unreliable. This remaining value needs to be flagged and excluded as well.
+
+```{r plot sttd turbidity 2017 before}
+# Plot STTD Turbidity data for 2017 - raw data
+sttd_clean_v1 %>% 
+  filter(year(DateTime) == 2017) %>% 
+  plot_indiv_param(Turbidity)
+```
+
+```{r rm sttd turbidity 2017}
+# Flag and exclude Turbidity value in Sept 2017
+sttd_clean_v2 <- sttd_clean_v1 %>% rm_flag_val_one(Turbidity, "2017-09-25 10:45:00")
+```
+
+The Turbidity value is excluded from the data set now:
+```{r plot sttd turbidity 2017 after}
+# Plot STTD Turbidity data for 2017 - after exclusion
+sttd_clean_v2 %>% 
+  filter(year(DateTime) == 2017) %>% 
+  plot_indiv_param(Turbidity)
+```
+
+The chlorophyll data is suspect at STTD from 9/1/2017 to 9/20/2017 and isn't completely flagged as such in Hydstra. We will flag and exclude this data.
+
+```{r plot sttd chla 2017 before}
+# Plot STTD chlorophyll data for 2017 - raw data
+sttd_clean_v2 %>% 
+  filter(
+    year(DateTime) == 2017
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r rm sttd chla 2017}
+# Flag and exclude chlorophyll values in Sept 2017
+sttd_clean_v3 <- sttd_clean_v2 %>% 
+  rm_flag_val_range(Chla, "2017-09-01 06:45:00", "2017-09-20 10:30:00")
+```
+
+The chlorophyll data is excluded from the data set now:
+```{r plot sttd chla 2017 after}
+# Plot STTD chlorophyll data for 2017 - after exclusion
+sttd_clean_v3 %>% 
+  filter(year(DateTime) == 2017) %>% 
+  plot_indiv_param(Chla)
+```
+
+
+### Combine cleaned data
+
+Combine individually cleaned data for stations back together into a nested dataframe.
+
+```{r combine indiv clean data}
+mod_stations <- c("I80", "LIB", "LIBCUT", "LIS", "RCS", "SDI", "SGG", "SRH", "STTD")
+
+indiv_clean_rtm <- 
+  tibble(
+    StationCode = mod_stations,
+    df = list(
+      i80_clean_v1,
+      lib_clean_v2,
+      libcut_clean_v1,
+      lis_clean_v2,
+      rcs_clean_v1,
+      sdi_clean_v2,
+      sgg_clean_v1,
+      srh_clean_v1,
+      sttd_clean_v3
+    )
+  )
+
+rtm_wq_proc_clean_v1 <- rtm_wq_proc_clean %>% 
+  filter(!StationCode %in% mod_stations) %>% 
+  bind_rows(indiv_clean_rtm)
+```
+
+
+# Export data
+
+Export QA'ed data to the Processed_Data/Continuous folder as a single integrated .csv file containing the continuous water quality data for all stations used in this project.
+
+```{r export all qa data as csv, eval = FALSE}
+# Code chunk is set to eval = FALSE, so this code is not executed when this file is knitted
+# change eval option to TRUE when you want to export the data when knitting this file
+rtm_wq_proc_clean_v1 %>% 
+  # unnest data frame into one
+  unnest(df) %>% 
+  # sort by StationCode, DateTime
+  arrange(StationCode, DateTime) %>% 
+  # apply a consistent variable order 
+  select(
+    StationCode,
+    DateTime,
+    Flow,
+    Flow_Qual,
+    starts_with("FlowTF"),
+    starts_with("Wa"),
+    starts_with("Tu"),
+    starts_with("Sp"),
+    starts_with("DO"),
+    starts_with("pH"),
+    starts_with("Chla"),
+    starts_with("fD"),
+    starts_with("Ni")
+  ) %>% 
+  write_excel_csv(file.path(fp_abs_wq_qa_f, "RTM_INPUT_all_2021-02-19.csv"), na = "")
+```
+
+End of script
+
