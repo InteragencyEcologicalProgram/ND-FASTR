@@ -13,7 +13,7 @@ library(ggmap)
 
 fish = read_csv("fish data/FISH_MAN_allIEPsurveys_20201030.csv", guess_max = 10000)
 
-stas = read_csv("fish data/Stations_NDFA_2020-10-30.csv")
+stas = read_csv("fish data/Stations_Fish_NDFA_2021-01-13.csv")
 
 #export an sf file of the stations so I can create a shapefile of regions in my shiny app
 stashap = mutate(stas, geometry = NULL)
@@ -21,6 +21,8 @@ stashap = st_as_sf(stashap, coords = c("Longitude", "Latitude"), crs = "+proj=lo
 save(stashap, file = "NDFAstations.RData")
 
 #get the geometry column into the right format
+
+ggplot() + geom_sf(data = stashap, aes(color = Region))
 
 AllSta2 = mutate(stas, geometry = NULL)
 NoEsta = filter(AllSta2, !Survey.x %in%  c("EDSM", "NDFA", "USGS", "EMP"))
@@ -43,8 +45,8 @@ library(viridis)
 ##### Make a map ----------------------
 # Define palette
 pal <- colorFactor("magma", domain = AllSta2$Survey.x)
-regions = read_sf("regions/NDFAregions.shp")
-regions$notes = c("Colusa Drain", "Upper Yolo", "Lower \n Yolo", "Cache Slough \n Complex", "Lower Sac \n River", "Middle Sac \n River")
+regions = read_sf("regions/FishRegions.shp")
+regions$notes = c("Downstream", "Upstream", "Middle Sac")
 
 
 NoEsta2 %>%
@@ -64,17 +66,28 @@ NoEsta2 %>%
     values = ~Survey.x,
             position = "bottomright")
 
+
+#try to specify x axis breaks
+ewbrks <- c(-121.7, -121.5)
+ewlbls <- unlist(lapply(ewbrks, function(x) ifelse(x > 0, paste(x, "°E"), ifelse(x < 0, paste(-x, "°W"),x))))
+
+# create the map
+
 ggplot()+
   geom_sf(data = regions, aes(fill = notes), alpha = 0.5)+
   geom_sf(data = Hydro, fill = "lightblue")+
   geom_sf(data = NoSF, aes(shape = Survey.x, color = Survey.x), size = 3) +
   scale_shape_manual(values = c(15, 16, 17, 18, 11, 7, 10, 8), name = "Survey")+
-  scale_fill_brewer(palette = "Pastel1", guide = NULL)+
+  scale_fill_brewer(palette = "Pastel2", guide = NULL)+
   scale_color_brewer(palette = "Dark2", name = "Survey")+
   geom_sf_text(data = regions, aes(label = notes),  
                fontface = "bold",
-               nudge_x = c(0, -0.05, -0.03, -0.03, -0.06, 0), 
-               nudge_y =  c(0, 0, 0.03, 0.05, 0, -.05))+
-  coord_sf(xlim = c(-121.8, -121.48), ylim = c(38, 38.9))+
-  theme_bw()
+               nudge_x = c(0, -0.05, -0.03), 
+               nudge_y =  c(0, 0, 0.05))+
+  scale_x_continuous(breaks = ewbrks, labels = ewlbls, expand = c(0, 0)) +
+  
+  coord_sf(ylim = c(38, 38.9), xlim = c(-121.8, -121.48))+
+  
+  theme_bw()+
+  theme(axis.text = element_text(size = 10))
 
