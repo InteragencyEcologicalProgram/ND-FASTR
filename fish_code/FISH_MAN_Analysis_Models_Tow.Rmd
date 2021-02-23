@@ -30,6 +30,9 @@ library(countreg) # zeroinfl and hurdle functions, qqrplot
 library(gridExtra)
 library(grid)
 library(dplyr)
+library(Polychrome)
+library(plotly)
+library(lme4)
 ```
 
 ## Import data
@@ -158,7 +161,7 @@ CPUE_means_Tow_phase <- Tow_f %>%
 ```{r Tow filters, warning = FALSE, message = FALSE}
 # Lists
 list_native <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish")
-list_smeltish <- c("Wakasagi", "Inland Silverside")
+list_smeltish <- c("Wakasagi", "Inland Silverside", "Delta Smelt")
 list_nmds <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish","Wakasagi", "Inland Silverside", "Delta Smelt", "Carp", "Goldfish", "Hardhead", "Golden Shiner", "Fathead Minnow", "Hitch","Rainwater Killifish", "Western Mosquitofish", "Black Crappie", "White Crappie", "Bluegill", "Bigscale Logperch","Largemouth Bass", "Smallmouth Bass", "Striped Bass", "Spotted Bass","Threadfin Shad", "American Shad", "Tridentiger spp_", "Shimofuri Goby", "White Catfish")
 
 Tow_natives0 <- Tow_f %>%filter(CommonName %in% list_native)
@@ -173,7 +176,7 @@ Tow_smeltish0 <- Tow_f %>% filter(CommonName %in% list_smeltish)
 #### Sum smeltish into one CPUE/Tow
 ```{r}
 Tow_smeltish <- Tow_smeltish0 %>%
-  group_by(Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, Date,  VolumeSampled, Tow) %>%
+  group_by(Survey, fYear, StationCode, ActionPhase, Region, Date,  VolumeSampled, Tow) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
 ```
@@ -185,7 +188,7 @@ Tow_smeltish <- Tow_smeltish0 %>%
 * More upstream
 
 ```{r}
-# Proportion ISS vs Wakasagi
+# Proportional abundance
 ggplot(Tow_smeltish0, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw()
 
 # Histogram
@@ -244,6 +247,7 @@ f4 <- formula(sumCount ~ Region + fYear + ActionPhase + Region:ActionPhase+  off
 f5 <- formula(sumCount ~ Region + fYear + ActionPhase + Region:fYear+  offset(Samp))
 f6 <- formula(sumCount ~ Region + fYear + ActionPhase + ActionPhase:fYear+  offset(Samp))
 
+
 # Overdispersion = Variance much larger than mean. 
 var(Tow_smeltish$sumCount)
 mean(Tow_smeltish$sumCount)
@@ -273,13 +277,23 @@ BIC(zip1, zinb1, hrd1)
 ```
 ZINB is the best. 
 Compare zinb with nb, make sure zero inflation is the way to go
-Compare zinb with nb, make sure zero inflation is the way to go
+
 ```{r}
 # No zero inflation
 nb1 <- glm.nb(f1,  data = Tow_smeltish) ; summary(nb1) 
 vuong(nb1, zinb1)
 ```
 It is. 
+
+Mixed modeling, including Station as random effect
+SLOW!
+
+```{r}
+f7 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp)+ (1|StationCode))
+
+mnb1 <- glmer.nb(f7, data = Tow_smeltish); summary(mnb1)
+```
+
 
 #### Diagnostic Plots
 
@@ -314,7 +328,8 @@ visreg(zinb1)
 Post-hoc
 
 ```{r}
-m_means1 <- emmeans(zinb1, ~fYear)
+m_means1 <- emmeans(zinb1, ~fYear, adjust = "sidak")
+m_means1
 multcomp::cld(m_means1, Letters = letters)
 ```
 
@@ -452,9 +467,18 @@ visreg(zinb2)
 
 Post-hoc
 ```{r}
-m_means2 <- emmeans(zinb2, ~fYear)
+m_means2 <- emmeans(zinb2, ~fYear, adjust = "sidak")
 multcomp::cld(m_means2, Letters = letters)
 ```
+
+
+
+
+
+
+
+
+
 
 
 
@@ -473,16 +497,25 @@ Tow_all <- Tow_f %>%
 
 
 ```{r}
+
+
+pal36 <- palette36.colors(36)
+pal36 <- as.vector(t(pal36))
+
+
 # Proportion Species
-TowSp <- ggplot(Tow_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw()  + theme(legend.position = "bottom") + 
+ggplot(Tow_f, aes(x = fYear, y = CPUE, fill = CommonName)) + 
+  geom_col() + 
+  scale_fill_manual(values = pal36)+
+  theme_bw()  + theme(legend.position = "bottom") + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         axis.title.x = element_blank(),
         legend.text = element_text(size = 11),
         legend.title = element_blank())
+Towsp
 ggplotly(TowSp)
 
-library(plotly)
 
 # Histogram
 ggplot(Tow_all, aes(sumCPUE)) + geom_histogram(binwidth = .001) + theme_bw()
@@ -673,7 +706,7 @@ visreg(m5all)
 Post-hoc
 
 ```{r}
-m_means3 <- emmeans(m5all, ~fYear)
+m_means3 <- emmeans(m5all, ~Region|fYear, adjust = "sidak")
 multcomp::cld(m_means3, Letters = letters)
 ```
 

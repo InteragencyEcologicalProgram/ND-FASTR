@@ -30,6 +30,8 @@ library(MASS) # negbin model
 library(countreg) # zeroinfl and hurdle functions, qqrplot
 library(gridExtra)
 library(grid)
+library(Polychrome)
+library(plotly)
 
 ```
 
@@ -541,8 +543,14 @@ SeineSpCPUEA <- filter(SeineSpCPUE, sumCPUE>0.1)
 * More downstream
 
 ```{r}
+
+pal36 <- palette36.colors(36)
+pal36 <- as.vector(t(pal36))
+
 # Proportion Species
-SeineSp <- ggplot(Seine_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ theme_bw()  + theme(legend.position = "bottom") +
+SeineSp <- ggplot(Seine_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ 
+  scale_fill_manual(values = pal36) +
+  theme_bw()  + theme(legend.position = "bottom") +
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         axis.title.x = element_blank(),
@@ -571,6 +579,9 @@ ggplot(Seine_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = R
 # Barplot
 # Summarize - Mean + Standard Error
 ```{r}
+
+
+
 Seine_summary3 <- Seine_all %>% 
   group_by(Region, ActionPhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
