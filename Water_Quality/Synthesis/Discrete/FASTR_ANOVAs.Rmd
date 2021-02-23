@@ -11,6 +11,8 @@ library(lme4)
 source('global_ndfa_funcs.R')
 ```
 
+Current output is ANOVA results, aka, if the variable is significant. To fill out hypothesis table, need to do post-hoc analysis determine in what way it's significant (eg., for before/during/after, determine if the regression coefficents are positive/negative and determine which ones are "indivdually" significant).
+
 ```{r Import Data}
 # define absolute filepaths
 fp_abs_discrete <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/WQ_INPUT_Discrete_Lab_2021-01-25.csv')
@@ -73,10 +75,18 @@ for (i in seq(analytes)){
 
   df_sub$Result <- log(df_sub$Result)
   
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  df_sub$Year <- as.character(df_sub$Year)
+  
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  
+  # print(paste0('~*~*~',analyte,'~*~*~'))
+  # print(lmer_fit)
   
   aov_lmer <- anova(lmer_fit, type = 'III')
 
+  # print(aov_lmer)
+  # print('-----------------')
+  
   df_aov <- as.data.frame(aov_lmer)
   df_aov <- rename(df_aov, Pr_F = `Pr(>F)`)
   df_aov$Variable <- row.names(df_aov)
@@ -110,7 +120,7 @@ for (i in seq(analytes)){
   df_sub$Result[is.na(df_sub$Result)] <- 0.01
   df_sub$Result <- log(df_sub$Result)
 
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
   
   aov_lmer <- anova(lmer_fit, type = 'III')
 
@@ -154,7 +164,7 @@ for (i in seq(analytes)){
   
   df_sub$Result <- log(df_sub$Result)
 
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
   
   aov_lmer <- anova(lmer_fit, type = 'III')
 
@@ -200,7 +210,7 @@ for (i in seq(analytes)){
   
   df_sub$Result <- log(df_sub$Result)
 
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
   
   aov_lmer <- anova(lmer_fit, type = 'III')
 
@@ -246,10 +256,10 @@ for (i in seq(analytes)){
   
   df_sub$Result <- log(df_sub$Result)
 
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
   
   aov_lmer <- anova(lmer_fit, type = 'III')
-
+  
   df_aov <- as.data.frame(aov_lmer)
   df_aov <- rename(df_aov, Pr_F = `Pr(>F)`)
   df_aov$Variable <- row.names(df_aov)
@@ -269,8 +279,6 @@ for (i in seq(analytes)){
   
   aov_all <- compact(aov_all)
 }
-
-
 
 all_data <- do.call(rbind, aov_all)
 write_csv(all_data, 'C:/Users/sperry/Desktop/anova_rand3.csv')
