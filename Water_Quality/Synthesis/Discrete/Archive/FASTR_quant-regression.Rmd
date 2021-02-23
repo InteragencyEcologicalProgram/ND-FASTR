@@ -125,7 +125,7 @@ for (analyte in other_analytes){
     )
   
   # model
-  eq <- with(df_analyte, Result ~ FlowPulseType*FlowActionPeriod + Region*FlowActionPeriod + Region*FlowPulseType)
+  eq <- with(df_analyte, Result ~ FlowPulseType*FlowActionPeriod + Region*FlowActionPeriod + Region*FlowPulseType + Station)
 
   # By Analyte
   cat('\n##', analyte, '{.tabset .tabset-fade .tabset-pills}')
