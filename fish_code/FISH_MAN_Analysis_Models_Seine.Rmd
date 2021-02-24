@@ -32,6 +32,7 @@ library(gridExtra)
 library(grid)
 library(Polychrome)
 library(plotly)
+library(lme4)
 
 ```
 
@@ -170,7 +171,7 @@ CPUE_means_Seine_phase <- Seine_f %>%
 ```{r Seine filters, warning = FALSE, message = FALSE}
 # Lists
 list_native <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish")
-list_smeltish <- c("Wakasagi", "Inland Silverside")
+list_smeltish <- c("Wakasagi", "Inland Silverside", "Delta Smelt")
 list_nmds <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish",
                "Wakasagi", "Inland Silverside", "Delta Smelt", 
                "Carp", "Goldfish", "Hardhead", "Golden Shiner", "Fathead Minnow", "Hitch",
