@@ -1,0 +1,402 @@
+---
+title: "Delta Smelt Enclosure Study 2019 Diet Data"
+output:
+  pdf_document: default
+  html_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+# load packages
+```{r message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+library(tidyverse)
+library(tidyr)
+library(lubridate)
+
+setwd("C:/Users/nkwan/OneDrive - California Department of Water Resources/Projects/North Delta Flow Action Project/NDFA Synthesis/Smelt/Diet")
+```
+# bring in contractor (UW) data
+```{r}
+diet2 <- read.csv("DSM Cage Diets 2019-2020.csv", stringsAsFactors = F, na.strings=c("",NA)) #new data, not edited at all
+
+#format 
+#rename columns
+diet2 <- diet2 %>% rename(Contents.Weight = "Total.Contents.Weight")
+
+#add taxa column (choose taxa based on what is present in the dataframe)
+diet2$Taxa <- NA 
+
+diet2[diet2$Prey.Taxa %in% c("Bosmina sp.", "Chydorus sp.", "Daphnia sp.", "Ceriodaphnia sp.", "Chydoridae", "Crangonyx sp.", "Scapholeberis sp.", "Simocephalus sp.", "Eurycercus sp.", "Leydigia sp.", "Cladocera", "Sida sp.", "Alona sp.", "Diaphanosoma sp."),]$Taxa <- "Cladocera"
+
+diet2[diet2$Prey.Taxa %in% c("Americorophium sp.", "Americorophium spinicorne", "Eogammarus confervicolus", "Gammaridea", "Hyallela azteca", "Crangonyx sp.", "Corophiidae", "Amphipoda"),]$Taxa <- "Amphipoda"
+
+diet2[diet2$Prey.Taxa %in% c("Pseudodiaptomus forbesi", "Calanoida", "Eurytemora affinis", "Diaptomidae", "Sinocalanus doerrii", "Osphranticum labronectum"),]$Taxa <- "Calanoida"
+
+diet2[diet2$Prey.Taxa %in% c("Acanthocyclops sp.", "Macrocyclops sp.", "Diacyclops thomasi", "Eucyclops sp.", "Cyclopoida", "Halicyclops sp.", "Mesocyclops sp.", "Tropocyclops sp.", "Tropocyclops sp."),]$Taxa <- "Cyclopoida"
+
+diet2[diet2$Prey.Taxa %in% c("Chironomidae", "Diptera"),]$Taxa <- "Diptera"
+
+diet2[diet2$Prey.Taxa %in% c("empty", "EMPTY"),]$Taxa <- "empty"
+
+diet2[diet2$Prey.Taxa %in% c("Harpacticoida"),]$Taxa <- "Harpacticoida"
+
+diet2[diet2$Prey.Taxa %in% c("Ostracoda"),]$Taxa <- "Ostracoda"
+
+diet2[diet2$Prey.Taxa %in% c("Fish", "Acari", "Insecta", "Bivalvia", "Culicidae", "egg unidentified", "Corixidae", "Hemiptera", "plant seed", "plant matter", "Unidentified", "Mysidacea", "Cumacea"),]$Taxa <- "Other"
+
+new_DF <- diet2[is.na(diet2$Taxa),] #update code above with new prey.taxa that weren't found in previous diets
+#there are two "copepoda" entries with no count or location...don't seem that important so I am going to just go ahead and remove them
+#diet2[diet2$Taxa %in% c("empty"),]$Count <- "0"
+diet2 <- diet2[!is.na(diet2$Count),]
+
+#remove empties
+diet2<-diet2[!(diet2$Prey.Taxa=="empty"),]
+
+#Tag column currently has rows with just the Tag and others with location, date, and tag
+#first break those two kinds of columns apart
+weird.tag <- diet2[is.na(diet2$Location),]
+norm.tag <- diet2[!is.na(diet2$Location),]
+
+#then for break out the Tag ID into Location and tag (remove date)
+weird.tag <- weird.tag %>% separate(Tag, c("Location", "X.date", "Tag"))
+
+#remove new date column
+weird.tag <- subset(weird.tag, select = -6)
+
+#add mesh types for prototype experiment
+#create new column for mesh types
+Cage_type <- as.data.frame(matrix(0, ncol = 2, nrow = 6))
+colnames(Cage_type) <- c("Cage.ID", "Mesh")
+
+Cage_type$Cage.ID <- c("A", "B", "C", "D", "E", "F")
+Cage_type$Mesh <- c("wrap", "large", "small", "small", "wrap", "large")
+
+norm.tag2 <- merge(norm.tag, Cage_type, by = "Cage.ID", all.x = TRUE)
+
+#add mesh types (NA) for summer/fall experiements
+weird.tag$Mesh <- NA 
+
+#merge the two
+diet <- rbind(weird.tag, norm.tag2)
+
+#change location titles 
+diet$Location[diet$Location =="RIVERS"] <- "RV.Feb"
+diet$Location[diet$Location =="Sac DWSC"] <- "DWSC.Apr"
+diet$Location[diet$Location =="SM"] <- "SM.Nov"
+diet$Location[diet$Location =="YB"] <- "YB.Nov"
+#RV a little trickier with two dates
+diet$ld = paste(diet$Location, diet$Date)
+diet$Location[diet$ld =="RV 8/28/2019"] <- "RV.Aug"
+diet$Location[diet$ld =="RV 11/6/2019"] <- "RV.Nov"
+RV <- filter(diet, Location == "RV")
+diet$Location[diet$ld =="RV 11/7/2019"] <- "RV.Nov"
+
+diet <- subset(diet, select = -16)
+
+#filter to sites/studies of interest
+diet.fall <- filter(diet, Location == "YB.Nov" | Location == "RV.Nov" | Location == "RV.Aug")
+```
+# prep taxa data for nmds and ANOSIM
+```{r}
+diet.fall$Count<-as.numeric(diet.fall$Count)
+
+#sum for taxa abundance among individual fish
+taxa_all<- diet.fall %>% 
+  group_by(Location, Mesh, Cage.ID, Tag, Prey.Taxa) %>% 
+  summarize("count.sum"= sum(Count))
+
+taxa_all<-subset(taxa_all, select=c("Location", "Cage.ID", "Tag", "Prey.Taxa", "count.sum"))
+
+#reorder the "location" factor
+taxa_all2 <- taxa_all
+taxa_all2$Location <- factor(taxa_all$Location, levels = c("RV.Aug", "RV.Nov","YB.Nov"))
+
+#make a new variable that combines location, cage, and tag
+taxa_all2$lct = paste(as.numeric(taxa_all2$Location), taxa_all2$Cage.ID, taxa_all2$Tag)
+
+taxa_complete <- taxa_all2 %>% 
+   ungroup %>% #have to ungroup since it for some odd reason was grouped
+   complete(lct, Prey.Taxa, fill = list(count.sum = 0))
+
+#get totals
+taxa_total <- taxa_complete %>% 
+  group_by(lct) %>% 
+  summarize("total.count"= sum(count.sum))
+
+#merge
+taxa_prop <- left_join(taxa_complete, taxa_total, by="lct")
+taxa_prop$proportion <- taxa_prop$count.sum/taxa_prop$total.count
+```
+# nmds and ANOSIM on diet taxa
+```{r}
+# using info from: https://jkzorz.github.io/2019/06/06/NMDS.html and https://jkzorz.github.io/2019/06/11/ANOSIM-test.html
+library(vegan)
+
+#remove the old values
+taxa2 <- taxa_prop[c(1,2,8)]
+
+#flip data frame so that Prey.Taxa is the column names, mean.count is the value, and lct are the row names
+all.flip <- spread(data=taxa2, key = Prey.Taxa, value= proportion)
+
+#convert lct back to "location, "cage" and "ID"
+
+all.flip$Location <- factor(substr(all.flip$lct, 1,1), levels = c(1,2,3), 
+                      labels = c("RV.Aug", "RV.Nov", "YB.Nov"))
+all.flip$Cage <- substr(all.flip$lct, 3, 4)
+all.flip$Tag <- substr(all.flip$lct, 5, 9)
+
+#extract columns with abundance info
+diet = all.flip[2:23]
+
+#change to matrix for vegan
+m.diet <- as.matrix(diet)
+
+#run metaMDS command - use bray as the distance measure (Bray-Curtis takes into account species presence/absence as well as abundance - other distance measures often only account for presence/absence)
+nmds <- metaMDS(m.diet, distance = "bray")
+plot(nmds)
+
+treat=c(rep("RV.Aug",3),rep("RV.Nov",3),rep("YB.Nov",3))
+ordiplot(nmds, type="n")
+ordihull(nmds,groups=treat,draw="polygon",col="grey90",label=F)
+orditorp(nmds,display="species",col="red",air=0.01)
+orditorp(nmds,display="sites",col=c(rep("green",5),rep("blue",5)),
+   air=0.01,cex=1.25)
+
+#extract NMDS scores (x and y coordinates)
+data.scores = as.data.frame(scores(nmds))
+
+#add columns to data frame 
+data.scores$Location = all.flip$Location
+data.scores$Mesh = all.flip$Cage
+data.scores$Cage = all.flip$Tag
+
+#plot
+ggplot(data.scores, aes(x=NMDS1, y=NMDS2)) +
+  geom_point(size=5, aes(colour=Location))
+
+#ANOSIM
+ano <- anosim(m.diet, all.flip$Location, distance="bray")
+ano #0.50
+
+ano <- anosim(m.diet, all.flip$Cage, distance="bray")
+ano #-0.02
+
+#"The ANOSIM statistic compares the mean of ranked dissimilarities between groups to the mean of ranked dissimilarities within groups. An R value close to "1.0" suggests dissimilarity between groups while an R value close to "0" suggests an even distribution of high and low ranks within and between groups. R values below "0" suggest that dissimilarities are greater within groups than between groups. See Clarke and Gorley (2001) for a guide to interpreting ANOSIM R values."
+
+```
+# prep dataset with zoop and diet
+```{r}
+#prep------------------------------------------------------------------------
+zoop <- read.csv("zoop_NDFA.csv", stringsAsFactors = F) #from lower trophic sub-team
+
+#condense to just what we need
+zoop2 <- zoop[c(2,3,4,7,25,43)] #don't need CPUE since that isn't really necessary for these kinds of statistical tests
+
+#only keep stations near the cages & only 2019
+zoop3 <- zoop2 %>% filter(Year == 2019, Month == 8 | Month == 10 | Month == 11, StationCode == "STTD" | StationCode == "RVB")
+
+#rename stations
+zoop3$Station[which(zoop3$StationCode == "RVB")] = "RV"
+zoop3$Station[which(zoop3$StationCode == "STTD")] = "YB"
+
+#put site and date together
+zoop3$ID = paste(zoop3$Station, zoop3$Date)
+
+#create 0's when not caught
+zoop_complete <- zoop3 %>% 
+     ungroup %>% 
+       complete(ID, Organism, fill = list(Count = 0))
+
+#make things found in zoop and diet with different names for the same species match
+
+zoop_complete[zoop_complete$Organism %in% c("Acanthocyclops vernalis adult", "Acanthocyclops sp."),]$Organism <- "Acanthocyclops sp."
+
+zoop_complete[zoop_complete$Organism %in% c("Alona"),]$Organism <- "Alona sp."
+
+zoop_complete[zoop_complete$Organism %in% c("Eucyclops pectinifer", "Eucyclops elegans", "Eucyclops spp."),]$Organism <- "Eucyclops sp."
+
+zoop_complete[zoop_complete$Organism %in% c("Calanoid copepodids"),]$Organism <- "Calanoida"
+
+zoop_complete[zoop_complete$Organism %in% c("Pseudodiaptomus forbesi adult"),]$Organism <- "Pseudodiaptomus forbesi"
+
+zoop_complete[zoop_complete$Organism %in% c("Ceriodaphnia"),]$Organism <- "Ceriodaphnia sp."
+
+zoop_complete[zoop_complete$Organism %in% c("Diaphanosoma"),]$Organism <- "Diaphanosoma sp."
+
+zoop_complete[zoop_complete$Organism %in% c("Eurycercus"),]$Organism <- "Eurycercus sp."
+
+zoop_complete[zoop_complete$Organism %in% c("Harpacticoids"),]$Organism <- "Harpacticoida"
+
+zoop_complete[zoop_complete$Organism %in% c("Bosmina"),]$Organism <- "Bosmina sp."
+
+zoop_complete[zoop_complete$Organism %in% c("Daphnia"),]$Organism <- "Daphnia sp."
+
+zoop_complete[zoop_complete$Organism %in% c("Eurytemora affinis adult"),]$Organism <- "Eurytemora affinis"
+
+zoop_complete[zoop_complete$Organism %in% c("Acartiella sinensis"),]$Organism <- "Calanoida"
+
+zoop_complete[zoop_complete$Organism %in% c("Alonella", "Chydorus", "Graptoleberis", "Kurzia", "Monospilus", "Camptocercus", "Picripleuroxus", "Pleuroxus"),]$Organism <- "Chydoridae"
+
+zoop_complete[zoop_complete$Organism %in% c("Cyclopoid copepodid", "Paracyclops fimbriatus", "Macrocyclops albidus", "Microcyclops rubellus", "Cyclopoid adult", "Paracyclops chiltoni"),]$Organism <- "Cyclopoida"
+
+zoop_complete[zoop_complete$Organism %in% c("Mesocyclops edax"),]$Organism <- "Mesocyclops sp."
+
+zoop_complete[zoop_complete$Organism %in% c("Ostracods"),]$Organism <- "Ostracoda"
+
+#now there are some taxa repeated so condense down
+zoop_complete2<- zoop_complete %>% 
+  group_by(ID, Organism) %>% 
+  summarize("sum.Count"= sum(Count))
+
+#get totals
+zoop_total <- zoop_complete2 %>% 
+  group_by(ID) %>% 
+  summarize("total.count"= sum(sum.Count))
+
+#merge
+zoop_prop <- left_join(zoop_complete2, zoop_total, by="ID")
+zoop_prop$proportion <- zoop_prop$sum.Count/zoop_prop$total.count
+
+#remove the old values
+zoop_prop <- zoop_prop[c(1,2,5)]
+
+#flip data frame so that Prey.Taxa is the column names, mean.count is the value, and ID are the row names
+zoop.flip <- spread(data=zoop_prop, key = Organism, value= proportion)
+
+#make similar column names
+zoop.flip$Cage <- "X"
+zoop.flip$Tag <- "X"
+zoop.flip$date <-  substr(zoop.flip$ID, 4, 15)
+zoop.flip$date <- ymd(zoop.flip$date)
+zoop.flip$month <- format(zoop.flip$date,"%B")
+zoop.flip$month[which(zoop.flip$month == "October")] = "Fall"
+zoop.flip$month[which(zoop.flip$month == "August")] = "Summer"
+zoop.flip$site <- substr(zoop.flip$ID, 1, 2)
+zoop.flip$type <- "ambient"
+zoop.flip$date <- as.character(zoop.flip$date)
+zoop.flip <- subset(zoop.flip, select = -1)
+
+all.flip2 <- subset(all.flip, select = -1)
+all.flip2$month <- substr(all.flip2$Location, 4, 6)
+all.flip2[all.flip2$month %in% c("Aug"),]$month <- "Summer"
+all.flip2[all.flip2$month %in% c("Nov"),]$month <- "Fall"
+all.flip2$site <- substr(all.flip2$Location, 1, 2)
+all.flip2$type <- "diet"
+all.flip2$date <- "X"
+all.flip2 <- subset(all.flip2, select = -23)
+
+#put together
+full.flip <- bind_rows(zoop.flip, all.flip2)
+
+#reorder columns
+full.flip <- full.flip[, c(24:29, 1:23, 30:36)]
+
+#replace NA with 0
+full.flip[is.na(full.flip)] = 0
+
+```
+# nmds and ANOSIM on zoop and diet
+```{r}
+#nmds------------------------------------------------------------------------
+#reference: https://jkzorz.github.io/2019/06/06/NMDS.html
+
+#extract columns with abundance info
+full = full.flip[7:36]
+
+#change to matrix for vegan
+m.full <- as.matrix(full)
+
+#run metaMDS command - use bray as the distance measure (Bray-Curtis takes into account species presence/absence as well as abundance - other distance measures often only account for presence/absence)
+nmds <- metaMDS(m.full, distance = "bray", trymax = 100)
+nmds #stress = 0.07, no convergence
+##An important number to note is the stress, which is roughly the “goodness of fit” of your NMDS ordination. For a good representation of your data, the stress value should ideally be less than 0.2
+plot(nmds)
+
+#extract NMDS scores (x and y coordinates)
+data.scores = as.data.frame(scores(nmds))
+
+#add columns to data frame 
+data.scores$type = full.flip$type
+data.scores$month = full.flip$month
+data.scores$site = full.flip$site
+
+#plot
+ggplot(data.scores, aes(x=NMDS1, y=NMDS2)) +
+  geom_point(size=5, aes(colour=month, shape=type)) 
+
+ggplot(data.scores, aes(x=NMDS1, y=NMDS2)) +
+  geom_point(size=5, aes(colour=site, shape=type))
+
+#ANOSIM------------------------------------------------------------------------
+#reference: https://jkzorz.github.io/2019/06/11/ANOSIM-test.html
+
+ano <- anosim(m.full, full.flip$type, permutations = 9999, distance="bray")
+ano #R = 0.3436
+
+ano2 <- anosim(m.full, full.flip$site, permutations = 9999, distance="bray")
+ano2 #R = 0.4198
+
+ano3 <- anosim(m.full, full.flip$month, permutations = 9999, distance="bray")
+ano3 #R = 0.07055
+```
+# indicator species analysis (not used for final results, just exploratory)
+```{r}
+#indicator species analysis------------------------------------------------------------------------
+#reference: https://jkzorz.github.io/2019/07/02/Indicator-species-analysis.html
+
+install.packages("indicspecies")
+library(indicspecies)
+
+type = full.flip$type
+
+ind = multipatt(full, type, func = "r.g", control = how(nperm=9999))
+summary(ind) #The summary function will only return the statistically significant species ( p < 0.05). If you are interested in all your species, add alpha = 1 to your command
+
+#run nmds w/ envfit------------------------------------------------------------------------
+#reference: https://jkzorz.github.io/2020/04/04/NMDS-extras.html
+
+#extract columns with community info
+com = full.flip[7:36]
+#extract columns with enviro/descriptive info
+env = full.flip[1:6]
+
+#nmds
+m_com = as.matrix(com)
+nmds = metaMDS(m_com, distance = "bray")
+
+en = envfit(nmds, env, permutations = 999, na.rm = TRUE)
+en
+
+#prep for plotting
+data.scores = as.data.frame(scores(nmds))
+data.scores$type = full.flip$type
+
+en_coord_cat = as.data.frame(scores(en, "factors")) * ordiArrowMul(en)
+
+#plot
+ggplot(data = data.scores, aes(x = NMDS1, y = NMDS2)) + 
+     geom_point(data = data.scores, aes(colour = type), size = 3, alpha = 0.5) + 
+     scale_colour_manual(values = c("orange", "steelblue")) + 
+     theme(axis.title = element_text(size = 10, face = "bold", colour = "grey30"), 
+     panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+     axis.ticks = element_blank(), axis.text = element_blank(), legend.key = element_blank(), 
+     legend.title = element_text(size = 10, face = "bold", colour = "grey30"), 
+     legend.text = element_text(size = 9, colour = "grey30")) +
+     labs(colour = "Sample")
+
+ggplot(data = data.scores, aes(x = NMDS1, y = NMDS2)) + 
+     geom_point(data = data.scores, aes(colour = type), size = 3, alpha = 0.5) + 
+     scale_colour_manual(values = c("orange", "steelblue"))  + 
+         geom_point(data = en_coord_cat, aes(x = NMDS1, y = NMDS2), 
+       shape = "diamond", size = 4, alpha = 0.6, colour = "navy") +
+     geom_text(data = en_coord_cat, aes(x = NMDS1, y = NMDS2+0.04), 
+       label = row.names(en_coord_cat), colour = "navy", fontface = "bold") + 
+         theme(axis.title = element_text(size = 10, face = "bold", colour = "grey30"), 
+       panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
+       axis.ticks = element_blank(), axis.text = element_blank(), legend.key = element_blank(), 
+       legend.title = element_text(size = 10, face = "bold", colour = "grey30"), 
+       legend.text = element_text(size = 9, colour = "grey30")) + 
+     labs(colour = "Sample")
+```
+

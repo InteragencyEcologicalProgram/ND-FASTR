@@ -1,26 +1,24 @@
 # NDFA Water Quality
 # Purpose: Download the 2015-2019 contaminant concentration data in water and suspended sediment 
-  # collected and analyzed by USGS from NWIS. Jim Orlando provided contaminant concentration 
-  # data in zooplankton from 2017-2019 since this data is not available on NWIS at this time.
+  # collected and analyzed by USGS from NWIS. This data was used to add MDL values to the water 
+  # and suspended sediment data provided by Jim Orlando in Excel spreadsheets.
 # Author: Dave Bosworth
 # Contacts: David.Bosworth@water.ca.gov
+# Final download of data on 2/9/2021
 
 # Load packages
 library(tidyverse)
 library(dataRetrieval)
 library(readxl)
 
-# Source global WQ functions
-source("Water_Quality/global_wq_funcs.R")
+# Source global NDFA functions
+source("global_ndfa_funcs.R")
 
-# Define main NDFA file path for WQ subteam (assumes synced with SharePoint)
-fp_fastr <- "California Department of Water Resources/Office of Water Quality and Estuarine Ecology - North Delta Flow Action/WQ_Subteam/"
-
-# Define relative file path to export raw continuous USGS data files to
-fp_rel <- paste0(fp_fastr, "Raw_Data/Contaminants")
+# Define relative file path for the raw contaminants USGS data
+fp_rel_contam_raw <- "WQ_Subteam/Raw_Data/Contaminants"
 
 # Define absolute file path
-fp_abs <- get_abs_path(fp_rel)
+fp_abs_contam_raw <- ndfa_abs_sp_path(fp_rel_contam_raw)
 
 # Create objects for start and end dates
 start_date <- "2015-10-19"
@@ -28,8 +26,12 @@ end_date <- "2019-10-16"
 
 # Import parameter codes to download
 params <- 
-  read_excel(paste0(fp_abs, "/USGS_Data_Download_metadata.xlsx"), sheet = "Parameter Codes") %>% 
-  pull(parameter_code)
+  read_excel(
+    file.path(fp_abs_contam_raw, "USGS_Data_Download_metadata.xlsx"), 
+    sheet = "Parameter Codes"
+  ) %>% 
+  filter(!is.na(usgs_parameter_code)) %>% 
+  pull(usgs_parameter_code)
 
 params <- as.character(params)
 
@@ -77,7 +79,7 @@ usgs_data <-
 
 # Export raw data as a .csv file
 usgs_data %>% write_excel_csv(
-  path = paste0(fp_abs, "/CONTAM_RAW_NWIS_2015-2019.csv"),
+  file = file.path(fp_abs_contam_raw, "CONTAM_RAW_NWIS_2015-2019.csv"),
     na = ""
   )
 
