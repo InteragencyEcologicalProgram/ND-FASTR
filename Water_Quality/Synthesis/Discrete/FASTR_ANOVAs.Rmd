@@ -6,14 +6,12 @@
 
 # import packages and scripts
 library(tidyverse)
-library(lubridate)
 library(lmerTest)
-library(rstatix)
 library(lme4)
-library(car)
-# library(ARTool)
 source('global_ndfa_funcs.R')
 ```
+
+Current output is ANOVA results, aka, if the variable is significant. To fill out hypothesis table, need to do post-hoc analysis determine in what way it's significant (eg., for before/during/after, determine if the regression coefficents are positive/negative and determine which ones are "indivdually" significant).
 
 ```{r Import Data}
 # define absolute filepaths
@@ -71,20 +69,27 @@ aov_all <- list()
 for (i in seq(analytes)){
   analyte <- analytes[i]
   
-  print(paste0('~*~*~',analyte,'~*~*~'))
-  
   df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
   
   df_sub$Result <- with(df_sub, ifelse(is.na(Result), RL, Result))
 
   df_sub$Result <- log(df_sub$Result)
   
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  df_sub$Year <- as.character(df_sub$Year)
+  
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  
+  # print(paste0('~*~*~',analyte,'~*~*~'))
+  # print(lmer_fit)
   
   aov_lmer <- anova(lmer_fit, type = 'III')
 
+  # print(aov_lmer)
+  # print('-----------------')
+  
   df_aov <- as.data.frame(aov_lmer)
   df_aov <- rename(df_aov, Pr_F = `Pr(>F)`)
+  df_aov$Variable <- row.names(df_aov)
   df_aov$Analyte <- analyte
   df_aov <- df_aov %>%
     mutate(Significance = case_when(
@@ -102,7 +107,6 @@ for (i in seq(analytes)){
 }
 
 all_data <- do.call(rbind, aov_all)
-all_data
 write_csv(all_data, 'C:/Users/sperry/Desktop/anova_RL.csv')
 ```
 
@@ -116,12 +120,13 @@ for (i in seq(analytes)){
   df_sub$Result[is.na(df_sub$Result)] <- 0.01
   df_sub$Result <- log(df_sub$Result)
 
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
   
   aov_lmer <- anova(lmer_fit, type = 'III')
 
   df_aov <- as.data.frame(aov_lmer)
   df_aov <- rename(df_aov, Pr_F = `Pr(>F)`)
+  df_aov$Variable <- row.names(df_aov)
   df_aov$Analyte <- analyte
   df_aov <- df_aov %>%
     mutate(Significance = case_when(
@@ -149,14 +154,23 @@ for (i in seq(analytes)){
   analyte <- analytes[i]
   
   df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
+  
+  for (i in seq(length(df_sub$Station))){
+    if (is.na(df_sub$Result[i])){
+      vec <- seq(0.01, df_sub$RL[i], by = 0.01)
+      df_sub$Result[i] <- sample(vec, size = 1)    
+    }
+  }
+  
   df_sub$Result <- log(df_sub$Result)
 
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
   
   aov_lmer <- anova(lmer_fit, type = 'III')
 
   df_aov <- as.data.frame(aov_lmer)
   df_aov <- rename(df_aov, Pr_F = `Pr(>F)`)
+  df_aov$Variable <- row.names(df_aov)
   df_aov$Analyte <- analyte
   df_aov <- df_aov %>%
     mutate(Significance = case_when(
@@ -170,6 +184,8 @@ for (i in seq(analytes)){
   df_aov <- rename(df_aov, `Pr(>F)` = Pr_F)
 
   aov_all[[i]] <- df_aov
+  
+  aov_all <- compact(aov_all)
 }
 
 all_data <- do.call(rbind, aov_all)
@@ -184,14 +200,23 @@ for (i in seq(analytes)){
   analyte <- analytes[i]
   
   df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
+  
+  for (i in seq(length(df_sub$Station))){
+    if (is.na(df_sub$Result[i])){
+      vec <- seq(0.01, df_sub$RL[i], by = 0.01)
+      df_sub$Result[i] <- sample(vec, size = 1)    
+    }
+  }
+  
   df_sub$Result <- log(df_sub$Result)
 
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
   
   aov_lmer <- anova(lmer_fit, type = 'III')
 
   df_aov <- as.data.frame(aov_lmer)
   df_aov <- rename(df_aov, Pr_F = `Pr(>F)`)
+  df_aov$Variable <- row.names(df_aov)
   df_aov$Analyte <- analyte
   df_aov <- df_aov %>%
     mutate(Significance = case_when(
@@ -205,6 +230,8 @@ for (i in seq(analytes)){
   df_aov <- rename(df_aov, `Pr(>F)` = Pr_F)
 
   aov_all[[i]] <- df_aov
+  
+  aov_all <- compact(aov_all)
 }
 
 all_data <- do.call(rbind, aov_all)
@@ -219,14 +246,23 @@ for (i in seq(analytes)){
   analyte <- analytes[i]
   
   df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
+  
+  for (i in seq(length(df_sub$Station))){
+    if (is.na(df_sub$Result[i])){
+      vec <- seq(0.01, df_sub$RL[i], by = 0.01)
+      df_sub$Result[i] <- sample(vec, size = 1)    
+    }
+  }
+  
   df_sub$Result <- log(df_sub$Result)
 
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
   
   aov_lmer <- anova(lmer_fit, type = 'III')
-
+  
   df_aov <- as.data.frame(aov_lmer)
   df_aov <- rename(df_aov, Pr_F = `Pr(>F)`)
+  df_aov$Variable <- row.names(df_aov)
   df_aov$Analyte <- analyte
   df_aov <- df_aov %>%
     mutate(Significance = case_when(
@@ -240,8 +276,11 @@ for (i in seq(analytes)){
   df_aov <- rename(df_aov, `Pr(>F)` = Pr_F)
 
   aov_all[[i]] <- df_aov
+  
+  aov_all <- compact(aov_all)
 }
 
 all_data <- do.call(rbind, aov_all)
 write_csv(all_data, 'C:/Users/sperry/Desktop/anova_rand3.csv')
 ```
+
