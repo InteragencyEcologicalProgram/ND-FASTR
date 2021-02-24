@@ -1,12 +1,13 @@
 #let's see what we can do with Jeff's salmonid data
 
 #First load some librarys
-
+library(readxl)
 library(tidyverse)
 
 #import the data
 
-salmon = read.csv("YB_Salmonid_catch.csv", stringsAsFactors = F)
+salmon = read.csv("fish data/YB_Salmonid_catch.csv", stringsAsFactors = F)
+
 
 #let's see if that read in right
 str(salmon)
