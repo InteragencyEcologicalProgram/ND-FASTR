@@ -1,0 +1,133 @@
+---
+title: "Untitled"
+author: "Nicole"
+date: "4/30/2020"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# plot condition factor
+```{r}
+#load packages
+library(tidyverse)
+library(lubridate)
+library(rcompanion)
+library(ggpubr)
+
+#set working directory
+setwd("C:/Users/nkwan/OneDrive - California Department of Water Resources/Projects/North Delta Flow Action Project/NDFA Synthesis/Smelt/Growth")
+
+#import data
+smelt <- read_csv("all smelt.csv")
+
+#remove fish with missing condition factor
+smelt <- smelt[!is.na(smelt$K),]
+
+#reorder summer & fall
+smelt$Month = factor(smelt$Month, levels = c("Summer", "Fall"))
+
+#remove SM
+smelt <- smelt[!(smelt$Type=="SM"),]
+
+#reorder sites
+smelt$Type = factor(smelt$Type, levels = c("Control", "Batch", "RV", "Yolo"))
+
+#table of means
+mean.K<- smelt %>% 
+  group_by(Type, Month) %>% 
+  summarize("mean.K"= mean(K),)
+
+#plot condition factor
+ggplot(data=smelt, aes(Type, K, fill=Type)) + geom_boxplot() + facet_grid(~Month) + 
+  stat_compare_means() +
+  theme_bw() + 
+  labs(x = "Treatment") + 
+  scale_fill_brewer(palette="Dark2")+
+  labs(y = "Condition Factor") +
+  theme(axis.title = element_text(size = 12),
+    axis.text = element_text(size = 12),
+    strip.text.x = element_text(size =12),
+    legend.position = "none",
+    axis.text.x = element_text(angle = 12))
+ggsave("smelt_growth.png", dpi=300, height=4, width=6.5, units="in")
+```
+
+# stats
+```{r}
+#test significance
+shapiro.test(smelt$K) #significant
+plotNormalHistogram(smelt$K)
+
+#log transform
+smelt$log.K <- log(smelt$K +1)
+shapiro.test(smelt$log.K) #significant
+plotNormalHistogram(smelt$log.K) 
+
+# Run ANOVA on summer
+summer_btw <- smelt %>%
+  filter(Month != "Fall")
+
+summer.k.aov <- aov(log.K~Type, data = summer_btw)
+summary(summer.k.aov)
+
+# Check assumptions 
+# Homogeneity of variances
+leveneTest(log.K~Type, data = summer_btw) # p<0.05 means not homogeneous
+
+# Normality
+plot(summer.k.aov)
+
+summer.k.residuals <- residuals(object = summer.k.aov)
+shapiro.test(x = summer.k.residuals ) # p<0.05
+
+# Does not meet assumptions: do non-parametric Kruskal-Wallis test
+kruskal.test(K~Type, data = summer_btw) # significant
+
+# Post-hoc Dunn test 
+# Dunn test can be used if sample size are heterogeneous
+summer.dunn <- dunnTest(K~Type,
+                    data = summer_btw,
+                    method = "bonferroni") # bonferroni corrects for number of comparisons
+summer.dunn
+summer.dunn = summer.dunn$res
+
+cldList(comparison = summer.dunn$Comparison,
+        p.value    = summer.dunn$P.adj,
+        threshold  = 0.05)
+
+#-------------------------------------
+# Run ANOVA on fall
+fall_btw <- smelt %>%
+  filter(Month != "Summer")
+
+fall.k.aov <- aov(K~Type, data = fall_btw)
+summary(fall.k.aov)
+
+# Check assumptions 
+# Homogeneity of variances
+leveneTest(K~Type, data = fall_btw) # p>0.05 means homogeneous
+
+# Normality
+plot(fall.k.aov)
+
+fall.k.residuals <- residuals(object = fall.k.aov)
+shapiro.test(x = fall.k.residuals ) # p<0.05 means not normal
+
+# Does not meet assumptions: do non-parametric Kruskal-Wallis test
+kruskal.test(K~Type, data = fall_btw) # significant
+
+# Post-hoc Dunn test 
+# Dunn test can be used if sample size are heterogeneous
+fall.dunn <- dunnTest(K~Type,
+                    data = fall_btw,
+                    method = "bonferroni") # bonferroni corrects for number of comparisons
+fall.dunn
+fall.dunn = fall.dunn$res
+
+cldList(comparison = fall.dunn$Comparison,
+        p.value    = fall.dunn$P.adj,
+        threshold  = 0.05)
+
+```
+
