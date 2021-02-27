@@ -4,7 +4,7 @@ author: "Catarina Pien"
 date: "12/15/2020"
 output: html_document
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 Code for FASTR fish models for seine data
@@ -32,7 +32,8 @@ library(gridExtra)
 library(grid)
 library(Polychrome)
 library(plotly)
-library(lme4)
+library(glmmTMB) # zeroinfl GLMM
+library(lme4) # negbin GLMM
 
 ```
 
@@ -49,14 +50,64 @@ Fish_ndfa_0 <- read.csv("fish data/FISH_MAN_allIEPsurveys_20201030.csv")
 Fish_ndfa <- dplyr::select(Fish_ndfa_0, -c(Turbidity, DO, Latitude, Longitude))
 FlowDesignation <- read.csv("fish data/FlowDatesDesignations_45days.csv")
 Regions <- read.csv("fish data/Stations_Fish_NDFA_2021-01-13.csv")
-Regions_min <- Regions %>%
-  rename(Survey = Survey.x) %>%
-  dplyr::select(-c(Intersect, geometry, RegionMult))
 
 # Look at data
 head(Fish_ndfa)
 str(Fish_ndfa)
 
+```
+
+# Try to modify the EDSM Stations
+
+```{r}
+library(nngeo)
+library(sp)
+
+setwd("C:/Users/cpien/OneDrive - California Department of Water Resources/Work/FASTR/FASTR/ND-FASTR")
+#Regions2 <- Regions %>% 
+#  mutate(StationType = ifelse(Survey.x == "EDSM", "Random", "Fixed"))
+#
+#EDSM <- filter(Regions2, Survey.x == "EDSM")
+#StationRest <- filter(Regions, Survey.x != "EDSM")
+#
+## Change to shapefile - not sure if this is necessary but couldn't figure out otherwise how to get it to work
+# coordinates(EDSM) = ~Longitude+Latitude
+# proj4string(EDSM) = CRS("+proj=longlat +datum=WGS84")
+# raster::shapefile(EDSM, "fish_code/R_write/EDSMShapefile.shp")
+# 
+# coordinates(StationRest) = ~Longitude+Latitude
+# proj4string(StationRest) = CRS("+proj=longlat +datum=WGS84")
+# raster::shapefile(StationRest, "fish_code/R_write/StationRestShapefile.shp")
+
+EDSM_s <- st_read("fish_code/R_write/EDSMShapefile.shp")
+StationRest_s <- st_read("fish_code/R_write/StationRestShapefile.shp")
+
+# Run nearest neighbor
+NN <- st_nn(EDSM_s, StationRest_s, progress = FALSE)
+
+# Convert list into a data frame
+df <- do.call(rbind.data.frame, NN)
+colnames(df) <-  "Row"
+
+# Extract the rest of the dataset based on the row number
+result <- StationRest_s[df$Row,]
+
+# Merge dataframes
+EDSM_nn <- cbind(EDSM_s, result) %>%
+  select(c(2, 9)) %>%
+  rename(Neighbor = StatnCd.1,
+         StationCode = StatnCd)
+Regions3 <- left_join(Regions, EDSM_nn, by = "StationCode") %>%
+  mutate(StationCodeF = ifelse(is.na(Neighbor), StationCode, Neighbor))
+Regions_min <- Regions3 %>%
+  rename(Survey = Survey.x) %>%
+  dplyr::select(-c(Intersect, geometry.x, geometry.y, RegionMult, Neighbor))
+
+summary(Regions_min)
+```
+
+Modifications to data frames and joins
+```{r}
 # Add variables
 Fish_ndfa$Date <- ymd(Fish_ndfa$Date)
 Fish_ndfa$Month <- month(Fish_ndfa$Date)
@@ -72,26 +123,19 @@ FlowDesignation$PostFlowEnd <- mdy(FlowDesignation$PostFlowEnd)
 Fish_all0 <- inner_join(Fish_ndfa,FlowDesignation, by = "Year")
 Fish_all1 <- left_join(Fish_all0, Regions_min, by = c("StationCode", "Survey"))
 
+summary(Fish_all1)
 # anti_join(Fish_all1, Fish_all0, by = colnames(Fish_all0))
 
 Fish_all <- Fish_all1 %>%
    mutate(ActionPhase = ifelse(Date > PreFlowStart & Date<PreFlowEnd, "Pre", NA)) %>%
-   mutate(ActionPhase = replace(ActionPhase, Date > PreFlowEnd & Date < PostFlowStart, "During")) %>% 
+   mutate(ActionPhase = replace(ActionPhase, Date > PreFlowEnd & Date < PostFlowStart, "During")) %>%
    mutate(ActionPhase = replace(ActionPhase, Date > PostFlowStart & Date < PostFlowEnd, "Post")) %>%
   filter(!is.na(ActionPhase)) %>%
    dplyr::select(-c(PreFlowStart:PostFlowEnd)) %>%
    arrange(Date, Survey, StationCode, CommonName)
 
-
-# Order Action Phases
-Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
-Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhase)[c(3,1,2)])
-
 # Define variable structures
-str(Fish_all)
-
 Fish_all$Date <- ymd(Fish_all$Date)
-Fish_all$fMonth <- as.factor(Fish_all$Month)
 Fish_all$fYear <- as.factor(Fish_all$Year)
 Fish_all$WYType <- as.factor(Fish_all$WYType)
 Fish_all$FlowPulseType <- as.factor(Fish_all$FlowPulseType)
@@ -101,11 +145,13 @@ Fish_all$Survey <- as.factor(Fish_all$Survey)
 Fish_all$StationCode <- as.factor(Fish_all$StationCode)
 Fish_all$MethodCode <- as.factor(Fish_all$MethodCode)
 Fish_all$Region <- factor(Fish_all$Region, levels = c("Upstream", "Downstream", "MiddleSacRiver"))
-
+Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhase)[c(2,3,1)])
 str(Fish_all)
 
+Fish_all <- Fish_all %>%
+  rename(StationCodeOrig = StationCode,
+         StationCode = StationCodeF)
 ```
-
 
 ## Data Prep
 
@@ -146,7 +192,7 @@ Seine_CPUE <- Seine_complete %>%
   mutate(CPUE = round(sum.count/VolumeSampled,2))
 
 ### Rearrange columns 
-Seine_f <- Seine_CPUE[, c("Date", "Year", "fYear" , "Month", "Day", "Survey", "StationCode",                           "Latitude", "Longitude","MethodCode",
+Seine_f <- Seine_CPUE[, c("Date", "Year", "fYear" , "Survey", "StationCode",                           "Latitude", "Longitude","MethodCode",
                          "WYType", "FlowPulseType", "NetFlowDays","ActionPhase", "Region", "Secchi",  "Conductivity", "WaterTemp", "VolumeSampled",  "CommonName", "sum.count", "CPUE")]
 
 ### Mean CPUE 
@@ -192,7 +238,7 @@ Seine_smeltish0 <- Seine_f %>% filter(CommonName %in% list_smeltish) %>%
 #### Sum smeltish into one CPUE/seine
 ```{r}
 Seine_smeltish <- Seine_smeltish0 %>%
-  group_by(Date, Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, VolumeSampled) %>%
+  group_by(Date, Survey, fYear, StationCode, ActionPhase, Region, VolumeSampled) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
 ```
@@ -223,7 +269,57 @@ ggplot(Seine_smeltish, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = A
 
 # Year 
 ggplot(Seine_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+Seine_summary_yr1 <- Seine_smeltish %>% 
+  group_by(fYear, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Seine_summary_yr1, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = ActionPhase)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
+
+Seine_summary_yr2 <- Seine_smeltish %>% 
+  group_by(fYear, Region) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Seine_summary_yr2, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
+
+Seine_summary_yr3 <- Seine_smeltish %>% 
+  group_by(fYear, Region, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+Seine_summary_yr4 <- Seine_smeltish %>% 
+  group_by(fYear, Region, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = length(unique(StationCode)),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+length(unique(Seine_smeltish$StationCode))
+
 ```
+2015 + 2018 similar
+2014 + 2017 similar
+
 
 # Barplot for final figure 
 # Summarize - Mean + Standard Error
@@ -244,11 +340,12 @@ plot1 <- ggplot(Seine_summary, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPU
         legend.text = element_text(size = 14),
         legend.title = element_text(size = 15),
         legend.position = "bottom")
-
+plot1
 ```
 
 Initial model - QQ plot doesn't look good
 ```{r}
+
 (M.smeltish1 <- glm(sumCPUE~FlowPulseType + Region + fYear + ActionPhase, data  = Seine_smeltish))
 summary(M.smeltish1)
 par(mfrow = c(2,2))
@@ -267,7 +364,7 @@ hist(logCPUE)
 ```
 
 #### Zero-inflated model
-```{r}
+```{r} 
 # For CPUE, use offset to account for sampling effort
 Seine_smeltish$Samp <- log(Seine_smeltish$VolumeSampled)
 
@@ -303,24 +400,73 @@ vuong(nb1, zinb1)
 ```
 It is. 
 
-#### Diagnostic Plots
-https://stackoverflow.com/questions/43075911/examining-residuals-and-visualizing-zero-inflated-poission-r
-
-Rootograms - should like like a typical overdispersed distribution
-This compares observed and fitted frequencies
-Randomized quantile residuals plot
+Try glmmAdaptive (hurdle negative binomial)
 ```{r}
+library(GLMMadaptive)
+hm1 <- mixed_model(sumCount ~ Region + ActionPhase + offset(Samp), random = ~1|StationCode, data = Seine_no2019, 
+                  family = hurdle.negative.binomial(), zi_fixed = ~.)
+```
+
+
+Run glmmTMB (negative binomial mixed modeling) to include station as random effect
+
+```{r}
+Seine_no2019 <- Seine_smeltish %>% filter(fYear != "2019")
+
+# Formula
+f2 <- formula(sumCount ~ Region +  ActionPhase + offset(Samp) + (1|StationCode) + (1|fYear))
+
+f3 <- formula(sumCount ~ Region + fYear*ActionPhase  + offset(Samp) + (1|StationCode))
+
+M.glmmnb1 <- glmmTMB(f2, family = nbinom1, ziformula = ~., data = Seine_no2019); summary(M.glmmnb1)
+M.glmmnb2 <- glmmTMB(f3, family = nbinom2, ziformula = ~., data = Seine_smeltish); summary(M.glmmnb2)
+```
+
+NOW: Trying to summarize by Region (average of stations within region) - might need to switch to Negbin rather than zero-infl. Check to make sure there are no zeros. 
+```{r}
+
+Seine_red <- Seine_smeltish %>%
+  group_by(fYear, Region, ActionPhase) %>%
+  summarize(sumCount2 = sum(sumCount),
+            sumVol = sum(VolumeSampled))
+
+zinb1 <- zeroinfl(f1, na.action = "na.fail", dist="negbin", link = "logit", data = Seine_smeltish) ; summary(zinb1)
+# For CPUE, use offset to account for sampling effort
+Seine_red$Samp <- log(Seine_red$sumVol)
+
+f2 <- formula(sumCount2 ~ Region +  fYear + ActionPhase + offset(Samp))
+M.zinb1 <- zeroinfl(f2, na.action = "na.fail", dist="negbin", link = "logit", data = Seine_red)
+
+
+
+```
+
+Compare models
+```{r}
+AIC(M.glmmnb1, M.glmmnb2)
+```
+
+**Is this AIC difference worth the interactions?**
+
+
+#### Diagnostic Plots
+https://cran.r-project.org/web/packages/glmmTMB/vignettes/model_evaluation.pdf
+```{r}
+library(DHARMa)
 par(mfrow = c(1,2))
-rootogram(zinb1, main = "ZINB", ylim = c(-5, 15), max = 50)
-qqrplot(zinb1)
+
+Msmelt.simres <- simulateResiduals(M.glmmnb1)
+plot(Msmelt.simres)
+
 ```
 
 Distribution of residuals by variable
 ```{r}
-EP1 <- resid(zinb1, type = "pearson")
+EP1 <- resid(M.glmmnb1, type = "pearson")
 
 # Diagnostic Plots
 par(mfrow = c(2,2))
+
 plot(x=Seine_smeltish$ActionPhase,y = EP1, main = "Action Phase")
 plot(x=Seine_smeltish$Region, y = EP1, main = "Region")
 plot(x=Seine_smeltish$fYear, y = EP1, main = "Year")
@@ -329,13 +475,13 @@ plot(x=Seine_smeltish$fYear, y = EP1, main = "Year")
 Look at overall relationships
 ```{r}
 par(mfrow = c(2,2))
-visreg(zinb1)
+visreg(M.glmmnb1)
 ```
 
 Post-hoc
 
 ```{r}
-m_means1 <- emmeans(zinb1, ~fYear)
+m_means1 <- emmeans(M.glmmnb1, ~fYear)
 multcomp::cld(m_means1, Letters = letters)
 ```
 
@@ -345,10 +491,19 @@ multcomp::cld(m_means1, Letters = letters)
 * Keep in mind this is mostly Inland Silversides 
 * More smeltish downstream, then middle Sac, then upstream
 * More smeltish pre, then during, then post
-* Years 2013, 2014, 2017 sig lower CPUE; years 2015, 2018 sig higher CPUE; 2016 and 2019 in between 
+* Years 2013, 2016 sig lower CPUE; years 2015, 2018 sig higher CPUE; 2014, 2017, 2019 in between 
 * More zeros in Middle Sac River, then Downstream, then Upstream
 * More zeros Pre vs Post
 * Not much year effect on zeros but some variability
+
+
+
+
+
+
+
+
+
 
 ### Native fishes
 
@@ -384,8 +539,41 @@ ggplot(Seine_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color
 ggplot(Seine_natives, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Year 
-ggplot(Seine_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Seine_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "magma") + theme_bw()
+
+Seine_summary_yr3 <- Seine_natives %>% 
+  group_by(fYear, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Seine_summary_yr3, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = ActionPhase)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
+
+Seine_summary_yr4 <- Seine_natives %>% 
+  group_by(fYear, Region) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Seine_summary_yr4, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
 ```
+2016 and 2019 very similar trends by Region and higher CPUE overall.
 
 # Barplot
 # Summarize - Mean + Standard Error
@@ -415,16 +603,16 @@ plot2 <- ggplot(Seine_summary2, aes(x = ActionPhase, y = meanCPUE, ymin = meanCP
 Seine_natives$Samp <- log(Seine_natives$VolumeSampled)
 
 # Formula
-f2 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
+f1 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
 
 # Negbin
-zinb2 <- zeroinfl(f2, na.action = "na.fail", dist="negbin", link = "logit", data = Seine_natives) ; summary(zinb2)
+zinb2 <- zeroinfl(f1, na.action = "na.fail", dist="negbin", link = "logit", data = Seine_natives) ; summary(zinb2)
 
 # Poisson
-zip2 <- zeroinfl(f2, dist = "poisson", link = "logit", data = Seine_natives); summary(zip2)
+zip2 <- zeroinfl(f1, dist = "poisson", link = "logit", data = Seine_natives); summary(zip2)
 
 # Hurdle
-hrd2 <- hurdle(f2, dist="negbin", data = Seine_natives); summary(hrd2)
+hrd2 <- hurdle(f1, dist="negbin", data = Seine_natives); summary(hrd2)
 ```
 
 Compare zero-inflated poisson with zero-inflated negbin
@@ -440,10 +628,23 @@ ZINB is the best.
 Compare zinb with nb, make sure zero inflation is the way to go
 ```{r}
 # No zero inflation
-nb2 <- glm.nb(f2,  data = Seine_natives) ; summary(nb2) 
+nb2 <- glm.nb(f1,  data = Seine_natives) ; summary(nb2) 
 vuong(nb2, zinb2)
 ```
 This is unclear. 
+
+Run glmmTMB (negative binomial mixed modeling) to include station as random effect
+```{r}
+# Formula
+f2 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp) + (1|StationCode))
+f3 <- formula(sumCount ~ Region + fYear*ActionPhase  + offset(Samp) + (1|StationCode))
+
+M.glmmnb3 <- glmmTMB(f2, family = nbinom1, ziformula = ~., data = Seine_natives); summary(M.glmer1)
+M.glmmnb4 <- glmerTMB(f3, family = nbinom1, ziformula = ~., data = Seine_natives); summary(M.glmer2)
+
+AIC(M.glmmnb3, M.glmmnb4)
+```
+
 
 #### Diagnostic Plots
 
@@ -549,7 +750,7 @@ pal36 <- palette36.colors(36)
 pal36 <- as.vector(t(pal36))
 
 # Proportion Species
-SeineSp <- ggplot(Seine_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+ 
+SeineSp <- ggplot(Seine_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+
   scale_fill_manual(values = pal36) +
   theme_bw()  + theme(legend.position = "bottom") +
   theme(axis.text = element_text(size = 14),
@@ -692,7 +893,12 @@ hist(Seine_all$logCPUE)
 Seine_all$Samp <- log(Seine_all$VolumeSampled)
 
 # Formula
-f3 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
+f1 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
+f2 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp) + (1|StationCode))
+f3 <- formula(sumCount ~ Region + fYear*ActionPhase  + offset(Samp) + (1|StationCode))
+
+
+
 f4 <- formula(sumCount ~ Region + fYear + ActionPhase + Region:ActionPhase+  offset(Samp))
 f5 <- formula(sumCount ~ Region + fYear + ActionPhase + Region:fYear+  offset(Samp))
 f6 <- formula(sumCount ~ Region + fYear + ActionPhase + ActionPhase:fYear+  offset(Samp))
@@ -703,7 +909,7 @@ mean(Seine_all$sumCPUE)
 
 
 # Poisson distribution or quasipoisson (overdispersed)
-m3all <- glm(f3, data = Seine_all, family = poisson); summary(m3all)
+m3all <- glm(f1, data = Seine_all, family = poisson); summary(m3all)
 
 # Model dispersion
 deviance(m3all)/m3all$df.residual # very overdispersed
@@ -716,9 +922,7 @@ deviance(m3all)/m3all$df.residual # very overdispersed
 
 
 ```{r}
-m4all <- glm.nb(f3, data = Seine_all); summary(m4all)
-
-```
+m4all <- glm.nb(f1, data = Seine_all); summary(m4all)
 
 # Confidence Intervals 
 (est <- cbind(Estimate = coef(m4all), confint(m4all)))
@@ -726,6 +930,8 @@ m4all <- glm.nb(f3, data = Seine_all); summary(m4all)
 # Incidence Rates (Count)
 exp(est)
 ```
+
+
 
 # Compare the two
 ```{r}
@@ -773,10 +979,26 @@ par(mfrow = c(2,2))
 visreg(m4all)
 ```
 
+
+Mixed modeling
+```{r}
+M.glmer1 <- glmer.nb(f2, data = Seine_all); 
+summary(M.glmer1)
+```
+
+
+
+
+
+
+
+
+
+
 Post-hoc
 
 ```{r}
-m_means3 <- emmeans(m4all, ~fYear)
+m_means3 <- emmeans(M.glmer1, ~fYear)
 multcomp::cld(m_means3, Letters = letters)
 ```
 
