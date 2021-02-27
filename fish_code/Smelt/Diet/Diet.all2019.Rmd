@@ -182,8 +182,6 @@ ano #0.50
 ano <- anosim(m.diet, all.flip$Cage, distance="bray")
 ano #-0.02
 
-#"The ANOSIM statistic compares the mean of ranked dissimilarities between groups to the mean of ranked dissimilarities within groups. An R value close to "1.0" suggests dissimilarity between groups while an R value close to "0" suggests an even distribution of high and low ranks within and between groups. R values below "0" suggest that dissimilarities are greater within groups than between groups. See Clarke and Gorley (2001) for a guide to interpreting ANOSIM R values."
-
 ```
 # prep dataset with zoop and diet
 ```{r}
@@ -300,6 +298,8 @@ full.flip[is.na(full.flip)] = 0
 ```{r}
 #nmds------------------------------------------------------------------------
 #reference: https://jkzorz.github.io/2019/06/06/NMDS.html
+full.flip$month <- as.factor(full.flip$month)
+full.flip$site <- as.factor(full.flip$site)
 
 #extract columns with abundance info
 full = full.flip[7:36]
@@ -308,10 +308,16 @@ full = full.flip[7:36]
 m.full <- as.matrix(full)
 
 #run metaMDS command - use bray as the distance measure (Bray-Curtis takes into account species presence/absence as well as abundance - other distance measures often only account for presence/absence)
-nmds <- metaMDS(m.full, distance = "bray", trymax = 100)
+nmds <- metaMDS(m.full, distance = "bray", trymax = 500)
 nmds #stress = 0.07, no convergence
-##An important number to note is the stress, which is roughly the “goodness of fit” of your NMDS ordination. For a good representation of your data, the stress value should ideally be less than 0.2
+##An important number to note is the stress, which is roughly the “goodness of fit” of your NMDS ordination. For a good representation of your data, the stress value should ideally be less than 0.1
+
+# Shepards test/goodness of fit
+goodness(nmds) # Produces a results of test statistics for goodness of fit for each point
+stressplot(nmds) # Produces a Shepards diagram
+
 plot(nmds)
+PlotNMDS(nmds, data=full.flip, group = "site", group2 = "month")
 
 #extract NMDS scores (x and y coordinates)
 data.scores = as.data.frame(scores(nmds))
@@ -335,10 +341,12 @@ ano <- anosim(m.full, full.flip$type, permutations = 9999, distance="bray")
 ano #R = 0.3436
 
 ano2 <- anosim(m.full, full.flip$site, permutations = 9999, distance="bray")
-ano2 #R = 0.4198
+ano2 #R = 0.3122
 
 ano3 <- anosim(m.full, full.flip$month, permutations = 9999, distance="bray")
-ano3 #R = 0.07055
+ano3 #R = -0.02079
+
+#"The ANOSIM statistic compares the mean of ranked dissimilarities between groups to the mean of ranked dissimilarities within groups. An R value close to "1.0" suggests dissimilarity between groups while an R value close to "0" suggests an even distribution of high and low ranks within and between groups. R values below "0" suggest that dissimilarities are greater within groups than between groups. See Clarke and Gorley (2001) for a guide to interpreting ANOSIM R values."
 ```
 # indicator species analysis (not used for final results, just exploratory)
 ```{r}
@@ -398,5 +406,64 @@ ggplot(data = data.scores, aes(x = NMDS1, y = NMDS2)) +
        legend.title = element_text(size = 10, face = "bold", colour = "grey30"), 
        legend.text = element_text(size = 9, colour = "grey30")) + 
      labs(colour = "Sample")
+```
+# Rosie's plot nmds function
+```{r}
+PlotNMDS = function(NMDS1, # results of the NMDS you want to plot
+                    data, # Environmental data (not species matrix)
+                    textp = T, # do you want to plot text for the species centroids?
+                    group, # Group you want to put hulls around
+                    group2= NA, # Group you want to put spiders around
+                    taxa = NA) { # Vector of relative percentages of a given taxa from your species matrix, used to scale the points.
+  require(vegan)
+  #set up colors
+  cols = c("red", "blue", "green", "purple", "yellow", 
+           "pink1", "brown", "orangered", "black", "cyan")
+  #set up sapes
+  shapes = c(1,2,3,4,5,6)
+  #set up group
+  names(data)[(which(names(data)== group))] = "group"
+  #number of groups
+  data = droplevels(data)
+  m = length(levels(data$group))
+  
+  #set parameters so the legend is outside the plot area
+  par(xpd=NA,oma=c(3,0,0,0)) 
+  
+  # plot the sample points
+  plot(NMDS1, type="n", shrink = T, cex=1, xlim=c(-1, 1))
+  if (is.na(taxa[1])) points(NMDS1, pch=as.numeric(data$group), cex=1, col=cols[as.numeric(data$group)])  else {
+    # scale the points by relative abundance of a certain taxa
+    scalef = max(taxa) - min(taxa)
+    points(NMDS1, pch=as.numeric(data$group), cex=.1 + taxa/mean(taxa), col="blue")
+  }
+  
+  # plot text for species, if desired
+  if(textp) text(NMDS1, dis="species", cex=.8) 
+  
+  # draw a hull around each group
+  for (i in 1:m) {
+    
+    with(data, ordiellipse(NMDS1, kind = "sd", conf = 0.95, groups = group, 
+                           show = levels(group)[i], col=cols[i], lwd=2, lty = 1:length(group)))
+  }
+  
+  #second group with spiders
+  if (is.na(group2)==F) {
+    names(data)[(which(names(data)== group2))] = "group2"
+    for (j in 1:length(levels(data$group2))) {
+      with(data, ordispider(NMDS1, group = group2, show = levels(group2)[j], col=cols[j + length(levels(group))], lwd=1))
+    }
+    legend(par("usr")[1],par("usr")[3], legend = c(levels(data$group),levels(data$group2)),
+           col = cols[1:(length(c(levels(data$group), levels(data$group2))))], 
+           lwd=c(rep(2, length(levels(data$group))), rep(1, length(levels(data$group2)))))
+  } else legend(par("usr")[1],par("usr")[3], legend = levels(data$group),
+                col = cols[1:length(levels(data$group))], 
+                lty = 1:length(levels(data$group)),
+                pch = shapes[1:length(levels(data$group))], lwd=2, bty = "o")
+#  legend(par("usr")[1]+1,par("usr")[3], legend = levels(data$group), 
+ #        pch = shapes[1:length(levels(data$group))], col = "blue", bty = "n")
+  
+}
 ```
 
