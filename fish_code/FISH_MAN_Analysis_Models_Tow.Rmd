@@ -44,7 +44,7 @@ library(lme4)
 * Order action phases
 
 ```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
-setwd("C:/Users/cpien/OneDrive - California Department of Water Resources/Work/FASTR/FASTR/ND-FASTR")
+#setwd("C:/Users/cpien/OneDrive - California Department of Water Resources/Work/FASTR/FASTR/ND-FASTR")
 Fish_ndfa_0 <- read.csv("fish data/FISH_MAN_allIEPsurveys_20201030.csv")
 Fish_ndfa <- dplyr::select(Fish_ndfa_0, -c(Latitude, Longitude, DO, Turbidity))
 FlowDesignation <- read.csv("fish data/FlowDatesDesignations_45days.csv")
@@ -290,8 +290,10 @@ SLOW!
 
 ```{r}
 f7 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp)+ (1|StationCode))
-
-mnb1 <- glmer.nb(f7, data = Tow_smeltish); summary(mnb1)
+library(optimx)
+mnb1 <- glmer.nb(f7, data = Tow_smeltish, control = glmerControl(optimizer= "optimx",
+                                               optCtrl  = list(method="nlminb")))
+summary(mnb1)
 ```
 
 
