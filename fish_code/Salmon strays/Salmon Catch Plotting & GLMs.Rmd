@@ -1,0 +1,571 @@
+---
+title: "Salmon"
+output: html_document
+editor_options: mixture of code from Jeff J, Rosie H, and Nicole K
+  chunk_output_type: console
+---
+
+# prep data (Nicole)
+```{r}
+library(tidyverse)
+library(lubridate)
+
+setwd("C:/Users/nkwan/OneDrive - California Department of Water Resources/Projects/North Delta Flow Action Project/NDFA Synthesis/Salmon strays")
+
+#catch data--------------------------------------------------------------------
+all.iep <- read.csv("FISH_MAN_allIEPsurveys_20201030.csv", stringsAsFactors = F)
+Yolo <- filter(all.iep, Survey == "Yolo")
+unique(Yolo$MethodCode)
+unique(Yolo$CommonName)
+Yolo$Date<-ymd(Yolo$Date)
+
+#filter to when salmon were caught in the fyke
+fyke <- filter(Yolo, MethodCode == "FKTR", CommonName == "Chinook Salmon") 
+#remove NAs
+fyke <- fyke[-c(52,145),] 
+
+#filter to all days sampled (regardless of catch of salmon)
+fyke.days <- filter(Yolo, MethodCode == "FKTR") 
+
+#sum by salmon catch by date
+fyke2 <- fyke %>%
+  group_by(Date) %>%
+  summarize(salm.catch = sum(totalCount))
+
+#condense all sampling to date
+fyke.days.all <- fyke.days %>%
+  group_by(Date, Year) %>%
+  summarize(total.hours = mean(HoursSampled, na.rm = TRUE))
+
+#join datasets
+fyke.full <- left_join(fyke.days.all, fyke2, by="Date")
+
+#remove dates with missing hours
+fyke.full$total.hours[fyke.full$total.hours == "NaN"] <- NA
+fyke.full <- fyke.full[!is.na(fyke.full$total.hours),]
+
+#replace NA with 0
+fyke.full[is.na(fyke.full)] = 0
+
+#sum by year
+fyke3 <- fyke.full %>%
+  group_by(Year) %>%
+  summarize(catch = sum(salm.catch), hours = sum(total.hours))
+fyke3$cpue <- fyke3$catch/fyke3$hours 
+
+#flow--------------------------------------------------------------------------
+##from WQ sub-team (downloaded from WDL)
+flow.11.19 <- read.csv("RTM_OUTPUT_LIS_formatted_all.csv", stringsAsFactors = F)
+names(flow.11.19)[1] <- "DateTime"
+flow.11.19$DateTime <- ymd_hms(flow.11.19$DateTime)
+flow.11.19 <- flow.11.19[c(1,3)]
+
+#from WDL directly
+flow.03.10 <- read.csv("LISflow03-10.csv", stringsAsFactors = F) 
+flow.03.10 <- flow.03.10[c(1,2)]
+
+#combine
+flow <- rbind(flow.11.19, flow.03.10)
+
+#split date and time
+flow$Time <- format(flow$DateTime,"%H:%M:%S")
+flow$Year <- format(as.Date(flow$Date, format="%Y-%m-%d"),"%Y")
+flow$Month <- format(as.Date(flow$Date, format="%Y-%m-%d"),"%m")
+
+#remove NAs
+flow <- flow[!is.na(flow$Flow),]
+
+#separate full dataset for use in later modeling
+flow.all <- flow
+
+#only keep months jul-oct (07-10)
+flow<-flow[!(flow$Month=="01"),]
+flow<-flow[!(flowx$Month=="02"),]
+flow<-flow[!(flow$Month=="03"),]
+flow<-flow[!(flow$Month=="04"),]
+flow<-flow[!(flow$Month=="05"),]
+flow<-flow[!(flow$Month=="06"),]
+flow<-flow[!(flow$Month=="11"),]
+flow<-flow[!(flow$Month=="12"),]
+
+#average by date
+flow2 <- flow %>%
+  group_by(Year) %>%
+  summarize(flow.avg = mean(Flow))
+
+#add NA for 2000-2002
+Year <- c(2000, 2001, 2002)
+flow.avg <- c(NA,NA,NA)
+y00 <- data.frame(Year,flow.avg)
+
+flow3 <- rbind(flow2,y00)
+flow3$Year <- as.numeric(flow3$Year)
+
+#total returns-----------------------------------------------------------------
+##Citation: Columbia Basin Research, University of Washington. (2020). SacPAS CDFW GrandTab Adult Escapement. Available from http://www.cbr.washington.edu/sacramento/data/query_adult_grandtab.html.
+##* Indicates annual escapement and mean are not final; data is Preliminary status.
+
+gtfh = read.csv("grandtab_fallHatchery.csv", stringsAsFactors = F)
+gtfr = read.csv("grandtab_fallRiver.csv", stringsAsFactors = F)
+gtlfh = read.csv("grandtab_latefallHatchery.csv", stringsAsFactors = F)
+gtlfr = read.csv("grandtab_latefallRiver.csv", stringsAsFactors = F)
+gtsh = read.csv("grandtab_springHatchery.csv", stringsAsFactors = F)
+gtsr = read.csv("grandtab_springRiver.csv", stringsAsFactors = F)
+gtw = read.csv("grandtab_winterAll.csv", stringsAsFactors = F)
+
+#add hatchery and river together
+gtf <- merge(gtfh,gtfr,by="Year")
+gtf$total <- gtf$Annual.x + gtf$Annual.y
+gtf$Run <- "Fall"
+gtf <- gtf[c(49:68),]
+gtf <- gtf[c(1,4,5)]
+
+gtlf <- merge(gtlfh,gtlfr,by="Year")
+gtlf$total <- gtlf$Annual.x + gtlf$Annual.y
+gtlf$Run <- "LateFall"
+gtlf <- gtlf[c(24:43),]
+gtlf <- gtlf[c(1,4,5)]
+
+gts <- merge(gtsh,gtsr,by="Year")
+gts$total <- gts$Annual.x + gts$Annual.y
+gts$Run <- "Spring"
+gts <- gts[c(34:53),]
+gts <- gts[c(1,4,5)]
+
+gtw <- gtw %>% rename(total = "Annual")
+gtw$Run <- "Winter"
+gtw <- gtw[c(1:20),]
+
+gtall <- rbind(gtf,gtlf,gts,gtw)
+
+#get rid of asterisks
+gtall$Year <- substr(gtall$Year, 0, 4)
+
+#make year a date
+gtall$Year <- as.Date(paste(gtall$Year), "%Y")
+gtall$Year<-year(gtall$Year)
+
+#sum all runs
+gtall2 <- gtall %>%
+  group_by(Year) %>%
+  summarize(total.sum = sum(total))
+
+#add NA for 2019
+Year <- c(2019)
+total.sum <- c(NA)
+y19 <- data.frame(Year,total.sum)
+
+gtall3 <- rbind(gtall2,y19)
+
+#remove 1999
+gtall3 <- gtall3[-c(1),] 
+
+#transportation miles----------------------------------------------------------
+trans = read.csv("Salmonid_catch&transit.csv", stringsAsFactors = F)
+trans2 <- trans[c(2,9,10,11)]
+#average across 2,3,and 4 year olds
+trans2$MeanTrans <- rowMeans(trans2[ , c(2,3,4)], na.rm=TRUE)
+trans3 <- trans2 %>%
+  group_by(Year) %>%
+  summarize(Annual.Trans = mean(MeanTrans))
+
+#remove 1999
+trans3 <- trans3[-c(1),] 
+
+#putah estimate-----------------------------------------------------------------
+##estimates made by Eric Chapman, Peter Moyle, Ken Davis - cite: Willmes et al. 2020 in press and Emily Jacinto pers comm (for 2018 & 2019)
+Year <- c(2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019)
+Min <- c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,0, 0, 0, 0, 200, 500, 1500, 600, NA, 30)
+Max <- c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,10, 10, 10, 10, 500, 700, 1700, 700, NA, 40)
+Mean <- c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,5, 5, 5, 5, 350, 600, 1600, 650, 500, 35)
+Putah <- data.frame(Year, Mean)
+
+#CWT---------------------------------------------------------------------------
+##from recovery data reports, CDFW (PSMFC), years 2010-2015 only for now (more may be forthcoming)
+Year <- c(2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013,2014,2015, 2016, 2017, 2018, 2019)
+stray.percent <- c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,11,11,17,11,19,38,NA,NA,NA,NA)
+CWT <- data.frame(Year,stray.percent)
+```
+# plotting (Nicole)
+```{r}
+#merge together
+a <- merge(fyke3, flow3, by="Year")
+b <- merge(a, gtall3, by="Year")
+c <- merge(b, trans3, by="Year")
+d <- merge(c, Putah, by="Year")
+all <- merge(d, CWT, by="Year")
+
+#clean up
+all <- all[c(1,2,4:9)]
+
+names(all)[2] <- "Total Catch"
+names(all)[3] <- "CPH"
+names(all)[4] <- "Flow (cfs)"
+names(all)[5] <- "Returns"
+names(all)[6] <- "Transport (mi)"
+names(all)[7] <- "Putah Creek"
+names(all)[8] <- "Stray (%)"
+
+#pivot dataframe
+salmon_long <- all %>% pivot_longer(!Year) 
+names(salmon_long)[2] <- "Parameter"
+names(salmon_long)[3] <- "Value"
+
+#plot
+salmon_long$Parameter = factor(salmon_long$Parameter, levels = c("Total Catch", "CPH", "Flow (cfs)", "Returns", "Transport (mi)", "Putah Creek", "Stray (%)"))
+
+ggplot(salmon_long, aes(y=Value, x=Year, group=Parameter, colour=Parameter)) +
+  geom_line(size=1) +
+  geom_point(size=3, shape=1) +
+  facet_grid(Parameter~., scales="free_y",  switch = "y") +
+  theme_bw() +
+  scale_color_brewer(palette = "Dark2") +
+  scale_x_continuous(breaks = 2000:2019, labels = 2000:2019) +
+  theme(strip.placement = "outside", strip.background = element_blank(),
+        panel.border = element_rect(colour = "black", fill = NA)) +
+  theme(legend.position = "none") +
+  scale_x_continuous(breaks = 2000:2019, labels = 2000:2019) +
+  theme(panel.grid.minor = element_blank(),) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  theme(axis.title.y=element_blank()) +
+  theme(text = element_text(size = 12))  
+ggsave("figure output/SalmonCatch.png", dpi=250, height=9, width=7.5, units="in")
+
+#description of data for text/caption
+##total catch is an annual sum of all salmon caught in the YBFMP screw trap
+##CPH is catch per hour based on the annual sum of all salmon caught divided by the total hours fished
+##flow (CFS) is annual average flow based on July-October flow data from LIS
+##returns is the annual adult returns of all Chinook salmon runs and origin types 
+##transport miles is the average of 3 different factors: average # miles juveniles were trucked 2 years prior, average # of miles juveniles were trucked 3 years prior, and average # of miles juveniles were trucked 4 year prior
+##Putah Creek is the annual estimated number of adult returns to Putah Creek
+##Stray % is the annual stray rate based on CWT data
+```
+# catch & flow modeling (Nicole)
+```{r}
+library(ggpubr)
+theme_set(theme_pubr())
+
+#prep data to have daily catch and daily flow starting in 2003 when we begin to have flow data
+#average flow by day
+flow.all$Date <- as.Date(flow.all$DateTime)
+
+#none of these are working so try some new things
+#remove time periods not highly relevant to salmon
+flow.all$Month <- format(as.Date(flow.all$Date, format="%Y-%m-%d"),"%m")
+flow.all<-flow.all[!(flow.all$Month=="01"),]
+flow.all<-flow.all[!(flow.all$Month=="02"),]
+flow.all<-flow.all[!(flow.all$Month=="03"),]
+flow.all<-flow.all[!(flow.all$Month=="04"),]
+flow.all<-flow.all[!(flow.all$Month=="05"),]
+flow.all<-flow.all[!(flow.all$Month=="06"),]
+flow.all<-flow.all[!(flow.all$Month=="07"),]
+flow.all<-flow.all[!(flow.all$Month=="08"),]
+
+#average to weekly & include week in the model
+flow.all$Week <- week(flow.all$Date)
+
+flow.week <- flow.all %>%
+  group_by(Week,Year) %>%
+  summarize(flow.avg = mean(Flow))
+
+#get weekly cpue
+fyke.full$Week <- week(fyke.full$Date)
+
+fyke.week <- fyke.full %>%
+  group_by(Week,Year) %>%
+  summarize(all.catch = sum(salm.catch), all.hours = sum(total.hours))
+
+fyke.week$cpue <- fyke.week$all.catch/fyke.week$all.hours 
+
+#join datasets 
+flow.week$ID <- paste(flow.week$Week, flow.week$Year, sep=".") 
+fyke.week$ID <- paste(fyke.week$Week, fyke.week$Year, sep=".") 
+
+flow.catch <- inner_join(fyke.week, flow.week, by = "ID") 
+
+#visualize data
+ggplot(flow.catch, aes(x = flow.avg, y = cpue)) +
+  geom_point() +
+  stat_smooth()
+
+ggplot(flow.catch, aes(x = all.catch, y = flow.avg)) +
+  geom_point() +
+  stat_smooth() +
+  theme_bw() +
+  labs(y = "Average Weekly Flow (cfs)") +
+  labs(x = "Total Weekly Salmon Catch")
+
+ggsave("figure output/Flow_Catch.png", dpi=250, height=5, width=7, units="in")
+
+#transform
+flow.catch$cpue.log <- log(flow.catch$cpue+1)
+
+#clean table
+flow.catch <- flow.catch[c(1:4, 9, 10)]
+names(flow.catch)[1] <- "Week"
+names(flow.catch)[2] <- "Year"
+#write.csv(flow.catch, "flow.catch.csv")
+
+#look at correlation values
+cor(flow.catch$cpue.log, flow.catch$flow.avg) # -0.2140579, suggests low correlation between variables but let's go ahead anyways and try a model
+
+#other models don't work so try to use zero inflated negative binomial model 
+library(pscl)
+m1 = zeroinfl(all.catch ~ flow.avg + Week + offset(all.hours), data = flow.catch, dist = "negbin")
+summary(m1) #no NAs present
+#also doesn't work
+
+#try looking at it as presence/absence instead
+flow.catch$Year = as.factor(flow.catch$Year)
+flow.catch$YN = NA
+flow.catch$YN[which(flow.catch$all.catch == 0)] = 0
+flow.catch$YN[which(flow.catch$all.catch >= 1)] = 1
+
+#final model
+m2 = glm(YN~flow.avg + Week + Year, data = flow.catch, family = "binomial")
+summary(m2) #higher flow = less salmon
+
+##note on data for this model: This look at the presence/absence of salmon based on weekly average flow at LIS, week, and year. Only weeks in Sep-Dec are included because that is the time we would reliably think adult salmon could be present. Only weeks in which the fyke was operated are included. 
+```
+# GLM (Rosie + Jeff)
+```{r}
+#import the catch data---------------------------------------------------------
+salmon = read.csv("YB_Salmonid_catch.csv", stringsAsFactors = F)
+
+#let's see if that read in right
+str(salmon)
+
+#fix a few of the columns so they are the right data type
+salmon = mutate(salmon, 
+                WYtype = factor(WYtype, levels = c(1:5), 
+                labels = c("CD", "D", "BN", "AN", "W")),
+                WYtype.2yrs= factor(WYtype, levels = c(1:5), 
+                                    labels = c("CD", "D", "BN", "AN", "W")) )
+
+#check normality of the data
+
+#Now let's graph annual catch versus transport time from two years ago.
+
+#First calculate total catch by year and species
+#I use "group_by" and "Summarize" to calculate summary stats.
+salmonsum = group_by(salmon, Year, Species) %>%
+  summarize(catch = length(FL), MeanTrans = mean(MeanTrans), Trans.2yrs = mean(Trans.2yrs), Trans.3yrs = mean(Trans.3yrs), Trans.4yrs = mean(Trans.4yrs),
+            WYtype = first(WYtype), WYtype.2yrs = first(WYtype.2yrs), WYtype.3yrs = first(WYtype.3yrs), WYtype.4yrs = first(WYtype.4yrs))
+
+#Now do a quick histogram, to see if the data are normally distributed
+ggplot(salmonsum, aes(x = catch, fill = Species)) +geom_histogram() + 
+  facet_grid(~Species, scales = "free_x")
+
+#Nope. Definitely not normal. Probably need to do a transformation before stats.
+#Also, not enough RBT to do much with
+
+#Now a scatter plot
+ggplot(salmonsum, aes(x = catch, y = MeanTrans)) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+
+#Let's try log-transforming both transport difference and catch
+#to see if it looks a little clearer.
+ggplot(salmonsum, aes(x = log(catch), y = log(MeanTrans))) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#copying Rosie's code for addt'l views: transport-2years
+
+#And a scatter plot
+ggplot(salmonsum, aes(x = catch, y = Trans.2yrs)) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#log transformed
+ggplot(salmonsum, aes(x = log(catch), y = log(Trans.2yrs))) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#Now transport-3years
+
+ggplot(salmonsum, aes(x = catch, y = Trans.3yrs)) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#log transformed
+ggplot(salmonsum, aes(x = log(catch), y = log(Trans.3yrs))) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#Now transport-4years
+
+ggplot(salmonsum, aes(x = catch, y = Trans.4yrs)) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#log transformed
+ggplot(salmonsum, aes(x = log(catch), y = log(Trans.4yrs))) +geom_point() + 
+  facet_grid(~Species, scales = "free_x")
+
+#Meh.
+
+#Now let's do a general linear model. Because we have count data,
+#and they are not normally distributed, we will want to use either the poisson
+#or the negative binomial distribution (dipending on dispersion), rather
+#than the  normal distribution.
+
+#let's just use the chinook though, and take out the steelhead
+salonly = filter(salmonsum, Species == "CHN")
+
+m1 = glm(catch ~ MeanTrans, family = "poisson", data = salonly)
+summary(m1)
+
+#check the diagnostic plots
+plot(m1)
+
+
+#check for overdispersion
+library(AER)
+
+dispersiontest(m1)
+#dispersion is much, much greater than 1. We've got a problem.
+
+#we've got some outliers that are really throwing things off. (2014, 2015, and 2017)
+#We could take them out and re-run the model, or try again with a different distribution
+
+#Checking other transport years (-2,3,4 years)
+m1a = glm(catch ~ Trans.2yrs, family = "poisson", data = salonly)
+summary(m1a)
+
+#check the diagnostic plots
+plot(m1a)
+
+
+#check for overdispersion
+library(AER)
+
+dispersiontest(m1a)
+#Same - dispersion much greater than 1
+#Now trans - 3 years
+m1b = glm(catch ~ Trans.3yrs, family = "poisson", data = salonly)
+summary(m1b)
+
+#check the diagnostic plots
+plot(m1b)
+
+
+#check for overdispersion
+library(AER)
+
+dispersiontest(m1b)
+#Same as the other transport versus years
+#Lastly - trans-4years
+m1c = glm(catch ~ Trans.4yrs, family = "poisson", data = salonly)
+summary(m1c)
+
+#check the diagnostic plots
+plot(m1c)
+
+
+#check for overdispersion
+library(AER)
+
+dispersiontest(m1c)
+# Much higher than 1 again.
+
+#let's try a quasipoisson first
+m2 = glm(catch ~ MeanTrans, family = "quasipoisson", data = salonly)
+summary(m2)
+plot(m2)
+#better, but 2015 and 2017 are still throwing us off
+#Trying trans - (2, 3, 4) years
+m2a = glm(catch ~ Trans.2yrs, family = "quasipoisson", data = salonly)
+summary(m2a)
+plot(m2a)
+#Eh.
+m2b = glm(catch ~ Trans.3yrs, family = "quasipoisson", data = salonly)
+summary(m2b)
+plot(m2b)
+#Nah
+m2c = glm(catch ~ Trans.4yrs, family = "quasipoisson", data = salonly)
+summary(m2c)
+plot(m2c)
+#zzzzzz
+
+#let's try a negaitve binomial.
+library(MASS)
+m3 = glm.nb(catch ~ MeanTrans, data = salonly)
+#Gross I don't know why it did that.
+
+#Let's try just taking the outliers off and see what happens
+salonly2 = filter(salonly, Year != 2014 & Year != 2015 & Year != 2017)
+
+m4 = glm(catch~ MeanTrans, family = "poisson", data = salonly2)
+summary(m4)
+plot(m4)
+
+#that's much better, but we should also check for overdispersion.
+dispersiontest(m4)
+#dispersion is still greater than 1, but much better
+
+#now a quasipoisson again
+m5 = glm(catch~ MeanTrans, family = "quasipoisson", data = salonly2)
+summary(m5)
+plot(m5)
+
+#This model is significant, and fits all the assumptions
+#and diagnostic tests, but it actually shows a negative relationship
+#between catch and transport distance. Overall, I'm not buying it.
+
+#visualize the model
+library(visreg)
+visreg(m5)
+
+#Now for transport-2yrs
+
+m4a = glm(catch~ Trans.2yrs, family = "poisson", data = salonly2)
+summary(m4a)
+plot(m4a)
+
+#that's much better, but we should also check for overdispersion.
+dispersiontest(m4a)
+#dispersion is still greater than 1, but much better
+
+#now a quasipoisson again
+m5a = glm(catch~ Trans.2yrs, family = "quasipoisson", data = salonly2)
+summary(m5a)
+plot(m5a)
+
+#visualize the model
+library(visreg)
+visreg(m5a)
+
+#Now trans-3 years
+
+m4b = glm(catch~ Trans.3yrs, family = "poisson", data = salonly2)
+summary(m4b)
+plot(m4b)
+
+#that's NOT much better, but we should also check for overdispersion.
+dispersiontest(m4b)
+#dispersion is still greater than 1, but much better
+
+#now a quasipoisson again
+m5b = glm(catch~ Trans.3yrs, family = "quasipoisson", data = salonly2)
+summary(m5b)
+plot(m5b)
+
+#visualize the model
+library(visreg)
+visreg(m5b)
+
+#Now trans-4 years
+
+m4c = glm(catch~ Trans.4yrs, family = "poisson", data = salonly2)
+summary(m4c)
+plot(m4c)
+
+#that's much better, but we should also check for overdispersion.
+dispersiontest(m4c)
+#dispersion is still greater than 1, but much better
+
+#now a quasipoisson again
+m5c = glm(catch~ Trans.4yrs, family = "quasipoisson", data = salonly2)
+summary(m5c)
+plot(m5c)
+
+#visualize the model
+library(visreg)
+visreg(m5c)
+```
+
