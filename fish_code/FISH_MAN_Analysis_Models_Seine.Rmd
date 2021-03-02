@@ -58,7 +58,7 @@ str(Fish_ndfa)
 
 ```
 
-Modify the EDSM Stations
+Modify the EDSM Stations - did not end up including this 
 
 ```{r}
 library(nngeo)
@@ -336,6 +336,7 @@ plot1 <- ggplot(Seine_summary, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPU
 plot1
 ```
 
+IGNORE
 Initial model - QQ plot doesn't look good
 ```{r}
 
@@ -345,6 +346,7 @@ par(mfrow = c(2,2))
 plot(M.smeltish1)
 ```
 
+IGNORE
 Using transformations - doesn't work well either
 ```{r}
 (M.smeltish2 <- glm(log(sumCPUE+1)~FlowPulseType + Region + fYear + ActionPhase, data  = Seine_smeltish))
@@ -356,6 +358,7 @@ logCPUE <-  log(Seine_smeltish$sumCPUE + 1)
 hist(logCPUE)
 ```
 
+IGNORE
 #### Zero-inflated model
 ```{r} 
 # For CPUE, use offset to account for sampling effort
@@ -375,6 +378,7 @@ hrd1 <- hurdle(f1, dist="negbin", data = Seine_smeltish); summary(hrd1)
 
 ```
 
+IGNORE
 Compare zero-inflated poisson, zero-inflated negbin, hurdle
 ```{r}
 library(lmtest)
@@ -384,6 +388,7 @@ lrtest(zip1, zinb1)
 BIC(zip1, zinb1, hrd1)
 ```
 
+IGNORE
 ZINB is the best. 
 Compare zinb with nb, make sure zero inflation is the way to go
 ```{r}
@@ -393,6 +398,7 @@ vuong(nb1, zinb1)
 ```
 It is. 
 
+IGNORE
 Try glmmAdaptive (hurdle negative binomial)
 ```{r}
 library(GLMMadaptive)
@@ -401,6 +407,7 @@ hm1 <- mixed_model(sumCount ~ Region + ActionPhase + offset(Samp), random = ~1|S
 ```
 
 
+IGNORE
 Run glmmTMB (negative binomial mixed modeling) to include station as random effect
 
 ```{r}
@@ -414,6 +421,7 @@ f3 <- formula(sumCount ~ Region + fYear*ActionPhase  + offset(Samp) + (1|Station
 M.glmmnb1 <- glmmTMB(f2, family = nbinom1, ziformula = ~., data = Seine_no2019); summary(M.glmmnb1)
 M.glmmnb2 <- glmmTMB(f3, family = nbinom2, ziformula = ~., data = Seine_smeltish); summary(M.glmmnb2)
 ```
+IGNORE
 Compare models
 ```{r}
 AIC(M.glmmnb1, M.glmmnb2)
@@ -421,6 +429,7 @@ AIC(M.glmmnb1, M.glmmnb2)
 
 **Is this AIC difference worth the interactions?**
 
+IGNORE
 #### Diagnostic Plots
 https://cran.r-project.org/web/packages/glmmTMB/vignettes/model_evaluation.pdf
 ```{r}
@@ -432,6 +441,7 @@ plot(Msmelt.simres)
 
 ```
 
+IGNORE
 Distribution of residuals by variable
 ```{r}
 EP1 <- resid(M.glmmnb1, type = "pearson")
@@ -444,6 +454,7 @@ plot(x=Seine_smeltish$Region, y = EP1, main = "Region")
 plot(x=Seine_smeltish$fYear, y = EP1, main = "Year")
 ```
 
+IGNORE
 Look at overall relationships
 ```{r}
 par(mfrow = c(2,2))
@@ -451,7 +462,7 @@ visreg(M.glmmnb1)
 ```
 
 
-
+UPDATED MODEL CODE
 Remove station effects by averaging into Region. Use this data for model.
 ```{r}
 Seine_smeltish2 <- Seine_smeltish %>%
@@ -465,6 +476,7 @@ Seine_smeltish2$ActionPhase <-  factor(Seine_smeltish2$ActionPhase, levels(Seine
 
 ```
 
+UPDATED MODEL CODE
 Run models
 ```{r}
 (M.smeltish1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Seine_smeltish2))
@@ -476,6 +488,7 @@ summary(M.smeltish2)
 AIC(M.smeltish1, M.smeltish2)
 ```
 
+UPDATED MODEL CODE
 Diagnostic Plots
 ```{r}
 par(mfrow = c(2,2))
@@ -485,7 +498,7 @@ plot(M.smeltish1)
 **Should we remove Point 50 as an outlier??**
 Attributed to 2-3 very high catches from DJFMP. Because more than 1, likely real, but definitely is an outlier in the data. 
 
-
+UPDATED MODEL CODE
 Post-hoc
 
 ```{r}
@@ -499,7 +512,7 @@ m_means1c <- emmeans(M.smeltish1, pairwise~ActionPhase, adjust="sidak")
 m_means1c
 ```
 
-
+UPDATED MODEL CODE
 **Conclusions**
 
 * Keep in mind this is mostly Inland Silversides 
@@ -607,7 +620,7 @@ plot2 <- ggplot(Seine_summary2, aes(x = ActionPhase, y = meanCPUE, ymin = meanCP
 plot2
 ```
 
-
+IGNORE
 #### Zero-inflated model
 ```{r}
 # For CPUE, use offset to account for sampling effort
@@ -625,7 +638,7 @@ zip2 <- zeroinfl(f1, dist = "poisson", link = "logit", data = Seine_natives); su
 # Hurdle
 hrd2 <- hurdle(f1, dist="negbin", data = Seine_natives); summary(hrd2)
 ```
-
+IGNORE
 Compare zero-inflated poisson with zero-inflated negbin
 ```{r}
 library(lmtest)
@@ -634,7 +647,7 @@ lrtest(zip2, zinb2)
 
 BIC(zip2, zinb2, hrd2)
 ```
-
+IGNORE
 ZINB is the best. 
 Compare zinb with nb, make sure zero inflation is the way to go
 ```{r}
@@ -644,6 +657,7 @@ vuong(nb2, zinb2)
 ```
 This is unclear. 
 
+IGNORE
 Run glmmTMB (negative binomial mixed modeling) to include station as random effect
 ```{r}
 # Formula
@@ -656,7 +670,7 @@ M.glmmnb4 <- glmerTMB(f3, family = nbinom1, ziformula = ~., data = Seine_natives
 AIC(M.glmmnb3, M.glmmnb4)
 ```
 
-
+IGNORE
 #### Diagnostic Plots
 
 Rootograms - should like like a typical overdispersed distribution
@@ -667,7 +681,7 @@ par(mfrow = c(1,2))
 rootogram(zinb2, main = "ZINB", ylim = c(-5, 15), max = 50)
 qqrplot(zinb2)
 ```
-
+IGNORE
 Distribution of residuals by variable
 ```{r}
 
@@ -682,13 +696,13 @@ plot(x=Seine_natives$fYear, y = EP2, main = "Year")
 
 levels(Seine_natives$fYear)
 ```
-
+IGNORE
 View Results
 ```{r}
 par(mfrow = c(2,2))
 visreg(zinb2)
 ```
-
+IGNORE
 Post-hoc
 ```{r}
 m_means2 <- emmeans(zinb2, ~fYear)
@@ -701,7 +715,7 @@ multcomp::cld(m_means2, Letters = letters)
 
 
 
-
+UPDATED MODEL CODE
 Remove station effects by averaging into Region. Use this data for model.
 ```{r}
 Seine_natives2 <- Seine_natives %>%
@@ -714,7 +728,7 @@ Seine_natives2 <- Seine_natives %>%
 Seine_natives2$ActionPhase <-  factor(Seine_natives2$ActionPhase, levels(Seine_natives2$ActionPhase)[c(2,3,1)])
 
 ```
-
+UPDATED MODEL CODE
 Run models
 ```{r}
 (M.natives1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Seine_natives2))
@@ -725,7 +739,7 @@ summary(M.natives2)
 
 AIC(M.natives1, M.natives2)
 ```
-
+UPDATED MODEL CODE
 Diagnostic Plots
 ```{r}
 par(mfrow = c(2,2))
@@ -734,7 +748,7 @@ plot(M.natives1)
 
 **Should we remove Points 34 and 61 as outliers??**
 
-
+UPDATED MODEL CODE
 Post-hoc
 
 ```{r}
@@ -750,7 +764,7 @@ m_means2c
 
 
 
-
+UPDATED MODEL CODE
 **Conclusions**
 
 * More natives MiddleSac River compared with Downstream and Upstream
@@ -981,8 +995,6 @@ m4all <- glm.nb(f1, data = Seine_all); summary(m4all)
 exp(est)
 ```
 
-
-
 # Compare the two
 ```{r}
 BIC(m3all, m4all)
@@ -1030,11 +1042,24 @@ visreg(m4all)
 ```
 
 
+
+
+
+UPDATED MODEL CODE
 Mixed modeling
 ```{r}
+
+# For CPUE, use offset to account for sampling effort
+Seine_all$Samp <- log(Seine_all$VolumeSampled)
+
+# Formula
+f1 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
+f2 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp) + (1|StationCode))
+f3 <- formula(sumCount ~ Region + fYear*ActionPhase  + offset(Samp) + (1|StationCode))
+
 M.glmer1 <- glmer.nb(f2, data = Seine_all); summary(M.glmer1)
 ```
-
+UPDATED MODEL CODE
 Post-hoc
 
 ```{r}
@@ -1047,7 +1072,7 @@ m_means3b
 m_means3c <- emmeans(M.glmer1, pairwise~ActionPhase, adjust="sidak")
 m_means3c
 ```
-
+UPDATED MODEL CODE
 **Conclusions**
 
 * More fish Downstream > Upstream > Middle Sac (not significant)
@@ -1059,7 +1084,7 @@ m_means3c
 
 
 
-
+UPDATED MODEL CODE
 Remove station effects by averaging into Region. Use this data for model.
 ```{r}
 Seine_all2 <- Seine_all %>%
@@ -1072,7 +1097,7 @@ Seine_all2 <- Seine_all %>%
 Seine_all2$ActionPhase <-  factor(Seine_all2$ActionPhase, levels(Seine_all2$ActionPhase)[c(2,3,1)])
 
 ```
-
+UPDATED MODEL CODE
 Run models
 ```{r}
 (M.all1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Seine_all2))
@@ -1083,7 +1108,7 @@ summary(M.all2)
 
 AIC(M.all1, M.all2)
 ```
-
+UPDATED MODEL CODE
 Diagnostic Plots
 ```{r}
 par(mfrow = c(2,2))
@@ -1091,7 +1116,7 @@ plot(M.all1)
 ```
 
 **Should we remove Point 49 as outlier?**
-
+UPDATED MODEL CODE
 Post-hoc
 
 ```{r}
@@ -1104,7 +1129,7 @@ m_means4b
 m_means4c <- emmeans(M.all1, pairwise~ActionPhase, adjust="sidak")
 m_means4c
 ```
-
+UPDATED MODEL CODE
 **Conclusions**
 
 * More fish Downstream vs Upstream and Middle Sac
