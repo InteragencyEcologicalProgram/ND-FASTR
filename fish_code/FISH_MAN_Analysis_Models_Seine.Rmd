@@ -50,14 +50,15 @@ Fish_ndfa_0 <- read.csv("fish data/FISH_MAN_allIEPsurveys_20201030.csv")
 Fish_ndfa <- dplyr::select(Fish_ndfa_0, -c(Turbidity, DO, Latitude, Longitude))
 FlowDesignation <- read.csv("fish data/FlowDatesDesignations_45days.csv")
 Regions <- read.csv("fish data/Stations_Fish_NDFA_2021-01-13.csv")
-
+Regions_min <- Regions %>% select(-c(Intersect, geometry, RegionMult)) %>%
+  rename(Survey = Survey.x)
 # Look at data
 head(Fish_ndfa)
 str(Fish_ndfa)
 
 ```
 
-# Try to modify the EDSM Stations
+Modify the EDSM Stations
 
 ```{r}
 library(nngeo)
@@ -147,10 +148,7 @@ Fish_all$MethodCode <- as.factor(Fish_all$MethodCode)
 Fish_all$Region <- factor(Fish_all$Region, levels = c("Upstream", "Downstream", "MiddleSacRiver"))
 Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhase)[c(2,3,1)])
 str(Fish_all)
-
-Fish_all <- Fish_all %>%
-  rename(StationCodeOrig = StationCode,
-         StationCode = StationCodeF)
+levels(Fish_all$ActionPhase)
 ```
 
 ## Data Prep
@@ -218,15 +216,8 @@ CPUE_means_Seine_phase <- Seine_f %>%
 # Lists
 list_native <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish")
 list_smeltish <- c("Wakasagi", "Inland Silverside", "Delta Smelt")
-list_nmds <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish",
-               "Wakasagi", "Inland Silverside", "Delta Smelt", 
-               "Carp", "Goldfish", "Hardhead", "Golden Shiner", "Fathead Minnow", "Hitch",
-               "Rainwater Killifish", "Western Mosquitofish", "Black Crappie", "White Crappie", "Bluegill", "Bigscale Logperch",
-               "Largemouth Bass", "Smallmouth Bass", "Striped Bass", "Spotted Bass",
-               "Threadfin Shad", "American Shad")
 
 Seine_natives0 <- Seine_f %>%filter(CommonName %in% list_native)
-Seine_nmds <- Seine_f%>% filter(CommonName %in%list_nmds)
 Seine_smeltish0 <- Seine_f %>% filter(CommonName %in% list_smeltish) %>%
   arrange(CommonName, CPUE)
 ```
@@ -241,6 +232,10 @@ Seine_smeltish <- Seine_smeltish0 %>%
   group_by(Date, Survey, fYear, StationCode, ActionPhase, Region, VolumeSampled) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
+
+Seine_smeltish$ActionPhase <-  factor(Seine_smeltish$ActionPhase, levels(Seine_smeltish$ActionPhase)[c(2,3,1)])
+
+
 ```
 
 #### Look at data
@@ -313,8 +308,6 @@ Seine_summary_yr4 <- Seine_smeltish %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = length(unique(StationCode)),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
-
-length(unique(Seine_smeltish$StationCode))
 
 ```
 2015 + 2018 similar
@@ -421,33 +414,12 @@ f3 <- formula(sumCount ~ Region + fYear*ActionPhase  + offset(Samp) + (1|Station
 M.glmmnb1 <- glmmTMB(f2, family = nbinom1, ziformula = ~., data = Seine_no2019); summary(M.glmmnb1)
 M.glmmnb2 <- glmmTMB(f3, family = nbinom2, ziformula = ~., data = Seine_smeltish); summary(M.glmmnb2)
 ```
-
-NOW: Trying to summarize by Region (average of stations within region) - might need to switch to Negbin rather than zero-infl. Check to make sure there are no zeros. 
-```{r}
-
-Seine_red <- Seine_smeltish %>%
-  group_by(fYear, Region, ActionPhase) %>%
-  summarize(sumCount2 = sum(sumCount),
-            sumVol = sum(VolumeSampled))
-
-zinb1 <- zeroinfl(f1, na.action = "na.fail", dist="negbin", link = "logit", data = Seine_smeltish) ; summary(zinb1)
-# For CPUE, use offset to account for sampling effort
-Seine_red$Samp <- log(Seine_red$sumVol)
-
-f2 <- formula(sumCount2 ~ Region +  fYear + ActionPhase + offset(Samp))
-M.zinb1 <- zeroinfl(f2, na.action = "na.fail", dist="negbin", link = "logit", data = Seine_red)
-
-
-
-```
-
 Compare models
 ```{r}
 AIC(M.glmmnb1, M.glmmnb2)
 ```
 
 **Is this AIC difference worth the interactions?**
-
 
 #### Diagnostic Plots
 https://cran.r-project.org/web/packages/glmmTMB/vignettes/model_evaluation.pdf
@@ -478,25 +450,62 @@ par(mfrow = c(2,2))
 visreg(M.glmmnb1)
 ```
 
+
+
+Remove station effects by averaging into Region. Use this data for model.
+```{r}
+Seine_smeltish2 <- Seine_smeltish %>%
+  group_by(fYear, Region, ActionPhase) %>%
+  summarize(sumCount2 = sum(sumCount),
+            sumVol = sum(VolumeSampled),
+            sumCPUE2 = sum(sumCPUE),
+            meanCPUE = mean(sumCPUE))
+
+Seine_smeltish2$ActionPhase <-  factor(Seine_smeltish2$ActionPhase, levels(Seine_smeltish2$ActionPhase)[c(2,3,1)])
+
+```
+
+Run models
+```{r}
+(M.smeltish1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Seine_smeltish2))
+summary(M.smeltish1)
+
+(M.smeltish2 <- glm(meanCPUE~Region + fYear * ActionPhase, data  = Seine_smeltish2))
+summary(M.smeltish2)
+
+AIC(M.smeltish1, M.smeltish2)
+```
+
+Diagnostic Plots
+```{r}
+par(mfrow = c(2,2))
+plot(M.smeltish1)
+```
+
+**Should we remove Point 50 as an outlier??**
+Attributed to 2-3 very high catches from DJFMP. Because more than 1, likely real, but definitely is an outlier in the data. 
+
+
 Post-hoc
 
 ```{r}
-m_means1 <- emmeans(M.glmmnb1, ~fYear)
-multcomp::cld(m_means1, Letters = letters)
+m_means1a <- emmeans(M.smeltish1, pairwise~fYear, adjust="sidak")
+m_means1a
+
+m_means1b <- emmeans(M.smeltish1, pairwise~Region, adjust="sidak")
+m_means1b
+
+m_means1c <- emmeans(M.smeltish1, pairwise~ActionPhase, adjust="sidak")
+m_means1c
 ```
 
 
 **Conclusions**
 
 * Keep in mind this is mostly Inland Silversides 
-* More smeltish downstream, then middle Sac, then upstream
-* More smeltish pre, then during, then post
-* Years 2013, 2016 sig lower CPUE; years 2015, 2018 sig higher CPUE; 2014, 2017, 2019 in between 
-* More zeros in Middle Sac River, then Downstream, then Upstream
-* More zeros Pre vs Post
-* Not much year effect on zeros but some variability
-
-
+* More smeltish downstream, compared with Middle Sac + upstream
+* More smeltish pre, then during, then post, though not significant in the multcomp tests
+* Model shows 2018 to be higher, but multcomp test does not indicate any significant differences. 
 
 
 
@@ -594,6 +603,8 @@ plot2 <- ggplot(Seine_summary2, aes(x = ActionPhase, y = meanCPUE, ymin = meanCP
         legend.text = element_text(size = 14),
         legend.title = element_text(size = 15),
         legend.position = "none")
+
+plot2
 ```
 
 
@@ -684,37 +695,70 @@ m_means2 <- emmeans(zinb2, ~fYear)
 multcomp::cld(m_means2, Letters = letters)
 ```
 
+
+
+
+
+
+
+
+Remove station effects by averaging into Region. Use this data for model.
 ```{r}
-Seine_summary3 <- Seine_natives %>% 
-  group_by(ActionPhase, Region) %>%
-  mutate(meanCPUE = mean(sumCPUE),
-            n = n(),
-            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) %>%
-  ungroup() %>%
-  group_by(fYear, ActionPhase) %>%
-  summarize(meanCPUE2 = mean(meanCPUE))
+Seine_natives2 <- Seine_natives %>%
+  group_by(fYear, Region, ActionPhase) %>%
+  summarize(sumCount2 = sum(sumCount),
+            sumVol = sum(VolumeSampled),
+            sumCPUE2 = sum(sumCPUE),
+            meanCPUE = mean(sumCPUE))
 
-Seine_summary4 <- Seine_natives %>% 
-  group_by(Region, fYear) %>%
-  summarize(meanCPUE = mean(sumCPUE),
-            n = n(),
-            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+Seine_natives2$ActionPhase <-  factor(Seine_natives2$ActionPhase, levels(Seine_natives2$ActionPhase)[c(2,3,1)])
 
-
-ggplot(Seine_summary3, aes(x = fYear, y = ActionPhase, fill = meanCPUE2)) + geom_tile() + scale_fill_viridis()
-
-ggplot(Seine_summary4, aes(x = fYear, y = Region, fill = meanCPUE)) + geom_tile() + scale_fill_viridis()
 ```
+
+Run models
+```{r}
+(M.natives1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Seine_natives2))
+summary(M.natives1)
+
+(M.natives2 <- glm(meanCPUE~Region + fYear * ActionPhase, data  = Seine_natives2))
+summary(M.natives2)
+
+AIC(M.natives1, M.natives2)
+```
+
+Diagnostic Plots
+```{r}
+par(mfrow = c(2,2))
+plot(M.natives1)
+```
+
+**Should we remove Points 34 and 61 as outliers??**
+
+
+Post-hoc
+
+```{r}
+m_means2a <- emmeans(M.natives1, pairwise~fYear, adjust="sidak")
+m_means2a
+
+m_means2b <- emmeans(M.natives1, pairwise~Region, adjust="sidak")
+m_means2b
+
+m_means2c <- emmeans(M.natives1, pairwise~ActionPhase, adjust="sidak")
+m_means2c
+```
+
 
 
 
 **Conclusions**
 
-* More natives Middle Sac > Downstream > Upstream
-* More natives Pre > Post > During
-* 2016, 2019 higher CPUE > 2013, 2017, 2018 > 2014, 2015
-* More zeros Downstream > Middle Sac > Upstream
-* More zeros Pre>post
+* More natives MiddleSac River compared with Downstream and Upstream
+* More natives Pre compared with During and Post. 
+* 2016, 2019 higher CPUE though not significantly so. Lowest CPUEs 2014, 2015. 
+
+
+
 
 
 
@@ -724,16 +768,25 @@ ggplot(Seine_summary4, aes(x = fYear, y = Region, fill = meanCPUE)) + geom_tile(
 
 #### Sum Overall CPUE
 ```{r}
-Seine_f <- filter(Seine_f, !CommonName %in% c("NoCatch", "Crangon spp.", "Siberian Prawn", "Mississippi Grass Shrimp"))
-Seine_all <- Seine_f %>%
+Seine_filter <- filter(Seine_f, !CommonName %in% c("NoCatch", "Crangon spp.", "Siberian Prawn", "Mississippi Grass Shrimp", "Unknown"))
+
+# Only species that are most common
+SeineSpCPUE <- Seine_f %>% 
+  group_by(CommonName) %>%
+  filter(CPUE>0)%>%
+  summarize(n = n(),
+            prop = n/1426)
+SeineSpCPUEA <- filter(SeineSpCPUE, prop>0.01)
+
+spAb <- as.vector(SeineSpCPUEA$CommonName)
+Seine_f_2 <- filter(Seine_f, CommonName %in% spAb)
+
+# Combine all fish CPUEs per day
+Seine_all <- Seine_f_2 %>%
   group_by(Survey,fYear, Date, Region, StationCode, ActionPhase, MethodCode, VolumeSampled) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
 
-SeineSpCPUE <- Seine_f %>% 
-  group_by(CommonName) %>%
-  summarize(sumCPUE = sum(CPUE))
-SeineSpCPUEA <- filter(SeineSpCPUE, sumCPUE>0.1)
 ```
 
 #### Look at data  
@@ -744,13 +797,13 @@ SeineSpCPUEA <- filter(SeineSpCPUE, sumCPUE>0.1)
 * Doesn't look uch different between phases, but a few high catches in Pre
 * More downstream
 
+Species Composition Plot
 ```{r}
-
-pal36 <- palette36.colors(36)
+pal36 <- palette36.colors(26)
 pal36 <- as.vector(t(pal36))
 
 # Proportion Species
-SeineSp <- ggplot(Seine_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+
+SeineSp <- ggplot(Seine_f_2, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_col()+
   scale_fill_manual(values = pal36) +
   theme_bw()  + theme(legend.position = "bottom") +
   theme(axis.text = element_text(size = 14),
@@ -759,9 +812,11 @@ SeineSp <- ggplot(Seine_f, aes(x = fYear, y = CPUE, fill = CommonName)) + geom_c
         legend.text = element_text(size = 11),
         legend.title = element_blank())
 SeineSp
+```
 
 
-
+Rest of plots
+```{r}
 # Histogram
 ggplot(Seine_all, aes(sumCPUE)) + geom_histogram(binwidth = .1) + theme_bw()
 
@@ -781,9 +836,6 @@ ggplot(Seine_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = R
 # Barplot
 # Summarize - Mean + Standard Error
 ```{r}
-
-
-
 Seine_summary3 <- Seine_all %>% 
   group_by(Region, ActionPhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
@@ -806,7 +858,7 @@ plot3 <- ggplot(Seine_summary3, aes(x = ActionPhase, y = meanCPUE, ymin = meanCP
         legend.title = element_text(size = 15),
         legend.position = "none")
 
-
+plot3
 
 ```
 
@@ -873,7 +925,6 @@ m1all <- glm(sumCPUE~Region + fYear + ActionPhase, data = Seine_all); summary(m1
 
 par(mfrow = c(2,2))
 plot(m1all)
-
 ```
 
 #### Model with log transformation
@@ -923,7 +974,6 @@ deviance(m3all)/m3all$df.residual # very overdispersed
 
 ```{r}
 m4all <- glm.nb(f1, data = Seine_all); summary(m4all)
-
 # Confidence Intervals 
 (est <- cbind(Estimate = coef(m4all), confint(m4all)))
 
@@ -982,29 +1032,81 @@ visreg(m4all)
 
 Mixed modeling
 ```{r}
-M.glmer1 <- glmer.nb(f2, data = Seine_all); 
-summary(M.glmer1)
+M.glmer1 <- glmer.nb(f2, data = Seine_all); summary(M.glmer1)
 ```
-
-
-
-
-
-
-
-
-
 
 Post-hoc
 
 ```{r}
-m_means3 <- emmeans(M.glmer1, ~fYear)
-multcomp::cld(m_means3, Letters = letters)
+m_means3a <- emmeans(M.glmer1, pairwise~fYear, adjust="sidak")
+m_means3a
+
+m_means3b <- emmeans(M.glmer1, pairwise~Region, adjust="sidak")
+m_means3b
+
+m_means3c <- emmeans(M.glmer1, pairwise~ActionPhase, adjust="sidak")
+m_means3c
 ```
 
 **Conclusions**
 
-* Still not sure about residual distribution
-* More fish Downstream > Upstream > Middle Sac
-* More fish Pre > Post 
+* More fish Downstream > Upstream > Middle Sac (not significant)
+* More fish Pre and During > Post 
 * Years: highest 2015, 2017-2019, 2016, 2013, 2014
+  * 2015>2016, 2018>2014, 2017>2014, 2015>2014. 2015>2013, 2017>2013, 2018>2013 
+
+
+
+
+
+
+Remove station effects by averaging into Region. Use this data for model.
+```{r}
+Seine_all2 <- Seine_all %>%
+  group_by(fYear, Region, ActionPhase) %>%
+  summarize(sumCount2 = sum(sumCount),
+            sumVol = sum(VolumeSampled),
+            sumCPUE2 = sum(sumCPUE),
+            meanCPUE = mean(sumCPUE))
+
+Seine_all2$ActionPhase <-  factor(Seine_all2$ActionPhase, levels(Seine_all2$ActionPhase)[c(2,3,1)])
+
+```
+
+Run models
+```{r}
+(M.all1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Seine_all2))
+summary(M.all1)
+
+(M.all2 <- glm(meanCPUE~Region * ActionPhase + fYear, data  = Seine_all2))
+summary(M.all2)
+
+AIC(M.all1, M.all2)
+```
+
+Diagnostic Plots
+```{r}
+par(mfrow = c(2,2))
+plot(M.all1)
+```
+
+**Should we remove Point 49 as outlier?**
+
+Post-hoc
+
+```{r}
+m_means4a <- emmeans(M.all1, pairwise~fYear, adjust="sidak")
+m_means4a
+
+m_means4b <- emmeans(M.all1, pairwise~Region, adjust="sidak")
+m_means4b
+
+m_means4c <- emmeans(M.all1, pairwise~ActionPhase, adjust="sidak")
+m_means4c
+```
+
+**Conclusions**
+
+* More fish Downstream vs Upstream and Middle Sac
+* More fish Pre > Post, not other significant differences 
+* More fish 2018 but not significant in multcomp
