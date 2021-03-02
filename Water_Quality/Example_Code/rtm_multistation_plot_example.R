@@ -49,8 +49,8 @@ rtm_clean <- rtm_orig %>%
   select(StationCode, DateTime, Turbidity)
 
 # Define flow action duration for 2014
-action_min <- as.POSIXct("2014-09-09 00:00:00")
-action_max <- as.POSIXct("2014-09-24 00:00:00")
+action_min <- as_datetime("2014-09-09 00:00:00")
+action_max <- as_datetime("2014-09-24 00:00:00")
 
 # Create multi-station plot
 rtm_clean %>% 
