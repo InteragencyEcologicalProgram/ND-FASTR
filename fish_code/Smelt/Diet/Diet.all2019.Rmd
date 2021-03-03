@@ -14,11 +14,11 @@ library(tidyverse)
 library(tidyr)
 library(lubridate)
 
-setwd("C:/Users/nkwan/OneDrive - California Department of Water Resources/Projects/North Delta Flow Action Project/NDFA Synthesis/Smelt/Diet")
+#setwd("~fish_code/Smelt/Diet")
 ```
 # bring in contractor (UW) data
 ```{r}
-diet2 <- read.csv("DSM Cage Diets 2019-2020.csv", stringsAsFactors = F, na.strings=c("",NA)) #new data, not edited at all
+diet2 <- read.csv("fish_code/Smelt/Diet/DSM Cage Diets 2019-2020.csv", stringsAsFactors = F, na.strings=c("",NA)) #new data, not edited at all
 
 #format 
 #rename columns
@@ -182,13 +182,11 @@ ano #0.50
 ano <- anosim(m.diet, all.flip$Cage, distance="bray")
 ano #-0.02
 
-#"The ANOSIM statistic compares the mean of ranked dissimilarities between groups to the mean of ranked dissimilarities within groups. An R value close to "1.0" suggests dissimilarity between groups while an R value close to "0" suggests an even distribution of high and low ranks within and between groups. R values below "0" suggest that dissimilarities are greater within groups than between groups. See Clarke and Gorley (2001) for a guide to interpreting ANOSIM R values."
-
 ```
 # prep dataset with zoop and diet
 ```{r}
 #prep------------------------------------------------------------------------
-zoop <- read.csv("zoop_NDFA.csv", stringsAsFactors = F) #from lower trophic sub-team
+zoop <- read.csv("fish_code/Smelt/Diet/zoop_NDFA.csv", stringsAsFactors = F) #from lower trophic sub-team
 
 #condense to just what we need
 zoop2 <- zoop[c(2,3,4,7,25,43)] #don't need CPUE since that isn't really necessary for these kinds of statistical tests
@@ -300,6 +298,9 @@ full.flip[is.na(full.flip)] = 0
 ```{r}
 #nmds------------------------------------------------------------------------
 #reference: https://jkzorz.github.io/2019/06/06/NMDS.html
+full.flip$month <- as.factor(full.flip$month)
+full.flip$site <- as.factor(full.flip$site)
+full.flip$type <- as.factor(full.flip$type)
 
 #extract columns with abundance info
 full = full.flip[7:36]
@@ -308,10 +309,18 @@ full = full.flip[7:36]
 m.full <- as.matrix(full)
 
 #run metaMDS command - use bray as the distance measure (Bray-Curtis takes into account species presence/absence as well as abundance - other distance measures often only account for presence/absence)
-nmds <- metaMDS(m.full, distance = "bray", trymax = 100)
+nmds <- metaMDS(m.full, distance = "bray", trymax = 500)
 nmds #stress = 0.07, no convergence
-##An important number to note is the stress, which is roughly the “goodness of fit” of your NMDS ordination. For a good representation of your data, the stress value should ideally be less than 0.2
+##An important number to note is the stress, which is roughly the “goodness of fit” of your NMDS ordination. For a good representation of your data, the stress value should ideally be less than 0.1
+
+# Shepards test/goodness of fit
+goodness(nmds) # Produces a results of test statistics for goodness of fit for each point
+stressplot(nmds) # Produces a Shepards diagram
+
 plot(nmds)
+source("plotNMDS.R")
+PlotNMDS(nmds, data=full.flip, group = "type", group2 = "month", group3 = "site", textp = F)
+PlotNMDS2(nmds, data=full.flip, group = "type", group2 = "month", group3 = "site", textp = F)
 
 #extract NMDS scores (x and y coordinates)
 data.scores = as.data.frame(scores(nmds))
@@ -335,10 +344,12 @@ ano <- anosim(m.full, full.flip$type, permutations = 9999, distance="bray")
 ano #R = 0.3436
 
 ano2 <- anosim(m.full, full.flip$site, permutations = 9999, distance="bray")
-ano2 #R = 0.4198
+ano2 #R = 0.3122
 
 ano3 <- anosim(m.full, full.flip$month, permutations = 9999, distance="bray")
-ano3 #R = 0.07055
+ano3 #R = -0.02079
+
+#"The ANOSIM statistic compares the mean of ranked dissimilarities between groups to the mean of ranked dissimilarities within groups. An R value close to "1.0" suggests dissimilarity between groups while an R value close to "0" suggests an even distribution of high and low ranks within and between groups. R values below "0" suggest that dissimilarities are greater within groups than between groups. See Clarke and Gorley (2001) for a guide to interpreting ANOSIM R values."
 ```
 # indicator species analysis (not used for final results, just exploratory)
 ```{r}
@@ -399,4 +410,5 @@ ggplot(data = data.scores, aes(x = NMDS1, y = NMDS2)) +
        legend.text = element_text(size = 9, colour = "grey30")) + 
      labs(colour = "Sample")
 ```
+
 
