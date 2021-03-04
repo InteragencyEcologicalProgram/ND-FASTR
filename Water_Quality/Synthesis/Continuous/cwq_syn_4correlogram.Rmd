@@ -1,20 +1,20 @@
-```{r}
+```{r message = FALSE}
 # FASTR Cont. Correlation Matrices
 # Author: Sarah Perry
 # Date created: 02/03/2021
 
 
 # import packages and scripts
+library(Hmisc)
 library(lattice)
 library(tseries)
 library(corrplot)
 library(tidyverse)
-library(RcmdrMisc)
 library(data.table)
 source('global_ndfa_funcs.R')
 ```
 
-```{r Import Data}
+```{r Import Data, message=FALSE}
 # function
 get_abs_path <- function(fp_rel){
   # define absolute filepath
@@ -61,7 +61,7 @@ df_wq <- df_wq %>%
 # average to day
 df_wq <- df_wq %>%
   group_by(StationCode, Analyte, Date, Year) %>%
-  summarize(Result = mean(Result, na.rm = TRUE)) %>%
+  summarise(Result = mean(Result, na.rm = TRUE)) %>%
   ungroup()
 
 # format for correlation matrix
@@ -74,14 +74,27 @@ corrgram(df_corr, upper.panel=panel.pts, lower.panel = panel.ellipse, text.panel
 ```
 
 ```{r Correlation Matrix}
-corr <- rcorr.adjust(as.matrix(df_corr), type = 'pearson', use = 'pairwise.complete.obs')
-corr$P.unadj
+corr <- rcorr(as.matrix(df_corr), type = 'pearson')
+corr$P
 ```
-Conclusion:
-Everything has a statisitcally significant correlation with each other except Chla:fDOM
+
+```{r CM as Dataframe}
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    r = cormat[ut],
+    p = pmat[ut],
+    significance = ifelse(pmat[ut] < 0.05, 'sig', 'not sig')
+    )
+}
+
+df_sig <- flattenCorrMatrix(corr$r, corr$P)
+head(df_sig)
+```
 
 ```{r Correlogram}
 res <- cor(df_corr, use = 'pairwise.complete.obs')
 corrplot(res, type = 'full', order = 'hclust', tl.col = 'black', tl.srt = 45)
 ```
-
