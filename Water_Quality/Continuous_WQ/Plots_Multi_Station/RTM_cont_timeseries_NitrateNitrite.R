@@ -1,4 +1,4 @@
-# NDFA Water Quality - Continuous Dissolved Oxygen
+# NDFA Water Quality - Continuous Nitrate/Nitrite
 # Purpose: Create time series plot using continuous water quality data
 # Author: Dave Bosworth & Amanda Maguire
 # Contact: David.Bosworth@water.ca.gov
@@ -38,25 +38,25 @@ sta_order <- c(
   "SRH"
 )
 
-# Prepare data - 2013 Dissolved oxygen
-rtm_clean_do <- rtm_orig %>% 
+# Prepare data - All years Nitrate/Nitrite
+rtm_clean_nn <- rtm_orig %>% 
   mutate(DateTime = ymd_hms(DateTime)) %>% 
   filter(
     !StationCode == "SDI",
-    !is.na(DO)
+    !is.na(NitrateNitrite)
   ) %>% 
   mutate(StationCode = factor(StationCode, levels = sta_order)) %>% 
-  select(StationCode, DateTime, DO)
+  select(StationCode, DateTime, NitrateNitrite)
 
 # Define flow action duration for 2013
-rtm_clean_do_2013 <- rtm_clean_do %>%
+rtm_clean_nn_2013 <- rtm_clean_nn %>%
   filter(year(DateTime) == 2013)
 action_min <- as_datetime("2013-08-22 00:00:00")
 action_max <- as_datetime("2013-10-03 00:00:00")
 
 # Create multi-station plot
-rtm_clean_do_2013 %>% 
-  ggplot(aes(x = DateTime, y = DO)) +
+rtm_clean_nn_2013 %>% 
+  ggplot(aes(x = DateTime, y = NitrateNitrite)) +
   geom_point(
     shape = "circle open",
     size = 1,
@@ -71,7 +71,7 @@ rtm_clean_do_2013 %>%
     color = "blue"
   ) +
   facet_grid(rows = vars(StationCode)) +
-  ylab("Dissolved Oxygen (mg/L)") +
+  ylab("Nitrate + Nitrite (mg/L as N)") +
   scale_x_datetime(
     name = "Date",
     breaks = breaks_pretty(15),
@@ -92,17 +92,17 @@ rtm_clean_do_2013 %>%
     fill = "firebrick"
   )
 
-ggsave("DO_2013.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
+ggsave("NO3NO2_2013.jpg", width = 9.5, height = 7, units = "in", dpi = 300)
 
 # Define flow action duration for 2014
-rtm_clean_do_2014 <- rtm_clean_do %>%
+rtm_clean_nn_2014 <- rtm_clean_nn %>%
   filter(year(DateTime) == 2014)
 action_min <- as_datetime("2014-09-09 00:00:00")
 action_max <- as_datetime("2014-09-24 00:00:00")
 
 # Create multi-station plot
-rtm_clean_do_2014 %>% 
-  ggplot(aes(x = DateTime, y = DO)) +
+rtm_clean_nn_2014 %>%
+  ggplot(aes(x = DateTime, y = NitrateNitrite)) +
   geom_point(
     shape = "circle open",
     size = 1,
@@ -117,7 +117,7 @@ rtm_clean_do_2014 %>%
     color = "blue"
   ) +
   facet_grid(rows = vars(StationCode)) +
-  ylab("Dissolved Oxygen (mg/L)") +
+  ylab("Nitrate + Nitrite (mg/L as N)") +
   scale_x_datetime(
     name = "Date",
     breaks = breaks_pretty(15),
@@ -138,17 +138,17 @@ rtm_clean_do_2014 %>%
     fill = "firebrick"
   )
 
-ggsave("DO_2014.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
+ggsave("NO3NO2_2014.jpg", width = 9.5, height = 7, units = "in", dpi = 300)
 
 # Define flow action duration for 2015
-rtm_clean_do_2015 <- rtm_clean_do %>%
+rtm_clean_nn_2015 <- rtm_clean_nn %>%
   filter(year(DateTime) == 2015)
 action_min <- as_datetime("2015-08-21 00:00:00")
 action_max <- as_datetime("2015-10-02 00:00:00")
 
 # Create multi-station plot
-rtm_clean_do_2015 %>% 
-  ggplot(aes(x = DateTime, y = DO)) +
+rtm_clean_nn_2015 %>% 
+  ggplot(aes(x = DateTime, y = NitrateNitrite)) +
   geom_point(
     shape = "circle open",
     size = 1,
@@ -163,7 +163,7 @@ rtm_clean_do_2015 %>%
     color = "blue"
   ) +
   facet_grid(rows = vars(StationCode)) +
-  ylab("Dissolved Oxygen (mg/L)") +
+  ylab("Nitrate + Nitrite (mg/L as N)") +
   scale_x_datetime(
     name = "Date",
     breaks = breaks_pretty(15),
@@ -184,17 +184,17 @@ rtm_clean_do_2015 %>%
     fill = "firebrick"
   )
 
-ggsave("DO_2015.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
+ggsave("NO3NO2_2015.jpg", width = 9.5, height = 7, units = "in", dpi = 300)
 
 # Define flow action duration for 2016
-rtm_clean_do_2016 <- rtm_clean_do %>%
+rtm_clean_nn_2016 <- rtm_clean_nn %>%
   filter(year(DateTime) == 2016)
 action_min <- as_datetime("2016-07-14 00:00:00")
 action_max <- as_datetime("2016-08-02 00:00:00")
 
 # Create multi-station plot
-rtm_clean_do_2016 %>% 
-  ggplot(aes(x = DateTime, y = DO)) +
+rtm_clean_nn_2016 %>% 
+  ggplot(aes(x = DateTime, y = NitrateNitrite)) +
   geom_point(
     shape = "circle open",
     size = 1,
@@ -209,7 +209,7 @@ rtm_clean_do_2016 %>%
     color = "blue"
   ) +
   facet_grid(rows = vars(StationCode)) +
-  ylab("Dissolved Oxygen (mg/L)") +
+  ylab("Nitrate + Nitrite (mg/L as N)") +
   scale_x_datetime(
     name = "Date",
     breaks = breaks_pretty(15),
@@ -230,63 +230,17 @@ rtm_clean_do_2016 %>%
     fill = "firebrick"
   )
 
-ggsave("DO_2016.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
-
-# Define flow action duration for 2017
-rtm_clean_do_2017 <- rtm_clean_do %>%
-  filter(year(DateTime) == 2017)
-action_min <- as_datetime("2017-08-29 00:00:00")
-action_max <- as_datetime("2017-09-19 00:00:00")
-
-# Create multi-station plot
-rtm_clean_do_2017 %>% 
-  ggplot(aes(x = DateTime, y = DO)) +
-  geom_point(
-    shape = "circle open",
-    size = 1,
-    color = "gray30",
-    alpha = 0.3
-  ) +
-  geom_smooth(
-    formula = y ~ x, 
-    method = "loess", 
-    span = 0.1, 
-    se = FALSE,
-    color = "blue"
-  ) +
-  facet_grid(rows = vars(StationCode)) +
-  ylab("Dissolved Oxygen (mg/L)") +
-  scale_x_datetime(
-    name = "Date",
-    breaks = breaks_pretty(15),
-    labels = label_date_short()
-  ) +
-  theme_light() +
-  theme(
-    strip.text = element_text(color = "black"),
-    panel.grid.minor = element_blank()
-  ) +
-  annotate(
-    "rect", 
-    xmin = action_min, 
-    xmax = action_max, 
-    ymin = -Inf, 
-    ymax = Inf, 
-    alpha = 0.15,
-    fill = "firebrick"
-  )
-
-ggsave("DO_2017.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
+ggsave("NO3NO2_2016.jpg", width = 9.5, height = 7, units = "in", dpi = 300)
 
 # Define flow action duration for 2018
-rtm_clean_do_2018 <- rtm_clean_do %>%
+rtm_clean_nn_2018 <- rtm_clean_nn %>%
   filter(year(DateTime) == 2018)
 action_min <- as_datetime("2018-08-28 00:00:00")
 action_max <- as_datetime("2018-09-27 00:00:00")
 
 # Create multi-station plot
-rtm_clean_do_2018 %>% 
-  ggplot(aes(x = DateTime, y = DO)) +
+rtm_clean_nn_2018 %>% 
+  ggplot(aes(x = DateTime, y = NitrateNitrite)) +
   geom_point(
     shape = "circle open",
     size = 1,
@@ -301,7 +255,7 @@ rtm_clean_do_2018 %>%
     color = "blue"
   ) +
   facet_grid(rows = vars(StationCode)) +
-  ylab("Dissolved Oxygen (mg/L)") +
+  ylab("Nitrate + Nitrite (mg/L as N)") +
   scale_x_datetime(
     name = "Date",
     breaks = breaks_pretty(15),
@@ -322,17 +276,17 @@ rtm_clean_do_2018 %>%
     fill = "firebrick"
   )
 
-ggsave("DO_2018.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
+ggsave("NO3NO2_2018.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
 
 # Define flow action duration for 2019
-rtm_clean_do_2019 <- rtm_clean_do %>%
+rtm_clean_nn_2019 <- rtm_clean_nn %>%
   filter(year(DateTime) == 2019)
 action_min <- as_datetime("2019-08-26 00:00:00")
 action_max <- as_datetime("2019-09-22 00:00:00")
 
 # Create multi-station plot
-rtm_clean_do_2019 %>% 
-  ggplot(aes(x = DateTime, y = DO)) +
+rtm_clean_nn_2019 %>% 
+  ggplot(aes(x = DateTime, y = NitrateNitrite)) +
   geom_point(
     shape = "circle open",
     size = 1,
@@ -347,7 +301,7 @@ rtm_clean_do_2019 %>%
     color = "blue"
   ) +
   facet_grid(rows = vars(StationCode)) +
-  ylab("Dissolved Oxygen (mg/L)") +
+  ylab("Nitrate + Nitrite (mg/L as N)") +
   scale_x_datetime(
     name = "Date",
     breaks = breaks_pretty(15),
@@ -368,4 +322,4 @@ rtm_clean_do_2019 %>%
     fill = "firebrick"
   )
 
-ggsave("DO_2019.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
+ggsave("NO3NO2_2019.jpg", width = 7, height = 9.5, units = "in", dpi = 300)

@@ -1,4 +1,4 @@
-# NDFA Water Quality - Continuous Conductivity
+# NDFA Water Quality - Continuous Specific Conductivity
 # Purpose: Create time series plot using continuous water quality data
 # Author: Dave Bosworth & Amanda Maguire
 # Contact: David.Bosworth@water.ca.gov
@@ -35,22 +35,22 @@ sta_order <- c(
   "LIB",
   "RYI",
   "RVB",
-  "SDI",
   "SRH"
 )
 
-# Prepare data - 2013 Conductivity
-rtm_clean_spc_2013 <- rtm_orig %>% 
+# Prepare data - All years Specific Conductivity
+rtm_clean_spc <- rtm_orig %>% 
   mutate(DateTime = ymd_hms(DateTime)) %>% 
   filter(
-    year(DateTime) == 2013,
-    #!StationCode == "SDI",
+    !StationCode == "SDI",
     !is.na(SpCnd)
   ) %>% 
   mutate(StationCode = factor(StationCode, levels = sta_order)) %>% 
   select(StationCode, DateTime, SpCnd)
 
 # Define flow action duration for 2013
+rtm_clean_spc_2013 <- rtm_clean_spc %>%
+  filter(year(DateTime) == 2013)
 action_min <- as_datetime("2013-08-22 00:00:00")
 action_max <- as_datetime("2013-10-03 00:00:00")
 
@@ -94,18 +94,9 @@ rtm_clean_spc_2013 %>%
 
 ggsave("SpCnd_2013.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
 
-# Prepare data - 2014 Conductivity
-rtm_clean_spc_2014 <- rtm_orig %>% 
-  mutate(DateTime = ymd_hms(DateTime)) %>% 
-  filter(
-    year(DateTime) == 2014,
-    #!StationCode == "SDI", !StationCode == "RVB",
-    !is.na(SpCnd)
-  ) %>% 
-  mutate(StationCode = factor(StationCode, levels = sta_order)) %>% 
-  select(StationCode, DateTime, SpCnd)
-
 # Define flow action duration for 2014
+rtm_clean_spc_2014 <- rtm_clean_spc %>%
+  filter(year(DateTime) == 2014)
 action_min <- as_datetime("2014-09-09 00:00:00")
 action_max <- as_datetime("2014-09-24 00:00:00")
 
@@ -149,18 +140,9 @@ rtm_clean_spc_2014 %>%
 
 ggsave("SpCnd_2014.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
 
-# Prepare data - 2015 Conductivity
-rtm_clean_spc_2015 <- rtm_orig %>% 
-  mutate(DateTime = ymd_hms(DateTime)) %>% 
-  filter(
-    year(DateTime) == 2015,
-    #!StationCode == "SDI", !StationCode == "RVB",
-    !is.na(SpCnd)
-  ) %>% 
-  mutate(StationCode = factor(StationCode, levels = sta_order)) %>% 
-  select(StationCode, DateTime, SpCnd)
-
 # Define flow action duration for 2015
+rtm_clean_spc_2015 <- rtm_clean_spc %>%
+  filter(year(DateTime) == 2015)
 action_min <- as_datetime("2015-08-21 00:00:00")
 action_max <- as_datetime("2015-10-02 00:00:00")
 
@@ -204,17 +186,9 @@ rtm_clean_spc_2015 %>%
 
 ggsave("SpCnd_2015.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
 
-# Prepare data - 2016 Conductivity
-rtm_clean_spc_2016 <- rtm_orig %>% 
-  mutate(DateTime = ymd_hms(DateTime)) %>% 
-  filter(
-    year(DateTime) == 2016,
-    !is.na(SpCnd)
-  ) %>% 
-  mutate(StationCode = factor(StationCode, levels = sta_order)) %>% 
-  select(StationCode, DateTime, SpCnd)
-
 # Define flow action duration for 2016
+rtm_clean_spc_2016 <- rtm_clean_spc %>%
+  filter(year(DateTime) == 2016)
 action_min <- as_datetime("2016-07-14 00:00:00")
 action_max <- as_datetime("2016-08-02 00:00:00")
 
@@ -258,17 +232,9 @@ rtm_clean_spc_2016 %>%
 
 ggsave("SpCnd_2016.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
 
-# Prepare data - 2017 Conductivity
-rtm_clean_spc_2017 <- rtm_orig %>% 
-  mutate(DateTime = ymd_hms(DateTime)) %>% 
-  filter(
-    year(DateTime) == 2017,
-    !is.na(SpCnd)
-  ) %>% 
-  mutate(StationCode = factor(StationCode, levels = sta_order)) %>% 
-  select(StationCode, DateTime, SpCnd)
-
 # Define flow action duration for 2017
+rtm_clean_spc_2017 <- rtm_clean_spc %>%
+  filter(year(DateTime) == 2017)
 action_min <- as_datetime("2017-08-29 00:00:00")
 action_max <- as_datetime("2017-09-19 00:00:00")
 
@@ -312,18 +278,9 @@ rtm_clean_spc_2017 %>%
 
 ggsave("SpCnd_2017.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
 
-# Prepare data - 2018 Conductivity
-rtm_clean_spc_2018 <- rtm_orig %>% 
-  mutate(DateTime = ymd_hms(DateTime)) %>% 
-  filter(
-    year(DateTime) == 2018,
-    #!StationCode == "SDI",
-    !is.na(SpCnd)
-  ) %>% 
-  mutate(StationCode = factor(StationCode, levels = sta_order)) %>% 
-  select(StationCode, DateTime, SpCnd)
-
 # Define flow action duration for 2018
+rtm_clean_spc_2018 <- rtm_clean_spc %>%
+  filter(year(DateTime) == 2018)
 action_min <- as_datetime("2018-08-28 00:00:00")
 action_max <- as_datetime("2018-09-27 00:00:00")
 
@@ -367,18 +324,9 @@ rtm_clean_spc_2018 %>%
 
 ggsave("SpCnd_2018.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
 
-# Prepare data - 2019 Conductivity
-rtm_clean_spc_2019 <- rtm_orig %>% 
-  mutate(DateTime = ymd_hms(DateTime)) %>% 
-  filter(
-    year(DateTime) == 2019,
-    #!StationCode == "SDI",
-    !is.na(SpCnd)
-  ) %>% 
-  mutate(StationCode = factor(StationCode, levels = sta_order)) %>% 
-  select(StationCode, DateTime, SpCnd)
-
 # Define flow action duration for 2019
+rtm_clean_spc_2019 <- rtm_clean_spc %>%
+  filter(year(DateTime) == 2019)
 action_min <- as_datetime("2019-08-26 00:00:00")
 action_max <- as_datetime("2019-09-22 00:00:00")
 
