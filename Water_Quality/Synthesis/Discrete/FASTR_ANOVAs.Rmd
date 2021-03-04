@@ -1,4 +1,4 @@
-```{r}
+```{r, message=FALSE}
 # FASTR D-WQ ANOVAs
 # Author: Sarah Perry
 # Date created: 01/27/2020
@@ -8,12 +8,13 @@
 library(tidyverse)
 library(lmerTest)
 library(lme4)
+library(tseries)
+library(DataCombine)
+library(emmeans)
 source('global_ndfa_funcs.R')
 ```
 
-Current output is ANOVA results, aka, if the variable is significant. To fill out hypothesis table, need to do post-hoc analysis determine in what way it's significant (eg., for before/during/after, determine if the regression coefficents are positive/negative and determine which ones are "indivdually" significant).
-
-```{r Import Data}
+```{r Import Data, message=FALSE}
 # define absolute filepaths
 fp_abs_discrete <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/WQ_INPUT_Discrete_Lab_2021-01-25.csv')
 fp_abs_wy <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/Analysis/FlowDatesDesignations_45days.csv')
@@ -56,103 +57,93 @@ rm(df_water_year, df_region, df_discrete)
 # list of analytes
 analytes <- unique(df_wq$Analyte)
 
-# average over stations/year
+# # average over stations/year
 df_wq <- df_wq %>%
-  group_by(Station, Year, FlowActionPeriod, BroadRegion, RL, Analyte) %>%
+  group_by(Station, Year, Date, FlowActionPeriod, BroadRegion, RL, Analyte) %>%
   summarize(Result = mean(Result, na.rm = TRUE)) %>%
   ungroup()
 ```
 
-```{r ANOVA - set to RL}
-aov_all <- list()
+```{r define regression function}
+reg_func <- function(df, analyte_name){
+  df <- slide(df, 'Result', TimeVar = 'Date', GroupVar = 'Station', NewVar = 'lag1', slideBy = -1)
+  df <- slide(df, 'lag1', TimeVar = 'Date', GroupVar = 'Station', NewVar = 'lag2', slideBy = -1)
+  
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|Station), data = df)
 
-for (i in seq(analytes)){
-  analyte <- analytes[i]
-  
-  df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
-  
-  df_sub$Result <- with(df_sub, ifelse(is.na(Result), RL, Result))
+  # aov_lmer <- anova(lmer_fit, type = 'III')
 
-  df_sub$Result <- log(df_sub$Result)
-  
-  df_sub$Year <- as.character(df_sub$Year)
-  
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
-  
-  # print(paste0('~*~*~',analyte,'~*~*~'))
-  # print(lmer_fit)
-  
-  aov_lmer <- anova(lmer_fit, type = 'III')
-
-  # print(aov_lmer)
-  # print('-----------------')
-  
-  df_aov <- as.data.frame(aov_lmer)
-  df_aov <- rename(df_aov, Pr_F = `Pr(>F)`)
-  df_aov$Variable <- row.names(df_aov)
-  df_aov$Analyte <- analyte
-  df_aov <- df_aov %>%
+  lmer_rg <- ref_grid(lmer_fit)
+  lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey')
+  cont <- test(lmer_emm)$contrasts
+    
+  cont$Analyte <- analyte_name
+  cont <- cont %>%
     mutate(Significance = case_when(
-      Pr_F >= 0 & Pr_F < 0.001 ~ '***',
-      Pr_F >= 0.001 & Pr_F < 0.01 ~ '**',
-      Pr_F >= 0.01 & Pr_F < 0.05 ~ '*',
-      Pr_F >= 0.05 & Pr_F < 0.1 ~ '.',
-      Pr_F >= 0.1 & Pr_F < 1 ~ ' ',
+      p.value >= 0 & p.value < 0.001 ~ '***',
+      p.value >= 0.001 & p.value < 0.01 ~ '**',
+      p.value >= 0.01 & p.value < 0.05 ~ '*',
+      p.value >= 0.05 & p.value < 0.1 ~ '.',
+      p.value >= 0.1 & p.value < 1 ~ ' ',
       )
     )
-  df_aov <- rename(df_aov, `Pr(>F)` = Pr_F)
-
-  aov_all[[i]] <- df_aov
-
+  
+  return(cont)
 }
-
-all_data <- do.call(rbind, aov_all)
-write_csv(all_data, 'C:/Users/sperry/Desktop/anova_RL.csv')
 ```
 
-```{r ANOVA - set to ~0}
-aov_all <- list()
+```{r ANOVA - set to RL, message = FALSE}
+reg_all <- list()
 
 for (i in seq(analytes)){
   analyte <- analytes[i]
+
+  # clean data, set <RL values = RL
+  df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
+  df_sub$Result <- with(df_sub, ifelse(is.na(Result), RL, Result))
+  df_sub$Result <- log(df_sub$Result)
+  df_sub$Year <- as.character(df_sub$Year)
+
+  # run regressions
+  df_cont <- reg_func(df_sub, analyte)
+  
+  reg_all[[i]] <- df_cont
+}
+
+all_data <- do.call(rbind, reg_all)
+write_csv(all_data, 'C:/Users/sperry/Desktop/reg_RL.csv')
+```
+
+```{r ANOVA - set to ~0, message = FALSE}
+reg_all <- list()
+
+for (i in seq(analytes)){
+  analyte <- analytes[i]
+  
+  # clean data, set <RL values = 0
   df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
   
   df_sub$Result[is.na(df_sub$Result)] <- 0.01
   df_sub$Result <- log(df_sub$Result)
 
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  # run regressions
+  df_cont <- reg_func(df_sub, analyte)
   
-  aov_lmer <- anova(lmer_fit, type = 'III')
-
-  df_aov <- as.data.frame(aov_lmer)
-  df_aov <- rename(df_aov, Pr_F = `Pr(>F)`)
-  df_aov$Variable <- row.names(df_aov)
-  df_aov$Analyte <- analyte
-  df_aov <- df_aov %>%
-    mutate(Significance = case_when(
-      Pr_F >= 0 & Pr_F < 0.001 ~ '***',
-      Pr_F >= 0.001 & Pr_F < 0.01 ~ '**',
-      Pr_F >= 0.01 & Pr_F < 0.05 ~ '*',
-      Pr_F >= 0.05 & Pr_F < 0.1 ~ '.',
-      Pr_F >= 0.1 & Pr_F < 1 ~ ' ',
-      )
-    )
-  df_aov <- rename(df_aov, `Pr(>F)` = Pr_F)
-
-  aov_all[[i]] <- df_aov
+  reg_all[[i]] <- df_cont
 }
 
-all_data <- do.call(rbind, aov_all)
-write_csv(all_data, 'C:/Users/sperry/Desktop/anova_0.csv')
+all_data <- do.call(rbind, reg_all)
+write_csv(all_data, 'C:/Users/sperry/Desktop/reg_0.csv')
 ```
 
-```{r ANOVA - random sub 1}
+```{r ANOVA - random sub 1, message = FALSE}
 set.seed(1)
-aov_all <- list()
+reg_all <- list()
 
 for (i in seq(analytes)){
   analyte <- analytes[i]
   
+  # clean data, set <RL values = random
   df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
   
   for (i in seq(length(df_sub$Station))){
@@ -162,43 +153,25 @@ for (i in seq(analytes)){
     }
   }
   
-  df_sub$Result <- log(df_sub$Result)
-
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  # run regressions
+  df_cont <- reg_func(df_sub, analyte)
   
-  aov_lmer <- anova(lmer_fit, type = 'III')
-
-  df_aov <- as.data.frame(aov_lmer)
-  df_aov <- rename(df_aov, Pr_F = `Pr(>F)`)
-  df_aov$Variable <- row.names(df_aov)
-  df_aov$Analyte <- analyte
-  df_aov <- df_aov %>%
-    mutate(Significance = case_when(
-      Pr_F >= 0 & Pr_F < 0.001 ~ '***',
-      Pr_F >= 0.001 & Pr_F < 0.01 ~ '**',
-      Pr_F >= 0.01 & Pr_F < 0.05 ~ '*',
-      Pr_F >= 0.05 & Pr_F < 0.1 ~ '.',
-      Pr_F >= 0.1 & Pr_F < 1 ~ ' ',
-      )
-    )
-  df_aov <- rename(df_aov, `Pr(>F)` = Pr_F)
-
-  aov_all[[i]] <- df_aov
-  
-  aov_all <- compact(aov_all)
+  reg_all[[i]] <- df_cont
+  reg_all <- compact(reg_all)
 }
 
-all_data <- do.call(rbind, aov_all)
-write_csv(all_data, 'C:/Users/sperry/Desktop/anova_rand1.csv')
+all_data <- do.call(rbind, reg_all)
+write_csv(all_data, 'C:/Users/sperry/Desktop/reg_rand1.csv')
 ```
 
-```{r ANOVA - random sub 2}
+```{r ANOVA - random sub 2, message = FALSE}
 set.seed(2)
-aov_all <- list()
+reg_all <- list()
 
 for (i in seq(analytes)){
   analyte <- analytes[i]
   
+  # clean data, set <RL values = random
   df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
   
   for (i in seq(length(df_sub$Station))){
@@ -208,43 +181,25 @@ for (i in seq(analytes)){
     }
   }
   
-  df_sub$Result <- log(df_sub$Result)
-
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  # run regressions
+  df_cont <- reg_func(df_sub, analyte)
   
-  aov_lmer <- anova(lmer_fit, type = 'III')
-
-  df_aov <- as.data.frame(aov_lmer)
-  df_aov <- rename(df_aov, Pr_F = `Pr(>F)`)
-  df_aov$Variable <- row.names(df_aov)
-  df_aov$Analyte <- analyte
-  df_aov <- df_aov %>%
-    mutate(Significance = case_when(
-      Pr_F >= 0 & Pr_F < 0.001 ~ '***',
-      Pr_F >= 0.001 & Pr_F < 0.01 ~ '**',
-      Pr_F >= 0.01 & Pr_F < 0.05 ~ '*',
-      Pr_F >= 0.05 & Pr_F < 0.1 ~ '.',
-      Pr_F >= 0.1 & Pr_F < 1 ~ ' ',
-      )
-    )
-  df_aov <- rename(df_aov, `Pr(>F)` = Pr_F)
-
-  aov_all[[i]] <- df_aov
-  
-  aov_all <- compact(aov_all)
+  reg_all[[i]] <- df_cont
+  reg_all <- compact(reg_all)
 }
 
-all_data <- do.call(rbind, aov_all)
-write_csv(all_data, 'C:/Users/sperry/Desktop/anova_rand2.csv')
+all_data <- do.call(rbind, reg_all)
+write_csv(all_data, 'C:/Users/sperry/Desktop/reg_rand2.csv')
 ```
 
-```{r ANOVA - random sub 3}
+```{r ANOVA - random sub 3, message = FALSE}
 set.seed(3)
-aov_all <- list()
+reg_all <- list()
 
 for (i in seq(analytes)){
   analyte <- analytes[i]
   
+  # clean data, set <RL values = random
   df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
   
   for (i in seq(length(df_sub$Station))){
@@ -254,33 +209,14 @@ for (i in seq(analytes)){
     }
   }
   
-  df_sub$Result <- log(df_sub$Result)
-
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod*BroadRegion + (1|BroadRegion:Station), data = df_sub)
+  # run regressions
+  df_cont <- reg_func(df_sub, analyte)
   
-  aov_lmer <- anova(lmer_fit, type = 'III')
-  
-  df_aov <- as.data.frame(aov_lmer)
-  df_aov <- rename(df_aov, Pr_F = `Pr(>F)`)
-  df_aov$Variable <- row.names(df_aov)
-  df_aov$Analyte <- analyte
-  df_aov <- df_aov %>%
-    mutate(Significance = case_when(
-      Pr_F >= 0 & Pr_F < 0.001 ~ '***',
-      Pr_F >= 0.001 & Pr_F < 0.01 ~ '**',
-      Pr_F >= 0.01 & Pr_F < 0.05 ~ '*',
-      Pr_F >= 0.05 & Pr_F < 0.1 ~ '.',
-      Pr_F >= 0.1 & Pr_F < 1 ~ ' ',
-      )
-    )
-  df_aov <- rename(df_aov, `Pr(>F)` = Pr_F)
-
-  aov_all[[i]] <- df_aov
-  
-  aov_all <- compact(aov_all)
+  reg_all[[i]] <- df_cont
+  reg_all <- compact(reg_all)
 }
 
-all_data <- do.call(rbind, aov_all)
-write_csv(all_data, 'C:/Users/sperry/Desktop/anova_rand3.csv')
+all_data <- do.call(rbind, reg_all)
+write_csv(all_data, 'C:/Users/sperry/Desktop/reg_rand3.csv')
 ```
 
