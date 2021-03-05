@@ -1,0 +1,427 @@
+---
+title: 'NDFA contaminants Data: exploratory data analysis of water concentrations'
+author: "Dave Bosworth"
+date: "3/5/2021"
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+This document contains plots and data summary tables used for exploratory data analysis (EDA) for the contaminants concentrations in water used in North Delta Flow Action synthesis project.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+library(DT)
+```
+
+```{r load functions, message = FALSE, warning = FALSE}
+# Source global NDFA functions
+source("global_ndfa_funcs.R")
+
+# Source contaminants EDA functions
+source("Water_Quality/Contaminants/contam_EDA_funcs.R")
+```
+
+```{r define file paths}
+# Define relative file path for processed contaminants data files
+fp_rel_proc <- "WQ_Subteam/Processed_Data/Contaminants"
+
+# Define absolute file path
+fp_abs_proc <- ndfa_abs_sp_path(fp_rel_proc)
+```
+
+# Import and Prepare Data
+
+```{r import data, message = FALSE}
+# Import contaminants concentrations in water data
+contam_water_orig <- read_csv(file.path(fp_abs_proc, "WQ_INPUT_Contam_Water_2021-02-11.csv"))
+
+# Import pesticide type and class designations
+contam_type_class <- read_csv(file.path(fp_abs_proc, "Contam_Types_and_Classes.csv"))
+```
+
+To prepare the contaminants data for the exploratory data analysis (EDA) plots and summary tables, we will need do the following:
+
+* Add flow action periods and remove any data outside of the period of interest (45 days before and after the flow pulse)
+* Add pesticide type and class designations
+* Remove data for 2015 since there was only one sampling event during that year
+* Create a `SamplingEvent` variable. Some of the stations were sampled 1-2 days apart. This variable will group these within one sampling event.
+
+```{r prepare data, message = FALSE}
+contam_water_clean_v1 <- contam_water_orig %>% 
+  # Parse DateTime variable, add Date and Year variables
+  mutate(
+    DateTime = ymd_hms(DateTime),
+    Date = date(DateTime),
+    Year = year(DateTime)
+  ) %>% 
+  # Add flow pulse periods
+  ndfa_action_periods() %>% 
+  # Add pesticide types and classes
+  left_join(contam_type_class) %>% 
+  # Remove data for 2015
+  filter(Year != 2015) %>% 
+  # Clean up data frame
+  select(
+    StationCode,
+    Date,
+    Year,
+    FlowActionPeriod,
+    Analyte,
+    PesticideType,
+    PesticideClass,
+    Result,
+    Units
+  )
+
+# Create a tibble of dates and sampling events to join to main data frame
+dates_se_cw <-
+  tibble(
+    Date = sort(unique(contam_water_clean_v1$Date)),
+    SamplingEvent = c(
+      "Jun 23, 2016",
+      "Jul 19, 2016",
+      "Jul 28, 2016",
+      "Aug 2, 2016",
+      "Aug 9, 2016",
+      "Jul 27, 2017",
+      "Aug 10, 2017",
+      rep("Aug 29-31, 2017", 3),
+      rep("Sep 12-13, 2017", 2),
+      rep("Sep 19-20, 2017", 2),
+      rep("Oct 3-4, 2017", 2),
+      rep("Oct 18-19, 2017", 2),
+      "Nov 1, 2017",
+      rep("Jul 25-26, 2018", 2),
+      rep("Aug 7-9, 2018", 3),
+      rep("Aug 21-23, 2018", 3),
+      "Aug 30, 2018",
+      rep("Sep 4-6, 2018", 3),
+      rep("Sep 18-20, 2018", 3),
+      rep("Oct 9-11, 2018", 3),
+      rep("Oct 25-26, 2018", 2),
+      rep("Nov 8-9, 2018", 2),
+      rep("Jul 15-16, 2019", 2),
+      rep("Aug 5-7, 2019", 3),
+      rep("Aug 19-21, 2019", 3),
+      rep("Sep 3-5, 2019", 3),
+      rep("Sep 16-18, 2019", 3),
+      rep("Sep 30-Oct 2, 2019", 3),
+      rep("Oct 14-16, 2019", 3),
+      rep("Oct 28-29, 2019", 2)
+    )
+  )
+
+# Add SamplingEvent variable to contam_water_clean_v1
+contam_water_clean_v2 <- contam_water_clean_v1 %>% 
+  left_join(dates_se_cw) %>% 
+  select(-Date) %>% 
+  relocate(SamplingEvent, .after = StationCode)
+```
+
+There are some `SamplingEvent` and `StationCode` combinations when samples were not collected. We need to find these combinations so that they can be identified as "No Samples Collected" in the plots. All `SamplingEvent` and `StationCode` combinations had at least one contaminant measured above its Method Detection Limit (MDL).
+
+```{r find missing data combinations, message = FALSE}
+# Find SamplingEvent and StationCode combinations when samples were not collected
+contam_water_miss_f <- contam_water_clean_v2 %>%
+  group_by(Year) %>%
+  expand(StationCode, SamplingEvent) %>%
+  ungroup() %>%
+  anti_join(contam_water_clean_v2) %>% 
+  # Add text for label in plots and grouping variable for colors of text labels
+  mutate(
+    txt_label = "No Samples\nCollected",
+    label_grp = "Not sampled"
+  )
+```
+
+The missing data due to lack of sampling create problems in the EDA plots if you still want to include all of the sampling events on the x-axis. To help with this, we will pull out the sampling event information and modify it to define the factor order for each year.
+
+```{r define sampling events for each year}
+# Define factor order for SamplingEvent
+se_order <- dates_se_cw %>% 
+  distinct(SamplingEvent) %>% 
+  pull(SamplingEvent)
+
+# Pull out Sampling Event information to be added to the plots later
+contam_water_se <- contam_water_clean_v2 %>% 
+  distinct(Year, SamplingEvent, FlowActionPeriod) %>% 
+  mutate(SamplingEvent = factor(SamplingEvent, levels = se_order)) %>% 
+  nest(df_se = -Year) %>% 
+  mutate(df_se = map(df_se, ~mutate(.x, SamplingEvent = fct_drop(SamplingEvent))))
+```
+
+Now the `contam_water_clean_v2` data frame is ready for a few final steps to prepare it for summarizing for plots and summary tables:
+
+* Assume that < MDL values are zero and remove them
+* Convert `StationCode` to a factor for plotting order. `SamplingEvent` will be converted to a factor later in the script.
+
+```{r prepare data 2}
+# Finish preparing the contaminants data
+contam_water_clean_f <- contam_water_clean_v2 %>%
+  # Remove < MDL values
+  filter(!str_detect(Result, "^<")) %>%
+  # Convert Result to numeric variable
+  mutate(Result = as.numeric(Result)) %>% 
+# Apply factor order for StationCode
+  conv_fact_sta_code()
+```
+
+Next, we will sum the contaminant concentrations by `PesticideType`.
+
+```{r sum conc pesticide type, message = FALSE}
+# Sum by PesticideType
+contam_sum_type <- contam_water_clean_f %>% 
+  group_by(
+    StationCode, 
+    SamplingEvent, 
+    Year, 
+    FlowActionPeriod, 
+    PesticideType, 
+    Units
+  ) %>% 
+  summarize(TotalConc = sum(Result)) %>% 
+  ungroup()
+```
+
+We will also sum the contaminant concentrations by `PesticideClass` keeping `PesticideType` as a higher level category in the data frame. This will allow for us to create plots of total contaminant concentration by pesticide class for each pesticide type. With only a few exceptions, classes fall into one type category for the detected pesticides. In addition for simplicity, we will combine the pesticide types with their corresponding degradate categories and remove the `Synergist` pesticide type category since there is only one class within it. 
+
+For the plots of the Herbicide pesticide classes, we will only display the top 4 classes in terms of total concentration for each station and sampling event since there are too many categories to display on one plot. All of the other pesticide classes will be grouped together into a `Z_OTHER` category.
+
+```{r sum conc pesticide class, message = FALSE}
+# Sum by PesticideClass
+contam_sum_class <- contam_water_clean_f %>% 
+  group_by(
+    StationCode, 
+    SamplingEvent, 
+    Year, 
+    FlowActionPeriod, 
+    PesticideType, 
+    PesticideClass,
+    Units
+  ) %>% 
+  summarize(TotalConc = sum(Result)) %>% 
+  ungroup() %>% 
+  # Group the Herbicide and Insecticide pesticide types with their degradate categories
+  mutate(
+    PesticideType = case_when(
+      str_detect(PesticideType, "^Herbicide") ~ "Herbicide",
+      str_detect(PesticideType, "^Insecticide") ~ "Insecticide",
+      TRUE ~ PesticideType
+    )
+  ) %>% 
+  # Remove the Synergist pesticide type category
+  filter(PesticideType != "Synergist")
+
+# For the Herbicides only:
+  # Filter out top 4 classes in terms of total concentration for each station and sampling event
+  contam_class_herb <- contam_sum_class %>% 
+    filter(PesticideType == "Herbicide") %>%
+    group_by(
+      StationCode, 
+      SamplingEvent, 
+      Year, 
+      FlowActionPeriod, 
+      PesticideType,
+      Units
+    )
+  
+  contam_class_herb_top <- contam_class_herb %>% 
+    slice_max(TotalConc, n = 4) %>% 
+    ungroup()
+  
+  # Filter out all other classes except for the top four and sum them together
+  contam_class_herb_other <- contam_class_herb %>% 
+    anti_join(contam_class_herb_top) %>% 
+    summarize(TotalConc = sum(TotalConc)) %>% 
+    ungroup() %>% 
+    mutate(PesticideClass = "Z_OTHER")
+  
+  # Combine the data frames with the top 4 classes and the summed remaining classes
+  contam_sum_class_herb_c <- bind_rows(contam_class_herb_top, contam_class_herb_other)
+
+# Add the summarized Herbicide data back to the main data frame with the remaining pesticide class data
+contam_sum_class_f <- contam_sum_class %>% 
+  filter(PesticideType != "Herbicide") %>% 
+  bind_rows(contam_sum_class_herb_c)
+```
+
+# Create Plots
+
+We are now ready to create the plots both by `PesticideType` and `PesticideClass`. The factor levels for `SamplingEvent` as defined in `contam_water_se` will be applied to each plot so that the sampling events are displayed in the proper order.
+
+```{r create plots, warning = FALSE, message = FALSE}
+# Format the contam_water_miss_f data frame in order to join it to data frames with summed water concentration data
+contam_water_miss_f_yr <- contam_water_miss_f %>% 
+  conv_fact_sta_code() %>% 
+  nest(data_miss = -Year)
+
+# Plots of Pesticide Types:
+contam_plot_type <- contam_sum_type %>% 
+  nest(data = -Year) %>%
+  arrange(Year) %>% 
+  left_join(contam_water_miss_f_yr) %>% 
+  left_join(contam_water_se) %>% 
+  # Apply factor order for SamplingEvent to data and data_miss
+  mutate(
+    data = map2(data, df_se, .f = conv_fact_se),
+    data_miss = map2(data_miss, df_se, .f = conv_fact_se)
+  ) %>% 
+  # Create plots
+  mutate(
+    plot_stack = pmap(
+      list(data, data_miss, df_se),
+      .f = create_barplot, 
+      fill_var = PesticideType, 
+      type = "stack"
+    ),
+    plot_fill = pmap(
+      list(data, data_miss, df_se),
+      .f = create_barplot, 
+      fill_var = PesticideType, 
+      type = "fill"
+    )
+  )
+
+# Plots of Pesticide Classes:
+contam_plot_class <- contam_sum_class_f %>% 
+  nest(data = -c(Year, PesticideType)) %>%
+  arrange(Year, PesticideType) %>% 
+  left_join(contam_water_miss_f_yr) %>%
+  left_join(contam_water_se) %>% 
+  # Apply factor order for SamplingEvent to data and data_miss
+  mutate(
+    data = map2(data, df_se, .f = conv_fact_se),
+    data_miss = map2(data_miss, df_se, .f = conv_fact_se)
+  ) %>% 
+  # Create plots
+  mutate(
+    plot_stack = pmap(
+      list(data, data_miss, df_se),
+      .f = create_barplot, 
+      fill_var = PesticideClass, 
+      type = "stack"
+    ),
+    plot_fill = pmap(
+      list(data, data_miss, df_se),
+      .f = create_barplot, 
+      fill_var = PesticideClass, 
+      type = "fill"
+    )
+  ) %>% 
+  # structure data frame for more efficient printing of plots
+  nest(yr_group = -Year)
+```
+
+# Plots by Pesticide Type {.tabset .tabset-pills}
+
+For all plots, the colors of the x-axis labels indicate the flow action period during which the samples were collected:
+
+* Blue: Before
+* Green: During
+* Black: After
+
+```{r print plots pesticide type, echo = FALSE, results = "asis", fig.height = 9}
+for (i in 1:nrow(contam_plot_type)) {
+  # Create subheadings for each Year
+  cat("## ", as.character(contam_plot_type$Year[i]), " {.tabset .tabset-pills}\n\n")
+  # Create subheading for stacked barplot and print it
+  cat("### Stacked Barplot\n\n")
+  print(contam_plot_type$plot_stack[[i]])
+  cat("\n\n")
+  # Create subheading for filled barplot and print it
+  cat("### Filled Barplot\n\n")
+  print(contam_plot_type$plot_fill[[i]])
+  cat("\n\n")
+}
+```
+
+# Plots by Pesticide Class {.tabset .tabset-pills}
+
+For all plots, the colors of the x-axis labels indicate the flow action period during which the samples were collected:
+
+* Blue: Before
+* Green: During
+* Black: After
+
+```{r print plots pesticide class, echo = FALSE, results = "asis", fig.height = 9}
+for (i in 1:nrow(contam_plot_class)) {
+  # Create subheadings for each Year
+  cat("## ", as.character(contam_plot_class$Year[i]), " {.tabset .tabset-pills}\n\n")
+  for (j in 1:nrow(contam_plot_class$yr_group[[i]])) {
+    # Create subheadings for each Pesticide Type
+    cat(
+      "### ", 
+      as.character(contam_plot_class$yr_group[[i]]$PesticideType[j]), 
+      " {.tabset .tabset-pills}\n\n"
+    ) 
+   # Create subheading for stacked barplot and print it
+    cat("#### Stacked Barplot\n\n")
+    print(contam_plot_class$yr_group[[i]]$plot_stack[[j]])
+    cat("\n\n")
+    # Create subheading for filled barplot and print it
+    cat("#### Filled Barplot\n\n")
+    print(contam_plot_class$yr_group[[i]]$plot_fill[[j]])
+    cat("\n\n")  
+  }
+}
+```
+
+# Data Summary Tables
+
+## Total Conc by Pesticide Type
+
+```{r data summ tbl pesticide type}
+contam_sum_type %>% 
+  mutate(
+    FlowActionPeriod = factor(FlowActionPeriod, levels = c("Before", "During", "After")),
+    PesticideType = factor(PesticideType)
+  ) %>% 
+  select(-Units) %>% 
+  arrange(SamplingEvent, StationCode, PesticideType) %>% 
+  datatable(filter = "top")
+```
+
+## Total Conc by Pesticide Class
+
+```{r data summ tbl pesticide class}
+contam_sum_class %>% 
+  mutate(
+    FlowActionPeriod = factor(FlowActionPeriod, levels = c("Before", "During", "After")),
+    PesticideType = factor(PesticideType),
+    PesticideClass = factor(PesticideClass)
+  ) %>% 
+  select(-Units) %>% 
+  arrange(SamplingEvent, StationCode, PesticideType, PesticideClass) %>% 
+  datatable(filter = "top")
+```
+
+## All Detected Data
+
+```{r data summ tbl all detected data}
+contam_water_clean_f %>% 
+  mutate(
+    FlowActionPeriod = factor(FlowActionPeriod, levels = c("Before", "During", "After")),
+    PesticideType = factor(PesticideType),
+    PesticideClass = factor(PesticideClass),
+    Analyte = factor(Analyte)
+  ) %>% 
+  select(-Units) %>% 
+  arrange(SamplingEvent, StationCode, PesticideType, PesticideClass, Analyte) %>% 
+  datatable(filter = "top")
+```
+

@@ -1,0 +1,442 @@
+---
+title: 'NDFA contaminants Data: exploratory data analysis of zooplankton concentrations'
+author: "Dave Bosworth"
+date: "3/5/2021"
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_float: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+This document contains plots and data summary tables used for exploratory data analysis (EDA) for the contaminants concentrations in zooplankton used in North Delta Flow Action synthesis project.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+library(DT)
+```
+
+```{r load functions, message = FALSE, warning = FALSE}
+# Source global NDFA functions
+source("global_ndfa_funcs.R")
+
+# Source contaminants EDA functions
+source("Water_Quality/Contaminants/contam_EDA_funcs.R")
+```
+
+```{r define file paths}
+# Define relative file path for processed contaminants data files
+fp_rel_proc <- "WQ_Subteam/Processed_Data/Contaminants"
+
+# Define absolute file path
+fp_abs_proc <- ndfa_abs_sp_path(fp_rel_proc)
+```
+
+# Import and Prepare Data
+
+```{r import data, message = FALSE}
+# Import contaminants concentrations in zooplankton data
+contam_zoop_orig <- read_csv(
+  file.path(fp_abs_proc, "WQ_INPUT_Contam_Zoop_2021-02-11.csv"),
+  col_types = "cccccdc"
+)
+
+# Import pesticide type and class designations
+contam_type_class <- read_csv(file.path(fp_abs_proc, "Contam_Types_and_Classes.csv"))
+```
+
+To prepare the contaminants data for the exploratory data analysis (EDA) plots and summary tables, we will need do the following initial steps:
+
+* Add flow action periods and remove any data outside of the period of interest (45 days before and after the flow pulse)
+* Add pesticide type and class designations
+* Create a `SamplingEvent` variable. Some of the stations were sampled 1-2 days apart. This variable will group these within one sampling event.
+
+```{r prepare data 1, message = FALSE}
+contam_zoop_clean_v1 <- contam_zoop_orig %>% 
+  # Parse DateTime variable, add Date and Year variables
+  mutate(
+    DateTime = ymd_hms(DateTime),
+    Date = date(DateTime),
+    Year = year(DateTime)
+  ) %>% 
+  # Add flow pulse periods
+  ndfa_action_periods() %>% 
+  # Add pesticide types and classes
+  left_join(contam_type_class) %>% 
+  # Clean up data frame
+  select(
+    StationCode,
+    Date,
+    Year,
+    FlowActionPeriod,
+    Analyte,
+    PesticideType,
+    PesticideClass,
+    Result,
+    Units
+  )
+
+# Create a tibble of dates and sampling events to join to main data frame
+dates_se_cw <-
+  tibble(
+    Date = sort(unique(contam_zoop_clean_v1$Date)),
+    SamplingEvent = c(
+      rep("Aug 29-30, 2017", 2),
+      rep("Sep 12-13, 2017", 2),
+      rep("Sep 19-20, 2017", 2),
+      rep("Oct 3-4, 2017", 2),
+      rep("Oct 17-19, 2017", 2),
+      rep("Nov 1-2, 2017", 2),
+      rep("Jul 25-26, 2018", 2),
+      rep("Aug 8-9, 2018", 2),
+      rep("Aug 22-23, 2018", 2),
+      "Aug 30, 2018",
+      rep("Sep 5-6, 2018", 2),
+      rep("Sep 19-20, 2018", 2),
+      rep("Oct 10-11, 2018", 2),
+      rep("Oct 25-26, 2018", 2),
+      rep("Nov 8-9, 2018", 2),
+      rep("Jul 15-16, 2019", 2),
+      rep("Aug 5-7, 2019", 2),
+      rep("Aug 19-21, 2019", 2),
+      rep("Sep 4-5, 2019", 2),
+      rep("Sep 16-18, 2019", 2),
+      rep("Sep 30-Oct 2, 2019", 2),
+      rep("Oct 14-16, 2019", 2),
+      "Oct 28, 2019"
+    )
+  )
+
+# Add SamplingEvent variable to contam_zoop_clean_v1
+contam_zoop_clean_v2 <- contam_zoop_clean_v1 %>% 
+  left_join(dates_se_cw) %>% 
+  select(-Date) %>% 
+  relocate(SamplingEvent, .after = StationCode)
+```
+
+There is one `SamplingEvent` and `StationCode` combination when samples were not collected. We need to record this combination so that it can be identified as "No Samples Collected" in the plots.
+
+```{r find missing data combinations, message = FALSE}
+# Find SamplingEvent and StationCode combinations when samples were not collected
+contam_zoop_miss_v1 <- contam_zoop_clean_v2 %>%
+  group_by(Year) %>%
+  expand(StationCode, SamplingEvent) %>%
+  ungroup() %>%
+  anti_join(contam_zoop_clean_v2) %>% 
+  # Add text for label in plots and grouping variable for colors of text labels
+  mutate(
+    txt_label = "No Samples\nCollected",
+    label_grp = "Not sampled"
+  )
+```
+
+There are also a couple of `SamplingEvent` and `StationCode` combinations with all contaminants having values below their Method Detection Limits (MDL's). We need to find these combinations so that they can be identified as "All values below their MDL's" in the plots by `PesticideType`.
+
+```{r find samples with all below MDL}
+# Find SamplingEvent and StationCode combinations with all contaminants having values below their MDL's
+contam_zoop_nd <- contam_zoop_clean_v2 %>% 
+  group_by(StationCode, SamplingEvent, Year) %>%
+  filter(all(Result == "< MDL")) %>% 
+  ungroup() %>% 
+  distinct(Year, StationCode, SamplingEvent) %>% 
+  # Add text for label in plots and grouping variable for colors of text labels
+  mutate(
+    txt_label = "All values below\ntheir MDL's",
+    label_grp = "All below MDL"
+  )
+```
+
+Finally, there are a significant number of `SamplingEvent`, `StationCode`, and `PesticideType` combinations with all contaminants having values below their Method Detection Limits (MDL's). We need to find these combinations so that they can be identified as "All values below their MDL's" in the plots by `PesticideClass`. This will only be done for the Fungicide, Herbicide, Insecticide, and their degradate types since these are the only types that have some values above their MDL's. For simplicity, we will combine the pesticide types with their corresponding degradate categories.
+
+```{r find samples with all below MDL incl type}
+# Find SamplingEvent, StationCode, and PesticideType combinations with all contaminants having values below their MDL's
+contam_zoop_nd_type <- contam_zoop_clean_v2 %>%
+  # Group the Herbicide and Insecticide pesticide types with their degradate categories
+  mutate(
+    PesticideType = case_when(
+      str_detect(PesticideType, "^Herbicide") ~ "Herbicide",
+      str_detect(PesticideType, "^Insecticide") ~ "Insecticide",
+      TRUE ~ PesticideType
+    )
+  ) %>% 
+  filter(PesticideType %in% c("Fungicide", "Herbicide", "Insecticide")) %>% 
+  group_by(StationCode, SamplingEvent, Year, PesticideType) %>% 
+  filter(all(Result == "< MDL")) %>% 
+  ungroup() %>% 
+  distinct(Year, StationCode, SamplingEvent, PesticideType) %>% 
+  # Add text for label in plots and grouping variable for colors of text labels
+  mutate(
+    txt_label = "All values below\ntheir MDL's",
+    label_grp = "All below MDL"
+  )
+```
+
+The missing data due to lack of sampling or all values being below their MDL's create problems in the EDA plots if you still want to include all of the sampling events on the x-axis. To help with this, we will pull out the sampling event information and modify it to define the factor order for each year.
+
+```{r define sampling events for each year}
+# Define factor order for SamplingEvent
+se_order <- dates_se_cw %>% 
+  distinct(SamplingEvent) %>% 
+  pull(SamplingEvent)
+
+# Pull out Sampling Event information to be added to the plots later
+contam_zoop_se <- contam_zoop_clean_v2 %>% 
+  distinct(Year, SamplingEvent, FlowActionPeriod) %>% 
+  mutate(SamplingEvent = factor(SamplingEvent, levels = se_order)) %>% 
+  nest(df_se = -Year) %>% 
+  mutate(df_se = map(df_se, ~mutate(.x, SamplingEvent = fct_drop(SamplingEvent))))
+```
+
+Now the `contam_zoop_clean_v2` data frame is ready for a few final steps to prepare it for summarizing for plots and summary tables:
+
+* Assume that < MDL values are zero and remove them
+* Convert `StationCode` to a factor for plotting order. `SamplingEvent` will be converted to a factor later in the script.
+
+```{r prepare data 2}
+# Finish preparing the contaminants data
+contam_zoop_clean_f <- contam_zoop_clean_v2 %>%
+  # Remove < MDL values
+  filter(!str_detect(Result, "^<")) %>%
+  # Convert Result to numeric variable
+  mutate(Result = as.numeric(Result)) %>% 
+# Apply factor order for StationCode
+  conv_fact_sta_code()
+```
+
+Next, we will sum the contaminant concentrations by `PesticideType`.
+
+```{r sum conc pesticide type, message = FALSE}
+# Sum by PesticideType
+contam_sum_type <- contam_zoop_clean_f %>% 
+  group_by(
+    StationCode, 
+    SamplingEvent, 
+    Year, 
+    FlowActionPeriod, 
+    PesticideType,
+    Units
+  ) %>% 
+  summarize(TotalConc = sum(Result)) %>% 
+  ungroup()
+```
+
+We will also sum the contaminant concentrations by `PesticideClass` keeping `PesticideType` as a higher level category in the data frame. This will allow for us to create plots of total contaminant concentration by pesticide class for each pesticide type. Only the Fungicide, Herbicide, Insecticide, and their degradate types will be plotted by class since these are the only types that have some values above their MDL's. For simplicity, we will combine the pesticide types with their corresponding degradate categories.
+
+```{r sum conc pesticide class, message = FALSE}
+# Sum by PesticideClass
+contam_sum_class <- contam_zoop_clean_f %>% 
+  group_by(
+    StationCode, 
+    SamplingEvent, 
+    Year, 
+    FlowActionPeriod, 
+    PesticideType, 
+    PesticideClass,
+    Units
+  ) %>% 
+  summarize(TotalConc = sum(Result)) %>% 
+  ungroup() %>%
+  # Group the Herbicide and Insecticide pesticide types with their degradate categories
+  mutate(
+    PesticideType = case_when(
+      str_detect(PesticideType, "^Herbicide") ~ "Herbicide",
+      str_detect(PesticideType, "^Insecticide") ~ "Insecticide",
+      TRUE ~ PesticideType
+    )
+  )
+```
+
+# Create Plots
+
+The data frames that identify the `SamplingEvent` and `StationCode` combinations with missing data because of either lack of sampling or all values were below their MDL's need to be combined and modified to be used properly in the plotting function.
+
+```{r combine and modify missing df}
+# For the plots by Pesticide Type:
+contam_zoop_miss_type_f <- 
+  bind_rows(contam_zoop_miss_v1, contam_zoop_nd) %>% 
+  # Apply factor order for StationCode
+  conv_fact_sta_code() %>% 
+  # Nest the data frame by year in order to join it contam_sum_type
+  nest(data_miss = -Year)
+
+# For the plots by Pesticide Class:
+contam_zoop_miss_class_f <- contam_zoop_miss_v1 %>% 
+  # Add all Pesticide Type combinations to contam_zoop_miss_v1
+  expand_grid(PesticideType = c("Fungicide", "Herbicide", "Insecticide")) %>% 
+  bind_rows(contam_zoop_nd_type) %>% 
+  # Apply factor order for StationCode
+  conv_fact_sta_code() %>% 
+  # Nest the data frame by year and PesticideType in order to join it contam_sum_class
+  nest(data_miss = -c(Year, PesticideType))
+```
+
+We are now ready to create the plots both by `PesticideType` and `PesticideClass`. The factor levels for `SamplingEvent` as defined in `contam_ss_se` will be applied to each plot so that the sampling events are displayed in the proper order.
+
+```{r create plots, warning = FALSE, message = FALSE}
+# Plots of Pesticide Types:
+contam_plot_type <- contam_sum_type %>% 
+  nest(data = -Year) %>%
+  arrange(Year) %>% 
+  left_join(contam_zoop_miss_type_f) %>% 
+  left_join(contam_zoop_se) %>% 
+  # Apply factor order for SamplingEvent to data and data_miss
+  mutate(
+    data = map2(data, df_se, .f = conv_fact_se),
+    data_miss = map2(data_miss, df_se, .f = conv_fact_se)
+  ) %>% 
+  # Create plots
+  mutate(
+    plot_stack = pmap(
+      list(data, data_miss, df_se),
+      .f = create_barplot, 
+      fill_var = PesticideType, 
+      type = "stack"
+    ),
+    plot_fill = pmap(
+      list(data, data_miss, df_se), 
+      .f = create_barplot, 
+      fill_var = PesticideType, 
+      type = "fill"
+    )
+  )
+  
+# Plots of Pesticide Classes:
+contam_plot_class <- contam_sum_class %>% 
+  nest(data = -c(Year, PesticideType)) %>%
+  arrange(Year, PesticideType) %>% 
+  left_join(contam_zoop_miss_class_f) %>% 
+  left_join(contam_zoop_se) %>% 
+  # Apply factor order for SamplingEvent to data and data_miss
+  mutate(
+    data = map2(data, df_se, .f = conv_fact_se),
+    data_miss = map2(data_miss, df_se, .f = conv_fact_se)
+  ) %>% 
+  # Create plots
+  mutate(
+    plot_stack = pmap(
+      list(data, data_miss, df_se),
+      .f = create_barplot, 
+      fill_var = PesticideClass, 
+      type = "stack"
+    ),
+    plot_fill = pmap(
+      list(data, data_miss, df_se), 
+      .f = create_barplot, 
+      fill_var = PesticideClass, 
+      type = "fill"
+    )
+  ) %>% 
+  # structure data frame for more efficient printing of plots
+  nest(yr_group = -Year)
+```
+
+# Plots by Pesticide Type {.tabset .tabset-pills}
+
+For all plots, the colors of the x-axis labels indicate the flow action period during which the samples were collected:
+
+* Blue: Before
+* Green: During
+* Black: After
+
+```{r print plots pesticide type, echo = FALSE, results = "asis"}
+for (i in 1:nrow(contam_plot_type)) {
+  # Create subheadings for each Year
+  cat("## ", as.character(contam_plot_type$Year[i]), " {.tabset .tabset-pills}\n\n")
+  # Create subheading for stacked barplot and print it
+  cat("### Stacked Barplot\n\n")
+  print(contam_plot_type$plot_stack[[i]])
+  cat("\n\n")
+  # Create subheading for filled barplot and print it
+  cat("### Filled Barplot\n\n")
+  print(contam_plot_type$plot_fill[[i]])
+  cat("\n\n")
+}
+```
+
+# Plots by Pesticide Class {.tabset .tabset-pills}
+
+For all plots, the colors of the x-axis labels indicate the flow action period during which the samples were collected:
+
+* Blue: Before
+* Green: During
+* Black: After
+
+```{r print plots pesticide class, echo = FALSE, results = "asis"}
+for (i in 1:nrow(contam_plot_class)) {
+  # Create subheadings for each Year
+  cat("## ", as.character(contam_plot_class$Year[i]), " {.tabset .tabset-pills}\n\n")
+  for (j in 1:nrow(contam_plot_class$yr_group[[i]])) {
+    # Create subheadings for each Pesticide Type
+    cat(
+      "### ", 
+      as.character(contam_plot_class$yr_group[[i]]$PesticideType[j]), 
+      " {.tabset .tabset-pills}\n\n"
+    ) 
+   # Create subheading for stacked barplot and print it
+    cat("#### Stacked Barplot\n\n")
+    print(contam_plot_class$yr_group[[i]]$plot_stack[[j]])
+    cat("\n\n")
+    # Create subheading for filled barplot and print it
+    cat("#### Filled Barplot\n\n")
+    print(contam_plot_class$yr_group[[i]]$plot_fill[[j]])
+    cat("\n\n")  
+  }
+}
+```
+
+# Data Summary Tables
+
+## Total Conc by Pesticide Type
+
+```{r data summ tbl pesticide type}
+contam_sum_type %>% 
+  mutate(
+    FlowActionPeriod = factor(FlowActionPeriod, levels = c("Before", "During", "After")),
+    PesticideType = factor(PesticideType)
+  ) %>% 
+  select(-Units) %>% 
+  arrange(SamplingEvent, StationCode, PesticideType) %>% 
+  datatable(filter = "top")
+```
+
+## Total Conc by Pesticide Class
+
+```{r data summ tbl pesticide class}
+contam_sum_class %>% 
+  mutate(
+    FlowActionPeriod = factor(FlowActionPeriod, levels = c("Before", "During", "After")),
+    PesticideType = factor(PesticideType),
+    PesticideClass = factor(PesticideClass)
+  ) %>% 
+  select(-Units) %>% 
+  arrange(SamplingEvent, StationCode, PesticideType, PesticideClass) %>% 
+  datatable(filter = "top")
+```
+
+## All Detected Data
+
+```{r data summ tbl all detected data}
+contam_zoop_clean_f %>% 
+  mutate(
+    FlowActionPeriod = factor(FlowActionPeriod, levels = c("Before", "During", "After")),
+    PesticideType = factor(PesticideType),
+    PesticideClass = factor(PesticideClass),
+    Analyte = factor(Analyte)
+  ) %>% 
+  select(-Units) %>% 
+  arrange(SamplingEvent, StationCode, PesticideType, PesticideClass, Analyte) %>% 
+  datatable(filter = "top")
+```
+
