@@ -71,7 +71,19 @@ reg_func <- function(df, analyte_name){
   
   lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|Station), data = df)
 
-  # aov_lmer <- anova(lmer_fit, type = 'III')
+  aov_lmer <- anova(lmer_fit, type = 'III')
+  aov_lmer$Analyte <- analyte_name
+  aov_lmer$Variable <- rownames(aov_lmer)
+  
+  aov_lmer <- aov_lmer %>%
+    mutate(Significance = case_when(
+      `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
+      `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
+      `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
+      `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
+      `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
+      )
+    )
 
   lmer_rg <- ref_grid(lmer_fit)
   lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey')
@@ -88,12 +100,15 @@ reg_func <- function(df, analyte_name){
       )
     )
   
-  return(cont)
+  ret <- list(aov_lmer, cont)
+  
+  return(ret)
 }
 ```
 
 ```{r ANOVA - set to RL, message = FALSE}
-reg_all <- list()
+all_reg <- list()
+all_aov <- list()
 
 for (i in seq(analytes)){
   analyte <- analytes[i]
@@ -105,17 +120,24 @@ for (i in seq(analytes)){
   df_sub$Year <- as.character(df_sub$Year)
 
   # run regressions
-  df_cont <- reg_func(df_sub, analyte)
+  df_output_list <- reg_func(df_sub, analyte)
+  df_aov <- df_output_list[[1]]
+  df_cont <- df_output_list[[2]]
   
-  reg_all[[i]] <- df_cont
+  all_aov[[i]] <- df_aov
+  all_reg[[i]] <- df_cont
 }
 
-all_data <- do.call(rbind, reg_all)
-write_csv(all_data, 'C:/Users/sperry/Desktop/reg_RL.csv')
+all_aov_data <- do.call(rbind, all_aov)
+all_reg_data <- do.call(rbind, all_reg)
+
+
+write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_RL.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/reg_RL.csv'))
 ```
 
 ```{r ANOVA - set to ~0, message = FALSE}
-reg_all <- list()
+all_reg <- list()
 
 for (i in seq(analytes)){
   analyte <- analytes[i]
@@ -127,18 +149,26 @@ for (i in seq(analytes)){
   df_sub$Result <- log(df_sub$Result)
 
   # run regressions
-  df_cont <- reg_func(df_sub, analyte)
+  df_output_list <- reg_func(df_sub, analyte)
+  df_aov <- df_output_list[[1]]
+  df_cont <- df_output_list[[2]]
   
-  reg_all[[i]] <- df_cont
+  all_aov[[i]] <- df_aov
+  all_reg[[i]] <- df_cont
 }
 
-all_data <- do.call(rbind, reg_all)
-write_csv(all_data, 'C:/Users/sperry/Desktop/reg_0.csv')
+all_aov_data <- do.call(rbind, all_aov)
+all_reg_data <- do.call(rbind, all_reg)
+
+
+write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_0.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/reg_0.csv'))
 ```
 
 ```{r ANOVA - random sub 1, message = FALSE}
 set.seed(1)
-reg_all <- list()
+all_reg <- list()
+all_aov <- list()
 
 for (i in seq(analytes)){
   analyte <- analytes[i]
@@ -154,19 +184,28 @@ for (i in seq(analytes)){
   }
   
   # run regressions
-  df_cont <- reg_func(df_sub, analyte)
+  df_output_list <- reg_func(df_sub, analyte)
+  df_aov <- df_output_list[[1]]
+  df_cont <- df_output_list[[2]]
   
-  reg_all[[i]] <- df_cont
-  reg_all <- compact(reg_all)
+  all_aov[[i]] <- df_aov
+  all_aov <- compact(all_aov)
+  all_reg[[i]] <- df_cont
+  all_reg <- compact(all_reg)
 }
 
-all_data <- do.call(rbind, reg_all)
-write_csv(all_data, 'C:/Users/sperry/Desktop/reg_rand1.csv')
+all_aov_data <- do.call(rbind, all_aov)
+all_reg_data <- do.call(rbind, all_reg)
+
+
+write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand1.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/reg_rand1.csv'))
 ```
 
 ```{r ANOVA - random sub 2, message = FALSE}
 set.seed(2)
-reg_all <- list()
+all_reg <- list()
+all_aov <- list()
 
 for (i in seq(analytes)){
   analyte <- analytes[i]
@@ -182,19 +221,28 @@ for (i in seq(analytes)){
   }
   
   # run regressions
-  df_cont <- reg_func(df_sub, analyte)
+  df_output_list <- reg_func(df_sub, analyte)
+  df_aov <- df_output_list[[1]]
+  df_cont <- df_output_list[[2]]
   
-  reg_all[[i]] <- df_cont
-  reg_all <- compact(reg_all)
+  all_aov[[i]] <- df_aov
+  all_aov <- compact(all_aov)
+  all_reg[[i]] <- df_cont
+  all_reg <- compact(all_reg)
 }
 
-all_data <- do.call(rbind, reg_all)
-write_csv(all_data, 'C:/Users/sperry/Desktop/reg_rand2.csv')
+all_aov_data <- do.call(rbind, all_aov)
+all_reg_data <- do.call(rbind, all_reg)
+
+
+write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand2.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/reg_rand2.csv'))
 ```
 
 ```{r ANOVA - random sub 3, message = FALSE}
 set.seed(3)
-reg_all <- list()
+all_reg <- list()
+all_aov <- list()
 
 for (i in seq(analytes)){
   analyte <- analytes[i]
@@ -210,13 +258,21 @@ for (i in seq(analytes)){
   }
   
   # run regressions
-  df_cont <- reg_func(df_sub, analyte)
+  df_output_list <- reg_func(df_sub, analyte)
+  df_aov <- df_output_list[[1]]
+  df_cont <- df_output_list[[2]]
   
-  reg_all[[i]] <- df_cont
-  reg_all <- compact(reg_all)
+  all_aov[[i]] <- df_aov
+  all_aov <- compact(all_aov)
+  all_reg[[i]] <- df_cont
+  all_reg <- compact(all_reg)
 }
 
-all_data <- do.call(rbind, reg_all)
-write_csv(all_data, 'C:/Users/sperry/Desktop/reg_rand3.csv')
+all_aov_data <- do.call(rbind, all_aov)
+all_reg_data <- do.call(rbind, all_reg)
+
+
+write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand3.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/reg_rand3.csv'))
 ```
 
