@@ -15,7 +15,7 @@ source('Water_Quality/global_wq_funcs.R')
 
 # import data
 fp_wq <- ndfa_abs_sp_path('/WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-02-19.csv')
-fp_region <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Continuous/NDFA_Cont_WQ_Stations.csv')
+fp_region <- ndfa_abs_sp_path('/WQ_Subteam/Processed_Data/Continuous/NDFA_Cont_WQ_Stations.csv')
 
 df_wq <- import_rtm_data(fp_wq, num_params = 10)
 df_region <- read_csv(fp_region)
@@ -47,19 +47,19 @@ df_wq$Year <- as.character(df_wq$Year)
 # add month col, double it up
 df_wq$Month <- format(df_wq$Date, '%b')
 
-df_wq <- df_wq %>%
-  mutate(
-    Month = case_when(
-      Month == 'Jan' | Month == 'Feb' ~ 'Jan_Feb',
-      Month == 'Mar' | Month == 'Apr' ~ 'Mar_Apr',
-      Month == 'May' | Month == 'Jun' ~ 'May_Jun',
-      Month == 'Jul' | Month == 'Aug' ~ 'Jul_Aug',
-      Month == 'Sep' | Month == 'Oct' ~ 'Sep_Oct',
-      Month == 'Nov' | Month == 'Dec' ~ 'Nov_Dec'
-    )
-  )
+# df_wq <- df_wq %>%
+#   mutate(
+#     Month = case_when(
+#       Month == 'Jan' | Month == 'Feb' ~ 'Jan_Feb',
+#       Month == 'Mar' | Month == 'Apr' ~ 'Mar_Apr',
+#       Month == 'May' | Month == 'Jun' ~ 'May_Jun',
+#       Month == 'Jul' | Month == 'Aug' ~ 'Jul_Aug',
+#       Month == 'Sep' | Month == 'Oct' ~ 'Sep_Oct',
+#       Month == 'Nov' | Month == 'Dec' ~ 'Nov_Dec'
+#     )
+#   )
 
-# average over day
+# average over week
 df_wq_day <- df_wq %>%
   group_by(StationCode, BroadRegion, FlowActionPeriod, Year, Month, Analyte, Week = week(Date), WeekYear = paste(Week, Year)) %>% # Date
   summarize(Result = mean(Result, na.rm = TRUE))
@@ -81,7 +81,8 @@ rm(df_region, df_wq)
 ```{r all analytes}
 analytes <- unique(df_wq_day$Analyte)
 analytes <- subset(analytes, !(analytes %in% c('Flow', 'FlowTF', 'fDOM')))
-reg_all <- list()
+all_reg <- list()
+all_aov <- list()
 
 for (i in seq(analytes)){
   df_temp <- df_wq_day %>%
@@ -92,9 +93,21 @@ for (i in seq(analytes)){
   lmer_fit <- lmer(Result ~ Month + Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode), data = df_temp)
 
   aov_lmer <- anova(lmer_fit, type = 'III')
+  aov_lmer$Analyte <- analytes[i]
+  aov_lmer$Variable <- rownames(aov_lmer)
+  
+  aov_lmer <- aov_lmer %>%
+    mutate(Significance = case_when(
+      `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
+      `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
+      `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
+      `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
+      `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
+      )
+    )
   
   lmer_rg <- ref_grid(lmer_fit)
-  lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey', pbkrtest.limit = 15000)
+  lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey')
   cont <- test(lmer_emm)$contrasts
 
   cont$Analyte <- analytes[i]
@@ -108,11 +121,15 @@ for (i in seq(analytes)){
       )
     )
 
-  reg_all[[i]] <- df_cont
+  all_reg[[i]] <- df_cont
+  all_aov[[i]] <- aov_lmer
 }
 
-all_data <- do.call(rbind, reg_all)
-write_csv(all_data, 'C:/Users/sperry/Desktop/cwq_emmeans.csv')
+all_reg_data <- do.call(rbind, all_reg)
+all_aov_data <- do.call(rbind,all_aov)
+
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_emmeans.csv'))
+write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_aov.csv'))
 ```
 
 ```{r chla only}
@@ -124,6 +141,18 @@ df_wq_wide <- reshape(df_wq_day,
 lmer_fit <- lmer(Result.Chla ~ Month + Year + FlowActionPeriod + BroadRegion + Result.DO + lag1.DO + lag2.DO + lag3.DO + Result.Turbidity + lag1.Turbidity + lag2.Turbidity + lag3.Turbidity + Result.SpCnd + lag1.SpCnd + lag2.SpCnd + lag3.SpCnd + Result.WaterTemp + lag1.WaterTemp + lag2.WaterTemp + lag3.WaterTemp + lag1.Chla + lag2.Chla + lag3.Chla + (1|StationCode), data = df_wq_wide)
 
 aov_lmer <- anova(lmer_fit, type = 'III')
+aov_lmer$Analyte <- analytes[i]
+aov_lmer$Variable <- rownames(aov_lmer)
+
+aov_lmer <- aov_lmer %>%
+  mutate(Significance = case_when(
+    `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
+    `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
+    `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
+    `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
+    `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
+    )
+  )
 
 lmer_rg <- ref_grid(lmer_fit)
 lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey', pbkrtest.limit = 15000)
@@ -140,7 +169,10 @@ df_cont <- cont %>%
     )
   )
 
-write_csv(df_cont, 'C:/Users/sperry/Desktop/cwq_chla_emmeans.csv')
+fp_region <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Continuous/NDFA_Cont_WQ_Stations.csv')
+
+write_csv(df_cont, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_emmeans.csv'))
+write_csv(aov_lmer, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_aov.csv'))
 ```
 ```
 
