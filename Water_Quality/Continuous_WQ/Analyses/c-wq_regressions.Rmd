@@ -141,7 +141,7 @@ df_wq_wide <- reshape(df_wq_day,
 lmer_fit <- lmer(Result.Chla ~ Month + Year + FlowActionPeriod + BroadRegion + Result.DO + lag1.DO + lag2.DO + lag3.DO + Result.Turbidity + lag1.Turbidity + lag2.Turbidity + lag3.Turbidity + Result.SpCnd + lag1.SpCnd + lag2.SpCnd + lag3.SpCnd + Result.WaterTemp + lag1.WaterTemp + lag2.WaterTemp + lag3.WaterTemp + lag1.Chla + lag2.Chla + lag3.Chla + (1|StationCode), data = df_wq_wide)
 
 aov_lmer <- anova(lmer_fit, type = 'III')
-aov_lmer$Analyte <- analytes[i]
+aov_lmer$Analyte <- 'Chla'
 aov_lmer$Variable <- rownames(aov_lmer)
 
 aov_lmer <- aov_lmer %>%

@@ -49,6 +49,7 @@ df_wq <- merge(df_wq, df_region, by = c('Station'))
 # standardize names
 df_wq$Result[df_wq$Result == '< MDL' | df_wq$Result == '< RL'] <- NA
 df_wq$Result <- as.numeric(df_wq$Result)
+df_wq$Year <- as.character(df_wq$Year)
 
 
 # rm extra dfs
@@ -86,9 +87,9 @@ reg_func <- function(df, analyte_name){
     )
 
   lmer_rg <- ref_grid(lmer_fit)
-  lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey')
+  lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ Year:Year, adjust = 'tukey')
   cont <- test(lmer_emm)$contrasts
-    
+  
   cont$Analyte <- analyte_name
   cont <- cont %>%
     mutate(Significance = case_when(
@@ -132,8 +133,8 @@ all_aov_data <- do.call(rbind, all_aov)
 all_reg_data <- do.call(rbind, all_reg)
 
 
-write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_RL.csv'))
-write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/reg_RL.csv'))
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_RL.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_RL.csv'))
 ```
 
 ```{r ANOVA - set to ~0, message = FALSE}
@@ -152,7 +153,7 @@ for (i in seq(analytes)){
   df_output_list <- reg_func(df_sub, analyte)
   df_aov <- df_output_list[[1]]
   df_cont <- df_output_list[[2]]
-  
+
   all_aov[[i]] <- df_aov
   all_reg[[i]] <- df_cont
 }
@@ -161,8 +162,8 @@ all_aov_data <- do.call(rbind, all_aov)
 all_reg_data <- do.call(rbind, all_reg)
 
 
-write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_0.csv'))
-write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/reg_0.csv'))
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_0.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_0.csv'))
 ```
 
 ```{r ANOVA - random sub 1, message = FALSE}
@@ -198,8 +199,8 @@ all_aov_data <- do.call(rbind, all_aov)
 all_reg_data <- do.call(rbind, all_reg)
 
 
-write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand1.csv'))
-write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/reg_rand1.csv'))
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand1.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand1.csv'))
 ```
 
 ```{r ANOVA - random sub 2, message = FALSE}
@@ -235,8 +236,8 @@ all_aov_data <- do.call(rbind, all_aov)
 all_reg_data <- do.call(rbind, all_reg)
 
 
-write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand2.csv'))
-write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/reg_rand2.csv'))
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand2.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand2.csv'))
 ```
 
 ```{r ANOVA - random sub 3, message = FALSE}
@@ -272,7 +273,7 @@ all_aov_data <- do.call(rbind, all_aov)
 all_reg_data <- do.call(rbind, all_reg)
 
 
-write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand3.csv'))
-write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/reg_rand3.csv'))
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand3.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand3.csv'))
 ```
 
