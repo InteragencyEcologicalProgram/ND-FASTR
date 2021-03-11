@@ -1,0 +1,279 @@
+```{r, message=FALSE}
+# FASTR D-WQ ANOVAs
+# Author: Sarah Perry
+# Date created: 01/27/2020
+# Purpose: ANOVAS for D-WQ
+
+# import packages and scripts
+library(tidyverse)
+library(lmerTest)
+library(lme4)
+library(tseries)
+library(DataCombine)
+library(emmeans)
+source('global_ndfa_funcs.R')
+```
+
+```{r Import Data, message=FALSE}
+# define absolute filepaths
+fp_abs_discrete <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/WQ_INPUT_Discrete_Lab_2021-01-25.csv')
+fp_abs_wy <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/Analysis/FlowDatesDesignations_45days.csv')
+fp_abs_region <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/Analysis/NDFA_map.csv')
+
+# read in data
+df_discrete <- read_csv(fp_abs_discrete)
+df_water_year <- read_csv(fp_abs_wy)
+df_region <- read_csv(fp_abs_region)
+
+# remove excess cols in df_region
+df_region <- subset(df_region, select = c(Station, BroadRegion))
+
+#remove sites we aren't including (not available for all years), create a column for year
+remove <- c('DWT', 'SRH', 'SDI', 'SHR', 'SRV', 'WWT', 'RMB')
+df_discrete <- filter(df_discrete, !StationCode %in% remove)
+
+# standardize/rename Date col
+df_discrete$DateTime <- as.Date(df_discrete$DateTime)
+df_discrete <- rename(df_discrete, c('Date' = 'DateTime'))
+
+# rename Station col
+df_discrete <- rename(df_discrete, c('Station' = 'StationCode'))
+
+# add flow action dates
+df_discrete <- ndfa_action_periods(df_discrete, na_action_remove = TRUE, keep_action_dates = FALSE)
+
+# add metadata cols
+df_wq <- merge(df_discrete, df_water_year, by = c('Year')) 
+df_wq <- merge(df_wq, df_region, by = c('Station')) 
+
+# standardize names
+df_wq$Result[df_wq$Result == '< MDL' | df_wq$Result == '< RL'] <- NA
+df_wq$Result <- as.numeric(df_wq$Result)
+df_wq$Year <- as.character(df_wq$Year)
+
+
+# rm extra dfs
+rm(df_water_year, df_region, df_discrete)
+
+# list of analytes
+analytes <- unique(df_wq$Analyte)
+
+# # average over stations/year
+df_wq <- df_wq %>%
+  group_by(Station, Year, Date, FlowActionPeriod, BroadRegion, RL, Analyte) %>%
+  summarize(Result = mean(Result, na.rm = TRUE)) %>%
+  ungroup()
+```
+
+```{r define regression function}
+reg_func <- function(df, analyte_name){
+  df <- slide(df, 'Result', TimeVar = 'Date', GroupVar = 'Station', NewVar = 'lag1', slideBy = -1)
+  df <- slide(df, 'lag1', TimeVar = 'Date', GroupVar = 'Station', NewVar = 'lag2', slideBy = -1)
+  
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|Station), data = df)
+
+  aov_lmer <- anova(lmer_fit, type = 'III')
+  aov_lmer$Analyte <- analyte_name
+  aov_lmer$Variable <- rownames(aov_lmer)
+  
+  aov_lmer <- aov_lmer %>%
+    mutate(Significance = case_when(
+      `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
+      `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
+      `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
+      `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
+      `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
+      )
+    )
+
+  lmer_rg <- ref_grid(lmer_fit)
+  lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ Year:Year, adjust = 'tukey')
+  cont <- test(lmer_emm)$contrasts
+  
+  cont$Analyte <- analyte_name
+  cont <- cont %>%
+    mutate(Significance = case_when(
+      p.value >= 0 & p.value < 0.001 ~ '***',
+      p.value >= 0.001 & p.value < 0.01 ~ '**',
+      p.value >= 0.01 & p.value < 0.05 ~ '*',
+      p.value >= 0.05 & p.value < 0.1 ~ '.',
+      p.value >= 0.1 & p.value < 1 ~ ' ',
+      )
+    )
+  
+  ret <- list(aov_lmer, cont)
+  
+  return(ret)
+}
+```
+
+```{r ANOVA - set to RL, message = FALSE}
+all_reg <- list()
+all_aov <- list()
+
+for (i in seq(analytes)){
+  analyte <- analytes[i]
+
+  # clean data, set <RL values = RL
+  df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
+  df_sub$Result <- with(df_sub, ifelse(is.na(Result), RL, Result))
+  df_sub$Result <- log(df_sub$Result)
+  df_sub$Year <- as.character(df_sub$Year)
+
+  # run regressions
+  df_output_list <- reg_func(df_sub, analyte)
+  df_aov <- df_output_list[[1]]
+  df_cont <- df_output_list[[2]]
+  
+  all_aov[[i]] <- df_aov
+  all_reg[[i]] <- df_cont
+}
+
+all_aov_data <- do.call(rbind, all_aov)
+all_reg_data <- do.call(rbind, all_reg)
+
+
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_RL.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_RL.csv'))
+```
+
+```{r ANOVA - set to ~0, message = FALSE}
+all_reg <- list()
+
+for (i in seq(analytes)){
+  analyte <- analytes[i]
+  
+  # clean data, set <RL values = 0
+  df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
+  
+  df_sub$Result[is.na(df_sub$Result)] <- 0.01
+  df_sub$Result <- log(df_sub$Result)
+
+  # run regressions
+  df_output_list <- reg_func(df_sub, analyte)
+  df_aov <- df_output_list[[1]]
+  df_cont <- df_output_list[[2]]
+
+  all_aov[[i]] <- df_aov
+  all_reg[[i]] <- df_cont
+}
+
+all_aov_data <- do.call(rbind, all_aov)
+all_reg_data <- do.call(rbind, all_reg)
+
+
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_0.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_0.csv'))
+```
+
+```{r ANOVA - random sub 1, message = FALSE}
+set.seed(1)
+all_reg <- list()
+all_aov <- list()
+
+for (i in seq(analytes)){
+  analyte <- analytes[i]
+  
+  # clean data, set <RL values = random
+  df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
+  
+  for (i in seq(length(df_sub$Station))){
+    if (is.na(df_sub$Result[i])){
+      vec <- seq(0.01, df_sub$RL[i], by = 0.01)
+      df_sub$Result[i] <- sample(vec, size = 1)    
+    }
+  }
+  
+  # run regressions
+  df_output_list <- reg_func(df_sub, analyte)
+  df_aov <- df_output_list[[1]]
+  df_cont <- df_output_list[[2]]
+  
+  all_aov[[i]] <- df_aov
+  all_aov <- compact(all_aov)
+  all_reg[[i]] <- df_cont
+  all_reg <- compact(all_reg)
+}
+
+all_aov_data <- do.call(rbind, all_aov)
+all_reg_data <- do.call(rbind, all_reg)
+
+
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand1.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand1.csv'))
+```
+
+```{r ANOVA - random sub 2, message = FALSE}
+set.seed(2)
+all_reg <- list()
+all_aov <- list()
+
+for (i in seq(analytes)){
+  analyte <- analytes[i]
+  
+  # clean data, set <RL values = random
+  df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
+  
+  for (i in seq(length(df_sub$Station))){
+    if (is.na(df_sub$Result[i])){
+      vec <- seq(0.01, df_sub$RL[i], by = 0.01)
+      df_sub$Result[i] <- sample(vec, size = 1)    
+    }
+  }
+  
+  # run regressions
+  df_output_list <- reg_func(df_sub, analyte)
+  df_aov <- df_output_list[[1]]
+  df_cont <- df_output_list[[2]]
+  
+  all_aov[[i]] <- df_aov
+  all_aov <- compact(all_aov)
+  all_reg[[i]] <- df_cont
+  all_reg <- compact(all_reg)
+}
+
+all_aov_data <- do.call(rbind, all_aov)
+all_reg_data <- do.call(rbind, all_reg)
+
+
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand2.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand2.csv'))
+```
+
+```{r ANOVA - random sub 3, message = FALSE}
+set.seed(3)
+all_reg <- list()
+all_aov <- list()
+
+for (i in seq(analytes)){
+  analyte <- analytes[i]
+  
+  # clean data, set <RL values = random
+  df_sub <- df_wq %>% filter(Analyte == analyte & !Year %in% c('2011','2012'))
+  
+  for (i in seq(length(df_sub$Station))){
+    if (is.na(df_sub$Result[i])){
+      vec <- seq(0.01, df_sub$RL[i], by = 0.01)
+      df_sub$Result[i] <- sample(vec, size = 1)    
+    }
+  }
+  
+  # run regressions
+  df_output_list <- reg_func(df_sub, analyte)
+  df_aov <- df_output_list[[1]]
+  df_cont <- df_output_list[[2]]
+  
+  all_aov[[i]] <- df_aov
+  all_aov <- compact(all_aov)
+  all_reg[[i]] <- df_cont
+  all_reg <- compact(all_reg)
+}
+
+all_aov_data <- do.call(rbind, all_aov)
+all_reg_data <- do.call(rbind, all_reg)
+
+
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand3.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand3.csv'))
+```
+

@@ -1,0 +1,178 @@
+```{r}
+# C-WQ Regressions for Hypotheis Table
+# Author: Sarah Perry
+```
+
+```{r, message=FALSE}
+# import packages
+library(tidyverse)
+library(DataCombine)
+library(reshape2)
+library(lmerTest)
+library(emmeans)
+source('global_ndfa_funcs.R')
+source('Water_Quality/global_wq_funcs.R')
+
+# import data
+fp_wq <- ndfa_abs_sp_path('/WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-02-19.csv')
+fp_region <- ndfa_abs_sp_path('/WQ_Subteam/Processed_Data/Continuous/NDFA_Cont_WQ_Stations.csv')
+
+df_wq <- import_rtm_data(fp_wq, num_params = 10)
+df_region <- read_csv(fp_region)
+
+# remove excess cols in df_region
+df_region <- subset(df_region, select = c(StationCode, BroadRegion))
+
+# standardize/rename Date col
+df_wq$DateTime <- as.Date(df_wq$DateTime)
+df_wq <- rename(df_wq, c('Date' = 'DateTime'))
+
+# add flow action dates
+df_wq <- ndfa_action_periods(df_wq, na_action_remove = TRUE, keep_action_dates = FALSE)
+
+# add metadata cols
+df_wq <- merge(df_wq, df_region, by = c('StationCode')) 
+
+# pivot longer
+df_wq <- df_wq %>% 
+  select(!ends_with('_Qual')) %>% 
+  pivot_longer(
+    cols = -c(Date, Year, StationCode, FlowActionPeriod, BroadRegion),
+    names_to = 'Analyte',
+    values_to = 'Result')
+
+# convert year to character
+df_wq$Year <- as.character(df_wq$Year)
+
+# add month col, double it up
+df_wq$Month <- format(df_wq$Date, '%b')
+
+# df_wq <- df_wq %>%
+#   mutate(
+#     Month = case_when(
+#       Month == 'Jan' | Month == 'Feb' ~ 'Jan_Feb',
+#       Month == 'Mar' | Month == 'Apr' ~ 'Mar_Apr',
+#       Month == 'May' | Month == 'Jun' ~ 'May_Jun',
+#       Month == 'Jul' | Month == 'Aug' ~ 'Jul_Aug',
+#       Month == 'Sep' | Month == 'Oct' ~ 'Sep_Oct',
+#       Month == 'Nov' | Month == 'Dec' ~ 'Nov_Dec'
+#     )
+#   )
+
+# average over week
+df_wq_day <- df_wq %>%
+  group_by(StationCode, BroadRegion, FlowActionPeriod, Year, Month, Analyte, Week = week(Date), WeekYear = paste(Week, Year)) %>% # Date
+  summarize(Result = mean(Result, na.rm = TRUE))
+
+df_wq_day$Month <- as.character(df_wq_day$Month)
+
+# log transform
+df_wq_day$Result <- log(df_wq_day$Result)
+
+# create lags
+df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'WeekYear', GroupVar = c('StationCode','Analyte'), NewVar = 'lag1', slideBy = -1)
+df_wq_day <- slide(df_wq_day, 'lag1', TimeVar = 'WeekYear', GroupVar = c('StationCode','Analyte'), NewVar = 'lag2', slideBy = -1)
+df_wq_day <- slide(df_wq_day, 'lag2', TimeVar = 'WeekYear', GroupVar = c('StationCode','Analyte'), NewVar = 'lag3', slideBy = -1)
+
+# remove excess dfs
+rm(df_region, df_wq)
+```
+
+```{r all analytes}
+analytes <- unique(df_wq_day$Analyte)
+analytes <- subset(analytes, !(analytes %in% c('Flow', 'FlowTF', 'fDOM')))
+all_reg <- list()
+all_aov <- list()
+
+for (i in seq(analytes)){
+  df_temp <- df_wq_day %>%
+    filter(Analyte == analytes[i])
+  
+  # pacf(df_temp$Result, na.action = na.pass)
+
+  lmer_fit <- lmer(Result ~ Month + Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode), data = df_temp)
+
+  aov_lmer <- anova(lmer_fit, type = 'III')
+  aov_lmer$Analyte <- analytes[i]
+  aov_lmer$Variable <- rownames(aov_lmer)
+  
+  aov_lmer <- aov_lmer %>%
+    mutate(Significance = case_when(
+      `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
+      `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
+      `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
+      `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
+      `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
+      )
+    )
+  
+  lmer_rg <- ref_grid(lmer_fit)
+  lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey')
+  cont <- test(lmer_emm)$contrasts
+
+  cont$Analyte <- analytes[i]
+  df_cont <- cont %>%
+    mutate(Significance = case_when(
+      p.value >= 0 & p.value < 0.001 ~ '***',
+      p.value >= 0.001 & p.value < 0.01 ~ '**',
+      p.value >= 0.01 & p.value < 0.05 ~ '*',
+      p.value >= 0.05 & p.value < 0.1 ~ '.',
+      p.value >= 0.1 & p.value < 1 ~ ' ',
+      )
+    )
+
+  all_reg[[i]] <- df_cont
+  all_aov[[i]] <- aov_lmer
+}
+
+all_reg_data <- do.call(rbind, all_reg)
+all_aov_data <- do.call(rbind,all_aov)
+
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_emmeans.csv'))
+write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_aov.csv'))
+```
+
+```{r chla only}
+df_wq_wide <- reshape(df_wq_day,
+         idvar = c('StationCode','BroadRegion','Week','Year','WeekYear','FlowActionPeriod','Month'),
+         timevar = 'Analyte',
+         direction = 'wide')
+
+lmer_fit <- lmer(Result.Chla ~ Month + Year + FlowActionPeriod + BroadRegion + Result.DO + lag1.DO + lag2.DO + lag3.DO + Result.Turbidity + lag1.Turbidity + lag2.Turbidity + lag3.Turbidity + Result.SpCnd + lag1.SpCnd + lag2.SpCnd + lag3.SpCnd + Result.WaterTemp + lag1.WaterTemp + lag2.WaterTemp + lag3.WaterTemp + lag1.Chla + lag2.Chla + lag3.Chla + (1|StationCode), data = df_wq_wide)
+
+aov_lmer <- anova(lmer_fit, type = 'III')
+aov_lmer$Analyte <- 'Chla'
+aov_lmer$Variable <- rownames(aov_lmer)
+
+aov_lmer <- aov_lmer %>%
+  mutate(Significance = case_when(
+    `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
+    `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
+    `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
+    `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
+    `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
+    )
+  )
+
+lmer_rg <- ref_grid(lmer_fit)
+lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey', pbkrtest.limit = 15000)
+cont <- test(lmer_emm)$contrasts
+
+cont$Analyte <- 'Chla'
+df_cont <- cont %>%
+  mutate(Significance = case_when(
+    p.value >= 0 & p.value < 0.001 ~ '***',
+    p.value >= 0.001 & p.value < 0.01 ~ '**',
+    p.value >= 0.01 & p.value < 0.05 ~ '*',
+    p.value >= 0.05 & p.value < 0.1 ~ '.',
+    p.value >= 0.1 & p.value < 1 ~ ' ',
+    )
+  )
+
+fp_region <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Continuous/NDFA_Cont_WQ_Stations.csv')
+
+write_csv(df_cont, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_emmeans.csv'))
+write_csv(aov_lmer, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_aov.csv'))
+```
+```
+
