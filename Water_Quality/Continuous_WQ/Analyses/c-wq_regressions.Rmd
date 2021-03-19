@@ -47,6 +47,12 @@ df_wq$Year <- as.character(df_wq$Year)
 # add month col, double it up
 df_wq$Month <- format(df_wq$Date, '%b')
 
+# set/rm Sac River varis
+# df_wq[df_wq$StationCode %in% c('SHR','SRV','SRH'),]$FlowActionPeriod <- 'None'
+
+df_wq <- subset(df_wq, !(StationCode %in% c('SHR','SRV','SRH')))
+
+
 # df_wq <- df_wq %>%
 #   mutate(
 #     Month = case_when(
@@ -129,7 +135,7 @@ all_reg_data <- do.call(rbind, all_reg)
 all_aov_data <- do.call(rbind,all_aov)
 
 write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_emmeans.csv'))
-write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_aov.csv'))
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_aov.csv'))
 ```
 
 ```{r chla only}
@@ -138,7 +144,7 @@ df_wq_wide <- reshape(df_wq_day,
          timevar = 'Analyte',
          direction = 'wide')
 
-lmer_fit <- lmer(Result.Chla ~ Month + Year + FlowActionPeriod + BroadRegion + Result.DO + lag1.DO + lag2.DO + lag3.DO + Result.Turbidity + lag1.Turbidity + lag2.Turbidity + lag3.Turbidity + Result.SpCnd + lag1.SpCnd + lag2.SpCnd + lag3.SpCnd + Result.WaterTemp + lag1.WaterTemp + lag2.WaterTemp + lag3.WaterTemp + lag1.Chla + lag2.Chla + lag3.Chla + (1|StationCode), data = df_wq_wide)
+lmer_fit <- lmer(Result.Chla ~ Month + Year + FlowActionPeriod + BroadRegion + Result.DO + Result.Turbidity + Result.SpCnd + Result.WaterTemp + lag1.Chla + lag2.Chla + lag3.Chla + (1|StationCode), data = df_wq_wide)
 
 aov_lmer <- anova(lmer_fit, type = 'III')
 aov_lmer$Analyte <- 'Chla'
@@ -174,5 +180,3 @@ fp_region <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Continuous/NDFA_Cont_WQ
 write_csv(df_cont, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_emmeans.csv'))
 write_csv(aov_lmer, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_aov.csv'))
 ```
-```
-

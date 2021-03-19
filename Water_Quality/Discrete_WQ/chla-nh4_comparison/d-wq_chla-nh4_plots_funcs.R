@@ -101,8 +101,8 @@ create_graph <- function(df, vari){
   blank_theme <- blank_theme()
   
   # define relevant values
-  if(varis[i] == 'Year') {
-    fill <- 'Region'
+  if(varis[i] == 'BroadRegion') {
+    fill <- 'BroadRegion'
     cmap_colors <- c('#999999', '#f781bf', '#B79F00', '#984ea3', '#377eb8', '#e41a1c')
   }
   else {
@@ -110,23 +110,23 @@ create_graph <- function(df, vari){
   }
 
   # create base plot
-  p <- ggplot() +
-   facet_wrap(df[varis[i]][[1]] ~ ., ncol = 2, scales = 'free_y')
+  p <- ggplot() # +
+  # facet_wrap(df[varis[i]][[1]] ~ ., ncol = 2, scales = 'free_y')
 
   # add scatter plot
   p <- p +
     geom_segment(data = df,
-                 mapping = aes(x = 5, xend = 5, y = -Inf, yend = Inf),
+                 mapping = aes(x = 4, xend = 4, y = -Inf, yend = Inf),
                  color = '#2b2b2b',
                  linetype = 2,
                  size = 1) +
     geom_point(data = df,
              mapping = aes(x = DisAmmonia_umolL, y = Chla, fill = !!sym(fill), shape = ActionPhase),
              color = 'black',
-             size = 4,
+             size = 4.5,
              stroke = 1.2
              ) 
-  
+
   # fix asthetics
   if (varis[i] == 'Year') {
     p <- p +

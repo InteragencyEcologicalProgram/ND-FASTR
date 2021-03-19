@@ -167,8 +167,8 @@ cen_boxplt <- function(df) {
   
   # create RL df
   df_rl <- df_filt %>%
-    group_by(Year, StationCode) %>%
-    summarise(RptLimit = max(RptLimit, na.rm = TRUE), LabDetect = all(LabDetect))
+    group_by(Year) %>%
+    summarise(RL = max(RL, na.rm = TRUE), LabDetect = all(LabDetect))
   
   df_rl <- df_rl[!df_rl$LabDetect,]
   
@@ -198,12 +198,11 @@ cen_boxplt <- function(df) {
     
     # add boolean outlier column
     df_boxplt <- df_boxplt %>%
-      group_by(Year, StationCode) %>%
+      group_by(Year, BroadRegion) %>%
       mutate(Outlier = ifelse(is_outlier(Data), Data, as.numeric(NA)))
     
     # plot boxplots
-    bp <- ggplot() +
-      facet_wrap(~ StationCode, ncol = 3, scales = 'free_y')
+    bp <- ggplot()
       
     # add box plot data
     bp <- bp +
@@ -223,17 +222,17 @@ cen_boxplt <- function(df) {
         )
     
     # add RL aesthetics
-    if (RL_dat) { # shaded region below RL
+    if (RL_dat) { # shaded BroadRegion below RL
       bp <- bp +
         geom_rect(
           data = df_rl,
-          aes(xmin = Year-0.5, xmax = Year+0.5, ymin = 0, ymax = RptLimit, group = StationCode),
+          aes(xmin = Year-0.5, xmax = Year+0.5, ymin = 0, ymax = RL, group = StationCode),
           fill = 'white',
           alpha = 0.9
         ) +
         geom_segment( # line at RL
           data = df_rl,
-          aes(x = Year-0.5, xend = Year+0.5, y = RptLimit, yend = RptLimit),
+          aes(x = Year-0.5, xend = Year+0.5, y = RL, yend = RL),
           size = 0.75,
           color = '#b85656'
         )
