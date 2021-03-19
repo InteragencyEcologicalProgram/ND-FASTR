@@ -351,6 +351,21 @@ ano3 #R = -0.02079
 
 #"The ANOSIM statistic compares the mean of ranked dissimilarities between groups to the mean of ranked dissimilarities within groups. An R value close to "1.0" suggests dissimilarity between groups while an R value close to "0" suggests an even distribution of high and low ranks within and between groups. R values below "0" suggest that dissimilarities are greater within groups than between groups. See Clarke and Gorley (2001) for a guide to interpreting ANOSIM R values."
 ```
+
+## Let's try a PERMANOVA instead
+
+The anosim function can confound the differences between groups and dispersion within groups and the results can be difficult to interpret (cf. Warton et al. 2012). The function returns a lot of information to ease studying its performance. Most anosim models could be analysed with adonis2 which seems to be a more robust alternative.
+
+The "R2" that the PERMANOVA gives you is analoguos to R2 from a linear model. It tells you how much of the variance is explained by the model. So if the R2 for "type" = 0.16, it means that 16% of the differences in samples can be explained by the type of sample. 
+
+```{r}
+
+p1 = adonis(m.full~ type + site + month, data = full.flip)
+p1
+
+
+
+```
 # indicator species analysis (not used for final results, just exploratory)
 ```{r}
 #indicator species analysis------------------------------------------------------------------------

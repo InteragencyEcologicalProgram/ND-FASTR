@@ -1,0 +1,64 @@
+---
+title: "NDFA Contaminants Data: EPA Benchmark Exceedences"
+author: "Dave Bosworth"
+date: "3/11/2021"
+output: 
+  html_document: 
+    code_folding: hide
+    toc: true
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+Produce a simple bar plot showing the number of EPA benchmark exceedances for the contaminant concentrations in water data set collected for the NDFA project. Includes data collected from 2015-2019 and benchmarks for acute and chronic toxicity for both fish and invertebrates.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+```
+
+```{r load global functions, message = FALSE, warning = FALSE}
+source("global_ndfa_funcs.R")
+```
+
+```{r define file paths}
+# Define relative file path for data file
+fp_rel_proc <- "WQ_Subteam/Analysis_Results/Contaminants/chronic_fish_toxicity.csv"
+
+# Define absolute file path
+fp_abs_proc <- ndfa_abs_sp_path(fp_rel_proc)
+```
+
+# Import and Prepare Data
+
+```{r import data, message = FALSE}
+epa_exceed_orig <- read_csv(fp_abs_proc)
+```
+
+```{r prepare data}
+epa_exceed_clean <- epa_exceed_orig %>% 
+  rename_with(~str_remove(.x, "^N_pesticides_"), starts_with("N_")) %>% 
+  mutate(FlowPeriod = factor(FlowPeriod, levels = c("Before", "During", "After"))) %>% 
+  pivot_longer(cols = chronic_fish:acute_invert, names_to = "Benchmark", values_to = "Exceedances")
+```
+
+# Create Plot
+
+```{r create plot}
+epa_exceed_clean %>% 
+  ggplot(aes(FlowPeriod, Exceedances)) +
+  geom_col() +
+  facet_grid(cols = vars(Benchmark), rows = vars(Year))
+```
+

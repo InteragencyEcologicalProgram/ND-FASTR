@@ -42,21 +42,72 @@ library(lme4)
 * Merge all together
 * Define variable structures
 * Order action phases
-
-```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
+```{r}
 #setwd("C:/Users/cpien/OneDrive - California Department of Water Resources/Work/FASTR/FASTR/ND-FASTR")
 Fish_ndfa_0 <- read.csv("fish data/FISH_MAN_allIEPsurveys_20201030.csv")
 Fish_ndfa <- dplyr::select(Fish_ndfa_0, -c(Latitude, Longitude, DO, Turbidity))
 FlowDesignation <- read.csv("fish data/FlowDatesDesignations_45days.csv")
 Regions <- read.csv("fish data/Stations_Fish_NDFA_2021-01-13.csv")
-Regions_min <- Regions %>%
-  rename(Survey = Survey.x) %>%
-  dplyr::select(-c(Intersect, geometry, RegionMult))
+# Regions_min <- Regions %>%
+#   rename(Survey = Survey.x) %>%
+#   dplyr::select(-c(Intersect, geometry, RegionMult))
 
 # Look at data
 head(Fish_ndfa)
 str(Fish_ndfa)
+```
 
+
+Modify the EDSM Stations - did not end up including this 
+```{r}
+library(nngeo)
+library(sp)
+
+setwd("C:/Users/cpien/OneDrive - California Department of Water Resources/Work/FASTR/FASTR/ND-FASTR")
+#Regions2 <- Regions %>% 
+#  mutate(StationType = ifelse(Survey.x == "EDSM", "Random", "Fixed"))
+#
+#EDSM <- filter(Regions2, Survey.x == "EDSM")
+#StationRest <- filter(Regions, Survey.x != "EDSM")
+#
+## Change to shapefile - not sure if this is necessary but couldn't figure out otherwise how to get it to work
+# coordinates(EDSM) = ~Longitude+Latitude
+# proj4string(EDSM) = CRS("+proj=longlat +datum=WGS84")
+# raster::shapefile(EDSM, "fish_code/R_write/EDSMShapefile.shp")
+# 
+# coordinates(StationRest) = ~Longitude+Latitude
+# proj4string(StationRest) = CRS("+proj=longlat +datum=WGS84")
+# raster::shapefile(StationRest, "fish_code/R_write/StationRestShapefile.shp")
+
+EDSM_s <- st_read("fish_code/R_write/EDSMShapefile.shp")
+StationRest_s <- st_read("fish_code/R_write/StationRestShapefile.shp")
+
+# Run nearest neighbor
+NN <- st_nn(EDSM_s, StationRest_s, progress = FALSE)
+
+# Convert list into a data frame
+df <- do.call(rbind.data.frame, NN)
+colnames(df) <-  "Row"
+
+# Extract the rest of the dataset based on the row number
+result <- StationRest_s[df$Row,]
+
+# Merge dataframes
+EDSM_nn <- cbind(EDSM_s, result) %>%
+  dplyr::select(c(2, 9)) %>%
+  rename(Neighbor = StatnCd.1,
+         StationCode = StatnCd)
+Regions3 <- left_join(Regions, EDSM_nn, by = "StationCode") %>%
+  mutate(StationCodeF = ifelse(is.na(Neighbor), StationCode, Neighbor))
+Regions_min2 <- Regions3 %>%
+  rename(Survey = Survey.x) %>%
+  dplyr::select(-c(Intersect, geometry.x, geometry.y, RegionMult, Neighbor))
+
+summary(Regions_min2)
+```
+
+
+```{r import and filter dates, warning = FALSE, message = FALSE, results = FALSE}
 # Add variables
 Fish_ndfa$Date <- ymd(Fish_ndfa$Date)
 Fish_ndfa$Month <- month(Fish_ndfa$Date)
@@ -70,7 +121,7 @@ FlowDesignation$PostFlowEnd <- mdy(FlowDesignation$PostFlowEnd)
 # Filter only Pre-During-Post Flow Action Data. 
 # We have a during action, and then Pre = 30 days before/Post = 30 days after
 Fish_all0 <- inner_join(Fish_ndfa,FlowDesignation, by = "Year")
-Fish_all1 <- left_join(Fish_all0, Regions_min, by = c("StationCode", "Survey"))
+Fish_all1 <- left_join(Fish_all0, Regions_min2, by = c("StationCode", "Survey"))
 
 # anti_join(Fish_all1, Fish_all0, by = colnames(Fish_all0))
 
@@ -81,11 +132,6 @@ Fish_all <- Fish_all1 %>%
   filter(!is.na(ActionPhase)) %>%
    dplyr::select(-c(PreFlowStart:PostFlowEnd)) %>%
    arrange(Date, Survey, StationCode, CommonName)
-
-
-# Order Action Phases
-Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
-Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhase)[c(3,1,2)])
 
 # Define variable structures
 str(Fish_all)
@@ -100,9 +146,16 @@ Fish_all$X1 <- NULL
 Fish_all$Survey <- as.factor(Fish_all$Survey)
 Fish_all$StationCode <- as.factor(Fish_all$StationCode)
 Fish_all$MethodCode <- as.factor(Fish_all$MethodCode)
-Fish_all$Region <- factor(Fish_all$Region, levels = c("Upstream", "Downstream", "MiddleSacRiver"))
 
+# Order of factors
+Fish_all$Region <- factor(Fish_all$Region, levels = c("Upstream", "Downstream", "MiddleSacRiver"))
+Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhase)[c(2,3,1)])
 str(Fish_all)
+
+# Code to change StationCode name
+Fish_all <- Fish_all %>%
+  rename(StationCodeInitial = StationCode,
+         StationCode = StationCodeF)
 
 ```
 
@@ -162,10 +215,8 @@ CPUE_means_Tow_phase <- Tow_f %>%
 # Lists
 list_native <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish")
 list_smeltish <- c("Wakasagi", "Inland Silverside", "Delta Smelt")
-list_nmds <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish","Wakasagi", "Inland Silverside", "Delta Smelt", "Carp", "Goldfish", "Hardhead", "Golden Shiner", "Fathead Minnow", "Hitch","Rainwater Killifish", "Western Mosquitofish", "Black Crappie", "White Crappie", "Bluegill", "Bigscale Logperch","Largemouth Bass", "Smallmouth Bass", "Striped Bass", "Spotted Bass","Threadfin Shad", "American Shad", "Tridentiger spp_", "Shimofuri Goby", "White Catfish")
 
 Tow_natives0 <- Tow_f %>%filter(CommonName %in% list_native)
-Tow_nmds_larger <- Tow_f%>% filter(CommonName %in%list_nmds)
 Tow_smeltish0 <- Tow_f %>% filter(CommonName %in% list_smeltish)
 ```
 
@@ -179,6 +230,9 @@ Tow_smeltish <- Tow_smeltish0 %>%
   group_by(Survey, fYear, StationCode, ActionPhase, Region, Date,  VolumeSampled, Tow) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
+
+
+Tow_smeltish$ActionPhase <-  factor(Tow_smeltish$ActionPhase, levels(Tow_smeltish$ActionPhase)[c(2,3,1)])
 ```
 
 #### Look at data
@@ -198,162 +252,205 @@ ggplot(Tow_smeltish, aes(sumCPUE)) + geom_histogram(binwidth = .001) + theme_bw(
 ggplot(Tow_smeltish, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
 
 # Action Phase
-ggplot(Tow_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+SmeltishAP <- ggplot(Tow_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+ggplotly(SmeltishAP)
 
 # Region
 ggplot(Tow_smeltish, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Year 
 ggplot(Tow_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+
+Tow_summary_yr_smeltish1 <- Tow_smeltish %>% 
+  group_by(fYear, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Tow_summary_yr_smeltish_1, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = ActionPhase)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
+
+Tow_summary_yr_smeltish2 <- Tow_smeltish %>% 
+  group_by(fYear, Region) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Tow_summary_yr_smeltish2, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
+
+
 ```
 
-# Barplot
-# Summarize - Mean + Standard Error
+Remove outlier
 ```{r}
-Tow_summary1 <- Tow_smeltish %>% 
+Tow_smeltish1 <- Tow_smeltish %>%
+  filter(sumCPUE<0.2)
+```
+
+#### Barplots for figures - ActionPhase/Region and yr/Region
+Summarize - Mean + Standard Error
+```{r}
+Tow_summary_smeltish <- Tow_smeltish1 %>% 
   group_by(Region, ActionPhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-plot4 <- ggplot(Tow_summary1, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+plot4 <- ggplot(Tow_summary_smeltish, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
-    annotate("text", x = "Post", y = .006, label = "D", size = 8)  + 
+    annotate("text", x = "Post", y = .0055, label = "D", size = 8)  + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
         legend.title = element_text(size = 15))
+plot4
+
+Tow_summary_yr_smeltish2a <- Tow_smeltish1 %>% 
+  group_by(fYear, Region) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+plotD <- ggplot(Tow_summary_yr_smeltish2a, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+    annotate("text", x = "2019", y = .009, label = "D", size = 8)  + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        axis.title.x = element_blank(),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+          axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        legend.position = "bottom")
+plotD
+```
+
+
+## Modeling 
+Remove station effects by averaging into Region. Use this data for model.
+```{r}
+Tow_smeltish2 <- Tow_smeltish1 %>%
+  group_by(fYear, Region, ActionPhase) %>%
+  summarize(sumCount2 = sum(sumCount),
+            sumVol = sum(VolumeSampled),
+            sumCPUE2 = sum(sumCPUE),
+            meanCPUE = mean(sumCPUE))
+
+Tow_smeltish2$ActionPhase <-  factor(Tow_smeltish2$ActionPhase, levels(Tow_smeltish2$ActionPhase)[c(2,3,1)])
 
 ```
 
-#### Using transformations - doesn't work well
+Replot data - outliers gone
 ```{r}
-(M.smeltish1 <- glm(log(sumCPUE+1)~FlowPulseType + ActionPhase + Region, data  = Tow_smeltish))
+ggplot(Tow_smeltish2, aes(fYear, meanCPUE, fill = ActionPhase)) + geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
+```
+
+
+Run models
+```{r}
+(M.smeltish1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Tow_smeltish2))
 summary(M.smeltish1)
-par(mfrow = c(2,2))
-plot(M.smeltish1)
-```
 
-#### Zero-inflated model
-```{r}
-# For CPUE, use offset to account for sampling effort
-Tow_smeltish$Samp <- log(Tow_smeltish$VolumeSampled)
+(M.smeltish2 <- glm(meanCPUE~Region + fYear * ActionPhase, data  = Tow_smeltish2))
+summary(M.smeltish2)
 
-# Formula
-f1 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
-f4 <- formula(sumCount ~ Region + fYear + ActionPhase + Region:ActionPhase+  offset(Samp))
-f5 <- formula(sumCount ~ Region + fYear + ActionPhase + Region:fYear+  offset(Samp))
-f6 <- formula(sumCount ~ Region + fYear + ActionPhase + ActionPhase:fYear+  offset(Samp))
+(M.smeltish3 <- glm(meanCPUE~Region * fYear + ActionPhase, data  = Tow_smeltish2))
+summary(M.smeltish3)
+
+(M.smeltish4 <- glm(meanCPUE~Region * ActionPhase + fYear, data  = Tow_smeltish2))
+summary(M.smeltish4)
 
 
-# Overdispersion = Variance much larger than mean. 
-var(Tow_smeltish$sumCount)
-mean(Tow_smeltish$sumCount)
-
-# Negbin
-zinb1 <- zeroinfl(f1, na.action = "na.fail", dist="negbin", link = "logit", data = Tow_smeltish) ; summary(zinb1)
-
-# Poisson
-zip1 <- zeroinfl(f1, dist = "poisson", link = "logit", data = Tow_smeltish); summary(zip1)
-
-# Hurdle 
-hrd1 <- hurdle(f1, dist="negbin", data = Tow_smeltish); summary(hrd1)
-
-```
-
-Compare zero-inflated poisson with zero-inflated negbin using likelihood ratio test
-
-**Confused about what this test is telling me. I use negbin if the test is significant?**
-```{r}
-library(lmtest)
-lrtest(zip1, zinb1)
-
-# Significantly different 
-
-# check all 3
-BIC(zip1, zinb1, hrd1)
-```
-ZINB is the best. 
-Compare zinb with nb, make sure zero inflation is the way to go
-
-```{r}
-# No zero inflation
-nb1 <- glm.nb(f1,  data = Tow_smeltish) ; summary(nb1) 
-vuong(nb1, zinb1)
-```
-It is. 
-
-Mixed modeling, including Station as random effect
-SLOW!
-
-```{r}
-f7 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp)+ (1|StationCode))
-library(optimx)
-mnb1 <- glmer.nb(f7, data = Tow_smeltish, control = glmerControl(optimizer= "optimx",
-                                               optCtrl  = list(method="nlminb")))
-summary(mnb1)
+AIC(M.smeltish1, M.smeltish2, M.smeltish3, M.smeltish4)
 ```
 
 
-#### Diagnostic Plots
-
-https://stackoverflow.com/questions/43075911/examining-residuals-and-visualizing-zero-inflated-poission-r
-
-Rootograms - should like like a typical overdispersed distribution
-This compares observed and fitted frequencies
-QQRplot
-```{r}
-par(mfrow = c(1,2))
-rootogram(zinb1, main = "ZINB", ylim = c(-5, 15), max = 50)
-qqrplot(zinb1)
-```
-
-Distribution of residuals by variable
-```{r}
-EP1 <- resid(zinb1, type = "pearson")
-
-# Diagnostic Plots
-par(mfrow = c(2,2))
-plot(x=Tow_smeltish$ActionPhase,y = EP1, main = "Action Phase")
-plot(x=Tow_smeltish$Region, y = EP1, main = "Region")
-plot(x=Tow_smeltish$fYear, y = EP1, main = "Year")
-```
-
-Look at overall relationships
+Diagnostic Plots
 ```{r}
 par(mfrow = c(2,2))
-visreg(zinb1)
+plot(M.smeltish3)
+```
+
+Anova function 
+```{r}
+library(car)
+Anova(M.smeltish3, type = 3)
 ```
 
 Post-hoc
-
 ```{r}
-m_means1 <- emmeans(zinb1, ~fYear, adjust = "sidak")
-m_means1
-multcomp::cld(m_means1, Letters = letters)
+
+emmip(M.smeltish3, fYear~ActionPhase|Region)
+emmip(M.smeltish3, Region~ActionPhase|fYear)
+
+m_means1a <- emmeans(M.smeltish3, pairwise~fYear|Region, adjust="sidak")
+m_means1a
+
+m_means1b <- emmeans(M.smeltish3, pairwise~Region|fYear, adjust="sidak")
+m_means1b
+
+m_means1c <- emmeans(M.smeltish3, pairwise~ActionPhase, adjust="sidak")
+m_means1c
 ```
 
 **Conclusions**
 
-* More smeltish post>pre>during (but very small difference)
-* More smeltish upstream>downstream
-* 2016, 2017, 2019 > 2013> 2018> 2014-2015
-* More zeroes upstream than downstream
-* More zeroes during than pre
+* Region, fYear, Action Phase, Region:fYear all significant
+* Action Phase Pre > During
+* More smeltish upstream compared with downstream and Middle Sac River
+- significant in 2019, 2017
+* 2019>2013, 2014, 2015, 2016, 2017, 2018,| 2017>2015 UPSTREAM only
+* EDSM started later. 
+
+**Notes**
+
+* Removed one high CPUE outlier from 2019 of EDSM catch. 
+
+
+
+
+
+
 
 
 ### Native fishes
 
-**Couldn't really run these because not enough data?**
-
 #### Sum natives into one CPUE/tow
+* Filtered to 2016-2019 since no natives prior! 
 ```{r}
 Tow_natives <- Tow_natives0 %>%
+  #filter(Year>2015) %>%
   group_by(Date, Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, VolumeSampled, Tow) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
+
+
+Tow_natives$ActionPhase <-  factor(Tow_natives$ActionPhase, levels(Tow_natives$ActionPhase)[c(2,3,1)])
 ```
 
 Look at plots
@@ -376,106 +473,157 @@ ggplot(Tow_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color =
 ggplot(Tow_natives, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Year 
-ggplot(Tow_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Tow_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "magma") + theme_bw()
+
+Tow_summary_native_yr3 <- Tow_natives %>% 
+  group_by(fYear, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Tow_summary_native_yr3, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = ActionPhase)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
+
+Tow_summary_native_yr4 <- Tow_natives %>% 
+  group_by(fYear, Region) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Tow_summary_native_yr4, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
 ```
 
-# Barplot
-# Summarize - Mean + Standard Error
+#### Barplot
+Summarize - Mean + Standard Error
 ```{r}
-Tow_summary2 <- Tow_natives %>% 
+Tow_summary_native2 <- Tow_natives %>% 
   group_by(Region, ActionPhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-plot5 <- ggplot(Tow_summary2, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+plot5 <- ggplot(Tow_summary_native2, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + 
-      annotate("text", x = "Post", y = 2e-05, label = "E", size = 8)  + 
+      annotate("text", x = "Post", y = 3e-05, label = "E", size = 8)  + 
   theme_bw() + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
         legend.title = element_text(size = 15))
+plot5
+
+
+
+
+Tow_summary_native_yr4 <- Tow_natives %>% 
+  group_by(fYear, Region) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+Tow_summary_native_yr4 <- Tow_natives %>% 
+  group_by(fYear, Region) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+plotE <- ggplot(Tow_summary_native_yr4, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  annotate("text", x = "2019", y = 4e-05, label = "E", size = 8)  + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        axis.title.x = element_blank(),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+          axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        legend.position = "none")
+plotE
 ```
 
-#### Zero-inflated model
 
-* Doesn't work - not enough samples?
+## Models
+Remove station effects by averaging into Region. Use this data for model.
 ```{r}
+Tow_natives2 <- Tow_natives %>%
+  group_by(fYear, Region, ActionPhase) %>%
+  summarize(sumCount2 = sum(sumCount),
+            sumVol = sum(VolumeSampled),
+            sumCPUE2 = sum(sumCPUE),
+            meanCPUE = mean(sumCPUE))
 
-# For CPUE, use offset to account for sampling effort
-Tow_natives$Samp <- log(Tow_natives$VolumeSampled)
+Tow_natives2$ActionPhase <-  factor(Tow_natives2$ActionPhase, levels(Tow_natives2$ActionPhase)[c(2,3,1)])
 
-# Formula
-f2 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
-
-# Negbin
-zinb2 <- zeroinfl(f2, na.action = "na.fail", dist="negbin", link = "logit", data = Tow_natives) ; summary(zinb2)
-
-# Poisson
-zip2 <- zeroinfl(f2, dist = "poisson", link = "logit", data = Tow_natives); summary(zip2)
-
-# Hurdle
-hrd2 <- hurdle(f2, dist="negbin", data = Tow_natives); summary(hrd2)
 ```
 
-Compare zero-inflated poisson with zero-inflated negbin
+Run models
 ```{r}
-library(lmtest)
-lrtest(zip2, zinb2)
+(M.natives1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Tow_natives2))
+summary(M.natives1)
 
-BIC(zip2, zinb2, hrd2)
+(M.natives2 <- glm(meanCPUE~Region + fYear * ActionPhase, data  = Tow_natives2))
+summary(M.natives2)
+
+(M.natives3 <- glm(meanCPUE~Region * fYear + ActionPhase, data  = Tow_natives2))
+summary(M.natives3)
+
+(M.natives4 <- glm(meanCPUE~Region * ActionPhase + fYear, data  = Tow_natives2))
+summary(M.natives4)
+
+
+AIC(M.natives1, M.natives2, M.natives3, M.natives4)
 ```
 
-ZINB is the best. 
-Compare zinb with nb, make sure zero inflation is the way to go
+Diagnostic Plots
 ```{r}
-# No zero inflation
-nb2 <- glm.nb(f2,  data = Tow_natives) ; summary(nb2) 
-vuong(nb2, zinb2)
-```
-NB better.  
-
-#### Diagnostic Plots
-
-Rootograms - should like like a typical overdispersed distribution
-This compares observed and fitted frequencies
-```{r}
-par(mfrow = c(1,2))
-rootogram(zinb2, main = "ZINB", ylim = c(-5, 15), max = 50)
-qqrplot(zinb2)
-```
-
-Distribution of residuals by variable
-```{r}
-
-# Calculate residuals
-EP2 <- resid(zinb2, type = "pearson")
-
-# Diagnostic Plots
 par(mfrow = c(2,2))
-plot(x=Tow_natives$ActionPhase,y = EP2, main = "Action Phase")
-plot(x=Tow_natives$Region, y = EP2, main = "Region")
-plot(x=Tow_natives$fYear, y = EP2, main = "Year")
+plot(M.natives1)
 ```
 
-View Results
+**Should we remove Points 26,29,39 as outliers?**
+
+
+Anova function 
 ```{r}
-par(mfrow = c(2,2))
-visreg(zinb2)
+Anova(M.natives1, type = 3)
 ```
 
 Post-hoc
+
 ```{r}
-m_means2 <- emmeans(zinb2, ~fYear, adjust = "sidak")
-multcomp::cld(m_means2, Letters = letters)
+m_means2a <- emmeans(M.natives1, pairwise~fYear, adjust="sidak")
+m_means2a
+
+m_means2b <- emmeans(M.natives1, pairwise~Region, adjust="sidak")
+m_means2b
+
+m_means2c <- emmeans(M.natives1, pairwise~ActionPhase, adjust="sidak")
+m_means2c
 ```
 
 
+**Conclusions**
 
-
+* No factors significant
+* Not going to use this model - don't think there are enough samples! 29/3144
 
 
 
@@ -488,25 +636,23 @@ multcomp::cld(m_means2, Letters = letters)
 
 #### Sum Overall CPUE
 ```{r}
-Tow_f <- filter(Tow_f, !(CommonName %in% c("Crangon spp.", "Siberian Prawn", "NoCatch", "Mississippi Grass Shrimp")))
-Tow_all <- Tow_f %>%
+Tow_filter <- filter(Tow_f, !(CommonName %in% c("Crangon spp.", "Siberian Prawn", "NoCatch", "Mississippi Grass Shrimp")))
+Tow_all <- Tow_filter %>%
   group_by(Survey,fYear, Date, Region, StationCode, ActionPhase, MethodCode, VolumeSampled, Tow) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
+
+Tow_all$ActionPhase <-  factor(Tow_all$ActionPhase, levels(Tow_all$ActionPhase)[c(2,3,1)])
 ```
 
 #### Look at data
-
-
 ```{r}
-
-
 pal36 <- palette36.colors(36)
 pal36 <- as.vector(t(pal36))
 
 
 # Proportion Species
-ggplot(Tow_f, aes(x = fYear, y = CPUE, fill = CommonName)) + 
+TowSp <- ggplot(Tow_filter, aes(x = fYear, y = CPUE, fill = CommonName)) + 
   geom_col() + 
   scale_fill_manual(values = pal36)+
   theme_bw()  + theme(legend.position = "bottom") + 
@@ -515,10 +661,25 @@ ggplot(Tow_f, aes(x = fYear, y = CPUE, fill = CommonName)) +
         axis.title.x = element_blank(),
         legend.text = element_text(size = 11),
         legend.title = element_blank())
-Towsp
-ggplotly(TowSp)
+TowSp
+
+```
+
+Calculate CPUE to report
+```{r}
+TowtotalCPUE <- Tow_filter %>%
+  group_by(fYear) %>%
+  summarize(TCPUE = sum(CPUE))
+
+totalCPUESp <- Tow_filter %>%
+  group_by(fYear, CommonName) %>%
+  summarize(TsCPUE = sum(CPUE)) %>%
+  left_join(TowtotalCPUE) %>%
+  mutate(TsCPUE/TCPUE * 100)
+```
 
 
+```{r}
 # Histogram
 ggplot(Tow_all, aes(sumCPUE)) + geom_histogram(binwidth = .001) + theme_bw()
 
@@ -539,70 +700,92 @@ ggplot(Tow_all2, aes(x = Region, y = sumCPUE)) + geom_boxplot(aes(fill = ActionP
 ggplot(Tow_all2, aes(x = ActionPhase, y = sumCPUE)) + geom_boxplot(aes(fill = Region)) + scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 
-
 # Year 
-ggplot(Tow_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Tow_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "magma") + theme_bw()
+
+Tow_summary_all_yr3 <- Tow_all %>% 
+  group_by(fYear, ActionPhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Tow_summary__all_yr3, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = ActionPhase)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
+
+Tow_summary_all_yr4 <- Tow_all %>% 
+  group_by(fYear, Region) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Tow_summary_all_yr4, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
 ```
 
-# Barplot
-# Summarize - Mean + Standard Error
+Deal with outlier
 ```{r}
-Tow_summary3 <- Tow_all %>% 
+Tow_all <- filter(Tow_all, sumCPUE<2)
+```
+
+#### Barplot
+Summarize - Mean + Standard Error
+```{r}
+Tow_summary_all3 <- Tow_all %>% 
   group_by(Region, ActionPhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-plot6 <- ggplot(Tow_summary3, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+plot6 <- ggplot(Tow_summary_all3, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + 
-      annotate("text", x = "Post", y = .1, label = "F", size = 8)  + 
+      annotate("text", x = "Post", y = .07, label = "F", size = 8)  + 
   theme_bw() + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
         legend.title = element_text(size = 15))
+plot6
 
+
+
+
+Tow_summary_all_yr4b <- Tow_all %>% 
+  group_by(fYear, Region) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+plotF <- ggplot(Tow_summary_all_yr4b, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() +
+  annotate("text", x = "2019", y = .13, label = "F", size = 8)  + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        axis.title.x = element_blank(),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+          axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        legend.position = "none")
+
+plotF
 ```
-
-Merge plots
-https://github.com/tidyverse/ggplot2/wiki/Share-a-legend-between-two-ggplot2-graphs
-```{r}
-
-grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, position = c("bottom", "right")) {
-
-  plots <- list(...)
-  position <- match.arg(position)
-  g <- ggplotGrob(plots[[1]] + theme(legend.position = position))$grobs
-  legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
-  lheight <- sum(legend$height)
-  lwidth <- sum(legend$width)
-  gl <- lapply(plots, function(x) x + theme(legend.position="none"))
-  gl <- c(gl, ncol = ncol, nrow = nrow)
-
-  combined <- switch(position,
-                     "bottom" = arrangeGrob(do.call(arrangeGrob, gl),
-                                            legend,
-                                            ncol = 1,
-                                            heights = unit.c(unit(1, "npc") - lheight, lheight)),
-                     "right" = arrangeGrob(do.call(arrangeGrob, gl),
-                                           legend,
-                                           ncol = 2,
-                                           widths = unit.c(unit(1, "npc") - lwidth, lwidth)))
-
-  grid.newpage()
-  grid.draw(combined)
-
-  # return gtable invisibly
-  invisible(combined)
-}
-
-
-grid_arrange_shared_legend(plot4, plot5, plot6, ncol = 1, nrow = 3)
-
-```
-
 
 #### Model - normal glm
 ```{r}
@@ -620,8 +803,6 @@ m2all <- glm(logCPUE~Region + fYear + ActionPhase, data = Tow_all); summary(m2al
 
 par(mfrow = c(2,2))
 plot(m2all)
-
-hist(Tow_all$logCPUE)
 ```
 
 #### Model with poisson distribution
@@ -651,13 +832,6 @@ m3all$deviance/m3all$df.residual #overdispersed
 ```{r}
 library(MASS)
 m4all <- glm.nb(f3, data = Tow_all); summary(m4all)
-
-
-# Confidence Intervals 
-(est <- cbind(Estimate = coef(m5all), confint(m5all)))
-
-# Incidence Rates (Count)
-exp(est)
 ```
 
 # Compare the two
@@ -666,57 +840,127 @@ BIC(m3all, m4all)
 ```
 Negative Binomial preferred.
 
-Try interactions: m5all preferred
+Mixed modeling
 ```{r}
-m5all <- glm.nb(f4, data = Tow_all); summary(m5all)
-m6all <- glm.nb(f5, data = Tow_all); summary(m6all)
-m7all <- glm.nb(f6, data = Tow_all); summary(m7all)
 
-BIC(m4all, m5all, m6all, m7all)
-```
+# For CPUE, use offset to account for sampling effort
+Tow_all$Samp <- log(Tow_all$VolumeSampled)
 
-#### Diagnostic Plots
-Rootogram
-```{r}
-par(mfrow = c(1,2))
-rootogram(m5all)
-qqrplot(m5all)
-```
+# Formula
+f1 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
+f2 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp) + (1|StationCode))
+f3 <- formula(sumCount ~ Region + fYear*ActionPhase  + offset(Samp) + (1|StationCode))
+f4 <- formula(sumCount ~ Region*fYear + ActionPhase  + offset(Samp) + (1|StationCode))
+f5 <- formula(sumCount ~ Region *ActionPhase + fYear  + offset(Samp) + (1|StationCode))
+f6 <- formula(sumCount~ Region + ActionPhase + fYear + Region:ActionPhase + ActionPhase:fYear + offset(Samp) + (1|StationCode))
 
-Plot residuals
-```{r}
-# Diagnostic Plots -------------------------------------
-# Model Validation 
-# Calculate residuals
-EP3 <- resid(m5all, type = "pearson")
-
-# Diagnostic Plots
-par(mfrow = c(2,2))
-plot(x=m5all$fitted.values, y = EP3, main = "Pearson residuals")
-plot(x=Tow_all$ActionPhase,y = EP3, main = "Action Phase")
-plot(x=Tow_all$Region, y = EP3, main = "Region")
-plot(x=Tow_all$fYear, y = EP3, main = "Year")
+library(glmmTMB)
+M.glmer1b <- glmmTMB(f2, data = Tow_all, family = nbinom2)
+M.glmer2b <- glmmTMB(f3, data = Tow_all, family = nbinom2)
+M.glmer3b <- glmmTMB(f4, data = Tow_all, family = nbinom2)
+M.glmer4b <- glmmTMB(f5, data = Tow_all, family = nbinom2)
+M.glmer5b <- glmmTMB(f6, data = Tow_all, family = nbinom2);
+summary(M.glmer5b)
 
 ```
 
-View plot
+Diagnostics
+https://cran.r-project.org/web/packages/glmmTMB/vignettes/model_evaluation.pdf
 ```{r}
-par(mfrow = c(2,2))
-visreg(m5all)
+library(DHARMa)
+TowallRes <- simulateResiduals(M.glmer5b)
+plot(TowallRes)
+
+library(effects)
+plot(allEffects(M.glmer5b))
+
 ```
 
 Post-hoc
-
 ```{r}
-m_means3 <- emmeans(m5all, ~Region|fYear, adjust = "sidak")
-multcomp::cld(m_means3, Letters = letters)
+towallcontrast <- emmeans(M.glmer5b, ~ActionPhase * fYear * Region)
+result <- contrast(towallcontrast, "consec", simple = "each", combine = TRUE, adjust = "sidak")
+
+print(result)
+
+m_means3a <- emmeans(M.glmer1, pairwise~fYear, adjust="sidak")
+m_means3a
+
+m_means3b <- emmeans(M.glmer1, pairwise~Region, adjust="sidak")
+m_means3b
+
+m_means3c <- emmeans(M.glmer1, pairwise~ActionPhase, adjust="sidak")
+m_means3c
 ```
+
 
 **Conclusions**
 
-* More samples in 2017-2019 (EDSM started?) 
-* 2015-2016 > 2013-2017 > 2014 > 2018-2019
-* Not sure about residual distribution
-* More fish Upstream > Downstream > Middle Sac
-* More fish Pre > Post > During 
-* Run post-hoc tests on Year to compare years between each other - Tukey or GLHT
+* More fish Downstream > Upstream > Middle Sac (not significant)
+* More fish Pre and During > Post 
+* Years: highest 2015, 2017-2019, 2016, 2013, 2014
+  * 2015>2016, 2018>2014, 2017>2014, 2015>2014. 2015>2013, 2017>2013, 2018>2013 
+
+- Could consider making year plot and color coding by water year/ action type briefly
+
+
+
+
+
+Simplified 
+Remove station effects by averaging into Region. Use this data for model.
+```{r}
+Tow_all2 <- Tow_all %>%
+  group_by(fYear, Region, ActionPhase) %>%
+  summarize(sumCount2 = sum(sumCount),
+            sumVol = sum(VolumeSampled),
+            sumCPUE2 = sum(sumCPUE),
+            meanCPUE = mean(sumCPUE))
+
+Tow_all2$ActionPhase <-  factor(Tow_all2$ActionPhase, levels(Tow_all2$ActionPhase)[c(2,3,1)])
+
+```
+
+Run models
+```{r}
+(M.all1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Tow_all2))
+summary(M.all1)
+
+(M.all2 <- glm(meanCPUE~Region + fYear * ActionPhase, data  = Tow_all2))
+summary(M.all2)
+
+(M.all3 <- glm(meanCPUE~Region * fYear + ActionPhase, data  = Tow_all2))
+summary(M.all3)
+
+(M.all4 <- glm(meanCPUE~Region * ActionPhase + fYear, data  = Tow_all2))
+summary(M.all4)
+
+
+AIC(M.all1, M.all2, M.all3, M.all4)
+```
+UPDATED MODEL CODE
+Diagnostic Plots
+```{r}
+par(mfrow = c(2,2))
+plot(M.all1)
+```
+
+**Should we remove Point 49 as outlier?**
+Post-hoc
+
+```{r}
+m_means4a <- emmeans(M.all1, pairwise~fYear, adjust="sidak")
+m_means4a
+
+m_means4b <- emmeans(M.all1, pairwise~Region, adjust="sidak")
+m_means4b
+
+m_means4c <- emmeans(M.all1, pairwise~ActionPhase, adjust="sidak")
+m_means4c
+```
+UPDATED MODEL CODE
+**Conclusions**
+
+* More fish Downstream vs Upstream and Middle Sac
+* More fish Pre > Post, not other significant differences 
+* More fish 2018 but not significant in multcomp
