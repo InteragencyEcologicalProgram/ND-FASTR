@@ -33,6 +33,11 @@ df_wq <- ndfa_action_periods(df_wq, na_action_remove = TRUE, keep_action_dates =
 # add metadata cols
 df_wq <- merge(df_wq, df_region, by = c('StationCode')) 
 
+
+#remove sites we aren't including (not available for all years), create a column for year
+remove <- c('SRH', 'SHR', 'SRV', 'WWT', 'DWT', 'SDI')
+df_wq <- filter(df_wq, !StationCode %in% remove)
+
 # pivot longer
 df_wq <- df_wq %>% 
   select(!ends_with('_Qual')) %>% 
@@ -49,9 +54,6 @@ df_wq$Month <- format(df_wq$Date, '%b')
 
 # set/rm Sac River varis
 # df_wq[df_wq$StationCode %in% c('SHR','SRV','SRH'),]$FlowActionPeriod <- 'None'
-
-df_wq <- subset(df_wq, !(StationCode %in% c('SHR','SRV','SRH')))
-
 
 # df_wq <- df_wq %>%
 #   mutate(
@@ -113,8 +115,9 @@ for (i in seq(analytes)){
     )
   
   lmer_rg <- ref_grid(lmer_fit)
-  lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey')
+  lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey') # manually change the pairs cause I'm lazy
   cont <- test(lmer_emm)$contrasts
+  # print(lmer_emm) # to check adj method
 
   cont$Analyte <- analytes[i]
   df_cont <- cont %>%
@@ -134,49 +137,49 @@ for (i in seq(analytes)){
 all_reg_data <- do.call(rbind, all_reg)
 all_aov_data <- do.call(rbind,all_aov)
 
-write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_emmeans.csv'))
-# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_aov.csv'))
+write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/no_SDI/cwq_emmeans_noSDI.csv'))
+write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/no_SDI/cwq_aov_noSDI.csv'))
 ```
 
 ```{r chla only}
-df_wq_wide <- reshape(df_wq_day,
-         idvar = c('StationCode','BroadRegion','Week','Year','WeekYear','FlowActionPeriod','Month'),
-         timevar = 'Analyte',
-         direction = 'wide')
-
-lmer_fit <- lmer(Result.Chla ~ Month + Year + FlowActionPeriod + BroadRegion + Result.DO + Result.Turbidity + Result.SpCnd + Result.WaterTemp + lag1.Chla + lag2.Chla + lag3.Chla + (1|StationCode), data = df_wq_wide)
-
-aov_lmer <- anova(lmer_fit, type = 'III')
-aov_lmer$Analyte <- 'Chla'
-aov_lmer$Variable <- rownames(aov_lmer)
-
-aov_lmer <- aov_lmer %>%
-  mutate(Significance = case_when(
-    `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
-    `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
-    `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
-    `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
-    `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
-    )
-  )
-
-lmer_rg <- ref_grid(lmer_fit)
-lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey', pbkrtest.limit = 15000)
-cont <- test(lmer_emm)$contrasts
-
-cont$Analyte <- 'Chla'
-df_cont <- cont %>%
-  mutate(Significance = case_when(
-    p.value >= 0 & p.value < 0.001 ~ '***',
-    p.value >= 0.001 & p.value < 0.01 ~ '**',
-    p.value >= 0.01 & p.value < 0.05 ~ '*',
-    p.value >= 0.05 & p.value < 0.1 ~ '.',
-    p.value >= 0.1 & p.value < 1 ~ ' ',
-    )
-  )
-
-fp_region <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Continuous/NDFA_Cont_WQ_Stations.csv')
-
-write_csv(df_cont, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_emmeans.csv'))
-write_csv(aov_lmer, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_aov.csv'))
+# df_wq_wide <- reshape(df_wq_day,
+#          idvar = c('StationCode','BroadRegion','Week','Year','WeekYear','FlowActionPeriod','Month'),
+#          timevar = 'Analyte',
+#          direction = 'wide')
+# 
+# lmer_fit <- lmer(Result.Chla ~ Month + Year + FlowActionPeriod + BroadRegion + Result.DO + Result.Turbidity + Result.SpCnd + Result.WaterTemp + lag1.Chla + lag2.Chla + lag3.Chla + (1|StationCode), data = df_wq_wide)
+# 
+# aov_lmer <- anova(lmer_fit, type = 'III')
+# aov_lmer$Analyte <- 'Chla'
+# aov_lmer$Variable <- rownames(aov_lmer)
+# 
+# aov_lmer <- aov_lmer %>%
+#   mutate(Significance = case_when(
+#     `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
+#     `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
+#     `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
+#     `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
+#     `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
+#     )
+#   )
+# 
+# lmer_rg <- ref_grid(lmer_fit)
+# lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey', pbkrtest.limit = 15000)
+# cont <- test(lmer_emm)$contrasts
+# 
+# cont$Analyte <- 'Chla'
+# df_cont <- cont %>%
+#   mutate(Significance = case_when(
+#     p.value >= 0 & p.value < 0.001 ~ '***',
+#     p.value >= 0.001 & p.value < 0.01 ~ '**',
+#     p.value >= 0.01 & p.value < 0.05 ~ '*',
+#     p.value >= 0.05 & p.value < 0.1 ~ '.',
+#     p.value >= 0.1 & p.value < 1 ~ ' ',
+#     )
+#   )
+# 
+# fp_region <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Continuous/NDFA_Cont_WQ_Stations.csv')
+# 
+# write_csv(df_cont, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_emmeans.csv'))
+# write_csv(aov_lmer, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_aov.csv'))
 ```
