@@ -114,10 +114,12 @@ int_define_yaxis_lab <- function(param) {
   yaxis_lab <- case_when(
     param == "Chla" ~ "Chlorophyll (ug/L)",
     param == "DO" ~ "Diss Oxygen (mg/L)",
+    param == "fDOM" ~ "fDOM (ug/L as QSE)",
+    param == "NitrateNitrite" ~ "Nitrate + Nitrite (mg/L as N)",
     param == "pH" ~ "pH (pH units)",
     param == "SpCnd" ~ "Sp Cond (uS/cm)",
     param == "Turbidity" ~ "Turbidity (FNU)",
-    param == "WaterTemp" ~ "Water Temp (C)",
+    param == "WaterTemp" ~ "Water Temp (C)"
   )
   
   return(yaxis_lab)
