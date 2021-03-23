@@ -31,7 +31,7 @@ df_region <- read_csv(fp_abs_region)
 df_region <- subset(df_region, select = c(Station, BroadRegion))
 
 #remove sites we aren't including (not available for all years), create a column for year
-remove <- c('SRH', 'SHR', 'SRV')
+remove <- c('SRH', 'SHR', 'SRV', 'WWT', 'DWT')
 df_discrete <- filter(df_discrete, !StationCode %in% remove)
 
 # standardize/rename Date col

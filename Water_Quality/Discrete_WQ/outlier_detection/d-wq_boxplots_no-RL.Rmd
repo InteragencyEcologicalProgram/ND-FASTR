@@ -57,10 +57,10 @@ rm(df_regions, df_dates)
 blank_theme <- function(){
   theme_bw() +
     theme(
-      # panel.grid.major.y = element_blank(),
-      # panel.grid.major.x = element_blank(),
-      # panel.grid.minor.y = element_blank(),
-      # panel.grid.minor.x = element_blank(),
+      panel.grid.major.y = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.y = element_blank(),
+      panel.grid.minor.x = element_blank(),
       axis.text = element_text(color = 'black', size = 12, family = 'sans'),
       axis.text.x = element_text(vjust=0.5, margin = margin(t = 1)),
       axis.title = element_text(size = 14),
@@ -70,6 +70,7 @@ blank_theme <- function(){
       legend.title = element_text(size = 14),
       legend.text=element_text(size=12),
       legend.box.margin=margin(-5,0,-5,0)
+     # legend.background = element_rect(color = 'black')
     )
 }
 
@@ -94,26 +95,24 @@ for (analyte in analytes){
     filter(
       AnalyteFull == analyte)
 
-  plt <- ggplot() +
-    geom_violin(
-      df_filt,
-      mapping = aes(BroadRegion, Result, fill=ActionPhase, outlier.color = ActionPhase),
-      draw_quantiles = c(0.25, 0.5, 0.75),
-      size = 0.75) +
+  plt <- ggplot(df_filt, mapping = aes(BroadRegion, Result, fill=ActionPhase, outlier.color = ActionPhase)) +
+    
+    geom_violin(color = 'black', draw_quantiles = c(0.25, 0.5, 0.75), alpha = 0.65, size = 0.75) +
     ggtitle(analyte) + 
     blank_theme() +
     guides(fill=guide_legend(title='Action Phase')) +
     xlab('Region') +
     ylab(df_filt$Units) +
-    scale_fill_viridis_d(option = 'plasma') +
-    scale_color_viridis_d(option = 'plasma')
+    scale_fill_viridis_d(option = 'plasma', begin = 0.3) +
+    scale_color_viridis_d(option = 'plasma', begin = 0.3) +
+    
+    geom_violin(fill = 'transparent', size = 0.9, color = 'black')
   
   print(plt)
   
-  # fp_plots <- get_abs_path(paste0(fp_fastr,'WQ_Subteam/Plots/Discrete/Violin_Plots/violin_',analyte,'.png'))
+  fp_plots <- get_abs_path(paste0(fp_fastr,'WQ_Subteam/Plots/Discrete/Violin_Plots/violin_',analyte,'.png'))
   
-  # ggsave(fp_plots)
-break
+  ggsave(fp_plots)
 }
 ```
 

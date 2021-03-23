@@ -128,16 +128,18 @@ create_graph <- function(df, vari){
              ) 
 
   # fix asthetics
-  if (varis[i] == 'Year') {
-    p <- p +
-      scale_fill_manual(values = cmap_colors)
-  }
+  # if (varis[i] == 'Year') {
+  #   p <- p +
+  #     scale_fill_manual(values = cmap_colors)
+  # }
   
   p <- p +
     blank_theme +
     xlab(expression(bold(paste('NH'[4],' (\u03BCmol/L)',sep = '')))) +
     ylab(expression(bold(paste('Chlorophyll ', bolditalic('a'),' (\u03BCg/L)', sep = '')))) +
     xlim(0,20) +
+    scale_color_viridis_d(option = 'plasma', begin = 0.4) +
+    scale_fill_viridis_d(option = 'plasma', begin = 0.4) +
     scale_shape_manual(values = c('During' = 21, 'Pre' = 22, 'Post' = 24)) +
     guides(fill = guide_legend(override.aes=list(shape=21))) +
     ggtitle(expression(bold(Chlorophyll~bolditalic(a)~vs.~NH[4])))

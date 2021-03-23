@@ -1,0 +1,68 @@
+```{r message = FALSE}
+library(tidyverse)
+library(ggmap)
+library(gridExtra)
+source('global_ndfa_funcs.R')
+source('Water_Quality/global_wq_funcs.R')
+
+fp <- ndfa_abs_sp_path('/WQ_Subteam/Processed_Data/NDFA_All_WQ_Stations.csv')
+df <- read_csv(fp)
+```
+```{r}
+unique(df$Region)
+```
+
+```{r}
+# set boundaries
+buffer <- 0.065
+coordDict = list( 
+    'minLat' = min(df$Latitude) - buffer,
+    'maxLat' = max(df$Latitude) + buffer,
+    'minLon' = min(df$Longitude) - buffer,
+    'maxLon' = max(df$Longitude) + buffer
+)
+
+fill_col = c('#fc8d59', '#af8dc3', '#91bfdb')
+
+df$Region <- factor(df$Region, levels = c('Upstream','Downstream','Middle Sac River'))
+```
+
+```{r}
+# create map object
+map_obj <- get_stamenmap(
+  bbox = c(left = coordDict[['minLon']], bottom = coordDict[['minLat']], right = coordDict[['maxLon']], top = coordDict[['maxLat']]),
+  zoom = 10,
+  maptype = 'terrain'
+  )
+
+# plot the map
+map <- ggmap(map_obj) + 
+  geom_point(data = df,
+             aes(x = Longitude, y = Latitude, fill = Region, shape = WQ_Type),
+             size = 5,
+             color = 'black') +
+  scale_shape_manual(values = c(21, 24)) +
+  scale_fill_manual(values = fill_col) +
+  geom_label(data = df,
+             aes(label = StationCode, x = Longitude, y = Latitude), position=position_jitter(),
+             vjust = -0.25,
+             hjust = -0.25,
+             alpha = 0.7) +
+   labs(shape = 'Monitoring Type', color = 'Region')
+map <- map +
+  theme_void() +
+  theme(
+    legend.position = c(0.22, 0.5),
+    legend.background = element_rect(color = 'black', fill = 'white'),
+    legend.title = element_text(size = 12, face = 'bold'),
+    legend.text=element_text(size=11)
+    ) +
+guides(fill = guide_legend(override.aes = list(color = fill_col)),
+       color = guide_legend(override.aes = list(shape = 21)))
+
+png(filename = 'C:/Users/sperry/Desktop/map.png', width=400, height=600)
+print(map)
+dev.off()
+```
+
+```{r}
