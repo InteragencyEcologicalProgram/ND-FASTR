@@ -121,11 +121,11 @@ FlowDesignation$PostFlowEnd <- mdy(FlowDesignation$PostFlowEnd)
 # Filter only Pre-During-Post Flow Action Data. 
 # We have a during action, and then Pre = 30 days before/Post = 30 days after
 Fish_all0 <- inner_join(Fish_ndfa,FlowDesignation, by = "Year")
-Fish_all1 <- left_join(Fish_all0, Regions_min2, by = c("StationCode", "Survey"))
+Fish_allT1 <- left_join(Fish_all0, Regions_min2, by = c("StationCode", "Survey"))
 
 # anti_join(Fish_all1, Fish_all0, by = colnames(Fish_all0))
 
-Fish_all <- Fish_all1 %>%
+Fish_allT2 <- Fish_allT1 %>%
    mutate(ActionPhase = ifelse(Date > PreFlowStart & Date<PreFlowEnd, "Pre", NA)) %>%
    mutate(ActionPhase = replace(ActionPhase, Date > PreFlowEnd & Date < PostFlowStart, "During")) %>% 
    mutate(ActionPhase = replace(ActionPhase, Date > PostFlowStart & Date < PostFlowEnd, "Post")) %>%
@@ -134,28 +134,32 @@ Fish_all <- Fish_all1 %>%
    arrange(Date, Survey, StationCode, CommonName)
 
 # Define variable structures
-str(Fish_all)
+Fish_allT2$Date <- ymd(Fish_allT2$Date)
+Fish_allT2$fYear <- as.factor(Fish_allT2$Year)
+Fish_allT2$WYType <- as.factor(Fish_allT2$WYType)
+Fish_allT2$FlowPulseType <- as.factor(Fish_allT2$FlowPulseType)
+Fish_allT2$ActionPhase <- as.factor(Fish_allT2$ActionPhase)
+Fish_allT2$X1 <- NULL
+Fish_allT2$Survey <- as.factor(Fish_allT2$Survey)
+Fish_allT2$StationCode <- as.factor(Fish_allT2$StationCode)
+Fish_allT2$MethodCode <- as.factor(FFish_allT2ethodCode)
 
-Fish_all$Date <- ymd(Fish_all$Date)
-Fish_all$fMonth <- as.factor(Fish_all$Month)
-Fish_all$fYear <- as.factor(Fish_all$Year)
-Fish_all$WYType <- as.factor(Fish_all$WYType)
-Fish_all$FlowPulseType <- as.factor(Fish_all$FlowPulseType)
-Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
-Fish_all$X1 <- NULL
-Fish_all$Survey <- as.factor(Fish_all$Survey)
-Fish_all$StationCode <- as.factor(Fish_all$StationCode)
-Fish_all$MethodCode <- as.factor(Fish_all$MethodCode)
+# Renaming
+Fish_allT <- Fish_allT2 %>%
+  dplyr::rename(PulsePhase = ActionPhase,
+                StationCodeInitial = StationCode,
+                StationCode = StationCodeF) %>%
+  mutate(CommonName = replace(CommonName, CommonName=="Inland Silverside", "Mississippi Silverside")) %>%
+  mutate(CommonName = replace(CommonName, CommonName == "Tridentiger spp_", "Tridentiger spp."))
 
-# Order of factors
-Fish_all$Region <- factor(Fish_all$Region, levels = c("Upstream", "Downstream", "MiddleSacRiver"))
-Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhase)[c(2,3,1)])
-str(Fish_all)
 
-# Code to change StationCode name
-Fish_all <- Fish_all %>%
-  rename(StationCodeInitial = StationCode,
-         StationCode = StationCodeF)
+# Order of factors, renaming
+Fish_allT$Region <- factor(Fish_allT$Region, levels = c("Upstream", "Downstream", "MiddleSacRiver"))
+Fish_all$ActionPhase <-  factor(Fish_allT$PulsePhase, levels = c("Pre", "During", "Post"))
+levels(Fish_allT$PulsePhase) = c("Before", "During", "After")
+str(Fish_allT)
+
+
 
 ```
 
@@ -168,7 +172,7 @@ Fish_all <- Fish_all %>%
 
 ```{r tow, warning = FALSE, message = FALSE}
 # Filter Dataset
-Tow <- Fish_all %>% 
+Tow <- Fish_allT %>% 
   filter(Survey %in% c("EDSM", "Townet", "FMWT")) %>%
   filter(Year>2012) %>%
   arrange(Survey, Date, StationCode, Tow, Depth)
@@ -197,15 +201,15 @@ Tow_CPUE <- Tow_complete %>%
   mutate(CPUE = sum.count/VolumeSampled)
 
 ### Rearrange columns 
-Tow_f <- Tow_CPUE[, c("Date", "Year", "fYear", "Month", "Day", "Survey", "StationCode", "Latitude", "Longitude","Region","MethodCode", "WYType", "FlowPulseType", "NetFlowDays","ActionPhase", "Secchi",  "Conductivity", "WaterTemp",  "Tow", "Depth", "VolumeSampled",  "CommonName", "sum.count", "CPUE")]
+Tow_f <- Tow_CPUE[, c("Date", "Year", "fYear", "Month", "Day", "Survey", "StationCode", "Latitude", "Longitude","Region","MethodCode", "WYType", "FlowPulseType", "NetFlowDays","PulsePhase", "Secchi",  "Conductivity", "WaterTemp",  "Tow", "Depth", "VolumeSampled",  "CommonName", "sum.count", "CPUE")]
 ```
 
 
 ```{r}
 ### Mean CPUE 
-## Calculate means for each species by year-location-actionphase
+## Calculate means for each species by year-location-PulsePhase
 CPUE_means_Tow_phase <- Tow_f %>%
-  group_by(Year, Survey, StationCode, Tow, ActionPhase, CommonName) %>% 
+  group_by(Year, Survey, StationCode, Tow, PulsePhase, CommonName) %>% 
   summarize(mean.CPUE = mean(CPUE)) 
 ```
 
@@ -214,7 +218,7 @@ CPUE_means_Tow_phase <- Tow_f %>%
 ```{r Tow filters, warning = FALSE, message = FALSE}
 # Lists
 list_native <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish")
-list_smeltish <- c("Wakasagi", "Inland Silverside", "Delta Smelt")
+list_smeltish <- c("Wakasagi", "Mississippi Silverside", "Delta Smelt")
 
 Tow_natives0 <- Tow_f %>%filter(CommonName %in% list_native)
 Tow_smeltish0 <- Tow_f %>% filter(CommonName %in% list_smeltish)
@@ -227,12 +231,13 @@ Tow_smeltish0 <- Tow_f %>% filter(CommonName %in% list_smeltish)
 #### Sum smeltish into one CPUE/Tow
 ```{r}
 Tow_smeltish <- Tow_smeltish0 %>%
-  group_by(Survey, fYear, StationCode, ActionPhase, Region, Date,  VolumeSampled, Tow) %>%
+  group_by(Survey, fYear, StationCode, PulsePhase, Region, Date,  VolumeSampled, Tow) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
 
 
-Tow_smeltish$ActionPhase <-  factor(Tow_smeltish$ActionPhase, levels(Tow_smeltish$ActionPhase)[c(2,3,1)])
+Tow_smeltish$PulsePhase <-  factor(Tow_smeltish$PulsePhase, levels(Tow_smeltish$PulsePhase)[c(2,3,1)])
+levels(Tow_smeltish$PulsePhase) <- c("Before", "During", "After")
 ```
 
 #### Look at data
@@ -252,23 +257,23 @@ ggplot(Tow_smeltish, aes(sumCPUE)) + geom_histogram(binwidth = .001) + theme_bw(
 ggplot(Tow_smeltish, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
 
 # Action Phase
-SmeltishAP <- ggplot(Tow_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+SmeltishAP <- ggplot(Tow_smeltish, aes(x = PulsePhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 ggplotly(SmeltishAP)
 
 # Region
-ggplot(Tow_smeltish, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Tow_smeltish, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = PulsePhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Year 
-ggplot(Tow_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Tow_smeltish, aes(x = PulsePhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 Tow_summary_yr_smeltish1 <- Tow_smeltish %>% 
-  group_by(fYear, ActionPhase) %>%
+  group_by(fYear, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-ggplot(Tow_summary_yr_smeltish_1, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = ActionPhase)) + 
+ggplot(Tow_summary_yr_smeltish_1, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = PulsePhase)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
@@ -303,20 +308,20 @@ Tow_smeltish1 <- Tow_smeltish %>%
   filter(sumCPUE<0.2)
 ```
 
-#### Barplots for figures - ActionPhase/Region and yr/Region
+#### Barplots for figures - PulsePhase/Region and yr/Region
 Summarize - Mean + Standard Error
 ```{r}
 Tow_summary_smeltish <- Tow_smeltish1 %>% 
-  group_by(Region, ActionPhase) %>%
+  group_by(Region, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-plot4 <- ggplot(Tow_summary_smeltish, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+plot4 <- ggplot(Tow_summary_smeltish, aes(x = PulsePhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
-    annotate("text", x = "Post", y = .0055, label = "D", size = 8)  + 
+    annotate("text", x = "After", y = .0055, label = "D", size = 8)  + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
@@ -349,19 +354,19 @@ plotD
 Remove station effects by averaging into Region. Use this data for model.
 ```{r}
 Tow_smeltish2 <- Tow_smeltish1 %>%
-  group_by(fYear, Region, ActionPhase) %>%
+  group_by(fYear, Region, PulsePhase) %>%
   summarize(sumCount2 = sum(sumCount),
             sumVol = sum(VolumeSampled),
             sumCPUE2 = sum(sumCPUE),
             meanCPUE = mean(sumCPUE))
 
-Tow_smeltish2$ActionPhase <-  factor(Tow_smeltish2$ActionPhase, levels(Tow_smeltish2$ActionPhase)[c(2,3,1)])
+Tow_smeltish2$PulsePhase <-  factor(Tow_smeltish2$PulsePhase, levels(Tow_smeltish2$PulsePhase)[c(2,3,1)])
 
 ```
 
 Replot data - outliers gone
 ```{r}
-ggplot(Tow_smeltish2, aes(fYear, meanCPUE, fill = ActionPhase)) + geom_boxplot() +
+ggplot(Tow_smeltish2, aes(fYear, meanCPUE, fill = PulsePhase)) + geom_boxplot() +
     scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
@@ -373,16 +378,16 @@ ggplot(Tow_smeltish2, aes(fYear, meanCPUE, fill = ActionPhase)) + geom_boxplot()
 
 Run models
 ```{r}
-(M.smeltish1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Tow_smeltish2))
+(M.smeltish1 <- glm(meanCPUE~Region + fYear + PulsePhase, data  = Tow_smeltish2))
 summary(M.smeltish1)
 
-(M.smeltish2 <- glm(meanCPUE~Region + fYear * ActionPhase, data  = Tow_smeltish2))
+(M.smeltish2 <- glm(meanCPUE~Region + fYear * PulsePhase, data  = Tow_smeltish2))
 summary(M.smeltish2)
 
-(M.smeltish3 <- glm(meanCPUE~Region * fYear + ActionPhase, data  = Tow_smeltish2))
+(M.smeltish3 <- glm(meanCPUE~Region * fYear + PulsePhase, data  = Tow_smeltish2))
 summary(M.smeltish3)
 
-(M.smeltish4 <- glm(meanCPUE~Region * ActionPhase + fYear, data  = Tow_smeltish2))
+(M.smeltish4 <- glm(meanCPUE~Region * PulsePhase + fYear, data  = Tow_smeltish2))
 summary(M.smeltish4)
 
 
@@ -409,8 +414,8 @@ Anova(M.smeltish1)
 Post-hoc
 ```{r}
 
-emmip(M.smeltish3, fYear~ActionPhase|Region)
-emmip(M.smeltish3, Region~ActionPhase|fYear)
+emmip(M.smeltish3, fYear~PulsePhase|Region)
+emmip(M.smeltish3, Region~PulsePhase|fYear)
 
 m_means1a <- emmeans(M.smeltish1, pairwise~fYear, adjust="sidak")
 m_means1a
@@ -418,7 +423,7 @@ m_means1a
 m_means1b <- emmeans(M.smeltish1, pairwise~Region, adjust="sidak")
 m_means1b
 
-m_means1c <- emmeans(M.smeltish1, pairwise~ActionPhase, adjust="sidak")
+m_means1c <- emmeans(M.smeltish1, pairwise~PulsePhase, adjust="sidak")
 m_means1c
 ```
 
@@ -449,12 +454,13 @@ m_means1c
 ```{r}
 Tow_natives <- Tow_natives0 %>%
   #filter(Year>2015) %>%
-  group_by(Date, Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, VolumeSampled, Tow) %>%
+  group_by(Date, Survey, fYear, StationCode, FlowPulseType, PulsePhase, Region, VolumeSampled, Tow) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
 
 
-Tow_natives$ActionPhase <-  factor(Tow_natives$ActionPhase, levels(Tow_natives$ActionPhase)[c(2,3,1)])
+Tow_natives$PulsePhase <-  factor(Tow_natives$PulsePhase, levels(Tow_natives$PulsePhase)[c(2,3,1)])
+levels(Tow_natives$PulsePhase) <- c("Before", "During", "After")
 ```
 
 Look at plots
@@ -471,21 +477,21 @@ ggplot(Tow_natives, aes(sumCPUE)) + geom_histogram(binwidth = .0001) + theme_bw(
 ggplot(Tow_natives, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
 
 # Action Phase
-ggplot(Tow_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Tow_natives, aes(x = PulsePhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Region
-ggplot(Tow_natives, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Tow_natives, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = PulsePhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Year 
-ggplot(Tow_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "magma") + theme_bw()
+ggplot(Tow_natives, aes(x = PulsePhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "magma") + theme_bw()
 
 Tow_summary_native_yr3 <- Tow_natives %>% 
-  group_by(fYear, ActionPhase) %>%
+  group_by(fYear, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-ggplot(Tow_summary_native_yr3, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = ActionPhase)) + 
+ggplot(Tow_summary_native_yr3, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = PulsePhase)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
@@ -516,16 +522,16 @@ ggplot(Tow_summary_native_yr4, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - se
 Summarize - Mean + Standard Error
 ```{r}
 Tow_summary_native2 <- Tow_natives %>% 
-  group_by(Region, ActionPhase) %>%
+  group_by(Region, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-plot5 <- ggplot(Tow_summary_native2, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+plot5 <- ggplot(Tow_summary_native2, aes(x = PulsePhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + 
-      annotate("text", x = "Post", y = 3e-05, label = "E", size = 8)  + 
+      annotate("text", x = "After", y = 3e-05, label = "E", size = 8)  + 
   theme_bw() + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
@@ -568,28 +574,28 @@ plotE
 Remove station effects by averaging into Region. Use this data for model.
 ```{r}
 Tow_natives2 <- Tow_natives %>%
-  group_by(fYear, Region, ActionPhase) %>%
+  group_by(fYear, Region, PulsePhase) %>%
   summarize(sumCount2 = sum(sumCount),
             sumVol = sum(VolumeSampled),
             sumCPUE2 = sum(sumCPUE),
             meanCPUE = mean(sumCPUE))
 
-Tow_natives2$ActionPhase <-  factor(Tow_natives2$ActionPhase, levels(Tow_natives2$ActionPhase)[c(2,3,1)])
+Tow_natives2$PulsePhase <-  factor(Tow_natives2$PulsePhase, levels(Tow_natives2$PulsePhase)[c(2,3,1)])
 
 ```
 
 Run models
 ```{r}
-(M.natives1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Tow_natives2))
+(M.natives1 <- glm(meanCPUE~Region + fYear + PulsePhase, data  = Tow_natives2))
 summary(M.natives1)
 
-(M.natives2 <- glm(meanCPUE~Region + fYear * ActionPhase, data  = Tow_natives2))
+(M.natives2 <- glm(meanCPUE~Region + fYear * PulsePhase, data  = Tow_natives2))
 summary(M.natives2)
 
-(M.natives3 <- glm(meanCPUE~Region * fYear + ActionPhase, data  = Tow_natives2))
+(M.natives3 <- glm(meanCPUE~Region * fYear + PulsePhase, data  = Tow_natives2))
 summary(M.natives3)
 
-(M.natives4 <- glm(meanCPUE~Region * ActionPhase + fYear, data  = Tow_natives2))
+(M.natives4 <- glm(meanCPUE~Region * PulsePhase + fYear, data  = Tow_natives2))
 summary(M.natives4)
 
 
@@ -619,7 +625,7 @@ m_means2a
 m_means2b <- emmeans(M.natives1, pairwise~Region, adjust="sidak")
 m_means2b
 
-m_means2c <- emmeans(M.natives1, pairwise~ActionPhase, adjust="sidak")
+m_means2c <- emmeans(M.natives1, pairwise~PulsePhase, adjust="sidak")
 m_means2c
 ```
 
@@ -642,11 +648,12 @@ m_means2c
 ```{r}
 Tow_filter <- filter(Tow_f, !(CommonName %in% c("Crangon spp.", "Siberian Prawn", "NoCatch", "Mississippi Grass Shrimp")))
 Tow_all <- Tow_filter %>%
-  group_by(Survey,fYear, Date, Region, StationCode, ActionPhase, MethodCode, VolumeSampled, Tow) %>%
+  group_by(Survey,fYear, Date, Region, StationCode, PulsePhase, MethodCode, VolumeSampled, Tow) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
 
-Tow_all$ActionPhase <-  factor(Tow_all$ActionPhase, levels(Tow_all$ActionPhase)[c(2,3,1)])
+Tow_all$PulsePhase <-  factor(Tow_all$PulsePhase, levels(Tow_all$PulsePhase)[c(2,3,1)])
+levels(Tow_all$PulsePhase) <- c("Before", "During", "After")
 ```
 
 #### Look at data
@@ -691,29 +698,29 @@ ggplot(Tow_all, aes(sumCPUE)) + geom_histogram(binwidth = .001) + theme_bw()
 ggplot(Tow_all, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
 
 # Action Phase
-ggplot(Tow_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Tow_all, aes(x = PulsePhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Region
-ggplot(Tow_all, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Tow_all, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = PulsePhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Boxplot
 
 Tow_all2 <- filter(Tow_all, sumCPUE<3)
-ggplot(Tow_all2, aes(x = Region, y = sumCPUE)) + geom_boxplot(aes(fill = ActionPhase)) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Tow_all2, aes(x = Region, y = sumCPUE)) + geom_boxplot(aes(fill = PulsePhase)) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
-ggplot(Tow_all2, aes(x = ActionPhase, y = sumCPUE)) + geom_boxplot(aes(fill = Region)) + scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Tow_all2, aes(x = PulsePhase, y = sumCPUE)) + geom_boxplot(aes(fill = Region)) + scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 
 # Year 
-ggplot(Tow_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "magma") + theme_bw()
+ggplot(Tow_all, aes(x = PulsePhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "magma") + theme_bw()
 
 Tow_summary_all_yr3 <- Tow_all %>% 
-  group_by(fYear, ActionPhase) %>%
+  group_by(fYear, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-ggplot(Tow_summary__all_yr3, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = ActionPhase)) + 
+ggplot(Tow_summary__all_yr3, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = PulsePhase)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
@@ -740,14 +747,14 @@ ggplot(Tow_summary_all_yr4, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPU
         legend.position = "bottom")
 
 Tow_summary_all_yr5 <- Tow_all %>% 
-  group_by(fYear, ActionPhase, Region) %>%
+  group_by(fYear, PulsePhase, Region) %>%
   summarize(meanCPUE = mean(sumCPUE),
             sumCPUE = sum(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
 ggplot(Tow_summary_all_yr5, aes(x = fYear, y = sumCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
-  facet_wrap(~ActionPhase) +
+  facet_wrap(~PulsePhase) +
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
@@ -768,16 +775,16 @@ Tow_all <- filter(Tow_all, sumCPUE<2)
 Summarize - Mean + Standard Error
 ```{r}
 Tow_summary_all3 <- Tow_all %>% 
-  group_by(Region, ActionPhase) %>%
+  group_by(Region, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-plot6 <- ggplot(Tow_summary_all3, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+plot6 <- ggplot(Tow_summary_all3, aes(x = PulsePhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + 
-      annotate("text", x = "Post", y = .07, label = "F", size = 8)  + 
+      annotate("text", x = "After", y = .07, label = "F", size = 8)  + 
   theme_bw() + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
@@ -812,7 +819,7 @@ plotF
 
 #### Model - normal glm
 ```{r}
-m1all <- glm(sumCPUE~Region + fYear + ActionPhase, data = Tow_all); summary(m1all)
+m1all <- glm(sumCPUE~Region + fYear + PulsePhase, data = Tow_all); summary(m1all)
 
 par(mfrow = c(2,2))
 plot(m1all)
@@ -822,7 +829,7 @@ plot(m1all)
 #### Model with log transformation
 ```{r}
 Tow_all$logCPUE = log(Tow_all$sumCPUE + 1)
-m2all <- glm(logCPUE~Region + fYear + ActionPhase, data = Tow_all); summary(m2all)
+m2all <- glm(logCPUE~Region + fYear + PulsePhase, data = Tow_all); summary(m2all)
 
 par(mfrow = c(2,2))
 plot(m2all)
@@ -835,7 +842,7 @@ plot(m2all)
 Tow_all$Samp <- log(Tow_all$VolumeSampled)
 
 # Formula
-f3 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
+f3 <- formula(sumCount ~ Region + fYear + PulsePhase + offset(Samp))
 
 # Check overdispersion (var>mean)
 var(Tow_all$sumCPUE)
@@ -870,12 +877,12 @@ Mixed modeling
 Tow_all$Samp <- log(Tow_all$VolumeSampled)
 
 # Formula
-f1 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
-f2 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp) + (1|StationCode))
-f3 <- formula(sumCount ~ Region + fYear*ActionPhase  + offset(Samp) + (1|StationCode))
-f4 <- formula(sumCount ~ Region*fYear + ActionPhase  + offset(Samp) + (1|StationCode))
-f5 <- formula(sumCount ~ Region *ActionPhase + fYear  + offset(Samp) + (1|StationCode))
-f6 <- formula(sumCount~ Region + ActionPhase + fYear + Region:ActionPhase + ActionPhase:fYear + offset(Samp) + (1|StationCode))
+f1 <- formula(sumCount ~ Region + fYear + PulsePhase + offset(Samp))
+f2 <- formula(sumCount ~ Region + fYear + PulsePhase + offset(Samp) + (1|StationCode))
+f3 <- formula(sumCount ~ Region + fYear*PulsePhase  + offset(Samp) + (1|StationCode))
+f4 <- formula(sumCount ~ Region*fYear + PulsePhase  + offset(Samp) + (1|StationCode))
+f5 <- formula(sumCount ~ Region *PulsePhase + fYear  + offset(Samp) + (1|StationCode))
+f6 <- formula(sumCount~ Region + PulsePhase + fYear + Region:PulsePhase + PulsePhase:fYear + offset(Samp) + (1|StationCode))
 
 library(glmmTMB)
 M.glmer1b <- glmmTMB(f2, data = Tow_all, family = nbinom2)
@@ -885,6 +892,7 @@ M.glmer4b <- glmmTMB(f5, data = Tow_all, family = nbinom2)
 M.glmer5b <- glmmTMB(f6, data = Tow_all, family = nbinom2);
 summary(M.glmer5b)
 
+AIC(M.glmer1b, M.glmer2b, M.glmer4b, M.glmer5b)
 ```
 
 Diagnostics
@@ -901,7 +909,7 @@ plot(allEffects(M.glmer5b))
 
 Post-hoc
 ```{r}
-towallcontrast <- emmeans(M.glmer5b, ~ActionPhase * fYear * Region)
+towallcontrast <- emmeans(M.glmer5b, ~PulsePhase * fYear * Region)
 result <- contrast(towallcontrast, "consec", simple = "each", combine = TRUE, adjust = "sidak")
 
 print(result)
@@ -912,7 +920,7 @@ m_means3a
 m_means3b <- emmeans(M.glmer1, pairwise~Region, adjust="sidak")
 m_means3b
 
-m_means3c <- emmeans(M.glmer1, pairwise~ActionPhase, adjust="sidak")
+m_means3c <- emmeans(M.glmer1, pairwise~PulsePhase, adjust="sidak")
 m_means3c
 ```
 
@@ -939,28 +947,28 @@ Simplified
 Remove station effects by averaging into Region. Use this data for model.
 ```{r}
 Tow_all2 <- Tow_all %>%
-  group_by(fYear, Region, ActionPhase) %>%
+  group_by(fYear, Region, PulsePhase) %>%
   summarize(sumCount2 = sum(sumCount),
             sumVol = sum(VolumeSampled),
             sumCPUE2 = sum(sumCPUE),
             meanCPUE = mean(sumCPUE))
 
-Tow_all2$ActionPhase <-  factor(Tow_all2$ActionPhase, levels(Tow_all2$ActionPhase)[c(2,3,1)])
+Tow_all2$PulsePhase <-  factor(Tow_all2$PulsePhase, levels(Tow_all2$PulsePhase)[c(2,3,1)])
 
 ```
 
 Run models
 ```{r}
-(M.all1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Tow_all2))
+(M.all1 <- glm(meanCPUE~Region + fYear + PulsePhase, data  = Tow_all2))
 summary(M.all1)
 
-(M.all2 <- glm(meanCPUE~Region + fYear * ActionPhase, data  = Tow_all2))
+(M.all2 <- glm(meanCPUE~Region + fYear * PulsePhase, data  = Tow_all2))
 summary(M.all2)
 
-(M.all3 <- glm(meanCPUE~Region * fYear + ActionPhase, data  = Tow_all2))
+(M.all3 <- glm(meanCPUE~Region * fYear + PulsePhase, data  = Tow_all2))
 summary(M.all3)
 
-(M.all4 <- glm(meanCPUE~Region * ActionPhase + fYear, data  = Tow_all2))
+(M.all4 <- glm(meanCPUE~Region * PulsePhase + fYear, data  = Tow_all2))
 summary(M.all4)
 
 
@@ -983,7 +991,7 @@ m_means4a
 m_means4b <- emmeans(M.all1, pairwise~Region, adjust="sidak")
 m_means4b
 
-m_means4c <- emmeans(M.all1, pairwise~ActionPhase, adjust="sidak")
+m_means4c <- emmeans(M.all1, pairwise~PulsePhase, adjust="sidak")
 m_means4c
 ```
 UPDATED MODEL CODE
