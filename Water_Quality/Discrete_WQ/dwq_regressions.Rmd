@@ -10,6 +10,8 @@ library(lmerTest)
 library(lme4)
 library(tseries)
 library(DataCombine)
+library(leaps)
+library(MASS)
 library(emmeans)
 source('global_ndfa_funcs.R')
 ```
@@ -29,7 +31,7 @@ df_region <- read_csv(fp_abs_region)
 df_region <- subset(df_region, select = c(Station, BroadRegion))
 
 #remove sites we aren't including (not available for all years), create a column for year
-remove <- c('DWT', 'SRH', 'SDI', 'SHR', 'SRV', 'WWT', 'RMB')
+remove <- c('SRH', 'SHR', 'SRV', 'WWT', 'DWT')
 df_discrete <- filter(df_discrete, !StationCode %in% remove)
 
 # standardize/rename Date col
@@ -67,12 +69,16 @@ df_wq <- df_wq %>%
 
 ```{r define regression function}
 reg_func <- function(df, analyte_name){
-  df <- slide(df, 'Result', TimeVar = 'Date', GroupVar = 'Station', NewVar = 'lag1', slideBy = -1)
-  df <- slide(df, 'lag1', TimeVar = 'Date', GroupVar = 'Station', NewVar = 'lag2', slideBy = -1)
+  df_sub <- slide(df_sub, 'Result', TimeVar = 'Date', GroupVar = 'Station', NewVar = 'lag1', slideBy = -1)
+  df_sub <- slide(df_sub, 'lag1', TimeVar = 'Date', GroupVar = 'Station', NewVar = 'lag2', slideBy = -1)
   
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|Station), data = df)
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|Station), data = df_sub)
 
-  aov_lmer <- anova(lmer_fit, type = 'III')
+  aov_lmer <- anova(lmer_fit, type = 'II') # look into type II -- better when you don't have interaction terms?
+  # 
+  # step.model <- step(lmer_fit)
+  # 
+  # return(step.model)
   aov_lmer$Analyte <- analyte_name
   aov_lmer$Variable <- rownames(aov_lmer)
   
@@ -85,6 +91,8 @@ reg_func <- function(df, analyte_name){
       `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
       )
     )
+  
+
 
   lmer_rg <- ref_grid(lmer_fit)
   lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ Year:Year, adjust = 'tukey')
@@ -119,22 +127,29 @@ for (i in seq(analytes)){
   df_sub$Result <- with(df_sub, ifelse(is.na(Result), RL, Result))
   df_sub$Result <- log(df_sub$Result)
   df_sub$Year <- as.character(df_sub$Year)
-
+  
+  # create and save pacf plots
+  # png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/',analyte,'_RL.png')))
+  # pacf(df_sub$Result, na.action = na.pass, main = paste0(analyte,' - RL'))
+  # dev.off()
+  x <- pacf(df_sub$Result %>% diff())
+  print(x)
   # run regressions
   df_output_list <- reg_func(df_sub, analyte)
+  # print(df_output_list)
   df_aov <- df_output_list[[1]]
   df_cont <- df_output_list[[2]]
-  
+  # print(df_aov)
   all_aov[[i]] <- df_aov
   all_reg[[i]] <- df_cont
 }
-
+#
 all_aov_data <- do.call(rbind, all_aov)
 all_reg_data <- do.call(rbind, all_reg)
-
+ 
 
 # write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_RL.csv'))
-write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_RL.csv'))
+# write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_RL.csv'))
 ```
 
 ```{r ANOVA - set to ~0, message = FALSE}
@@ -148,6 +163,11 @@ for (i in seq(analytes)){
   
   df_sub$Result[is.na(df_sub$Result)] <- 0.01
   df_sub$Result <- log(df_sub$Result)
+  
+    # create and save pacf plots
+  png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/',analyte,'_0.png')))
+  pacf(df_sub$Result, na.action = na.pass, main = paste0(analyte,' - 0'))
+  dev.off()
 
   # run regressions
   df_output_list <- reg_func(df_sub, analyte)
@@ -162,7 +182,7 @@ all_aov_data <- do.call(rbind, all_aov)
 all_reg_data <- do.call(rbind, all_reg)
 
 
-# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_0.csv'))
+write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_0.csv'))
 write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_0.csv'))
 ```
 
@@ -184,6 +204,11 @@ for (i in seq(analytes)){
     }
   }
   
+  # create and save pacf plots
+  png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/',analyte,'_rand1.png')))
+  pacf(df_sub$Result, na.action = na.pass, main = paste0(analyte,' - rand1'))
+  dev.off()
+  
   # run regressions
   df_output_list <- reg_func(df_sub, analyte)
   df_aov <- df_output_list[[1]]
@@ -199,7 +224,7 @@ all_aov_data <- do.call(rbind, all_aov)
 all_reg_data <- do.call(rbind, all_reg)
 
 
-# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand1.csv'))
+write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand1.csv'))
 write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand1.csv'))
 ```
 
@@ -221,6 +246,11 @@ for (i in seq(analytes)){
     }
   }
   
+  # create and save pacf plots
+  png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/',analyte,'_rand2.png')))
+  pacf(df_sub$Result, na.action = na.pass, main = paste0(analyte,' - rand2'))
+  dev.off()
+  
   # run regressions
   df_output_list <- reg_func(df_sub, analyte)
   df_aov <- df_output_list[[1]]
@@ -237,7 +267,7 @@ all_reg_data <- do.call(rbind, all_reg)
 
 
 # write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand2.csv'))
-write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand2.csv'))
+# write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand2.csv'))
 ```
 
 ```{r ANOVA - random sub 3, message = FALSE}
@@ -257,6 +287,11 @@ for (i in seq(analytes)){
       df_sub$Result[i] <- sample(vec, size = 1)    
     }
   }
+
+  # create and save pacf plots
+  png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/',analyte,'_rand3.png')))
+  pacf(df_sub$Result, na.action = na.pass, main = paste0(analyte,' - rand3'))
+  dev.off()
   
   # run regressions
   df_output_list <- reg_func(df_sub, analyte)
@@ -269,11 +304,18 @@ for (i in seq(analytes)){
   all_reg <- compact(all_reg)
 }
 
+
+quine.stp$anova
+stepAIC(object, scope, scale = 0,
+        direction = c("both", "backward", "forward"),
+        trace = 1, keep = NULL, steps = 1000, use.start = FALSE,
+        k = 2, ...)
+
 all_aov_data <- do.call(rbind, all_aov)
 all_reg_data <- do.call(rbind, all_reg)
 
 
-# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand3.csv'))
+write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand3.csv'))
 write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand3.csv'))
 ```
 

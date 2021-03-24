@@ -101,8 +101,8 @@ create_graph <- function(df, vari){
   blank_theme <- blank_theme()
   
   # define relevant values
-  if(varis[i] == 'Year') {
-    fill <- 'Region'
+  if(varis[i] == 'BroadRegion') {
+    fill <- 'BroadRegion'
     cmap_colors <- c('#999999', '#f781bf', '#B79F00', '#984ea3', '#377eb8', '#e41a1c')
   }
   else {
@@ -110,34 +110,36 @@ create_graph <- function(df, vari){
   }
 
   # create base plot
-  p <- ggplot() +
-   facet_wrap(df[varis[i]][[1]] ~ ., ncol = 2, scales = 'free_y')
+  p <- ggplot() # +
+  # facet_wrap(df[varis[i]][[1]] ~ ., ncol = 2, scales = 'free_y')
 
   # add scatter plot
   p <- p +
     geom_segment(data = df,
-                 mapping = aes(x = 5, xend = 5, y = -Inf, yend = Inf),
+                 mapping = aes(x = 4, xend = 4, y = -Inf, yend = Inf),
                  color = '#2b2b2b',
                  linetype = 2,
                  size = 1) +
     geom_point(data = df,
              mapping = aes(x = DisAmmonia_umolL, y = Chla, fill = !!sym(fill), shape = ActionPhase),
              color = 'black',
-             size = 4,
+             size = 4.5,
              stroke = 1.2
              ) 
-  
+
   # fix asthetics
-  if (varis[i] == 'Year') {
-    p <- p +
-      scale_fill_manual(values = cmap_colors)
-  }
+  # if (varis[i] == 'Year') {
+  #   p <- p +
+  #     scale_fill_manual(values = cmap_colors)
+  # }
   
   p <- p +
     blank_theme +
     xlab(expression(bold(paste('NH'[4],' (\u03BCmol/L)',sep = '')))) +
     ylab(expression(bold(paste('Chlorophyll ', bolditalic('a'),' (\u03BCg/L)', sep = '')))) +
     xlim(0,20) +
+    scale_color_viridis_d(option = 'plasma', begin = 0.4) +
+    scale_fill_viridis_d(option = 'plasma', begin = 0.4) +
     scale_shape_manual(values = c('During' = 21, 'Pre' = 22, 'Post' = 24)) +
     guides(fill = guide_legend(override.aes=list(shape=21))) +
     ggtitle(expression(bold(Chlorophyll~bolditalic(a)~vs.~NH[4])))

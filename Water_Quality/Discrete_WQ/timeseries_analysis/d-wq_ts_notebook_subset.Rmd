@@ -157,7 +157,7 @@ create_facet <- function(df){
     df %>%
     filter(
       AnalyteFull == analyte,
-      Year == 2013
+      Year == year
     )
 
   # create segment (RL) df
@@ -308,6 +308,7 @@ df_wq <- add_phase_actions(df_wq, df_dates)
 # --- Convert NDs to NA --- 
 df_wq$Result[df_wq$LabDetect == 'Non-detect'] <- NA
 df_wq$LabDetect[df_wq$Result == '< RL'] <- 'Non-detect'
+df_wq$LabDetect[df_wq$Result == '< MDL'] <- 'Non-detect'
 df_wq$Result <- as.numeric(df_wq$Result)
 ```
 

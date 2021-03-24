@@ -1,0 +1,172 @@
+---
+title: "NDFA RTM Data: Multi-station time-series plots"
+author: "Dave Bosworth"
+date: "3/15/2021"
+output: 
+  html_document: 
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+Create multi-station time-series plots of the continuous water quality data for each parameter and year combination. The data will be depicted as **daily averages** of the 15-minute data.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(patchwork)
+```
+
+```{r load functions, message = FALSE, warning = FALSE}
+# Source functions
+source("global_ndfa_funcs.R")
+source("Water_Quality/global_wq_funcs.R")
+source("Water_Quality/Continuous_WQ/Plots_Multi_Station/rtm_multistation_ts_plots_funcs.R")
+```
+
+```{r define file paths}
+# Define relative file path for file containing all QA'ed and cleaned continuous WQ data
+fp_rel_rtm_data <- 
+  "WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-02-19.csv"
+
+# Define relative file path for file containing dates of flow action periods
+fp_rel_fa_dates <- 
+  "Data Management/FlowDatesDesignations_45days.csv"
+
+# Define absolute file paths
+fp_abs_rtm_data <- ndfa_abs_sp_path(fp_rel_rtm_data)
+fp_abs_fa_dates <- ndfa_abs_sp_path(fp_rel_fa_dates)
+```
+
+# Import and Prepare Data
+
+```{r import data, message = FALSE}
+# Import continuous WQ data
+df_rtm_orig <- import_rtm_data(fp_abs_rtm_data, 10)
+
+# Import dates of flow action periods
+df_fa_dates_orig <- read_csv(fp_abs_fa_dates)
+```
+
+```{r prepare rtm data}
+# Create a vector for the factor order of StationCode
+sta_order <- c(
+  "RMB",
+  "RCS",
+  "RD22",
+  "I80",
+  "LIS",
+  "TOE",
+  "STTD",
+  "LIBCUT",
+  "SGG",
+  "LIB",
+  "RYI",
+  "RVB",
+  "SRH"
+)
+
+# Clean original continuous WQ data
+df_rtm_clean <- df_rtm_orig %>% 
+  mutate(
+    DateTime = ymd_hms(DateTime),
+    Date = date(DateTime),
+    Year = year(DateTime)
+  ) %>%
+  # Don't include Flow, FlowTF, fDOM, NitrateNitrite, and all Qual variables
+  select(-c(ends_with("_Qual"), starts_with("Flow"), fDOM, NitrateNitrite)) %>% 
+  # Exclude SDI from the plots and remove data for years 2011-2012
+  filter(
+    StationCode != "SDI",
+    Year > 2012
+  ) %>% 
+  # Apply factor order to StationCode
+  mutate(StationCode = factor(StationCode, levels = sta_order)) %>% 
+  # Pivot parameters in the long format
+  pivot_longer(cols = where(is.numeric) & !Year, names_to = "Parameter", values_to = "Value") %>% 
+  # Remove all NA values
+  filter(!is.na(Value))
+```
+
+```{r calc daily averages, message = FALSE}
+# Calculate daily averages of continuous WQ data
+df_rtm_daily_avg <- df_rtm_clean %>% 
+  group_by(Parameter, Year, StationCode, Date) %>% 
+  summarize(Daily_avg = mean(Value)) %>% 
+  ungroup()
+```
+
+```{r prepare rtm data 2}
+# Structure continuous WQ data to be able to apply plotting functions
+df_rtm_daily_avg_f <- df_rtm_daily_avg %>%
+  # Fill in missing dates with NA values for geom_line to not interpolate data gaps
+  group_by(Parameter, Year, StationCode) %>% 
+  complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>% 
+  ungroup() %>% 
+  # Add a grouping variable for Region and apply factor order for it
+  mutate(
+    Region = factor(
+      case_when(
+        StationCode %in% c("RMB", "RCS", "RD22", "I80") ~ "a_Upstream_upper",
+        StationCode %in% c("LIS", "TOE", "STTD", "LIBCUT", "SGG") ~ "b_Upstream_central",
+        StationCode %in% c("LIB", "RYI", "RVB") ~ "c_Downstream",
+        StationCode == "SRH" ~ "d_Sac_River"
+      )
+    )
+  ) %>% 
+  nest(data = -c(Parameter, Year, Region))
+```
+
+```{r prepare flow action dates}
+# Prepare dates of flow action periods to highlight the flow action periods for each year in the plots and to define consistent x-axis limits
+df_fa_dates_f <- df_fa_dates_orig %>% 
+  select(Year, starts_with(c("Pre", "Post"))) %>% 
+  mutate(across(where(is.character), mdy)) %>% 
+  filter(Year > 2012) %>% 
+  # add 1 day to PreFlowEnd so that the highlight for the flow action periods aligns correctly
+  mutate(PreFlowEnd = PreFlowEnd + days(1))
+```
+
+# Create Plots
+
+```{r create plots}
+# Create ts plots of daily averages
+df_rtm_plots <- df_rtm_daily_avg_f %>% 
+  mutate(plot_indiv = pmap(list(data, Parameter, Year, Region), .f = create_ts_plot)) %>% 
+  select(Parameter, Year, plot_indiv) %>% 
+  nest(plot_list = plot_indiv) %>% 
+  mutate(plot_comb = map(plot_list, ~wrap_plots(pull(.x, plot_indiv), ncol = 1))) %>% 
+  # restructure data frame for efficient printing
+  select(-plot_list) %>% 
+  nest(param_grp = -Parameter)
+```
+
+# Multi-station Plots {.tabset .tabset-pills}
+
+```{r print plots, echo = FALSE, results = "asis", fig.width = 8.5, fig.height = 8}
+for (i in 1:nrow(df_rtm_plots)) {
+  # Create subheadings for each Parameter
+  cat("## ", as.character(df_rtm_plots$Parameter[i]), " {.tabset .tabset-pills}\n\n")
+  for (j in 1:nrow(df_rtm_plots$param_grp[[i]])) {
+    # Create subheadings for each Year
+    cat("### ", as.character(df_rtm_plots$param_grp[[i]]$Year[j]), "\n\n")
+    # Print plot
+    print(df_rtm_plots$param_grp[[i]]$plot_comb[[j]])
+    cat("\n\n")
+  }
+}
+```
+
