@@ -389,17 +389,21 @@ summary(M.smeltish4)
 AIC(M.smeltish1, M.smeltish2, M.smeltish3, M.smeltish4)
 ```
 
+- singularity in the ANOVA when added interactions
+- chose simple  model M.smeltish1 
 
 Diagnostic Plots
 ```{r}
 par(mfrow = c(2,2))
-plot(M.smeltish3)
+plot(M.smeltish1)
 ```
 
 Anova function 
 ```{r}
 library(car)
-Anova(M.smeltish3, type = 3)
+Anova(M.smeltish1)
+
+1-(M.smeltish1$deviance/M.smeltish1$null.deviance)
 ```
 
 Post-hoc
@@ -408,13 +412,13 @@ Post-hoc
 emmip(M.smeltish3, fYear~ActionPhase|Region)
 emmip(M.smeltish3, Region~ActionPhase|fYear)
 
-m_means1a <- emmeans(M.smeltish3, pairwise~fYear|Region, adjust="sidak")
+m_means1a <- emmeans(M.smeltish1, pairwise~fYear, adjust="sidak")
 m_means1a
 
-m_means1b <- emmeans(M.smeltish3, pairwise~Region|fYear, adjust="sidak")
+m_means1b <- emmeans(M.smeltish1, pairwise~Region, adjust="sidak")
 m_means1b
 
-m_means1c <- emmeans(M.smeltish3, pairwise~ActionPhase, adjust="sidak")
+m_means1c <- emmeans(M.smeltish1, pairwise~ActionPhase, adjust="sidak")
 m_means1c
 ```
 
@@ -734,6 +738,25 @@ ggplot(Tow_summary_all_yr4, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPU
         legend.text = element_text(size = 14),
         legend.title = element_text(size = 15),
         legend.position = "bottom")
+
+Tow_summary_all_yr5 <- Tow_all %>% 
+  group_by(fYear, ActionPhase, Region) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            sumCPUE = sum(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Tow_summary_all_yr5, aes(x = fYear, y = sumCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  facet_wrap(~ActionPhase) +
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
 ```
 
 Deal with outlier
@@ -893,6 +916,11 @@ m_means3c <- emmeans(M.glmer1, pairwise~ActionPhase, adjust="sidak")
 m_means3c
 ```
 
+```{r}
+library(sjPlot)
+
+table <- tab_model(M.glmer5b)
+```
 
 **Conclusions**
 
