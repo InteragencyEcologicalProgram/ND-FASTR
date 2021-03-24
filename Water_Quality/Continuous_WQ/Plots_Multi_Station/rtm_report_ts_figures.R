@@ -242,5 +242,319 @@ chla13_bottom <- chla13 %>%
   create_ts_plot("bottom")
 
 chla13_top / chla13_mid1 / chla13_mid2 / chla13_bottom
-ggsave("Chla_2013.jpg", width = 7, height = 9.5, units = "in", dpi = 300)
+ggsave("Chla_2013.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
+# Chlorophyll 2016
+chla16 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "Chla",
+    Year == 2016
+  )
+
+chla16_top <- chla16 %>% 
+  filter(str_detect(Region, "^a_")) %>% 
+  create_ts_plot("other")
+
+chla16_mid1 <- chla16 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+chla16_mid2 <- chla16 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("other")
+
+chla16_bottom <- chla16 %>% 
+  filter(str_detect(Region, "^d_")) %>% 
+  create_ts_plot("bottom")
+
+chla16_top / chla16_mid1 / chla16_mid2 / chla16_bottom
+ggsave("Chla_2016.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+# Chlorophyll 2018
+chla18 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "Chla",
+    Year == 2018
+  )
+
+chla18_top <- chla18 %>% 
+  filter(str_detect(Region, "^a_")) %>% 
+  create_ts_plot("other")
+
+chla18_mid1 <- chla18 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+chla18_mid2 <- chla18 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("other")
+
+chla18_bottom <- chla18 %>% 
+  filter(str_detect(Region, "^d_")) %>% 
+  create_ts_plot("bottom")
+
+chla18_top / chla18_mid1 / chla18_mid2 / chla18_bottom
+ggsave("Chla_2018.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+# Chlorophyll 2019
+chla19 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "Chla",
+    Year == 2019
+  )
+
+chla19_top <- chla19 %>% 
+  filter(str_detect(Region, "^a_")) %>% 
+  create_ts_plot("other")
+
+chla19_mid1 <- chla19 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+chla19_mid2 <- chla19 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("other")
+
+chla19_bottom <- chla19 %>% 
+  filter(str_detect(Region, "^d_")) %>% 
+  create_ts_plot("bottom")
+
+chla19_top / chla19_mid1 / chla19_mid2 / chla19_bottom
+ggsave("Chla_2019.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+# Dissolved oxygen 2015
+do15 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "DO",
+    Year == 2015
+  )
+
+do15_top <- do15 %>% 
+  filter(str_detect(Region, "^a_")) %>% 
+  create_ts_plot("other")
+
+do15_mid1 <- do15 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+do15_mid2 <- do15 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("other")
+
+do15_bottom <- do15 %>% 
+  filter(str_detect(Region, "^d_")) %>% 
+  create_ts_plot("bottom")
+
+do15_top / do15_mid1 / do15_mid2 / do15_bottom
+ggsave("DO_2015.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+
+# Dissolved oxygen 2016
+do16 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "DO",
+    Year == 2016
+  )
+
+do16_top <- do16 %>% 
+  filter(str_detect(Region, "^a_")) %>% 
+  create_ts_plot("other")
+
+do16_mid1 <- do16 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+do16_mid2 <- do16 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("other")
+
+do16_bottom <- do16 %>% 
+  filter(str_detect(Region, "^d_")) %>% 
+  create_ts_plot("bottom")
+
+do16_top / do16_mid1 / do16_mid2 / do16_bottom
+ggsave("DO_2016.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+# Dissolved oxygen 2017
+do17 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "DO",
+    Year == 2017
+  )
+
+do17_top <- do17 %>% 
+  filter(str_detect(Region, "^a_")) %>% 
+  create_ts_plot("other")
+
+do17_mid1 <- do17 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+do17_mid2 <- do17 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("other")
+
+do17_bottom <- do17 %>% 
+  filter(str_detect(Region, "^d_")) %>% 
+  create_ts_plot("bottom")
+
+do17_top / do17_mid1 / do17_mid2 / do17_bottom
+ggsave("DO_2017.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+# Dissolved oxygen 2019
+do19 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "DO",
+    Year == 2019
+  )
+
+do19_top <- do19 %>% 
+  filter(str_detect(Region, "^a_")) %>% 
+  create_ts_plot("other")
+
+do19_mid1 <- do19 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+do19_mid2 <- do19 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("other")
+
+do19_bottom <- do19 %>% 
+  filter(str_detect(Region, "^d_")) %>% 
+  create_ts_plot("bottom")
+
+do19_top / do19_mid1 / do19_mid2 / do19_bottom
+ggsave("DO_2019.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+# Turbidity 2015
+turb15 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "Turbidity",
+    Year == 2015
+  )
+
+turb15_top <- turb15 %>% 
+  filter(str_detect(Region, "^a_")) %>% 
+  create_ts_plot("other")
+
+turb15_mid1 <- turb15 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+turb15_mid2 <- turb15 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("other")
+
+turb15_bottom <- turb15 %>% 
+  filter(str_detect(Region, "^d_")) %>% 
+  create_ts_plot("bottom")
+
+turb15_top / turb15_mid1 / turb15_mid2 / turb15_bottom
+ggsave("Turbidity_2015.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+# Turbidity 2017
+turb17 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "Turbidity",
+    Year == 2017
+  )
+
+turb17_mid1 <- turb17 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+turb17_mid2 <- turb17 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("other")
+
+turb17_bottom <- turb17 %>% 
+  filter(str_detect(Region, "^d_")) %>% 
+  create_ts_plot("bottom")
+
+turb17_mid1 / turb17_mid2 / turb17_bottom
+ggsave("Turbidity_2017.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+# Turbidity 2018
+turb18 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "Turbidity",
+    Year == 2018
+  )
+
+turb18_mid1 <- turb18 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+turb18_mid2 <- turb18 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("other")
+
+turb18_bottom <- turb18 %>% 
+  filter(str_detect(Region, "^d_")) %>% 
+  create_ts_plot("bottom")
+
+turb18_mid1 / turb18_mid2 / turb18_bottom
+ggsave("Turbidity_2018.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+# Turbidity 2019
+turb19 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "Turbidity",
+    Year == 2019
+  )
+
+turb19_top <- turb19 %>% 
+  filter(str_detect(Region, "^a_")) %>% 
+  create_ts_plot("other")
+
+turb19_mid1 <- turb19 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+turb19_mid2 <- turb19 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("other")
+
+turb19_bottom <- turb19 %>% 
+  filter(str_detect(Region, "^d_")) %>% 
+  create_ts_plot("bottom")
+
+turb19_top / turb19_mid1 / turb19_mid2 / turb19_bottom
+ggsave("Turbidity_2019.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+# fDOM 2018
+fdom18 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "fDOM",
+    Year == 2018
+  )
+
+fdom18_mid1 <- fdom18 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+fdom18_mid2 <- fdom18 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("bottom")
+
+fdom18_mid1 / fdom18_mid2
+ggsave("fDOM_2018.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+# fDOM 2019
+fdom19 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "fDOM",
+    Year == 2019
+  )
+
+fdom19_mid1 <- fdom19 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+fdom19_mid2 <- fdom19 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("bottom")
+
+fdom19_mid1 / fdom19_mid2
+ggsave("fDOM_2019.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
