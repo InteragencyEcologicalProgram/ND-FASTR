@@ -427,31 +427,31 @@ do19_bottom <- do19 %>%
 do19_top / do19_mid1 / do19_mid2 / do19_bottom
 ggsave("DO_2019.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# Turbidity 2015
-turb15 <- df_rtm_daily_avg_f %>% 
+# Turbidity 2014
+turb14 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "Turbidity",
-    Year == 2015
+    Year == 2014
   )
 
-turb15_top <- turb15 %>% 
+turb14_top <- turb14 %>% 
   filter(str_detect(Region, "^a_")) %>% 
   create_ts_plot("other")
 
-turb15_mid1 <- turb15 %>% 
+turb14_mid1 <- turb14 %>% 
   filter(str_detect(Region, "^b_")) %>% 
   create_ts_plot("other")
 
-turb15_mid2 <- turb15 %>% 
+turb14_mid2 <- turb14 %>% 
   filter(str_detect(Region, "^c_")) %>% 
   create_ts_plot("other")
 
-turb15_bottom <- turb15 %>% 
+turb14_bottom <- turb14 %>% 
   filter(str_detect(Region, "^d_")) %>% 
   create_ts_plot("bottom")
 
-turb15_top / turb15_mid1 / turb15_mid2 / turb15_bottom
-ggsave("Turbidity_2015.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+turb14_top / turb14_mid1 / turb14_mid2 / turb14_bottom
+ggsave("Turbidity_2014.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
 # Turbidity 2017
 turb17 <- df_rtm_daily_avg_f %>% 
