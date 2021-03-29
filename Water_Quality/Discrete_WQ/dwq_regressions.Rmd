@@ -17,6 +17,7 @@ source('global_ndfa_funcs.R')
 ```
 
 ```{r functions}
+df <- df_discrete
 # df <- df_discrete
 ndfa_action_periods2 <- function(df, na_action_remove = TRUE, keep_action_dates = FALSE) {
   # Make sure Date variable exists in df
@@ -54,9 +55,9 @@ ndfa_action_periods2 <- function(df, na_action_remove = TRUE, keep_action_dates 
         Date > PreFlowEnd & Date < PostFlowStart ~ "During",
         Date >= PostFlowStart & Date <= PostFlowEnd ~ "After"
       )
-    ) %>% 
+    ) # %>% 
     # Remove some variables from df_act_dates_clean
-    select(-c(WYType, FlowPulseType, NetFlowDays))
+    # select(-c(WYType, FlowPulseType, NetFlowDays))
   
   # Remove sampling dates outside of before, during, and after flow action period window 
     # if na_action_remove is TRUE
@@ -82,7 +83,7 @@ fp_abs_wy <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/Analysis/FlowD
 fp_abs_region <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/Analysis/NDFA_map.csv')
 
 # read in data
-df_discrete <- read_csv(fp_abs_discrete)
+df_discrete <- read_csv(fp_abs_discrete, col_types = 'cc?cccnncc') # define col types
 df_water_year <- read_csv(fp_abs_wy)
 df_region <- read_csv(fp_abs_region)
 
