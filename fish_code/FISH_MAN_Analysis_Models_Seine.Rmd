@@ -34,6 +34,10 @@ library(Polychrome) # color palette
 library(plotly)
 library(glmmTMB) # zeroinfl GLMM
 library(lme4) # negbin GLMM
+library(huxtable)
+library(jtools)
+library(officer)
+library(flextable)
 
 ```
 
@@ -128,7 +132,7 @@ Fish_all1 <- left_join(Fish_all0, Regions_min, by = c("StationCode", "Survey"))
 summary(Fish_all1)
 # anti_join(Fish_all1, Fish_all0, by = colnames(Fish_all0))
 
-Fish_all <- Fish_all1 %>%
+Fish_all2 <- Fish_all1 %>%
    mutate(ActionPhase = ifelse(Date > PreFlowStart & Date<PreFlowEnd, "Pre", NA)) %>%
    mutate(ActionPhase = replace(ActionPhase, Date > PreFlowEnd & Date < PostFlowStart, "During")) %>%
    mutate(ActionPhase = replace(ActionPhase, Date > PostFlowStart & Date < PostFlowEnd, "Post")) %>%
@@ -137,19 +141,28 @@ Fish_all <- Fish_all1 %>%
    arrange(Date, Survey, StationCode, CommonName)
 
 # Define variable structures
-Fish_all$Date <- ymd(Fish_all$Date)
-Fish_all$fYear <- as.factor(Fish_all$Year)
-Fish_all$WYType <- as.factor(Fish_all$WYType)
-Fish_all$FlowPulseType <- as.factor(Fish_all$FlowPulseType)
-Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
-Fish_all$X1 <- NULL
-Fish_all$Survey <- as.factor(Fish_all$Survey)
-Fish_all$StationCode <- as.factor(Fish_all$StationCode)
-Fish_all$MethodCode <- as.factor(Fish_all$MethodCode)
+Fish_all2$Date <- ymd(Fish_all2$Date)
+Fish_all2$fYear <- as.factor(Fish_all2$Year)
+Fish_all2$WYType <- as.factor(Fish_all2$WYType)
+Fish_all2$FlowPulseType <- as.factor(Fish_all2$FlowPulseType)
+Fish_all2$ActionPhase <- as.factor(Fish_all2$ActionPhase)
+Fish_all2$X1 <- NULL
+Fish_all2$Survey <- as.factor(Fish_all2$Survey)
+Fish_all2$StationCode <- as.factor(Fish_all2$StationCode)
+Fish_all2$MethodCode <- as.factor(Fish_all2$MethodCode)
 
-# Order of factors
+
+# Renaming
+Fish_all <- Fish_all2 %>%
+  dplyr::rename(PulsePhase = ActionPhase) %>%
+  mutate(CommonName = replace(CommonName, CommonName=="Inland Silverside", "Mississippi Silverside")) %>%
+  mutate(CommonName = replace(CommonName, CommonName == "Tridentiger spp_", "Tridentiger spp."))
+
+
+# Order of factors, renaming
 Fish_all$Region <- factor(Fish_all$Region, levels = c("Upstream", "Downstream", "MiddleSacRiver"))
-Fish_all$ActionPhase <-  factor(Fish_all$ActionPhase, levels(Fish_all$ActionPhase)[c(2,3,1)])
+Fish_all$ActionPhase <-  factor(Fish_all$PulsePhase, levels = c("Pre", "During", "Post"))
+levels(Fish_all$PulsePhase) = c("Before", "During", "After")
 str(Fish_all)
 ```
 
@@ -193,21 +206,21 @@ Seine_CPUE <- Seine_complete %>%
 
 ### Rearrange columns 
 Seine_f <- Seine_CPUE[, c("Date", "Year", "fYear" , "Survey", "StationCode",                           "Latitude", "Longitude","MethodCode",
-                         "WYType", "FlowPulseType", "NetFlowDays","ActionPhase", "Region", "Secchi",  "Conductivity", "WaterTemp", "VolumeSampled",  "CommonName", "sum.count", "CPUE")]
+                         "WYType", "FlowPulseType", "NetFlowDays","PulsePhase", "Region", "Secchi",  "Conductivity", "WaterTemp", "VolumeSampled",  "CommonName", "sum.count", "CPUE")]
 
 ### Mean CPUE 
-## Calculate means for each species by year-location-actionphase
+## Calculate means for each species by year-location-PulsePhase
 CPUE_means_seine_phase <- Seine_f %>%
-  group_by(Year, Survey, StationCode, ActionPhase, CommonName) %>% 
+  group_by(Year, Survey, StationCode, PulsePhase, CommonName) %>% 
   summarize(mean.CPUE = mean(CPUE)) 
 ```
 
 
 ```{r}
 ### Mean CPUE 
-## Calculate means for each species by year-location-actionphase
+## Calculate means for each species by year-location-PulsePhase
 CPUE_means_Seine_phase <- Seine_f %>%
-  group_by(Year, Survey, StationCode, ActionPhase, CommonName) %>% 
+  group_by(Year, Survey, StationCode, PulsePhase, CommonName) %>% 
   summarize(mean.CPUE = mean(CPUE)) 
 ```
 
@@ -217,7 +230,7 @@ CPUE_means_Seine_phase <- Seine_f %>%
 ```{r Seine filters, warning = FALSE, message = FALSE}
 # Lists
 list_native <- c("Sacramento Pikeminnow", "Splittail", "Hitch", "Hardhead", "Sacramento Sucker", "Sacramento Blackfish")
-list_smeltish <- c("Wakasagi", "Inland Silverside", "Delta Smelt")
+list_smeltish <- c("Wakasagi", "Mississippi Silverside", "Delta Smelt")
 
 Seine_natives0 <- Seine_f %>%filter(CommonName %in% list_native)
 Seine_smeltish0 <- Seine_f %>% filter(CommonName %in% list_smeltish) %>%
@@ -231,12 +244,12 @@ Seine_smeltish0 <- Seine_f %>% filter(CommonName %in% list_smeltish) %>%
 #### Sum smeltish into one CPUE/seine
 ```{r}
 Seine_smeltish <- Seine_smeltish0 %>%
-  group_by(Date, Survey, fYear, StationCode, ActionPhase, Region, VolumeSampled) %>%
+  group_by(Date, Survey, fYear, StationCode, PulsePhase, Region, VolumeSampled) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
 
-Seine_smeltish$ActionPhase <-  factor(Seine_smeltish$ActionPhase, levels(Seine_smeltish$ActionPhase)[c(2,3,1)])
-
+Seine_smeltish$PulsePhase <-  factor(Seine_smeltish$PulsePhase, levels(Seine_smeltish$PulsePhase)[c(2,3,1)])
+levels(Seine_smeltish$PulsePhase) <- c("Before", "During", "After")
 
 ```
 
@@ -259,21 +272,21 @@ ggplot(Seine_smeltish, aes(sumCPUE)) + geom_histogram(binwidth = 1) + theme_bw()
 ggplot(Seine_smeltish, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
 
 # Action Phase
-ggplot(Seine_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Seine_smeltish, aes(x = PulsePhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Region
-ggplot(Seine_smeltish, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Seine_smeltish, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = PulsePhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Year 
-ggplot(Seine_smeltish, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Seine_smeltish, aes(x = PulsePhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 Seine_summary_smeltish_yr1 <- Seine_smeltish %>% 
-  group_by(fYear, ActionPhase) %>%
+  group_by(fYear, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-ggplot(Seine_summary_smeltish_yr1, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = ActionPhase)) + 
+ggplot(Seine_summary_smeltish_yr1, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = PulsePhase)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
@@ -284,12 +297,12 @@ ggplot(Seine_summary_smeltish_yr1, aes(x = fYear, y = meanCPUE, ymin = meanCPUE 
         legend.position = "bottom")
 
 Seine_summary_smeltish_yr2 <- Seine_smeltish %>% 
-  group_by(fYear, ActionPhase) %>%
+  group_by(fYear, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-ggplot(Seine_summary_smeltish_yr2, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = ActionPhase)) + 
+ggplot(Seine_summary_smeltish_yr2, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = PulsePhase)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
@@ -300,7 +313,7 @@ ggplot(Seine_summary_smeltish_yr2, aes(x = fYear, y = meanCPUE, ymin = meanCPUE 
         legend.position = "bottom")
 
 Seine_summary_smeltish_yr3 <- Seine_smeltish %>% 
-  group_by(fYear, Region, ActionPhase) %>%
+  group_by(fYear, Region, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
@@ -336,16 +349,21 @@ Seine_smeltish <- Seine_smeltish %>%
 * Summarize - Mean + Standard Error
 ```{r}
 Seine_summary_smeltish1 <- Seine_smeltish %>% 
-  group_by(Region, ActionPhase) %>%
+  group_by(Region, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-plot1 <- ggplot(Seine_summary_smeltish1, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+
+# Order Action Phases
+Seine_summary_smeltish1$PulsePhase <- as.factor(Seine_summary_smeltish1$PulsePhase)
+levels(Seine_summary_smeltish1$PulsePhase) <- c("Before", "During", "After")
+
+plot1 <- ggplot(Seine_summary_smeltish1, aes(x = PulsePhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
-    annotate("text", x = "Post", y = 9, label = "A", size = 8) + 
+    annotate("text", x = "After", y = 9, label = "A", size = 8) + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
@@ -381,34 +399,37 @@ plotA
 Remove station effects by averaging into Region. Use this data for model.
 ```{r}
 Seine_smeltish2 <- Seine_smeltish %>%
-  group_by(fYear, Region, ActionPhase) %>%
+  group_by(fYear, Region, PulsePhase) %>%
   summarize(sumCount2 = sum(sumCount),
             sumVol = sum(VolumeSampled),
             sumCPUE2 = sum(sumCPUE),
             meanCPUE = mean(sumCPUE))
 
-Seine_smeltish2$ActionPhase <-  factor(Seine_smeltish2$ActionPhase, levels(Seine_smeltish2$ActionPhase)[c(2,3,1)])
+Seine_smeltish2$PulsePhase <-  factor(Seine_smeltish2$PulsePhase, levels(Seine_smeltish2$PulsePhase)[c(2,3,1)])
 
 ```
 
 Run models
 ```{r}
-(M.smeltish1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Seine_smeltish2))
+(M.smeltish1 <- glm(meanCPUE~Region + fYear + PulsePhase, data  = Seine_smeltish2))
 summary(M.smeltish1)
 
-(M.smeltish2 <- glm(meanCPUE~Region + fYear * ActionPhase, data  = Seine_smeltish2))
+(M.smeltish2 <- glm(meanCPUE~Region + fYear * PulsePhase, data  = Seine_smeltish2))
 summary(M.smeltish2)
 
-(M.smeltish3 <- glm(meanCPUE~Region * ActionPhase + fYear, data  = Seine_smeltish2))
+(M.smeltish3 <- glm(meanCPUE~Region * PulsePhase + fYear, data  = Seine_smeltish2))
 summary(M.smeltish3)
 
-(M.smeltish4 <- glm(meanCPUE~Region *  fYear + ActionPhase, data  = Seine_smeltish2))
+(M.smeltish4 <- glm(meanCPUE~Region *  fYear + PulsePhase, data  = Seine_smeltish2))
 summary(M.smeltish4)
 
-(M.smeltish5 <- glm(meanCPUE~Region +  fYear + ActionPhase +Region*fYear + Region*ActionPhase, data  = Seine_smeltish2))
+(M.smeltish5 <- glm(meanCPUE~Region +  fYear + PulsePhase +Region*fYear + Region*PulsePhase, data  = Seine_smeltish2))
 summary(M.smeltish5)
 
 AIC(M.smeltish1, M.smeltish2, M.smeltish3, M.smeltish4, M.smeltish5)
+
+plot_summs(M.smeltish4, M.smeltish1, inner_ci_level = 0.9)
+
 ```
 
 Diagnostic Plots
@@ -424,6 +445,13 @@ Attributed to 2-3 very high catches from DJFMP. Because more than 1, likely real
 
 - Removed 2 points from the catch (CPUE>200); mention
 
+Write table
+```{r}
+export_summs(M.smeltish4, error_format = "[{conf.low}, {conf.high}]", to.file = "docx", file.name = "Seinesmeltish1.docx")
+
+summ(M.smeltish4, model.info = FALSE, digits = 3)
+```
+
 
 Post-hoc
 
@@ -434,11 +462,12 @@ Anova(M.smeltish4, type = 3)
 m_means1a <- emmeans(M.smeltish4, pairwise~fYear|Region, adjust="sidak")
 m_means1a
 
-m_means1b <- emmeans(M.smeltish4, pairwise~Region|Region, adjust="sidak")
+m_means1b <- emmeans(M.smeltish4, pairwise~Region|fYear, adjust="sidak")
 m_means1b
 
-m_means1c <- emmeans(M.smeltish4, pairwise~ActionPhase, adjust="sidak")
+m_means1c <- emmeans(M.smeltish4, pairwise~PulsePhase, adjust="sidak")
 m_means1c
+
 ```
 
 ```{r}
@@ -452,7 +481,7 @@ visreg(M.smeltish4)
 UPDATED MODEL CODE
 **Conclusions**
 
-* Keep in mind this is mostly Inland Silversides 
+* Keep in mind this is mostly Mississippi Silversides 
 * More smeltish Downstream then MiddleSac then upstream (all significantly different)
 * More smeltish during, then pre, then post. During-Post significant. 
 * More| 2015:Middle Sac. Less | Downstream:2019
@@ -469,11 +498,12 @@ UPDATED MODEL CODE
 #### Sum natives into one CPUE/seine
 ```{r}
 Seine_natives <- Seine_natives0 %>%
-  group_by(Date, Survey, fYear, StationCode, FlowPulseType, ActionPhase, Region, VolumeSampled) %>%
+  group_by(Date, Survey, fYear, StationCode, FlowPulseType, PulsePhase, Region, VolumeSampled) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
 
-Seine_natives$ActionPhase <-  factor(Seine_natives$ActionPhase, levels(Seine_natives$ActionPhase)[c(2,3,1)])
+Seine_natives$PulsePhase <-  factor(Seine_natives$PulsePhase, levels(Seine_natives$PulsePhase)[c(2,3,1)])
+levels(Seine_natives$PulsePhase) <- c("Before", "During", "After")
 ```
 
 #### Look at data
@@ -494,21 +524,21 @@ ggplot(Seine_natives, aes(sumCPUE)) + geom_histogram(binwidth = .1) + theme_bw()
 ggplot(Seine_natives, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
 
 # Action Phase
-ggplot(Seine_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Seine_natives, aes(x = PulsePhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Region
-ggplot(Seine_natives, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Seine_natives, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = PulsePhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Year 
-ggplot(Seine_natives, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "magma") + theme_bw()
+ggplot(Seine_natives, aes(x = PulsePhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "magma") + theme_bw()
 
 Seine_summary_native_yr3 <- Seine_natives %>% 
-  group_by(fYear, ActionPhase) %>%
+  group_by(fYear, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-ggplot(Seine_summary_native_yr3, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = ActionPhase)) + 
+ggplot(Seine_summary_native_yr3, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = PulsePhase)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
@@ -549,16 +579,16 @@ Seine_natives <- Seine_natives %>% filter(sumCPUE<2)
 # Summarize - Mean + Standard Error
 ```{r}
 Seine_summary_native2 <- Seine_natives %>% 
-  group_by(Region, ActionPhase) %>%
+  group_by(Region, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-plot2 <- ggplot(Seine_summary_native2, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+plot2 <- ggplot(Seine_summary_native2, aes(x = PulsePhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
-    annotate("text", x = "Post", y = .09, label = "B", size = 8)  + 
+    annotate("text", x = "After", y = .09, label = "B", size = 8)  + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
@@ -596,28 +626,28 @@ plotB
 Remove station effects by averaging into Region. Use this data for model.
 ```{r}
 Seine_natives2 <- Seine_natives %>%
-  group_by(fYear, Region, ActionPhase) %>%
+  group_by(fYear, Region, PulsePhase) %>%
   summarize(sumCount2 = sum(sumCount),
             sumVol = sum(VolumeSampled),
             sumCPUE2 = sum(sumCPUE),
             meanCPUE = mean(sumCPUE))
 
-Seine_natives2$ActionPhase <-  factor(Seine_natives2$ActionPhase, levels(Seine_natives2$ActionPhase)[c(2,3,1)])
+Seine_natives2$PulsePhase <-  factor(Seine_natives2$PulsePhase, levels(Seine_natives2$PulsePhase)[c(2,3,1)])
 
 ```
 
 Run models
 ```{r}
-(M.natives1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Seine_natives2))
+(M.natives1 <- glm(meanCPUE~Region + fYear + PulsePhase, data  = Seine_natives2))
 summary(M.natives1)
 
-(M.natives2 <- glm(meanCPUE~Region + fYear * ActionPhase, data  = Seine_natives2))
+(M.natives2 <- glm(meanCPUE~Region + fYear * PulsePhase, data  = Seine_natives2))
 summary(M.natives2)
 
-(M.natives3 <- glm(meanCPUE~Region * ActionPhase + fYear, data  = Seine_natives2))
+(M.natives3 <- glm(meanCPUE~Region * PulsePhase + fYear, data  = Seine_natives2))
 summary(M.natives3)
 
-(M.natives4 <- glm(meanCPUE~Region * fYear + ActionPhase, data  = Seine_natives2))
+(M.natives4 <- glm(meanCPUE~Region * fYear + PulsePhase, data  = Seine_natives2))
 summary(M.natives4)
 
 AIC(M.natives1, M.natives2, M.natives3, M.natives4)
@@ -625,11 +655,22 @@ AIC(M.natives1, M.natives2, M.natives3, M.natives4)
 
 Diagnostic Plots
 ```{r}
-Anova(M.natives3)
+Anova(M.natives3, type = 3)
+
+R2_natsn = (1-(M.natives3$deviance/M.natives3$null.deviance))
+
 
 par(mfrow = c(2,2))
 plot(M.natives3)
 
+
+
+```
+
+Make a table
+
+```{r}
+summ(M.natives3, model.info = FALSE, digits = 3)
 ```
 
 Post-hoc
@@ -638,10 +679,10 @@ Post-hoc
 m_means2a <- emmeans(M.natives3, pairwise~fYear, adjust="sidak")
 m_means2a
 
-m_means2b <- emmeans(M.natives3, pairwise~Region|ActionPhase, adjust="sidak")
+m_means2b <- emmeans(M.natives3, pairwise~Region|PulsePhase, adjust="sidak")
 m_means2b
 
-m_means2c <- emmeans(M.natives3, pairwise~ActionPhase|Region, adjust="sidak")
+m_means2c <- emmeans(M.natives3, pairwise~PulsePhase|Region, adjust="sidak")
 m_means2c
 ```
 
@@ -679,11 +720,12 @@ Seine_f_2 <- filter(Seine_f, CommonName %in% spAb)
 
 # Combine all fish CPUEs per day
 Seine_all <- Seine_filter %>%
-  group_by(Survey,fYear, Date, Region, StationCode, ActionPhase, MethodCode, VolumeSampled) %>%
+  group_by(Survey,fYear, Date, Region, StationCode, PulsePhase, MethodCode, VolumeSampled) %>%
   summarize(sumCPUE = sum(CPUE),
             sumCount = sum(sum.count))
 
-Seine_all$ActionPhase <-  factor(Seine_all$ActionPhase, levels(Seine_all$ActionPhase)[c(2,3,1)])
+Seine_all$PulsePhase <-  factor(Seine_all$PulsePhase, levels(Seine_all$PulsePhase)[c(2,3,1)])
+levels(Seine_all$PulsePhase) <- c("Before", "During", "After")
 
 ```
 
@@ -734,21 +776,21 @@ ggplot(Seine_all, aes(sumCPUE)) + geom_histogram(binwidth = .1) + theme_bw()
 ggplot(Seine_all, aes(x = Date, y = sumCPUE)) + geom_point() + facet_wrap(Survey~.) + theme_bw()
 
 # Action Phase
-ggplot(Seine_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Seine_all, aes(x = PulsePhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Region
-ggplot(Seine_all, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = ActionPhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
+ggplot(Seine_all, aes(x = Region, y = sumCPUE)) + geom_jitter(aes(color = PulsePhase), size = 3) + scale_color_viridis(discrete = TRUE, option = "viridis") + theme_bw()
 
 # Year 
-ggplot(Seine_all, aes(x = ActionPhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "magma") + theme_bw()
+ggplot(Seine_all, aes(x = PulsePhase, y = sumCPUE)) + geom_jitter(aes(color = Region), size = 3) + facet_wrap(~fYear) + scale_color_viridis(discrete = TRUE, option = "magma") + theme_bw()
 
 Seine_summary_all_yr3 <- Seine_all %>% 
-  group_by(fYear, ActionPhase) %>%
+  group_by(fYear, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-ggplot(Seine_summary_all_yr3, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = ActionPhase)) + 
+ggplot(Seine_summary_all_yr3, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = PulsePhase)) + 
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
@@ -773,6 +815,24 @@ ggplot(Seine_summary_all_yr4, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seC
         legend.text = element_text(size = 14),
         legend.title = element_text(size = 15),
         legend.position = "bottom")
+Seine_summary_all_yr5 <- Seine_all %>% 
+  group_by(fYear, Region, PulsePhase) %>%
+  summarize(meanCPUE = mean(sumCPUE),
+            n = n(),
+            seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
+
+ggplot(Seine_summary_all_yr5, aes(x = fYear, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+  facet_wrap(~PulsePhase) +
+  geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
+  geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
+  scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
+  theme(axis.text = element_text(size = 14),
+        axis.title = element_text(size = 15),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 15),
+        legend.position = "bottom")
+
+
 ```
 
 Remove outliers
@@ -788,21 +848,22 @@ Seine_all <- Seine_all %>%
 # Summarize - Mean + Standard Error
 ```{r}
 Seine_summary_all3 <- Seine_all %>% 
-  group_by(Region, ActionPhase) %>%
+  group_by(Region, PulsePhase) %>%
   summarize(meanCPUE = mean(sumCPUE),
             n = n(),
             seCPUE = sqrt(var(sumCPUE)/sqrt(n))) 
 
-# Order Action Phases
-Fish_all$ActionPhase <- as.factor(Fish_all$ActionPhase)
-Seine_all$ActionPhase <-  factor(Seine_all$ActionPhase, levels(Seine_all$ActionPhase)[c(1, 2, 3)])
 
-plot3 <- ggplot(Seine_summary_all3, aes(x = ActionPhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
+# Order Action Phases
+Seine_summary_all3$PulsePhase <- as.factor(Seine_summary_all3$PulsePhase)
+levels(Seine_summary_all3$PulsePhase) <- c("Before", "During", "After")
+
+plot3 <- ggplot(Seine_summary_all3, aes(x = PulsePhase, y = meanCPUE, ymin = meanCPUE - seCPUE, ymax = meanCPUE + seCPUE, fill = Region)) + 
   
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() + 
-  annotate("text", x = "Post", y = 11, label = "C", size = 8)  + 
+  annotate("text", x = "After", y = 11, label = "C", size = 8)  + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         legend.text = element_text(size = 14),
@@ -825,7 +886,7 @@ plotC <- ggplot(Seine_summary_all_yr4, aes(x = fYear, y = meanCPUE, ymin = meanC
   geom_bar(position = position_dodge(width = 0.9), stat = "identity") + 
   geom_errorbar(position = position_dodge(width = 0.9), width = 0.4) + 
   scale_fill_viridis(discrete = TRUE, option = "viridis") + theme_bw() +
-    annotate("text", x = "2019", y = 28, label = "C", size = 8)  + 
+    annotate("text", x = "2019", y = 13, label = "C", size = 8)  + 
   theme(axis.text = element_text(size = 14),
         axis.title = element_text(size = 15),
         axis.title.x = element_blank(),
@@ -878,6 +939,8 @@ grid_arrange_shared_legend <- function(..., ncol = length(list(...)), nrow = 1, 
                                            ncol = 2,
                                            widths = unit.c(unit(1, "npc") - lwidth, lwidth)))
 
+  #lg <- tableGrob(c("Smeltish", "Native Fish", "All Fish"), theme = ttheme_minimal())
+  
   grid.newpage()
   grid.draw(combined)
 
@@ -890,15 +953,12 @@ grid_arrange_shared_legend(plot1, plot4, plot2, plot5, plot3, plot6, ncol = 2,nr
 grid_arrange_shared_legend(SeineSp, TowSp, ncol = 1, nrow = 2)
 grid_arrange_shared_legend(plotA, plotD, plotB, plotE, plotC, plotF, ncol = 2,nrow = 3)
 
-
-SeineSp
-grid.arrange(SeineSp, SeineSp)
 ```
 
 
 #### Model - normal glm
 ```{r}
-m1all <- glm(sumCPUE~Region + fYear + ActionPhase, data = Seine_all); summary(m1all)
+m1all <- glm(sumCPUE~Region + fYear + PulsePhase, data = Seine_all); summary(m1all)
 
 par(mfrow = c(2,2))
 plot(m1all)
@@ -907,7 +967,7 @@ plot(m1all)
 #### Model with log transformation
 ```{r}
 Seine_all$logCPUE = log(Seine_all$sumCPUE + 1)
-m2all <- glm(logCPUE~Region + fYear + ActionPhase, data = Seine_all); summary(m2all)
+m2all <- glm(logCPUE~Region + fYear + PulsePhase, data = Seine_all); summary(m2all)
 
 par(mfrow = c(2,2))
 plot(m2all)
@@ -921,7 +981,7 @@ hist(Seine_all$logCPUE)
 Seine_all$Samp <- log(Seine_all$VolumeSampled)
 
 # Formula
-f1 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
+f1 <- formula(sumCount ~ Region + fYear + PulsePhase + offset(Samp))
 
 # Check overdispersion (var>mean)
 var(Seine_all$sumCPUE)
@@ -975,7 +1035,7 @@ EP3 <- resid(m4all, type = "pearson")
 # Diagnostic Plots
 par(mfrow = c(2,2))
 plot(x=m4all$fitted.values, y = EP3, main = "Pearson residuals")
-plot(x=Seine_all$ActionPhase,y = EP3, main = "Action Phase")
+plot(x=Seine_all$PulsePhase,y = EP3, main = "Action Phase")
 plot(x=Seine_all$Region, y = EP3, main = "Region")
 plot(x=Seine_all$fYear, y = EP3, main = "Year")
 
@@ -999,33 +1059,33 @@ Mixed modeling
 Seine_all$Samp <- log(Seine_all$VolumeSampled)
 
 # Formula
-f1 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp))
-f2 <- formula(sumCount ~ Region + fYear + ActionPhase + offset(Samp) + (1|StationCode))
-f3 <- formula(sumCount ~ Region + fYear*ActionPhase  + offset(Samp) + (1|StationCode))
-f4 <- formula(sumCount ~ Region*fYear + ActionPhase  + offset(Samp) + (1|StationCode))
-f5 <- formula(sumCount ~ Region *ActionPhase + fYear  + offset(Samp) + (1|StationCode))
-f6 <- formula(sumCount~ Region + ActionPhase + fYear + Region:fYear + ActionPhase:fYear + offset(Samp) + (1|StationCode))
+f1 <- formula(sumCount ~ Region + fYear + PulsePhase + offset(Samp))
+f2 <- formula(sumCount ~ Region + fYear + PulsePhase + offset(Samp) + (1|StationCode))
+f3 <- formula(sumCount ~ Region + fYear*PulsePhase  + offset(Samp) + (1|StationCode))
+f4 <- formula(sumCount ~ Region*fYear + PulsePhase  + offset(Samp) + (1|StationCode))
+f5 <- formula(sumCount ~ Region *PulsePhase + fYear  + offset(Samp) + (1|StationCode))
+f6 <- formula(sumCount~ Region + PulsePhase + fYear + Region:fYear + PulsePhase:fYear + offset(Samp) + (1|StationCode))
 
-M.glmer1 <- glmer.nb(f2, data = Seine_all); summary(M.glmer1)
-M.glmer2 <- glmer.nb(f3, data = Seine_all); summary(M.glmer2)
-M.glmer3 <- glmer.nb(f4, data = Seine_all); summary(M.glmer3)
-M.glmer4 <- glmer.nb(f5, data = Seine_all); summary(M.glmer4)
-M.glmer5 <- glmer.nb(f6, data = Seine_all); 
-summary(M.glmer5)
+# M.glmer1 <- glmer.nb(f2, data = Seine_all); summary(M.glmer1)
+# M.glmer2 <- glmer.nb(f3, data = Seine_all); summary(M.glmer2)
+# M.glmer3 <- glmer.nb(f4, data = Seine_all); summary(M.glmer3)
+# M.glmer4 <- glmer.nb(f5, data = Seine_all); summary(M.glmer4)
+# M.glmer5 <- glmer.nb(f6, data = Seine_all); 
+# summary(M.glmer5)
 
-AIC(M.glmer1, M.glmer2, M.glmer3, M.glmer4, M.glmer5)
-
-Anova(M.glmer2, type = 3)
-Anova(M.glmer3, type = 3)
-Anova(M.glmer5, type = 3)
-
-
+# AIC(M.glmer1, M.glmer2, M.glmer3, M.glmer4, M.glmer5)
+# 
+# Anova(M.glmer2, type = 3)
+# Anova(M.glmer3, type = 3)
+# Anova(M.glmer5, type = 3)
 
 
-fixParam <- fixef(M.glmer5)
-ranParam <- ranef(M.glmer5)
 
-params <- cbind(ranParam[1] + fixParam[1], ranParam[2] + fixParam[2])
+
+# fixParam <- fixef(M.glmer5)
+# ranParam <- ranef(M.glmer5)
+# 
+# params <- cbind(ranParam[1] + fixParam[1], ranParam[2] + fixParam[2])
 
 ```
 
@@ -1035,7 +1095,7 @@ Faster package!
 library(glmmTMB)
 M.glmer5b <- glmmTMB(f6, data = Seine_all, family = nbinom2)
 summary(M.glmer5b)
-
+Anova(M.glmer5b, type = 3)
 plot(M.glmer5b)
 ```
 
@@ -1051,11 +1111,19 @@ plot(allEffects(M.glmer5b))
 
 ```
 
+```{r}
+summ(M.glmer5b, model.info = FALSE, digits = 3)
+```
+
+
+
+
 Post-hoc
 ```{r}
-seineallcontrast <- emmeans(M.glmer5b, ~ActionPhase * fYear * Region)
+seineallcontrast <- emmeans(M.glmer5b, ~PulsePhase * fYear * Region)
 result <- contrast(seineallcontrast, "consec", simple = "each", combine = TRUE, adjust = "sidak")
 
+options(max.print = 100000)
 print(result)
 
 
@@ -1065,7 +1133,7 @@ m_means3a
 m_means3b <- emmeans(M.glmer5, pairwise~Region, adjust="sidak")
 m_means3b
 
-m_means3c <- emmeans(M.glmer5, pairwise~ActionPhase, adjust="sidak")
+m_means3c <- emmeans(M.glmer5, pairwise~PulsePhase, adjust="sidak")
 m_means3c
 
 ```
@@ -1093,22 +1161,22 @@ UPDATED MODEL CODE
 Remove station effects by averaging into Region. Use this data for model.
 ```{r}
 Seine_all2 <- Seine_all %>%
-  group_by(fYear, Region, ActionPhase) %>%
+  group_by(fYear, Region, PulsePhase) %>%
   summarize(sumCount2 = sum(sumCount),
             sumVol = sum(VolumeSampled),
             sumCPUE2 = sum(sumCPUE),
             meanCPUE = mean(sumCPUE))
 
-Seine_all2$ActionPhase <-  factor(Seine_all2$ActionPhase, levels(Seine_all2$ActionPhase)[c(2,3,1)])
+Seine_all2$PulsePhase <-  factor(Seine_all2$PulsePhase, levels(Seine_all2$PulsePhase)[c(2,3,1)])
 
 ```
 UPDATED MODEL CODE
 Run models
 ```{r}
-(M.all1 <- glm(meanCPUE~Region + fYear + ActionPhase, data  = Seine_all2))
+(M.all1 <- glm(meanCPUE~Region + fYear + PulsePhase, data  = Seine_all2))
 summary(M.all1)
 
-(M.all2 <- glm(meanCPUE~Region * ActionPhase + fYear, data  = Seine_all2))
+(M.all2 <- glm(meanCPUE~Region * PulsePhase + fYear, data  = Seine_all2))
 summary(M.all2)
 
 AIC(M.all1, M.all2)
@@ -1131,7 +1199,7 @@ m_means4a
 m_means4b <- emmeans(M.all1, pairwise~Region, adjust="sidak")
 m_means4b
 
-m_means4c <- emmeans(M.all1, pairwise~ActionPhase, adjust="sidak")
+m_means4c <- emmeans(M.all1, pairwise~PulsePhase, adjust="sidak")
 m_means4c
 ```
 UPDATED MODEL CODE
