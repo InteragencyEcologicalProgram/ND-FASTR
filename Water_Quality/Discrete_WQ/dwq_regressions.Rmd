@@ -1,4 +1,4 @@
-```{r, message=FALSE}
+```{r, message=FALSE warning=FALSE}
 # FASTR D-WQ ANOVAs
 # Author: Sarah Perry
 # Date created: 01/27/2020
@@ -14,6 +14,65 @@ library(leaps)
 library(MASS)
 library(emmeans)
 source('global_ndfa_funcs.R')
+```
+
+```{r functions}
+# df <- df_discrete
+ndfa_action_periods2 <- function(df, na_action_remove = TRUE, keep_action_dates = FALSE) {
+  # Make sure Date variable exists in df
+  assert_that(
+    "Date" %in% names(df),
+    msg = "ndfa_action_periods function\nDataframe requires a 'Date' variable that represents sample dates in the date data type (yyyy-mm-dd)."
+  )
+
+    # Make sure Date variable in df is date data type
+  assert_that(
+    is.date(df$Date),
+    msg = "ndfa_action_periods function\n'Date' variable must be in the date data type (yyyy-mm-dd)."
+  )
+  
+  # Import dates for flow action periods
+  fp_act_dates <- ndfa_abs_sp_path("Data Management/FlowDatesDesignations_45days.csv")
+  df_act_dates_orig <- read_csv(fp_act_dates)
+  
+  # Convert date columns in df_act_dates_orig to date type
+  df_act_dates_clean <- df_act_dates_orig %>% 
+    mutate(across(starts_with(c("Pre", "Post")), mdy))
+  
+  # Add a Year variable to df if it doesn't already exist
+  if (!"Year" %in% names(df)) {
+    df <- df %>% mutate(Year = year(Date))
+    message("Adding a Year variable to the dataframe.")
+  }
+  
+  # Join flow action dates to df and add FlowActionPeriod variable
+  df_join <- 
+    left_join(df, df_act_dates_clean, by  = "Year") %>% 
+    mutate(
+      FlowActionPeriod = case_when(
+        Date >= PreFlowStart & Date <= PreFlowEnd ~ "Before",
+        Date > PreFlowEnd & Date < PostFlowStart ~ "During",
+        Date >= PostFlowStart & Date <= PostFlowEnd ~ "After"
+      )
+    ) %>% 
+    # Remove some variables from df_act_dates_clean
+    select(-c(WYType, FlowPulseType, NetFlowDays))
+  
+  # Remove sampling dates outside of before, during, and after flow action period window 
+    # if na_action_remove is TRUE
+
+  if (na_action_remove == TRUE) {
+    df_join <- df_join %>% filter(!is.na(FlowActionPeriod))
+  }
+
+  # Remove variables from df_act_dates_clean containing the flow action dates if 
+    # keep_action_dates is FALSE
+  if (keep_action_dates == FALSE) {
+    df_join <- df_join %>% select(-c(PreFlowStart, PreFlowEnd, PostFlowStart, PostFlowEnd))
+  }
+
+  return(df_join)
+}
 ```
 
 ```{r Import Data, message=FALSE}
@@ -37,12 +96,13 @@ df_discrete <- filter(df_discrete, !StationCode %in% remove)
 # standardize/rename Date col
 df_discrete$DateTime <- as.Date(df_discrete$DateTime)
 df_discrete <- rename(df_discrete, c('Date' = 'DateTime'))
+#   df_discrete$Week <- week(df_discrete$Date)
 
 # rename Station col
 df_discrete <- rename(df_discrete, c('Station' = 'StationCode'))
 
 # add flow action dates
-df_discrete <- ndfa_action_periods(df_discrete, na_action_remove = TRUE, keep_action_dates = FALSE)
+df_discrete <- ndfa_action_periods2(df_discrete, na_action_remove = TRUE, keep_action_dates = TRUE)
 
 # add metadata cols
 df_wq <- merge(df_discrete, df_water_year, by = c('Year')) 
@@ -69,16 +129,13 @@ df_wq <- df_wq %>%
 
 ```{r define regression function}
 reg_func <- function(df, analyte_name){
-  df_sub <- slide(df_sub, 'Result', TimeVar = 'Date', GroupVar = 'Station', NewVar = 'lag1', slideBy = -1)
-  df_sub <- slide(df_sub, 'lag1', TimeVar = 'Date', GroupVar = 'Station', NewVar = 'lag2', slideBy = -1)
+  df <- slide(df, 'Result', TimeVar = 'Date', GroupVar = 'Station', NewVar = 'lag1', slideBy = -1)
+  df <- slide(df, 'lag1', TimeVar = 'Date', GroupVar = 'Station', NewVar = 'lag2', slideBy = -1)
   
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|Station), data = df_sub)
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|Station), data = df)
 
-  aov_lmer <- anova(lmer_fit, type = 'II') # look into type II -- better when you don't have interaction terms?
-  # 
-  # step.model <- step(lmer_fit)
-  # 
-  # return(step.model)
+  aov_lmer <- anova(lmer_fit, type = 'III') # look into type II -- better when you don't have interaction terms?
+
   aov_lmer$Analyte <- analyte_name
   aov_lmer$Variable <- rownames(aov_lmer)
   
@@ -91,8 +148,6 @@ reg_func <- function(df, analyte_name){
       `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
       )
     )
-  
-
 
   lmer_rg <- ref_grid(lmer_fit)
   lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ Year:Year, adjust = 'tukey')
@@ -132,8 +187,9 @@ for (i in seq(analytes)){
   # png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/',analyte,'_RL.png')))
   # pacf(df_sub$Result, na.action = na.pass, main = paste0(analyte,' - RL'))
   # dev.off()
-  x <- pacf(df_sub$Result %>% diff())
-  print(x)
+  # x <- pacf(df_sub$Result %>% diff())
+  # print(x)
+  
   # run regressions
   df_output_list <- reg_func(df_sub, analyte)
   # print(df_output_list)
@@ -182,8 +238,8 @@ all_aov_data <- do.call(rbind, all_aov)
 all_reg_data <- do.call(rbind, all_reg)
 
 
-write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_0.csv'))
-write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_0.csv'))
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_0.csv'))
+# write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_0.csv'))
 ```
 
 ```{r ANOVA - random sub 1, message = FALSE}
@@ -224,8 +280,8 @@ all_aov_data <- do.call(rbind, all_aov)
 all_reg_data <- do.call(rbind, all_reg)
 
 
-write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand1.csv'))
-write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand1.csv'))
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand1.csv'))
+# write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand1.csv'))
 ```
 
 ```{r ANOVA - random sub 2, message = FALSE}
@@ -315,7 +371,7 @@ all_aov_data <- do.call(rbind, all_aov)
 all_reg_data <- do.call(rbind, all_reg)
 
 
-write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand3.csv'))
-write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand3.csv'))
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/aov_rand3.csv'))
+# write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/DWQ/dwq_raw_output/emmeans_year_rand3.csv'))
 ```
 
