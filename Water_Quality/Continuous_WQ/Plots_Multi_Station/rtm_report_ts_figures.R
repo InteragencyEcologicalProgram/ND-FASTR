@@ -4,7 +4,7 @@
 # Contact: David.Bosworth@water.ca.gov
 
 
-# Global Code and Functions -----------------------------------------------
+# 1. Global Code and Functions -----------------------------------------------
 
 # Load packages
 library(tidyverse)
@@ -17,7 +17,7 @@ source("global_ndfa_funcs.R")
 source("Water_Quality/global_wq_funcs.R")
 
 
-# Import and Prepare Data -------------------------------------------------
+# 2. Import and Prepare Data -------------------------------------------------
 
 # Define relative file path for file containing all QA'ed and cleaned continuous WQ data
 fp_rel_rtm_data <- "WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-02-19.csv"
@@ -107,7 +107,7 @@ df_fa_dates_f <- df_fa_dates_orig %>%
   mutate(PreFlowEnd = PreFlowEnd + days(1))
 
 
-# Load Plot Functions -----------------------------------------------------
+# 3. Load Plot Functions -----------------------------------------------------
 
 # Internal function to define y-axis labels in plots
 int_define_yaxis_lab <- function(param) {
@@ -216,9 +216,11 @@ create_ts_plot <- function(df, plot_pos = c("other", "bottom")) {
 }
 
 
-# Create Plots ------------------------------------------------------------
+# 4. Create Plots ------------------------------------------------------------
 
-# Chlorophyll 2013
+# 4.1 Chlorophyll -------------------------------------------------------------
+
+# 2013
 chla13 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "Chla",
@@ -244,7 +246,7 @@ chla13_bottom <- chla13 %>%
 chla13_top / chla13_mid1 / chla13_mid2 / chla13_bottom
 ggsave("Chla_2013.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# Chlorophyll 2016
+# 2016
 chla16 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "Chla",
@@ -270,7 +272,7 @@ chla16_bottom <- chla16 %>%
 chla16_top / chla16_mid1 / chla16_mid2 / chla16_bottom
 ggsave("Chla_2016.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# Chlorophyll 2018
+# 2018
 chla18 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "Chla",
@@ -296,7 +298,7 @@ chla18_bottom <- chla18 %>%
 chla18_top / chla18_mid1 / chla18_mid2 / chla18_bottom
 ggsave("Chla_2018.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# Chlorophyll 2019
+# 2019
 chla19 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "Chla",
@@ -322,7 +324,10 @@ chla19_bottom <- chla19 %>%
 chla19_top / chla19_mid1 / chla19_mid2 / chla19_bottom
 ggsave("Chla_2019.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# Dissolved oxygen 2015
+
+# 4.2 Dissolved Oxygen ----------------------------------------------------
+
+# 2015
 do15 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "DO",
@@ -349,7 +354,7 @@ do15_top / do15_mid1 / do15_mid2 / do15_bottom
 ggsave("DO_2015.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
 
-# Dissolved oxygen 2016
+# 2016
 do16 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "DO",
@@ -375,7 +380,7 @@ do16_bottom <- do16 %>%
 do16_top / do16_mid1 / do16_mid2 / do16_bottom
 ggsave("DO_2016.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# Dissolved oxygen 2017
+# 2017
 do17 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "DO",
@@ -401,7 +406,7 @@ do17_bottom <- do17 %>%
 do17_top / do17_mid1 / do17_mid2 / do17_bottom
 ggsave("DO_2017.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# Dissolved oxygen 2019
+# 2019
 do19 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "DO",
@@ -427,7 +432,10 @@ do19_bottom <- do19 %>%
 do19_top / do19_mid1 / do19_mid2 / do19_bottom
 ggsave("DO_2019.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# Turbidity 2015
+
+# 4.3 Turbidity -----------------------------------------------------------
+
+# 2015
 turb15 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "Turbidity",
@@ -453,7 +461,7 @@ turb15_bottom <- turb15 %>%
 turb15_top / turb15_mid1 / turb15_mid2 / turb15_bottom
 ggsave("Turbidity_2015.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# Turbidity 2017
+# 2017
 turb17 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "Turbidity",
@@ -475,7 +483,7 @@ turb17_bottom <- turb17 %>%
 turb17_mid1 / turb17_mid2 / turb17_bottom
 ggsave("Turbidity_2017.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# Turbidity 2018
+# 2018
 turb18 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "Turbidity",
@@ -497,7 +505,7 @@ turb18_bottom <- turb18 %>%
 turb18_mid1 / turb18_mid2 / turb18_bottom
 ggsave("Turbidity_2018.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# Turbidity 2019
+# 2019
 turb19 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "Turbidity",
@@ -523,7 +531,10 @@ turb19_bottom <- turb19 %>%
 turb19_top / turb19_mid1 / turb19_mid2 / turb19_bottom
 ggsave("Turbidity_2019.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# fDOM 2018
+
+# 4.4 fDOM ----------------------------------------------------------------
+
+# 2018
 fdom18 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "fDOM",
@@ -541,7 +552,7 @@ fdom18_mid2 <- fdom18 %>%
 fdom18_mid1 / fdom18_mid2
 ggsave("fDOM_2018.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
-# fDOM 2019
+# 2019
 fdom19 <- df_rtm_daily_avg_f %>% 
   filter(
     Parameter == "fDOM",
@@ -558,3 +569,5 @@ fdom19_mid2 <- fdom19 %>%
 
 fdom19_mid1 / fdom19_mid2
 ggsave("fDOM_2019.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
+
+
