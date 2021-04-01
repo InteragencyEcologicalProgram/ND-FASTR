@@ -90,8 +90,8 @@ df_rtm_daily_avg_f <- df_rtm_daily_avg %>%
     Region = factor(
       case_when(
         StationCode %in% c("RMB", "RCS", "RD22", "I80") ~ "a_Upstream_upper",
-        StationCode %in% c("LIS", "TOE", "STTD", "LIBCUT", "SGG") ~ "b_Upstream_central",
-        StationCode %in% c("LIB", "RYI", "RVB") ~ "c_Downstream",
+        StationCode %in% c("LIS", "TOE", "STTD") ~ "b_Upstream_central",
+        StationCode %in% c("LIBCUT", "SGG", "LIB", "RYI", "RVB") ~ "c_Downstream",
         StationCode == "SRH" ~ "d_Sac_River"
       )
     )
