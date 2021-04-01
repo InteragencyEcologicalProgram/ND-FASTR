@@ -571,3 +571,71 @@ fdom19_mid1 / fdom19_mid2
 ggsave("fDOM_2019.jpg", width = 7, height = 8.5, units = "in", dpi = 300)
 
 
+# 4.5 Nitrate plus Nitrite ------------------------------------------------
+
+# 2014
+nitr14 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "NitrateNitrite",
+    Year == 2014
+  )
+
+create_ts_plot(nitr14, "bottom")
+ggsave("NitrateNitrite_2014.jpg", width = 7, height = 3, units = "in", dpi = 300)
+
+# 2015
+nitr15 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "NitrateNitrite",
+    Year == 2015
+  )
+
+create_ts_plot(nitr15, "bottom")
+ggsave("NitrateNitrite_2015.jpg", width = 7, height = 3, units = "in", dpi = 300)
+
+# 2016
+nitr16 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "NitrateNitrite",
+    Year == 2016
+  )
+
+create_ts_plot(nitr16, "bottom")
+ggsave("NitrateNitrite_2016.jpg", width = 7, height = 3, units = "in", dpi = 300)
+
+# 2018
+nitr18 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "NitrateNitrite",
+    Year == 2018
+  )
+
+nitr18_top <- nitr18 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+nitr18_bottom <- nitr18 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("bottom")
+
+nitr18_top / nitr18_bottom
+ggsave("NitrateNitrite_2018.jpg", width = 7, height = 6, units = "in", dpi = 300)
+
+# 2019
+nitr19 <- df_rtm_daily_avg_f %>% 
+  filter(
+    Parameter == "NitrateNitrite",
+    Year == 2019
+  )
+
+nitr19_top <- nitr19 %>% 
+  filter(str_detect(Region, "^b_")) %>% 
+  create_ts_plot("other")
+
+nitr19_bottom <- nitr19 %>% 
+  filter(str_detect(Region, "^c_")) %>% 
+  create_ts_plot("bottom")
+
+nitr19_top / nitr19_bottom
+ggsave("NitrateNitrite_2019.jpg", width = 7, height = 6, units = "in", dpi = 300)
+
