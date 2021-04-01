@@ -112,12 +112,12 @@ df_fa_dates_f <- df_fa_dates_orig %>%
 # Internal function to define y-axis labels in plots
 int_define_yaxis_lab <- function(param) {
   yaxis_lab <- case_when(
-    param == "Chla" ~ "Chlorophyll (ug/L)",
+    param == "Chla" ~ "Chlorophyll (µg/L)",
     param == "DO" ~ "Diss Oxygen (mg/L)",
-    param == "fDOM" ~ "fDOM (ug/L as QSE)",
+    param == "fDOM" ~ "fDOM (µg/L as QSE)",
     param == "NitrateNitrite" ~ "Nitrate + Nitrite (mg/L as N)",
     param == "pH" ~ "pH (pH units)",
-    param == "SpCnd" ~ "Sp Cond (uS/cm)",
+    param == "SpCnd" ~ "Sp Cond (µS/cm)",
     param == "Turbidity" ~ "Turbidity (FNU)",
     param == "WaterTemp" ~ "Water Temp (C)"
   )
