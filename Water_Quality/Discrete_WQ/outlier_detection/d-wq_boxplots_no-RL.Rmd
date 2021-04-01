@@ -150,3 +150,22 @@ for (analyte in analytes){
 }
 ```
 
+```{r chla plot by years}
+df_wq %>% 
+  filter(Analyte == "Chla") %>% 
+  ggplot(aes(FlowActionPeriod, Result_log, fill = FlowActionPeriod)) +
+  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75), alpha = 0.75) +
+  facet_grid(cols = vars(BroadRegion), rows = vars(Year)) +
+  ggtitle("Chlorophyll a") + 
+  blank_theme() +
+  theme(legend.position = "top") +
+  xlab("Flow Pulse Period") +
+  ylab("log(µg/L)") +
+  scale_fill_viridis_d("Flow Pulse Period:", option = 'plasma', begin = 0.3)
+
+fp_plots <- 
+  get_abs_path(file.path(fp_fastr,'WQ_Subteam/Plots/Discrete/Violin_Plots/log_Units'))
+
+ggsave(file.path(fp_plots, "violin_Chla_by_year_log.png"), width = 7, height = 9, units = "in")
+```
+
