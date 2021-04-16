@@ -101,7 +101,7 @@ df_clean_nest_all_yrs <- df_clean_nest_indiv_yr %>%
 
 # Create Plots and Summary Tables
 
-```{r create plots and summary tables}
+```{r create plots and summary tables, warning = FALSE}
 # Create interactive plotly plots of individual years for each parameter
 df_plots_indiv_yr <- df_clean_nest_indiv_yr %>% 
   mutate(plot = map2(data_full_dt, parameter, create_ts_plotly))
@@ -142,18 +142,162 @@ df_qual_code_summ <- df_clean_nest_indiv_yr %>%
 
 # Raw Data Plots {.tabset .tabset-pills}
 
-```{r print chla do fdom and flow plots, include = FALSE}
-# Create a list of plot templates to use for Chla, DO, fDOM, and flow plots
-produce_plots_chla_do_fdom_flow <- list(
-  knit_expand(file = "rtm_raw_plots_template_2018.Rmd", parameter = "Chla"),
-  knit_expand(file = "rtm_raw_plots_template_2018.Rmd", parameter = "DO"),
-  knit_expand(file = "rtm_raw_plots_template_2018.Rmd", parameter = "fDOM"),
+## Chla {.tabset .tabset-pills}
+
+```{r filter indiv chla plots, include = FALSE}
+filt_param <- "Chla"
+
+df_plots_indiv_yr_filt <- filter(df_plots_indiv_yr, parameter == filt_param)
+```
+
+### All Years
+
+```{r plot chla all yrs, echo = FALSE}
+df_plots_all_yrs %>% 
+  filter(parameter == filt_param) %>% 
+  print_plot()
+```
+
+### 2015
+
+```{r plot chla 2015, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2015) %>% 
+  print_plot()
+```
+
+### 2016
+
+```{r plot chla 2016, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2016) %>% 
+  print_plot()
+```
+
+### 2018
+
+```{r plot chla 2018, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2018) %>% 
+  print_plot()
+```
+
+### 2019
+
+```{r plot chla 2019, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2019) %>% 
+  print_plot()
+```
+
+
+## DO {.tabset .tabset-pills}
+
+```{r filter indiv do plots, include = FALSE}
+filt_param <- "DO"
+
+df_plots_indiv_yr_filt <- filter(df_plots_indiv_yr, parameter == filt_param)
+```
+
+### All Years
+
+```{r plot do all yrs, echo = FALSE}
+df_plots_all_yrs %>% 
+  filter(parameter == filt_param) %>% 
+  print_plot()
+```
+
+### 2015
+
+```{r plot do 2015, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2015) %>% 
+  print_plot()
+```
+
+### 2016
+
+```{r plot do 2016, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2016) %>% 
+  print_plot()
+```
+
+### 2018
+
+```{r plot do 2018, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2018) %>% 
+  print_plot()
+```
+
+### 2019
+
+```{r plot do 2019, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2019) %>% 
+  print_plot()
+```
+
+
+## fDOM {.tabset .tabset-pills}
+
+```{r filter indiv fdom plots, include = FALSE}
+filt_param <- "fDOM"
+
+df_plots_indiv_yr_filt <- filter(df_plots_indiv_yr, parameter == filt_param)
+```
+
+### All Years
+
+```{r plot fdom all yrs, echo = FALSE}
+df_plots_all_yrs %>% 
+  filter(parameter == filt_param) %>% 
+  print_plot()
+```
+
+### 2015
+
+```{r plot fdom 2015, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2015) %>% 
+  print_plot()
+```
+
+### 2016
+
+```{r plot fdom 2016, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2016) %>% 
+  print_plot()
+```
+
+### 2018
+
+```{r plot fdom 2018, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2018) %>% 
+  print_plot()
+```
+
+### 2019
+
+```{r plot fdom 2019, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2019) %>% 
+  print_plot()
+```
+
+
+```{r print flow plots, include = FALSE}
+# Create a list of plot templates to use for the flow plots
+produce_plots_flow <- list(
   knit_expand(file = "rtm_raw_plots_template_2011.Rmd", parameter = "Flow"),
   knit_expand(file = "rtm_raw_plots_template_2011.Rmd", parameter = "FlowTF")
 )
 ```
 
-`r knit(text = unlist(produce_plots_chla_do_fdom_flow))`
+`r knit(text = unlist(produce_plots_flow))`
 
 
 ## NitrateNitrite {.tabset .tabset-pills}
@@ -221,15 +365,102 @@ df_plots_indiv_yr_filt %>%
 ```
 
 
-```{r print ph and spcnd plots, include = FALSE}
-# Create a list of plot templates to use for fDOM and flow plots
-produce_plots_ph_spcnd <- list(
-  knit_expand(file = "rtm_raw_plots_template_2018.Rmd", parameter = "pH"),
-  knit_expand(file = "rtm_raw_plots_template_2018.Rmd", parameter = "SpCnd")
-)
+## pH {.tabset .tabset-pills}
+
+```{r filter indiv ph plots, include = FALSE}
+filt_param <- "pH"
+
+df_plots_indiv_yr_filt <- filter(df_plots_indiv_yr, parameter == filt_param)
 ```
 
-`r knit(text = unlist(produce_plots_ph_spcnd))`
+### All Years
+
+```{r plot ph all yrs, echo = FALSE}
+df_plots_all_yrs %>% 
+  filter(parameter == filt_param) %>% 
+  print_plot()
+```
+
+### 2015
+
+```{r plot ph 2015, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2015) %>% 
+  print_plot()
+```
+
+### 2016
+
+```{r plot ph 2016, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2016) %>% 
+  print_plot()
+```
+
+### 2018
+
+```{r plot ph 2018, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2018) %>% 
+  print_plot()
+```
+
+### 2019
+
+```{r plot ph 2019, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2019) %>% 
+  print_plot()
+```
+
+
+## SpCnd {.tabset .tabset-pills}
+
+```{r filter indiv spcnd plots, include = FALSE}
+filt_param <- "SpCnd"
+
+df_plots_indiv_yr_filt <- filter(df_plots_indiv_yr, parameter == filt_param)
+```
+
+### All Years
+
+```{r plot spcnd all yrs, echo = FALSE}
+df_plots_all_yrs %>% 
+  filter(parameter == filt_param) %>% 
+  print_plot()
+```
+
+### 2015
+
+```{r plot spcnd 2015, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2015) %>% 
+  print_plot()
+```
+
+### 2016
+
+```{r plot spcnd 2016, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2016) %>% 
+  print_plot()
+```
+
+### 2018
+
+```{r plot spcnd 2018, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2018) %>% 
+  print_plot()
+```
+
+### 2019
+
+```{r plot spcnd 2019, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2019) %>% 
+  print_plot()
+```
 
 
 ## Turbidity {.tabset .tabset-pills}
@@ -277,6 +508,22 @@ df_plots_indiv_yr_filt %>%
 ```{r plot turbidity 2014, echo = FALSE}
 df_plots_indiv_yr_filt %>% 
   filter(yr == 2014) %>% 
+  print_plot()
+```
+
+### 2015
+
+```{r plot turbidity 2015, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2015) %>% 
+  print_plot()
+```
+
+### 2016
+
+```{r plot turbidity 2016, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2016) %>% 
   print_plot()
 ```
 
@@ -334,6 +581,22 @@ df_plots_indiv_yr_filt %>%
 ```{r plot water temp 2013, echo = FALSE}
 df_plots_indiv_yr_filt %>% 
   filter(yr == 2013) %>% 
+  print_plot()
+```
+
+### 2015
+
+```{r plot water temp 2015, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2015) %>% 
+  print_plot()
+```
+
+### 2016
+
+```{r plot water temp 2016, echo = FALSE}
+df_plots_indiv_yr_filt %>% 
+  filter(yr == 2016) %>% 
   print_plot()
 ```
 
