@@ -38,18 +38,23 @@ int_define_yaxis_lab <- function(param) {
 
 # 2. Import Data -------------------------------------------------
 
-# Define relative file path for file containing all QA'ed and cleaned continuous WQ data
-fp_rel_rtm_data <- "WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-02-19.csv"
+# Define relative file paths for files containing all QA'ed and cleaned continuous WQ data
+# Data set from 2/19/2021:
+fp_rel_rtm_data1 <- "WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-02-19.csv"
+# Data set from 4/20/2021 - only use for time-series plots for now:
+fp_rel_rtm_data2 <- "WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-04-20.csv"
 
 # Define relative file path for file containing dates of flow action periods
 fp_rel_fa_dates <- "Data Management/FlowDatesDesignations_45days.csv"
 
 # Define absolute file paths
-fp_abs_rtm_data <- ndfa_abs_sp_path(fp_rel_rtm_data)
+fp_abs_rtm_data1 <- ndfa_abs_sp_path(fp_rel_rtm_data1)
+fp_abs_rtm_data2 <- ndfa_abs_sp_path(fp_rel_rtm_data2)
 fp_abs_fa_dates <- ndfa_abs_sp_path(fp_rel_fa_dates)
 
 # Import continuous WQ data
-df_rtm_orig <- import_rtm_data(fp_abs_rtm_data, 10)
+df_rtm_orig1 <- import_rtm_data(fp_abs_rtm_data1, 10)
+df_rtm_orig2 <- import_rtm_data(fp_abs_rtm_data2, 10)
 
 # Import dates of flow action periods
 df_fa_dates_orig <- read_csv(fp_abs_fa_dates)
@@ -58,23 +63,27 @@ df_fa_dates_orig <- read_csv(fp_abs_fa_dates)
 # 3. Clean WQ Data ---------------------------------------------------------
 
 # Clean original continuous WQ data
-df_rtm_clean <- df_rtm_orig %>% 
-  mutate(
-    DateTime = ymd_hms(DateTime),
-    Date = date(DateTime),
-    Year = year(DateTime)
-  ) %>%
-  # Don't include Flow, FlowTF, and all Qual variables
-  select(-c(ends_with("_Qual"), starts_with("Flow"))) %>% 
-  # Exclude SDI from the plots and remove data for years 2011-2012
-  filter(
-    StationCode != "SDI",
-    Year > 2012
-  ) %>% 
-  # Pivot parameters in the long format
-  pivot_longer(cols = where(is.numeric) & !Year, names_to = "Parameter", values_to = "Value") %>% 
-  # Remove all NA values
-  filter(!is.na(Value))
+df_rtm_clean <-
+  list(df_rtm_orig1, df_rtm_orig2) %>% 
+  map(
+    ~mutate(
+      .x,
+      DateTime = ymd_hms(DateTime),
+      Date = date(DateTime),
+      Year = year(DateTime)
+    ) %>%
+    # Don't include Flow, FlowTF, and all Qual variables
+    select(-c(ends_with("_Qual"), starts_with("Flow"))) %>% 
+    # Exclude SDI from the plots and remove data for years 2011-2012
+    filter(
+      StationCode != "SDI",
+      Year > 2012
+    ) %>% 
+    # Pivot parameters in the long format
+    pivot_longer(cols = where(is.numeric) & !Year, names_to = "Parameter", values_to = "Value") %>% 
+    # Remove all NA values
+    filter(!is.na(Value))
+  )
 
 
 # 4. Time-series Plots ----------------------------------------------------
@@ -99,7 +108,7 @@ sta_order <- c(
 )
 
 # Calculate daily averages of continuous WQ data and prepare for plotting
-df_rtm_daily_avg <- df_rtm_clean %>% 
+df_rtm_daily_avg <- df_rtm_clean[[2]] %>% 
   group_by(Parameter, Year, StationCode, Date) %>% 
   summarize(Daily_avg = mean(Value)) %>% 
   # Fill in missing dates with NA values for geom_line to not interpolate data gaps
@@ -146,8 +155,41 @@ int_define_ts_plot_title <- function(region) {
   return(plot_title)
 }
 
-# Create ggplot of continuous WQ Data by Region
-create_ts_plot <- function(df, df_fa, param, region_cat, y_scale) {
+# Create a list for custom formatting of time-series plots
+ts_cust_format <- list(
+  theme_light(),
+  theme(
+    strip.text = element_text(color = "black"),
+    legend.position = "top",
+    plot.title = element_text(hjust = 0.5),
+    panel.grid.minor = element_blank()
+  ),
+  scale_x_date(
+    name = "Date",
+    breaks = breaks_pretty(10),
+    labels = label_date_short(),
+    expand = expansion(mult = 0.01)
+  ),
+  scale_color_viridis_d(
+    name = "Station:", 
+    option = "plasma", 
+    end = 0.95
+  )
+)
+
+# Create function to add shaded rectangles for the flow action periods
+add_fa_rect <- function(df) {
+  geom_rect(
+    aes(xmin = PreFlowEnd, xmax = PostFlowStart, ymin = -Inf, ymax = Inf),
+    data = df,
+    inherit.aes = FALSE,
+    alpha = 0.12,
+    fill = "grey50"
+  )
+}
+
+# Create time-series plot of continuous WQ Data by Region
+create_ts_plot_reg <- function(df, df_fa, param, region_cat, y_scale) {
   
   # define y-axis label
   y_lab <- int_define_yaxis_lab(param)
@@ -159,32 +201,9 @@ create_ts_plot <- function(df, df_fa, param, region_cat, y_scale) {
   p <- df %>% 
     ggplot(aes(x = Date, y = Daily_avg, color = StationCode)) +
     geom_line() +
-    theme_light() +
-    theme(
-      strip.text = element_text(color = "black"),
-      legend.position = "top",
-      plot.title = element_text(hjust = 0.5),
-      panel.grid.minor = element_blank()
-    ) +
+    ts_cust_format +
     ggtitle(plot_title) +
-    scale_x_date(
-      name = "Date",
-      breaks = breaks_pretty(10),
-      labels = label_date_short(),
-      expand = expansion(mult = 0.01)
-    ) +
-    scale_color_viridis_d(
-      name = "Station:", 
-      option = "plasma", 
-      end = 0.95
-    ) +
-    geom_rect(
-      aes(xmin = PreFlowEnd, xmax = PostFlowStart, ymin = -Inf, ymax = Inf),
-      data = df_fa,
-      inherit.aes = FALSE,
-      alpha = 0.12,
-      fill = "grey50"
-    )
+    add_fa_rect(df_fa)
   
   # only label y-axis for the plot on the left (Upstream Region)
   if (region_cat == "a_Upstream") {
@@ -199,6 +218,31 @@ create_ts_plot <- function(df, df_fa, param, region_cat, y_scale) {
   } else {
     p <- p + facet_wrap(vars(Year), ncol = 1, scales = "free_x")
   }
+  
+  return(p)
+}
+
+# Create time-series plot of continuous WQ Data of all stations - for parameters that were
+  # collected at a limited number of stations
+create_ts_plot_all <- function(df, df_fa, param) {
+  # define y-axis label
+  y_lab <- int_define_yaxis_lab(param)
+  
+  # create plot
+  p <- df %>% 
+    ggplot(aes(x = Date, y = Daily_avg, color = StationCode)) +
+    geom_line() +
+    facet_wrap(
+      vars(Year), 
+      ncol = 2,
+      scales = "free_x"
+    ) +
+    ts_cust_format +
+    scale_y_continuous(
+      name = y_lab, 
+      labels = label_comma()
+    ) +
+    add_fa_rect(df_fa)
   
   return(p)
 }
@@ -223,16 +267,16 @@ df_rtm_ts_plt <- df_rtm_daily_avg %>%
   # create a y_scale variable to specify free or fixed y-axis scale
   mutate(
     y_scale = case_when(
-      Parameter %in% c("Chla", "DO") & str_detect(Region, "^a") ~ "free",
-      Parameter %in% c("Chla", "DO") & str_detect(Region, "^b") ~ "fixed",
+      Parameter == "DO" & str_detect(Region, "^a") ~ "free",
+      Parameter == "DO" & str_detect(Region, "^b") ~ "fixed",
       Parameter %in% c("pH", "WaterTemp") ~ "fixed",
-      Parameter %in% c("SpCnd", "Turbidity") ~ "free"
+      Parameter %in% c("Chla", "SpCnd", "Turbidity") ~ "free"
     )
   ) %>% 
   mutate(
     plt_indiv = pmap(
       list(df_data, df_fa_dates, Parameter, Region, y_scale), 
-      .f = create_ts_plot
+      .f = create_ts_plot_reg
     )
   ) %>% 
   select(Parameter, FlowActionType, plt_indiv) %>% 
@@ -285,106 +329,34 @@ ggsave(
   dpi = 300
 )
 
-# Create plot for Nitrate + Nitrite:
-# Remove 2017 from df_fa_dates_f since Nitrate + Nitrite wasn't collected during that year
-df_fa_dates_f_nitr <- df_fa_dates_f %>% filter(Year != 2017)
-
-plt_rtm_ts_nitr <- df_rtm_daily_avg %>% 
-  filter(Parameter == "NitrateNitrite") %>% 
-  ggplot(aes(x = Date, y = Daily_avg, color = StationCode)) +
-  geom_line() +
-  facet_wrap(
-    vars(Year), 
-    ncol = 2,
-    scales = "free_x"
-  ) +
-  theme_light() +
-  theme(
-    strip.text = element_text(color = "black"),
-    legend.position = "top",
-    plot.title = element_text(hjust = 0.5),
-    panel.grid.minor = element_blank()
-  ) +
-  scale_y_continuous(
-    name = int_define_yaxis_lab("NitrateNitrite"), 
-    labels = label_comma()
-  ) +
-  scale_x_date(
-    name = "Date",
-    breaks = breaks_pretty(10),
-    labels = label_date_short(),
-    expand = expansion(mult = 0.01)
-  ) +
-  scale_color_viridis_d(
-    name = "Station:", 
-    option = "plasma", 
-    end = 0.95
-  ) +
-  geom_rect(
-    aes(xmin = PreFlowEnd, xmax = PostFlowStart, ymin = -Inf, ymax = Inf),
-    data = df_fa_dates_f_nitr,
-    inherit.aes = FALSE,
-    alpha = 0.12,
-    fill = "grey50"
+# Create plots for fDOM and Nitrate + Nitrite:
+df_rtm_ts_plt_nitr_fdom <- df_rtm_daily_avg %>% 
+  filter(Parameter %in% c("fDOM", "NitrateNitrite")) %>%
+  arrange(Parameter, FlowActionType) %>% 
+  nest(df_data = -c(Parameter, FlowActionType)) %>% 
+  left_join(df_fa_dates_f_nest) %>% 
+  mutate(
+    plt = pmap(
+      list(df_data, df_fa_dates, Parameter),
+      .f = create_ts_plot_all
+    )
   )
 
-# Export Nitrate + Nitrite time-series plot
-ggsave(
-  plot = plt_rtm_ts_nitr,
-  filename = paste0(fp_abs_ts_plt, "/NitrateNitrite_ts.jpg"),
-  width = 7.5, 
-  height = 9, 
-  units = "in", 
-  dpi = 300
-)
-
-# Create plot for fDOM:
-# Only keep 2018 and 2019 in df_fa_dates_f since fDOM was only collected during those years
-df_fa_dates_f_fdom <- df_fa_dates_f %>% filter(Year > 2017)
-
-plt_rtm_ts_fdom <- df_rtm_daily_avg %>% 
-  filter(Parameter == "fDOM") %>% 
-  ggplot(aes(x = Date, y = Daily_avg, color = StationCode)) +
-  geom_line() +
-  facet_wrap(vars(Year), scales = "free_x") +
-  theme_light() +
-  theme(
-    strip.text = element_text(color = "black"),
-    legend.position = "top",
-    plot.title = element_text(hjust = 0.5),
-    panel.grid.minor = element_blank()
-  ) +
-  scale_y_continuous(
-    name = int_define_yaxis_lab("fDOM"), 
-    labels = label_comma()
-  ) +
-  scale_x_date(
-    name = "Date",
-    breaks = breaks_pretty(10),
-    labels = label_date_short(),
-    expand = expansion(mult = 0.01)
-  ) +
-  scale_color_viridis_d(
-    name = "Station:", 
-    option = "plasma", 
-    end = 0.95
-  ) +
-  geom_rect(
-    aes(xmin = PreFlowEnd, xmax = PostFlowStart, ymin = -Inf, ymax = Inf),
-    data = df_fa_dates_f_fdom,
-    inherit.aes = FALSE,
-    alpha = 0.12,
-    fill = "grey50"
+# Export fDOM and Nitrate + Nitrite time-series plots
+pwalk(
+  list(
+    df_rtm_ts_plt_nitr_fdom$plt,
+    df_rtm_ts_plt_nitr_fdom$Parameter,
+    df_rtm_ts_plt_nitr_fdom$FlowActionType
+  ),
+  ~ggsave(
+    plot = ..1,
+    filename = paste0(fp_abs_ts_plt, "/", ..2, "_", ..3, ".jpg"),
+    width = 6.5, 
+    height = 7, 
+    units = "in", 
+    dpi = 300
   )
-
-# Export fDOM time-series plot
-ggsave(
-  plot = plt_rtm_ts_fdom,
-  filename = paste0(fp_abs_ts_plt, "/fDOM_ts.jpg"),
-  width = 6.5, 
-  height = 3.5, 
-  units = "in", 
-  dpi = 300
 )
 
 
@@ -392,7 +364,7 @@ ggsave(
 
 # 5.1 Prepare Data for Plots ----------------------------------------------
 
-df_rtm_week_avg <- df_rtm_clean %>% 
+df_rtm_week_avg <- df_rtm_clean[[1]] %>% 
   # Remove SRH and fDOM
   filter(
     StationCode != "SRH",
