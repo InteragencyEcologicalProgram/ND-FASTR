@@ -89,11 +89,9 @@ rtm_wq_proc_clean <- rtm_wq_proc_orig %>%
 
 # QA Processing
 
-## Individual stations
+Our process to QA the continuous water quality data includes flagging and excluding suspect data for individual stations and parameters through visual inspection of the plots of raw data and through information from the field and sonde verification records.
 
-We will first flag and exclude suspect data for individual stations and parameters through visual inspection of the plots of raw data and through information from the field and sonde verification records.
-
-### I-80
+## I-80
 
 ```{r pull out i80 data}
 # Pull out data for I-80
@@ -129,7 +127,7 @@ i80_clean_v1 %>%
 ```
 
 
-### LIB
+## LIB
 
 ```{r pull out lib data}
 # Pull out data for LIB
@@ -182,7 +180,17 @@ lib_clean_v1 %>%
     facet_grid(rows = vars(parameter), scales = "free_y")
 ```
 
-The chlorophyll data is very noisy and suspect at LIB from 7/13/2018 to 8/14/2018. We will flag and exclude this data.
+The chlorophyll data is very noisy and suspect at LIB from 10/6/2013 to 10/7/2013 and from 7/13/2018 to 8/14/2018. We will flag and exclude this data.
+
+```{r plot lib chla oct 2013 before}
+# Plot LIB chlorophyll data for Oct 2013 - raw data
+lib_clean_v1 %>% 
+  filter(
+    year(DateTime) == 2013,
+    month(DateTime) == 10
+  ) %>% 
+  plot_indiv_param(Chla)
+```
 
 ```{r plot lib chla 2018 before}
 # Plot LIB chlorophyll data for 2018 - raw data
@@ -191,13 +199,24 @@ lib_clean_v1 %>%
   plot_indiv_param(Chla)
 ```
 
-```{r rm lib chla 2018}
-# Flag and exclude chlorophyll values in 2018
+```{r rm lib chla 2013 and 2018}
+# Flag and exclude chlorophyll values in 2013 and 2018
 lib_clean_v2 <- lib_clean_v1 %>% 
+  rm_flag_val_range(Chla, "2013-10-06 18:30:00", "2013-10-07 13:00:00") %>% 
   rm_flag_val_range(Chla, "2018-07-13 00:00:00", "2018-08-14 06:15:00")
 ```
 
 The chlorophyll data is excluded from the data set now:
+```{r plot lib chla oct 2013 after}
+# Plot LIB chlorophyll data for Oct 2013 - after exclusion
+lib_clean_v2 %>% 
+  filter(
+    year(DateTime) == 2013,
+    month(DateTime) == 10
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
 ```{r plot lib chla 2018 after}
 # Plot LIB chlorophyll data for 2018 - after exclusion
 lib_clean_v2 %>% 
@@ -205,8 +224,101 @@ lib_clean_v2 %>%
   plot_indiv_param(Chla)
 ```
 
+There are also some chlorophyll values that are equal to zero in the LIB data set in Sept-Oct 2018 that need to be flagged and excluded.
 
-### LIBCUT
+```{r plot lib chla sept oct 2018 before}
+# Plot LIB chlorophyll data for Sept and Oct 2018 - raw data
+lib_clean_v2 %>% 
+  filter(
+    year(DateTime) == 2018,
+    month(DateTime) >= 9 & month(DateTime) <= 10
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r rm lib chla sept oct 2018}
+# Flag and exclude chlorophyll values equal to zero in Sept and Oct 2018
+lib_clean_v3 <- lib_clean_v2 %>%
+  mutate(
+    Chla_Qual = replace(Chla_Qual, Chla == 0, "unreliable"),
+    Chla = replace(Chla, Chla == 0, NA_real_)
+  )
+```
+
+The chlorophyll values equal to zero are excluded from the data set now:
+```{r plot lib chla sept oct 2018 after}
+# Plot LIB chlorophyll data for Sept and Oct 2018 - after exclusion
+lib_clean_v3 %>% 
+  filter(
+    year(DateTime) == 2018,
+    month(DateTime) >= 9 & month(DateTime) <= 10
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+There is some suspect fDOM data collected at LIB with large drops in the data to much lower values on 9/5/2017, 9/11/2017, 9/12/2017, and 10/12/2017. We will flag and exclude this fDOM data.
+
+```{r plot lib fdom sept oct 2017 before}
+# Plot LIB fDOM data for Sept and Oct 2017 - raw data
+lib_clean_v3 %>% 
+  filter(
+    year(DateTime) == 2017,
+    month(DateTime) >= 9 & month(DateTime) <= 10
+  ) %>% 
+  plot_indiv_param(fDOM)
+```
+
+```{r rm lib fdom sept oct 2017}
+# Flag and exclude chlorophyll values in Sept and Oct 2017
+lib_clean_v4 <- lib_clean_v3 %>% 
+  rm_flag_val_range(fDOM, "2017-09-05 08:30:00", "2017-09-05 11:15:00") %>% 
+  rm_flag_val_range(fDOM, "2017-09-12 10:45:00", "2017-09-12 11:30:00") %>%
+  rm_flag_val_one(fDOM, "2017-09-11 09:45:00") %>% 
+  rm_flag_val_range(fDOM, "2017-10-12 11:15:00", "2017-10-12 12:00:00")
+```
+
+The fDOM data is excluded from the data set now:
+```{r plot lib fdom sept oct 2017 after}
+# Plot LIB fDOM data for Sept and Oct 2017 - after exclusion
+lib_clean_v4 %>% 
+ filter(
+    year(DateTime) == 2017,
+    month(DateTime) >= 9 & month(DateTime) <= 10
+  ) %>% 
+  plot_indiv_param(fDOM)
+```
+
+The Nitrate plus Nitrite data is very noisy and suspect at LIB from 10/31/2017 to 11/3/2017. We will flag and exclude this data.
+
+```{r plot lib nitr oct nov 2017 before}
+# Plot LIB Nitrate plus Nitrite data for Oct and Nov 2017 - raw data
+lib_clean_v4 %>% 
+  filter(
+    year(DateTime) == 2017,
+    month(DateTime) >= 10 & month(DateTime) <= 11
+  ) %>%  
+  plot_indiv_param(NitrateNitrite)
+```
+
+```{r rm lib nitr oct nov 2017}
+# Flag and exclude Nitrate plus Nitrite values in Oct and Nov 2017
+lib_clean_v5 <- lib_clean_v4 %>% 
+  rm_flag_val_range(NitrateNitrite, "2017-10-31 08:00:00", "2017-11-03 23:45:00")
+```
+
+The Nitrate plus Nitrite data is excluded from the data set now:
+```{r plot lib nitr oct nov 2017 after}
+# Plot LIB Nitrate plus Nitrite data for Oct and Nov 2017 - after exclusion
+lib_clean_v5 %>% 
+  filter(
+    year(DateTime) == 2017,
+    month(DateTime) >= 10 & month(DateTime) <= 11
+  ) %>% 
+  plot_indiv_param(NitrateNitrite)
+```
+
+
+## LIBCUT
 
 ```{r pull out libcut data}
 # Pull out data for LIBCUT
@@ -220,7 +332,7 @@ libcut_clean_v1 <- libcut_orig %>% select(!starts_with("Chla"))
 ```
 
 
-### LIS
+## LIS
 
 ```{r pull out lis data}
 # Pull out data for LIS
@@ -306,7 +418,7 @@ lis_clean_v2 %>%
 ```
 
 
-### RCS
+## RCS
 
 ```{r pull out rcs data}
 # Pull out data for RCS
@@ -348,7 +460,95 @@ rcs_clean_v1 %>%
 ```
 
 
-### SDI
+## RVB
+
+```{r pull out rvb data}
+# Pull out data for RVB
+rvb_orig <- pull_df_sta(rtm_wq_proc_clean, "RVB")
+```
+
+There are a few chlorophyll values that are equal to zero in the RVB data set in Oct 2015 that need to be flagged and excluded.
+
+```{r plot rvb chla oct 2015 before}
+# Plot RVB chlorophyll data for Oct 2015 - raw data
+rvb_orig %>% 
+  filter(
+    year(DateTime) == 2015,
+    month(DateTime) == 10
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r rm rvb chla oct 2015}
+# Flag and exclude chlorophyll values equal to zero in Oct 2015
+rvb_clean_v1 <- rvb_orig %>%
+  mutate(
+    Chla_Qual = replace(Chla_Qual, Chla == 0, "unreliable"),
+    Chla = replace(Chla, Chla == 0, NA_real_)
+  )
+```
+
+The chlorophyll values equal to zero are excluded from the data set now:
+```{r plot rvb chla oct 2015 after}
+# Plot RVB chlorophyll data for Oct 2015 - after exclusion
+rvb_clean_v1 %>% 
+  filter(
+    year(DateTime) == 2015,
+    month(DateTime) == 10
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+
+## RYI
+
+```{r pull out ryi data}
+# Pull out data for RYI
+ryi_orig <- pull_df_sta(rtm_wq_proc_clean, "RYI")
+```
+
+There are a lot of chlorophyll values that are equal to zero in the RYI data set in 2015 and 2016 that need to be flagged and excluded.
+
+```{r plot ryi chla 2015 before}
+# Plot RYI chlorophyll data for 2015 - raw data
+ryi_orig %>% 
+  filter(year(DateTime) == 2015) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r plot ryi chla 2016 before}
+# Plot RYI chlorophyll data for 2016 - raw data
+ryi_orig %>% 
+  filter(year(DateTime) == 2016) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r rm ryi chla 2015 and 2016}
+# Flag and exclude chlorophyll values equal to zero in 2015 and 2016
+ryi_clean_v1 <- ryi_orig %>%
+  mutate(
+    Chla_Qual = replace(Chla_Qual, Chla == 0, "unreliable"),
+    Chla = replace(Chla, Chla == 0, NA_real_)
+  )
+```
+
+The chlorophyll values equal to zero are excluded from the data set now:
+```{r plot ryi chla 2015 after}
+# Plot RYI chlorophyll data for 2015 - after exclusion
+ryi_clean_v1 %>% 
+  filter(year(DateTime) == 2015) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r plot ryi chla 2016 after}
+# Plot RYI chlorophyll data for 2016 - after exclusion
+ryi_clean_v1 %>% 
+  filter(year(DateTime) == 2016) %>% 
+  plot_indiv_param(Chla)
+```
+
+
+## SDI
 
 ```{r pull out sdi data}
 # Pull out data for SDI
@@ -441,7 +641,7 @@ sdi_clean_v2 %>%
 ```
 
 
-### SGG
+## SGG
 
 ```{r pull out sgg data}
 # Pull out data for SGG
@@ -477,21 +677,31 @@ sgg_clean_v1 %>%
 ```
 
 
-### SRH
+## SRH
 
 ```{r pull out srh data}
 # Pull out data for SRH
 srh_orig <- pull_df_sta(rtm_wq_proc_clean, "SRH")
 ```
 
-There are a few negative chlorophyll values in the SRH data set in Oct-Nov 2011 and Aug 2014 that need to be flagged and excluded.
+There are a few chlorophyll values that are less than or equal to zero in the SRH data set in Oct-Nov 2011, Oct 2013, and Aug 2014 that need to be flagged and excluded.
 
-```{r plot srh chla oct nov 2011 before, message = FALSE}
+```{r plot srh chla oct nov 2011 before}
 # Plot SRH chlorophyll data for Oct and Nov 2011 - raw data
 srh_orig %>% 
   filter(
     year(DateTime) == 2011,
     month(DateTime) >= 10 & month(DateTime) <= 11
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r plot srh chla oct 2013 before}
+# Plot SRH chlorophyll data for Oct 2013 - raw data
+srh_orig %>% 
+  filter(
+    year(DateTime) == 2013,
+    month(DateTime) == 10
   ) %>% 
   plot_indiv_param(Chla)
 ```
@@ -506,17 +716,17 @@ srh_orig %>%
   plot_indiv_param(Chla)
 ```
 
-```{r rm srh chla 2011 and 2014}
-# Flag and exclude negative chlorophyll values in Oct-Nov 2011 and Aug 2014
+```{r rm srh chla 2011 2013 and 2014}
+# Flag and exclude chlorophyll values less than or equal to zero in 2011, 2013, and 2014
 srh_clean_v1 <- srh_orig %>%
   mutate(
-    Chla_Qual = replace(Chla_Qual, Chla < 0, "unreliable"),
-    Chla = replace(Chla, Chla < 0, NA_real_)
+    Chla_Qual = replace(Chla_Qual, Chla <= 0, "unreliable"),
+    Chla = replace(Chla, Chla <= 0, NA_real_)
   )
 ```
 
-The negative chlorophyll values are excluded from the data set now:
-```{r plot srh chla oct nov 2011 after, message = FALSE}
+The chlorophyll values less than or equal to zero are excluded from the data set now:
+```{r plot srh chla oct nov 2011 after}
 # Plot SRH chlorophyll data for Oct and Nov 2011 - after exclusion
 srh_clean_v1 %>% 
   filter(
@@ -526,7 +736,17 @@ srh_clean_v1 %>%
   plot_indiv_param(Chla)
 ```
 
-```{r plot srh chla aug 2014 after, message = FALSE}
+```{r plot srh chla oct 2013 after}
+# Plot SRH chlorophyll data for Oct 2013 - after exclusion
+srh_clean_v1 %>% 
+  filter(
+    year(DateTime) == 2013,
+    month(DateTime) == 10
+  ) %>% 
+  plot_indiv_param(Chla)
+```
+
+```{r plot srh chla aug 2014 after}
 # Plot SRH chlorophyll data for Aug 2014 - after exclusion
 srh_clean_v1 %>% 
   filter(
@@ -537,7 +757,7 @@ srh_clean_v1 %>%
 ```
 
 
-### STTD
+## STTD
 
 ```{r pull out sttd data}
 # Pull out data for STTD
@@ -638,22 +858,36 @@ sttd_clean_v3 %>%
 ```
 
 
-### Combine cleaned data
+## Combine cleaned data
 
 Combine individually cleaned data for stations back together into a nested dataframe.
 
 ```{r combine indiv clean data}
-mod_stations <- c("I80", "LIB", "LIBCUT", "LIS", "RCS", "SDI", "SGG", "SRH", "STTD")
+mod_stations <- c(
+  "I80",
+  "LIB",
+  "LIBCUT",
+  "LIS",
+  "RCS",
+  "RVB",
+  "RYI",
+  "SDI",
+  "SGG",
+  "SRH",
+  "STTD"
+)
 
 indiv_clean_rtm <- 
   tibble(
     StationCode = mod_stations,
     df = list(
       i80_clean_v1,
-      lib_clean_v2,
+      lib_clean_v5,
       libcut_clean_v1,
       lis_clean_v2,
       rcs_clean_v1,
+      rvb_clean_v1,
+      ryi_clean_v1,
       sdi_clean_v2,
       sgg_clean_v1,
       srh_clean_v1,
@@ -695,7 +929,10 @@ rtm_wq_proc_clean_v1 %>%
     starts_with("fD"),
     starts_with("Ni")
   ) %>% 
-  write_excel_csv(file.path(fp_abs_wq_qa_f, "RTM_INPUT_all_2021-02-19.csv"), na = "")
+  write_excel_csv(file.path(fp_abs_wq_qa_f, "RTM_INPUT_all_2021-04-20.csv"), na = "")
+
+# Earlier file was named RTM_INPUT_all_2021-02-19.csv
+# After adding additional data for LIB and RYI, and removing all Chla values equal to zero, renamed file to RTM_INPUT_all_2021-04-20.csv
 ```
 
 End of script
