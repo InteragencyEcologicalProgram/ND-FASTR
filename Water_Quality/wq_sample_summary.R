@@ -74,7 +74,7 @@ df_rtm_samp_counts %>%
   pivot_wider(names_from = StationCode, values_from = n) %>% 
   complete(Year, Parameter) %>% 
   arrange(Year, Parameter) %>% 
-  write_excel_csv("rtm_sample_summary_by_station.csv", na = "")
+  write_excel_csv("rtm_sample_counts_by_station.csv", na = "")
 
 # Pivot summary by Parameter and export as a csv file
 df_rtm_samp_counts %>% 
@@ -82,7 +82,7 @@ df_rtm_samp_counts %>%
   pivot_wider(names_from = Parameter, values_from = n) %>% 
   complete(Year, StationCode) %>% 
   arrange(Year, StationCode) %>% 
-  write_excel_csv("rtm_sample_summary_by_parameter.csv", na = "")
+  write_excel_csv("rtm_sample_counts_by_parameter.csv", na = "")
 
 
 # 3. Discrete Data --------------------------------------------------------
@@ -117,7 +117,7 @@ df_dwq_samp_counts %>%
   pivot_wider(names_from = StationCode, values_from = n) %>% 
   complete(Year, Analyte) %>% 
   arrange(Year, Analyte) %>% 
-  write_excel_csv("dwq_sample_summary_by_station.csv", na = "")
+  write_excel_csv("dwq_sample_counts_by_station.csv", na = "")
 
 # Pivot summary by Analyte and export as a csv file
 df_dwq_samp_counts %>% 
@@ -125,5 +125,5 @@ df_dwq_samp_counts %>%
   pivot_wider(names_from = Analyte, values_from = n) %>% 
   complete(Year, StationCode) %>% 
   arrange(Year, StationCode) %>% 
-  write_excel_csv("dwq_sample_summary_by_parameter.csv", na = "")
+  write_excel_csv("dwq_sample_counts_by_parameter.csv", na = "")
 
