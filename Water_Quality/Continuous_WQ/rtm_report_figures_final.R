@@ -74,11 +74,8 @@ df_rtm_clean <-
     ) %>%
     # Don't include Flow, FlowTF, and all Qual variables
     select(-c(ends_with("_Qual"), starts_with("Flow"))) %>% 
-    # Exclude SDI from the plots and remove data for years 2011-2012
-    filter(
-      StationCode != "SDI",
-      Year > 2012
-    ) %>% 
+    # Exclude SDI from the plots
+    filter(StationCode != "SDI") %>% 
     # Pivot parameters in the long format
     pivot_longer(cols = where(is.numeric) & !Year, names_to = "Parameter", values_to = "Value") %>% 
     # Remove all NA values
@@ -107,6 +104,21 @@ sta_order <- c(
   "SRH"
 )
 
+# Create a function to add grouping variables for FlowActionType - low vs. high pulse
+add_FlowActionType <- function(df) {
+  df %>% 
+    mutate(
+      # For the plots with all years of data
+      FlowActionType = case_when(
+        Year %in% c(2011, 2015) ~ "high pulse- low mag, long duration",
+        Year %in% c(2012, 2016, 2018, 2019) ~ "high pulse- high mag, shorter duration",
+        TRUE ~ "low pulse"
+      ),
+      # A more-simplified version for the fDOM and NitrateNitrite plots
+      FlowActionType_s = if_else(str_detect(FlowActionType, "^high"), "high", "low")
+    )
+}
+
 # Calculate daily averages of continuous WQ data and prepare for plotting
 df_rtm_daily_avg <- df_rtm_clean[[2]] %>% 
   group_by(Parameter, Year, StationCode, Date) %>% 
@@ -123,24 +135,21 @@ df_rtm_daily_avg <- df_rtm_clean[[2]] %>%
         "b_Downstream_Sac"
       )
     ),
-    # Add a grouping variable for FlowActionType - managed vs. non-managed
-    FlowActionType = if_else(Year %in% c(2016, 2018, 2019), "managed", "unmanaged"),
     # Apply factor order to StationCode
     StationCode = factor(StationCode, levels = sta_order)
-  )
+  ) %>% 
+  # Add a grouping variable for FlowActionType - low vs. high
+  add_FlowActionType()
 
 # Prepare dates of flow action periods to highlight the flow action periods for each year 
   # in the plots and to define consistent x-axis limits
 df_fa_dates_f <- df_fa_dates_orig %>% 
   select(Year, starts_with(c("Pre", "Post"))) %>% 
   mutate(across(where(is.character), mdy)) %>% 
-  filter(Year > 2012) %>% 
-  mutate(
-    # add 1 day to PreFlowEnd so that the highlight for the flow action periods aligns correctly
-    PreFlowEnd = PreFlowEnd + days(1),
-    # Add a grouping variable for FlowActionType - managed vs. non-managed
-    FlowActionType = if_else(Year %in% c(2016, 2018, 2019), "managed", "unmanaged")
-  )
+  # add 1 day to PreFlowEnd so that the highlight for the flow action periods aligns correctly
+  mutate(PreFlowEnd = PreFlowEnd + days(1)) %>% 
+  # Add a grouping variable for FlowActionType - low vs. high
+  add_FlowActionType()
 
 # 4.2 Create Plot Functions -----------------------------------------------------
 
@@ -249,9 +258,16 @@ create_ts_plot_all <- function(df, df_fa, param) {
 
 # 4.3 Create and Export Plots ---------------------------------------------
 
-# Nest data frame with flow action periods by FlowActionType so data frame 
+# Nest data frame with flow action periods by FlowActionType and FlowActionType_s so data frames 
   # can be joined to WQ data for plotting
-df_fa_dates_f_nest <- df_fa_dates_f %>% nest(df_fa_dates = -FlowActionType)
+df_fa_dates_f_nest <- df_fa_dates_f %>% 
+  select(-FlowActionType_s) %>% 
+  nest(df_fa_dates = -FlowActionType)
+
+df_fa_dates_f_nest_s <- df_fa_dates_f %>% 
+  filter(Year > 2012) %>% 
+  select(-FlowActionType) %>% 
+  nest(df_fa_dates = -FlowActionType_s)
 
 # Create plots for common parameters (Chla, DO, pH, SpCnd, Turbidity, WaterTemp)
 df_rtm_ts_plt <- df_rtm_daily_avg %>% 
@@ -261,15 +277,15 @@ df_rtm_ts_plt <- df_rtm_daily_avg %>%
     !StationCode %in% c("RMB", "TOE", "LIBCUT", "SGG")
   ) %>% 
   mutate(StationCode = fct_drop(StationCode)) %>% 
+  select(-FlowActionType_s) %>% 
   arrange(Parameter, FlowActionType, Region) %>% 
   nest(df_data = -c(Parameter, FlowActionType, Region)) %>% 
   left_join(df_fa_dates_f_nest) %>% 
   # create a y_scale variable to specify free or fixed y-axis scale
   mutate(
     y_scale = case_when(
-      Parameter == "DO" & str_detect(Region, "^a") ~ "free",
-      Parameter == "DO" & str_detect(Region, "^b") ~ "fixed",
-      Parameter %in% c("pH", "WaterTemp") ~ "fixed",
+      Parameter %in% c("DO", "pH", "WaterTemp") & str_detect(Region, "^a") ~ "free",
+      Parameter %in% c("DO", "pH", "WaterTemp") & str_detect(Region, "^b") ~ "fixed",
       Parameter %in% c("Chla", "SpCnd", "Turbidity") ~ "free"
     )
   ) %>% 
@@ -286,31 +302,16 @@ df_rtm_ts_plt <- df_rtm_daily_avg %>%
 # Define file path to export plots to
 fp_abs_ts_plt <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/Report/Time-series")
 
-# Export plots for managed years
-df_rtm_ts_plt_managed <- df_rtm_ts_plt %>% filter(FlowActionType == "managed")
+# Export plots for high pulse- high mag, shorter duration
+df_rtm_ts_plt_high_mag_short_dur <- df_rtm_ts_plt %>% 
+  filter(FlowActionType == "high pulse- high mag, shorter duration")
 
 walk2(
-  df_rtm_ts_plt_managed$plt_comb,
-  df_rtm_ts_plt_managed$Parameter,
+  df_rtm_ts_plt_high_mag_short_dur$plt_comb,
+  df_rtm_ts_plt_high_mag_short_dur$Parameter,
   ~ggsave(
     plot = .x,
-    filename = paste0(fp_abs_ts_plt, "/", .y, "_ts_managed.jpg"),
-    width = 8.5, 
-    height = 9, 
-    units = "in", 
-    dpi = 300
-  )
-)
-
-# Export plots for non-managed years
-df_rtm_ts_plt_unmanaged <- df_rtm_ts_plt %>% filter(FlowActionType == "unmanaged")
-
-walk2(
-  df_rtm_ts_plt_unmanaged$plt_comb,
-  df_rtm_ts_plt_unmanaged$Parameter,
-  ~ggsave(
-    plot = .x,
-    filename = paste0(fp_abs_ts_plt, "/", .y, "_ts_non-managed.jpg"),
+    filename = paste0(fp_abs_ts_plt, "/", .y, "_ts_high_pulse_high_mag_short_dur.jpg"),
     width = 8.5, 
     height = 9.75, 
     units = "in", 
@@ -318,23 +319,71 @@ walk2(
   )
 )
 
-# Slightly expand the width of the plot for specific conductance in non-managed years since
-  # a small section of the legend was cut off
+# Export plots for high pulse- low mag, long duration
+df_rtm_ts_plt_low_mag_long_dur <- df_rtm_ts_plt %>% 
+  filter(FlowActionType == "high pulse- low mag, long duration")
+
+walk2(
+  df_rtm_ts_plt_low_mag_long_dur$plt_comb,
+  df_rtm_ts_plt_low_mag_long_dur$Parameter,
+  ~ggsave(
+    plot = .x,
+    filename = paste0(fp_abs_ts_plt, "/", .y, "_ts_high_pulse_low_mag_long_dur.jpg"),
+    width = 8.5, 
+    height = 7,
+    units = "in", 
+    dpi = 300
+  )
+)
+
+# Slightly expand the width of the plot for specific conductance in 
+  # high pulse- low mag, long duration years since a small section of the legend was cut off
 ggsave(
-  plot = df_rtm_ts_plt_unmanaged$plt_comb[[4]],
-  filename = file.path(fp_abs_ts_plt, "SpCnd_ts_non-managed.jpg"),
+  plot = df_rtm_ts_plt_low_mag_long_dur$plt_comb[[4]],
+  filename = file.path(fp_abs_ts_plt, "SpCnd_ts_high_pulse_low_mag_long_dur.jpg"),
   width = 8.6, 
-  height = 9.75, 
+  height = 7, 
+  units = "in", 
+  dpi = 300
+)
+
+# Export plots for low pulse
+df_rtm_ts_plt_low_pulse <- df_rtm_ts_plt %>% filter(FlowActionType == "low pulse")
+
+walk2(
+  df_rtm_ts_plt_low_pulse$plt_comb,
+  df_rtm_ts_plt_low_pulse$Parameter,
+  ~ggsave(
+    plot = .x,
+    filename = paste0(fp_abs_ts_plt, "/", .y, "_ts_low_pulse.jpg"),
+    width = 8.5, 
+    height = 9, 
+    units = "in", 
+    dpi = 300
+  )
+)
+
+# Slightly expand the width of the plot for specific conductance in 
+  # low pulse years since a small section of the legend was cut off
+ggsave(
+  plot = df_rtm_ts_plt_low_pulse$plt_comb[[4]],
+  filename = file.path(fp_abs_ts_plt, "SpCnd_ts_low_pulse.jpg"),
+  width = 8.6, 
+  height = 9, 
   units = "in", 
   dpi = 300
 )
 
 # Create plots for fDOM and Nitrate + Nitrite:
 df_rtm_ts_plt_nitr_fdom <- df_rtm_daily_avg %>% 
-  filter(Parameter %in% c("fDOM", "NitrateNitrite")) %>%
-  arrange(Parameter, FlowActionType) %>% 
-  nest(df_data = -c(Parameter, FlowActionType)) %>% 
-  left_join(df_fa_dates_f_nest) %>% 
+  filter(
+    Parameter %in% c("fDOM", "NitrateNitrite"),
+    Year > 2012
+  ) %>%
+  arrange(Parameter, FlowActionType_s) %>%
+  select(-FlowActionType) %>% 
+  nest(df_data = -c(Parameter, FlowActionType_s)) %>% 
+  left_join(df_fa_dates_f_nest_s) %>% 
   mutate(
     plt = pmap(
       list(df_data, df_fa_dates, Parameter),
@@ -347,11 +396,11 @@ pwalk(
   list(
     df_rtm_ts_plt_nitr_fdom$plt,
     df_rtm_ts_plt_nitr_fdom$Parameter,
-    df_rtm_ts_plt_nitr_fdom$FlowActionType
+    df_rtm_ts_plt_nitr_fdom$FlowActionType_s
   ),
   ~ggsave(
     plot = ..1,
-    filename = paste0(fp_abs_ts_plt, "/", ..2, "_", ..3, ".jpg"),
+    filename = paste0(fp_abs_ts_plt, "/", ..2, "_ts_", ..3, "_pulse.jpg"),
     width = 6.5, 
     height = 7, 
     units = "in", 
