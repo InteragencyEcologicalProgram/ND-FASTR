@@ -40,7 +40,7 @@ source("Water_Quality/Continuous_WQ/Plots_Multi_Station/rtm_multistation_ts_plot
 ```{r define file paths}
 # Define relative file path for file containing all QA'ed and cleaned continuous WQ data
 fp_rel_rtm_data <- 
-  "WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-02-19.csv"
+  "WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-04-20.csv"
 
 # Define relative file path for file containing dates of flow action periods
 fp_rel_fa_dates <- 

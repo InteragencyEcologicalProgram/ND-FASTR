@@ -26,6 +26,7 @@ This document provides the code and decisions made to clean and standardize all 
 library(tidyverse)
 library(readxl)
 library(lubridate)
+library(magrittr)
 ```
 
 ```{r load functions, message = FALSE}
@@ -63,40 +64,127 @@ Sys.setenv(TZ = "Etc/GMT+8")
 
 ## Import Data
 
+Most of the continuous water quality data collected by USGS was [downloaded from NWIS](https://github.com/InteragencyEcologicalProgram/ND-FASTR/blob/master/Water_Quality/Continuous_WQ/USGS_RTM_Data_Download.R). However, Jared Frantzich (DWR NCRO) shared some additional USGS data from the LIB, RYI, and SDI stations that was not publicly available. For this additional data, we are only interested in the flow data for SDI, but we are interested in all available parameters for LIB and RYI. We will import the publicly available and non-publicly available data separately.
+
 ```{r import raw usgs data}
 # Create a vector of all file paths for the raw USGS continuous data
-usgs_fp <- dir(fp_abs_wq_raw, pattern = "USGS", full.names = T)
+usgs_fp <- sort(dir(fp_abs_wq_raw, pattern = "USGS", full.names = T))
 
-# Remove the .xlsx file with SDI flow data since we will need to import that separately (all other files are .csv)
-usgs_fp_f <- str_subset(usgs_fp, "xlsx$", negate = TRUE)
+# Remove the three .xlsx files with non-publicly available USGS data from LIB, RYI, and SDI since we will import those separately
+usgs_fp_nwis <- str_subset(usgs_fp, "JF.xlsx$", negate = TRUE)
 
-# Create a tibble of all raw USGS continuous data file paths
-usgs_files <- tibble(
-  filepath = usgs_fp_f,
+# Create a tibble of all raw USGS continuous data file paths - downloaded from NWIS
+usgs_files_nwis <- tibble(
+  filepath = usgs_fp_nwis,
   n_params = c(18, 10, 4, 6, 12, 10, 11, 7, 10, 3)
 )
 
-# Import USGS data into a nested dataframe
-usgs_orig <- usgs_files %>% 
+# Import USGS data that was downloaded from NWIS into a nested dataframe
+usgs_nwis_orig <- usgs_files_nwis %>% 
   mutate(
     sta_code = str_sub(filepath, start = 140, end = -5),
     df = map2(filepath, n_params, .f = import_usgs_data)
   ) %>% 
   select(sta_code, df)
 
-# Import flow data for SDI
-sdi_flow_orig <- read_excel(file.path(fp_abs_wq_raw, "RTM_RAW_USGS_SDI Flow_2011-2018.xlsx"))
+# Import the three .xlsx files with non-publicly available USGS data from LIB, RYI, and SDI
+lib_xlsx_orig <- read_excel(
+  file.path(fp_abs_wq_raw, "RTM_RAW_USGS_LIB_2013_18_JF.xlsx"),
+  col_types = c(
+    "skip",
+    "date",
+    rep("skip", 9),
+    rep("numeric", 5),
+    "skip",
+    rep("numeric", 3),
+    "skip",
+    rep("numeric", 2),
+    "skip"
+  )
+)
+
+ryi_xlsx_orig <- read_excel(
+  file.path(fp_abs_wq_raw, "RTM_RAW_USGS_RYI_2016_JF.xlsx"),
+  col_types = c(
+    "skip",
+    "date",
+    rep("skip", 8),
+    rep("numeric", 5),
+    "skip",
+    rep("numeric", 3),
+    "skip",
+    rep("numeric", 2),
+    "skip"
+  )
+)
+
+sdi_xlsx_orig <- read_excel(
+  file.path(fp_abs_wq_raw, "RTM_RAW_USGS_SDI_2011-2018_JF.xlsx"),
+  col_types = c(
+    "skip",
+    "date",
+    rep("skip", 5),
+    rep("numeric", 2),
+    rep("skip", 11)
+  )
+)
 ```
 
 ## Clean Data
 
+### Prepare three xlsx files (LIB, RYI, and SDI)
+
+We need to prepare the three .xlsx files with non-publicly available USGS data from LIB, RYI, and SDI so that they can be combined with the remaining USGS data later in this data processing script.
+
+```{r prepare three xlsx files usgs}
+# Rename variables in the data frames for LIB and RYI
+usgs_xlsx_clean_v1 <- 
+  tibble(
+    sta_code = c("LIB", "RYI"),
+    df = list(lib_xlsx_orig, ryi_xlsx_orig)
+  ) %>% 
+  mutate(
+    df = map(
+      df, 
+      ~rename(
+        .x,
+        DateTime = Timestamp,
+        Flow = "Q (cfs)",
+        FlowTF = "Q Tidal Filt (cfs)",
+        WaterTemp = "Temp (deg C)",
+        SpCnd = "SPC (uS/cm)",
+        DO = "DO (mg/L)",
+        fDOM = "CDOM (QSE)",
+        Chla = "Chl-a (ug/L)",
+        Turbidity = "Turb (FNU)",
+        NitrateNitrite = "Nitrate (mg/L)"
+      )
+    )
+  )
+
+# Rename variables in the data frame for SDI
+sdi_xlsx_clean <- sdi_xlsx_orig %>% 
+  rename(
+    DateTime = Timestamp,
+    Flow = "Q (cfs)",
+    FlowTF = "Q Tidal Filt (cfs)"
+  )
+
+# Add SDI data frame to the nested data frame with LIB and RYI
+usgs_xlsx_clean_v1 %<>% 
+  add_row(
+    sta_code = "SDI",
+    df = list(sdi_xlsx_clean)
+  )
+```
+
 ### Parse date-time variables
 
-The date-time variables of the USGS water quality data need to be converted from character to datetime objects. The date-time variable of the SDI flow data already is a datetime object upon import of the data. All datetimes need to be forced as PST.
+The date-time variables of the USGS water quality data downloaded from NWIS need to be converted from character to datetime objects. The date-time variables in the three .xlsx files with non-publicly available USGS data are already datetime objects upon import of the data. All datetimes need to be forced as PST.
 
 ```{r clean date time var usgs}
-# Parse DateTime variables of the USGS water quality data as datetime objects
-usgs_dt_clean <- usgs_orig %>% 
+# Parse DateTime variables of the USGS water quality data as datetime objects - downloaded from NWIS
+usgs_nwis_clean_v1 <- usgs_nwis_orig %>% 
   mutate(
     df = map(
       df, 
@@ -105,36 +193,29 @@ usgs_dt_clean <- usgs_orig %>%
     )
   )
 
-# Prepare flow data for SDI to add to other USGS data
-sdi_flow_clean <- sdi_flow_orig %>% 
-  select(
-    DateTime = Timestamp,
-    Flow = "Q (cfs)",
-    FlowTF = "Q Tidal Filt (cfs)"
-  ) %>%
-  # Define timezone of DateTime as PST
-  mutate(DateTime = force_tz(DateTime, tzone = "Etc/GMT+8"))
+# Define timezone of DateTime as PST for the three .xlsx files with non-publicly available USGS data
+usgs_xlsx_clean_v2 <- usgs_xlsx_clean_v1 %>% 
+  mutate(df = map(df, ~mutate(.x, DateTime = force_tz(DateTime, tzone = "Etc/GMT+8"))))
 ```
 
 ### Remove rows with all missing values
 
-Before we proceed with the rest of the data cleaning, we need to remove all rows where all of the data values are missing.
+Before we proceed with the rest of the data cleaning, we need to remove the rows where all of the data values are missing.
 
 ```{r remove missing data usgs, message = FALSE}
-usgs_clean_v1 <- usgs_dt_clean %>% 
-  mutate(
-    df = map(df, ~filter(.x, !if_all(where(is.numeric), is.na)))
-  )
+usgs_nwis_clean_v2 <- usgs_nwis_clean_v1 %>% 
+  mutate(df = map(df, ~filter(.x, !if_all(where(is.numeric), is.na))))
 
-sdi_flow_clean_v1 <- sdi_flow_clean %>% filter(!if_all(where(is.numeric), is.na))
+usgs_xlsx_clean_v3 <- usgs_xlsx_clean_v2 %>% 
+  mutate(df = map(df, ~filter(.x, !if_all(where(is.numeric), is.na))))
 ```
 
 ### Remove overlapping or duplicated data
 
-Some continuous USGS stations had more than one project collecting data at the same location and time. Because of this, we need to look for any overlapping or duplicated data and clean it.
+Some continuous USGS stations had more than one project collecting data at the same location and time. Because of this, we need to look for any overlapping or duplicated data and clean it. This only applies to the data downloaded from NWIS.
 
 ```{r look for overlapping data usgs}
-usgs_qc_check <- usgs_clean_v1 %>% 
+usgs_nwis_qc_check <- usgs_nwis_clean_v2 %>% 
   mutate(
     df_count = map(
       df, 
@@ -151,7 +232,7 @@ usgs_qc_check <- usgs_clean_v1 %>%
     )
   )
 
-usgs_qc_check
+usgs_nwis_qc_check
 ```
 
 The LIB, RYI_1, and SDI stations have more than one value for a timestamp for portions of their periods of record. These three stations need to be investigated further.
@@ -160,17 +241,17 @@ We'll look at LIB first:
 
 ```{r investigate overlapping data lib}
 # Find parameters with overlapping data
-unique(usgs_qc_check$df_count[[1]]$parameter)
+unique(usgs_nwis_qc_check$df_count[[1]]$parameter)
 
 # Summarize time period with overlapping data
-summary(usgs_qc_check$df_count[[1]])
+summary(usgs_nwis_qc_check$df_count[[1]])
 ```
 
-There are multiple parameters (DO, fDOM, pH, SpCnd, Turbidity, WaterTemp, and Chla) that have overlapping data in duplicate at LIB from 9/27/2018 to 10/10/2018. After looking at LIB (`r unique(usgs_qc_check$df[[1]]$site_no)`) on the [USGS NWIS website](https://waterdata.usgs.gov/nwis/uv?site_no=11455315), the cause of the overlapping data is from a short-term Chlorophyll inter-calibration project. We will remove the data collected for this short-term project to avoid overlapping data in the dataset.
+There are multiple parameters (DO, fDOM, pH, SpCnd, Turbidity, WaterTemp, and Chla) that have overlapping data in duplicate at LIB from 9/27/2018 to 10/10/2018. After looking at LIB (`r unique(usgs_nwis_qc_check$df[[1]]$site_no)`) on the [USGS NWIS website](https://waterdata.usgs.gov/nwis/uv?site_no=11455315), the cause of the overlapping data is from a short-term Chlorophyll inter-calibration project. We will remove the data collected for this short-term project to avoid overlapping data in the dataset.
 
 ```{r clean lib data}
 # LIB - remove data from the Chlorophyll inter-calibration project
-lib <- usgs_clean_v1 %>% 
+lib <- usgs_nwis_clean_v2 %>% 
   filter(sta_code == "LIB") %>% 
   pull(df) %>% 
   chuck(1)
@@ -182,17 +263,17 @@ Next, we'll look at RYI_1:
 
 ```{r investigate overlapping data ryi_1}
 # Find parameters with overlapping data
-unique(usgs_qc_check$df_count[[5]]$parameter)
+unique(usgs_nwis_qc_check$df_count[[5]]$parameter)
 
 # Summarize time period with overlapping data
-summary(usgs_qc_check$df_count[[5]])
+summary(usgs_nwis_qc_check$df_count[[5]])
 ```
 
-Turbidity has overlapping data in duplicate at RYI_1 from 2/1/2013 to 7/9/2013. After looking at RYI_1 (`r unique(usgs_qc_check$df[[5]]$site_no)`) on the [USGS NWIS website](https://waterdata.usgs.gov/nwis/uv?site_no=11455350), the cause of the overlapping data is from two projects (MEDIAN TS087 YSI model 6136 and BGC Project) collecting Turbidity data during this time period. We will only keep the data collected for the BGC Project during this time period to avoid overlapping data in the dataset.
+Turbidity has overlapping data in duplicate at RYI_1 from 2/1/2013 to 7/9/2013. After looking at RYI_1 (`r unique(usgs_nwis_qc_check$df[[5]]$site_no)`) on the [USGS NWIS website](https://waterdata.usgs.gov/nwis/uv?site_no=11455350), the cause of the overlapping data is from two projects (MEDIAN TS087 YSI model 6136 and BGC Project) collecting Turbidity data during this time period. We will only keep the data collected for the BGC Project during this time period to avoid overlapping data in the dataset.
 
 ```{r clean ryi_1 data, message = FALSE}
 # RYI_1 - remove data from the MEDIAN TS087 YSI model 6136 project after 2/1/2013 12:30 PST
-ryi1 <- usgs_clean_v1 %>% 
+ryi1 <- usgs_nwis_clean_v2 %>% 
     filter(sta_code == "RYI_1") %>% 
     pull(df) %>% 
     chuck(1)
@@ -213,17 +294,17 @@ Last, we'll look at SDI:
 
 ```{r investigate overlapping data sdi}
 # Find parameters with overlapping data
-unique(usgs_qc_check$df_count[[7]]$parameter)
+unique(usgs_nwis_qc_check$df_count[[7]]$parameter)
 
 # Summarize time period with overlapping data
-summary(usgs_qc_check$df_count[[7]])
+summary(usgs_nwis_qc_check$df_count[[7]])
 ```
 
-There are two parameters (SpCnd and WaterTemp) that have overlapping data in duplicate at SDI from 1/25/2013 to 10/3/2013. After looking at SDI (`r unique(usgs_qc_check$df[[7]]$site_no)`) on the [USGS NWIS website](https://waterdata.usgs.gov/nwis/uv?site_no=11455478), the cause of the overlapping data is from two projects (Hydro Exo and BGC Project) collecting SpCnd and WaterTemp data during this time period. We will only keep the data collected for the BGC Project during this time period to avoid overlapping data in the dataset.
+There are two parameters (SpCnd and WaterTemp) that have overlapping data in duplicate at SDI from 1/25/2013 to 10/3/2013. After looking at SDI (`r unique(usgs_nwis_qc_check$df[[7]]$site_no)`) on the [USGS NWIS website](https://waterdata.usgs.gov/nwis/uv?site_no=11455478), the cause of the overlapping data is from two projects (Hydro Exo and BGC Project) collecting SpCnd and WaterTemp data during this time period. We will only keep the data collected for the BGC Project during this time period to avoid overlapping data in the dataset.
 
 ```{r clean sdi data, message = FALSE}
 # SDI - remove data from the Hydro Exo project after 1/24/2013
-sdi <- usgs_clean_v1 %>% 
+sdi <- usgs_nwis_clean_v2 %>% 
     filter(sta_code == "SDI") %>% 
     pull(df) %>% 
     chuck(1)
@@ -248,7 +329,7 @@ lib_ryi1_sdi_clean <- tibble(
   df = list(lib_clean, ryi1_clean, sdi_clean)
 )
 
-usgs_clean_v2 <- usgs_clean_v1 %>% 
+usgs_nwis_clean_v3 <- usgs_nwis_clean_v2 %>% 
   filter(!sta_code %in% c("LIB", "RYI_1", "SDI")) %>% 
   bind_rows(lib_ryi1_sdi_clean)
 ```
@@ -256,7 +337,7 @@ usgs_clean_v2 <- usgs_clean_v1 %>%
 Check to see if the overlapping data was removed properly.
 
 ```{r check if removed overlapping data}
-usgs_qc_check <- usgs_clean_v2 %>% 
+usgs_nwis_qc_check <- usgs_nwis_clean_v3 %>% 
   mutate(
     df_count = map(
       df, 
@@ -273,18 +354,19 @@ usgs_qc_check <- usgs_clean_v2 %>%
     )
   )
 
-usgs_qc_check
+usgs_nwis_qc_check
 ```
 
 It looks like all of the overlapping data was removed.
 
 ### Clean duplicated timestamps
 
-First, we need to check if the timestamps of all datetimes of the USGS water quality data and SDI flow data are collected on a 15-minute interval (00:00, 15:00, 30:00, and 45:00 for each hour).
+First, we need to check if the timestamps of all datetimes of the USGS water quality data are collected on a 15-minute interval (00:00, 15:00, 30:00, and 45:00 for each hour).
 
 ```{r look for unrounded timestamps usgs}
+# 1) Data downloaded from NWIS:
 # Create lists of unique values for minutes and seconds for each USGS water quality station
-usgs_qc_check <- usgs_clean_v2 %>% 
+usgs_nwis_qc_check <- usgs_nwis_clean_v3 %>% 
   mutate(
     df = map(
       df, 
@@ -298,33 +380,42 @@ usgs_qc_check <- usgs_clean_v2 %>%
     s_summ = map(df, ~unique(.x$s))
   )
 
-# WQ stations - Unique values for minutes:
-usgs_qc_check$m_summ
+# NWIS data - Unique values for minutes:
+usgs_nwis_qc_check$m_summ
 
-# WQ stations - Unique values for seconds:
-usgs_qc_check$s_summ
+# NWIS data - Unique values for seconds:
+usgs_nwis_qc_check$s_summ
 
-# Look at unique values for minutes and seconds for the SDI flow data
-sdi_flow_qc_check <- sdi_flow_clean_v1 %>%
+# 2) Three .xlsx files with non-publicly available USGS data:
+# Create lists of unique values for minutes and seconds for each USGS water quality station
+usgs_xlsx_qc_check <- usgs_xlsx_clean_v3 %>% 
   mutate(
-    m = minute(DateTime),
-    s = second(DateTime)
+    df = map(
+      df, 
+      ~mutate(
+        .x, 
+        m = minute(DateTime),
+        s = second(DateTime)
+      )
+    ),
+    m_summ = map(df, ~unique(.x$m)),
+    s_summ = map(df, ~unique(.x$s))
   )
 
-# SDI flow - Unique values for minutes:
-unique(sdi_flow_qc_check$m)
+# non-publicly available data - Unique values for minutes:
+usgs_xlsx_qc_check$m_summ
 
-# SDI flow - Unique values for seconds:
-unique(sdi_flow_qc_check$s)
+# non-publicly available data - Unique values for seconds:
+usgs_xlsx_qc_check$s_summ
 ```
 
-Some of the USGS water quality stations had timestamps with minutes that were not collected on a 15-minute interval (0, 15, 30, 45). All of the timestamps of the SDI flow data were collected at 15-minute intervals. 
+Some of the data downloaded from NWIS had timestamps with minutes that were not collected on a 15-minute interval (0, 15, 30, 45). All of the timestamps of the three .xlsx files with non-publicly available USGS data were collected at 15-minute intervals. 
 
 Since not all timestamps were collected on a 15-minute interval, we need to round them to the nearest 15-minute interval and then look for any duplicated timestamps.
 
 ```{r look for dup timestamps after rounding usgs, message = FALSE}
-# USGS water quality stations
-usgs_qc_check <- usgs_clean_v2 %>% 
+# 1) Data downloaded from NWIS:
+usgs_nwis_qc_check <- usgs_nwis_clean_v3 %>% 
   mutate(
     df_dt_round = map(
       df, 
@@ -338,23 +429,28 @@ usgs_qc_check <- usgs_clean_v2 %>%
     df_dup_join = map2(df_dup, df_dt_round, left_join)
   )
 
-# WQ stations - Look for duplicated timestamps
-usgs_qc_check
+# NWIS data - Look for duplicated timestamps
+usgs_nwis_qc_check
 
-# SDI flow data
-sdi_flow_qc_check <- sdi_flow_clean_v1 %>% 
-  count(DateTime) %>% 
-  filter(n > 1)
+# 2) Three .xlsx files with non-publicly available USGS data:
+usgs_xlsx_qc_check <- usgs_xlsx_clean_v3 %>% 
+  mutate(
+    df_dup = map(
+      df,
+      ~count(.x, DateTime) %>% 
+        filter(n > 1)
+    )
+  )
 
-# SDI flow - Look for duplicated timestamps
-sdi_flow_qc_check
+# non-publicly available data - Look for duplicated timestamps
+usgs_xlsx_qc_check
 ```
 
-The RVB, LIB, RYI_1, and SDI water quality stations have a few duplicated timestamps after rounding them to the nearest 15-minute interval. This needs to be investigated further. All other stations were okay. We'll look at RVB first:
+The data downloaded from NWIS for the RVB, LIB, RYI_1, and SDI stations have a few duplicated timestamps after rounding them to the nearest 15-minute interval. This needs to be investigated further. All other data was okay. We'll look at RVB first:
 
 ```{r investigate dup timestamp data rvb}
 # RVB
-usgs_qc_check$df_dup_join[[3]]
+usgs_nwis_qc_check$df_dup_join[[3]]
 ```
 
 RVB has a Turbidity value that was collected on 2016-12-26 08:16:00. All other parameters were collected on 2016-12-26 08:15:00. This will be fixed after the timestamps are rounded, the parameter names are standardized, and the NA values are removed.
@@ -363,20 +459,20 @@ Next we'll look at LIB:
 
 ```{r investigate dup timestamp data lib}
 # LIB
-usgs_qc_check$df_dup_join[[8]]
+usgs_nwis_qc_check$df_dup_join[[8]]
 ```
 
 LIB has 100 extra Chla values collected on the 1, 16, 31, and 46 minute intervals between 2018-08-28 and 2018-10-01. We will remove all of these extra Chla values except for 18 of them which had measurements collected one minute prior with missing values.
 
 ```{r clean lib data 2}
 # LIB - remove extra Chlorophyll values collected on the 1, 16, 31, and 46 minute intervals
-lib <- usgs_clean_v2 %>% 
+lib <- usgs_nwis_clean_v3 %>% 
   filter(sta_code == "LIB") %>% 
   pull(df) %>% 
   chuck(1)
 
 # Create a vector of timestamps collected on the 1, 16, 31, and 46 minute intervals to keep 
-lib_ts_keep <- usgs_qc_check %>% 
+lib_ts_keep <- usgs_nwis_qc_check %>% 
   filter(sta_code == "LIB") %>% 
   pull(df_dup_join) %>% 
   chuck(1) %>%
@@ -394,20 +490,20 @@ Now we'll look at RYI_1:
 
 ```{r investigate dup timestamp data ryi_1}
 # RYI_1
-usgs_qc_check$df_dup_join[[9]]
+usgs_nwis_qc_check$df_dup_join[[9]]
 ```
 
 Similar to LIB, RYI_1 has 141 extra Chla values collected on the 1 and 31 minute intervals between 2018-02-19 and 2018-03-03. We will remove all of these extra Chla values except for 5 of them which had measurements collected one minute prior with missing values.
 
 ```{r clean ryi_1 data 2}
 # RYI_1 - remove extra Chlorophyll values collected on the 1 and 31 minute intervals
-ryi1 <- usgs_clean_v2 %>% 
+ryi1 <- usgs_nwis_clean_v3 %>% 
   filter(sta_code == "RYI_1") %>% 
   pull(df) %>% 
   chuck(1)
 
 # Create a vector of timestamps collected on the 1 and 31 minute intervals to keep 
-ryi1_ts_keep <- usgs_qc_check %>% 
+ryi1_ts_keep <- usgs_nwis_qc_check %>% 
   filter(sta_code == "RYI_1") %>% 
   pull(df_dup_join) %>% 
   chuck(1) %>% 
@@ -425,14 +521,14 @@ Last, we'll look at SDI:
 
 ```{r investigate dup timestamp data sdi}
 # SDI
-usgs_qc_check$df_dup_join[[10]]
+usgs_nwis_qc_check$df_dup_join[[10]]
 ```
 
 SDI has a timestamp collected on 2013-04-24 00:46:00 with all NA values. For the remaining 50 duplicated timestamps, SDI has 25 extra Chla values collected on the 1, 16, 31, and 46 minute intervals between 2018-06-01 and 2018-06-08. We will remove all of the data with timestamps collected on the 1, 16, 31, and 46 minute intervals.
 
 ```{r clean sdi data 2}
 # SDI - remove all values collected on the 1, 16, 31, and 46 minute intervals
-sdi <- usgs_clean_v2 %>% 
+sdi <- usgs_nwis_clean_v3 %>% 
   filter(sta_code == "SDI") %>% 
   pull(df) %>% 
   chuck(1)
@@ -452,17 +548,17 @@ lib_ryi1_sdi_clean <- tibble(
   df = list(lib_clean, ryi1_clean, sdi_clean)
 )
 
-usgs_clean_v3 <- usgs_clean_v2 %>% 
+usgs_nwis_clean_v4 <- usgs_nwis_clean_v3 %>% 
   filter(!sta_code %in% c("LIB", "RYI_1", "SDI")) %>% 
   bind_rows(lib_ryi1_sdi_clean)
 ```
 
 ### Round timestamps
 
-Now we can round the timestamps of the USGS water quality data to their nearest 15-minute intervals. The SDI flow data already has rounded timestamps.
+Now we can round the timestamps of the USGS water quality data downloaded from NWIS to their nearest 15-minute intervals. The three .xlsx files with non-publicly available USGS data already have rounded timestamps.
 
 ```{r round timestamps usgs}
-usgs_clean_v4 <- usgs_clean_v3 %>% 
+usgs_nwis_clean_v5 <- usgs_nwis_clean_v4 %>% 
   mutate(
     df_dt_round = map(
       df, 
@@ -474,10 +570,10 @@ usgs_clean_v4 <- usgs_clean_v3 %>%
 
 ### Standardize parameter names
 
-Next, we need to standardize the parameter names of the USGS water quality data. The SDI flow data already has standardized parameter names.
+Next, we need to standardize the parameter names of the USGS water quality data. The three .xlsx files with non-publicly available USGS data already have standardized parameter names.
 
 ```{r std parameter names usgs, message = FALSE}
-usgs_clean_v5 <- usgs_clean_v4 %>% 
+usgs_nwis_clean_v6 <- usgs_nwis_clean_v5 %>% 
   mutate(
     # Standardize parameter names for data values
     df_dv = map(
@@ -511,6 +607,160 @@ usgs_clean_v5 <- usgs_clean_v4 %>%
   select(sta_code, df = df_join)
 ```
 
+### Combine NWIS and xlsx data
+
+Now, we need to combine the data downloaded from NWIS and the non-publicly available USGS data for LIB and RYI_1. We will wait to add the flow data from SDI to the water quality data until later in this script.
+
+#### LIB
+
+We will keep all data that was downloaded from NWIS and add the following data from the .xlsx data set:
+
+* Chla: start of data set (7/16/2013) to 10/17/2014 9:15, 9/3/2015 8:15 to 2/4/2018 23:45
+* DO: 1/1/2016 00:00 to 2/4/2018 23:45
+* fDOM: start of data set (7/16/2013) to 2/3/2018 23:45
+* Flow: none of it
+* FlowTF: start of data set (10/1/2014) to 2/2/2015 10:00
+* NitrateNitrite: start of data set (7/16/2013) to 2/4/2018 23:45
+* pH: 10/1/2016 00:00 to 2/3/2018 23:45
+* SpCnd: 10/1/2016 00:00 to 2/3/2018 23:45
+* Turbidity: none of it
+* WaterTemp: 8/4/2015 00:00 to 12/31/2015 23:45, 10/1/2016 00:00 to 9/12/2017 9:00
+
+```{r combine nwis and xlsx lib, message = FALSE}
+# Prepare .xlsx data set to be added to the NWIS data set
+lib_xlsx_filt <- usgs_xlsx_clean_v3 %>%
+  # Pull out non-publicly available data for LIB and pivot to long format for easier filtering and combining
+  filter(sta_code == "LIB") %>%
+  pull(df) %>%
+  chuck(1) %>%
+  pivot_longer(
+    cols = where(is.numeric),
+    names_to = "Parameter",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  filter(
+    # Remove Flow and Turbidity data
+    !Parameter %in% c("Flow", "Turbidity"),
+    # Remove the ends of the Chla, DO, and NitrateNitrite data
+    !(Parameter %in% c("Chla", "DO", "NitrateNitrite") & DateTime > "2018-02-04 23:45:00"),
+    # Remove the ends of the fDOM, pH, and SpCnd data
+    !(Parameter %in% c("fDOM", "pH", "SpCnd") & DateTime > "2018-02-03 23:45:00"),
+    # Finish filtering Chla data
+    !(Parameter == "Chla" & (DateTime > "2014-10-17 09:15:00" & DateTime < "2015-09-03 08:15:00")),
+    # Finish filtering DO data
+    !(Parameter == "DO" & DateTime < "2016-01-01 00:00:00"),
+    # Filter FlowTF data
+    !(Parameter == "FlowTF" & DateTime > "2015-02-02 10:00:00"),
+    # Finish filtering pH and SpCnd data
+    !(Parameter %in% c("pH", "SpCnd") & DateTime < "2016-10-01 00:00:00"),
+    # Filter WaterTemp data
+    !(Parameter == "WaterTemp" & DateTime < "2015-08-04 00:00:00"),
+    !(Parameter == "WaterTemp" & 
+        (DateTime > "2015-12-31 23:45:00" & DateTime < "2016-10-01 00:00:00")),
+    !(Parameter == "WaterTemp" & DateTime > "2017-09-12 09:00:00")
+  )
+
+# Pull out data downloaded from NWIS for LIB
+lib_nwis <- usgs_nwis_clean_v6 %>% 
+  filter(sta_code == "LIB") %>%
+  pull(df) %>%
+  chuck(1)
+
+# Add non-publicly available data to NWIS data
+lib_nwis_xlsx_dv <- lib_nwis %>% 
+  # Pivot data values for the NWIS LIB data to long format
+  select(-c(site_no, ends_with("_Qual"))) %>% 
+  pivot_longer(
+    cols = where(is.numeric),
+    names_to = "Parameter",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>% 
+  bind_rows(lib_xlsx_filt) %>% 
+  # Pivot data back to wide format
+  pivot_wider(names_from = Parameter, values_from = Value)
+
+# Join NWIS quality codes back to data values
+lib_nwis_qc <- lib_nwis %>% select(DateTime, ends_with("_Qual"))
+
+lib_f <- 
+  left_join(lib_nwis_xlsx_dv, lib_nwis_qc) %>% 
+  mutate(site_no = "11455315", .before = DateTime)
+```
+
+#### RYI_1
+
+We will keep all data that was downloaded from NWIS and add the following data from the .xlsx data set:
+
+* Chla: all data in data set (2015 and 2016)
+* DO: all data in data set (2015 and 2016)
+* fDOM: all data in data set (2015 and 2016)
+* Flow: none of it
+* FlowTF: none of it
+* NitrateNitrite: none of it
+* pH: all data in data set (2015 and 2016)
+* SpCnd: all data in data set (2015 and 2016)
+* Turbidity: all data in data set (2015 and 2016)
+* WaterTemp: all data in data set (2015 and 2016)
+
+```{r combine nwis and xlsx ryi_1, message = FALSE}
+# Prepare .xlsx data set to be added to the NWIS data set
+ryi1_xlsx_filt <- usgs_xlsx_clean_v3 %>%
+  # Pull out non-publicly available data for RYI_1 and pivot to long format for easier filtering and combining
+  filter(sta_code == "RYI") %>%
+  pull(df) %>%
+  chuck(1) %>%
+  pivot_longer(
+    cols = where(is.numeric),
+    names_to = "Parameter",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  # Remove Flow, FlowTF, and NitrateNitrite data
+  filter(!Parameter %in% c("Flow", "FlowTF", "NitrateNitrite"))
+
+# Pull out data downloaded from NWIS for RYI_1
+ryi1_nwis <- usgs_nwis_clean_v6 %>% 
+  filter(sta_code == "RYI_1") %>%
+  pull(df) %>%
+  chuck(1)
+
+# Add non-publicly available data to NWIS data
+ryi1_nwis_xlsx_dv <- ryi1_nwis %>% 
+  # Pivot data values for the NWIS RYI_1 data to long format
+  select(-c(site_no, ends_with("_Qual"))) %>% 
+  pivot_longer(
+    cols = where(is.numeric),
+    names_to = "Parameter",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>% 
+  bind_rows(ryi1_xlsx_filt) %>%
+  # Pivot data back to wide format
+  pivot_wider(names_from = Parameter, values_from = Value)
+
+# Join NWIS quality codes back to data values; add back site_no to be used later in the script
+ryi1_nwis_qc <- ryi1_nwis %>% select(DateTime, ends_with("_Qual"))
+
+ryi1_f <- 
+  left_join(ryi1_nwis_xlsx_dv, ryi1_nwis_qc) %>% 
+  mutate(site_no = "11455350", .before = DateTime)
+```
+
+Add back the combined data for LIB and RYI_1 to the main dataframe for further processing.
+
+```{r add combined lib and ryi data}
+lib_ryi1_comb <- tibble(
+  sta_code = c("LIB", "RYI_1"),
+  df = list(lib_f, ryi1_f)
+)
+
+usgs_clean_v1 <- usgs_nwis_clean_v6 %>% 
+  filter(!sta_code %in% c("LIB", "RYI_1")) %>% 
+  bind_rows(lib_ryi1_comb)
+```
+
 ### Combine RYI and TOE data
 
 #### RYI
@@ -519,7 +769,7 @@ The two RYI stations (RYI_1: [11455350](https://waterdata.usgs.gov/nwis/uv?site_
 
 ```{r plot ryi stations, warning = FALSE, fig.height = 9, fig.width = 9}
 # Combine data for RYI_1 and RYI_2
-ryi_c <- usgs_clean_v5 %>% 
+ryi_c <- usgs_clean_v1 %>% 
   filter(str_detect(sta_code, "^RYI")) %>% 
   select(df) %>% 
   unnest(df)
@@ -619,7 +869,7 @@ The two TOE stations (TOE_1: [11455140](https://waterdata.usgs.gov/nwis/uv?site_
 
 ```{r plot flow at toe stations, warning = FALSE}
 # Combine data for TOE_1 and TOE_2
-toe_c <- usgs_clean_v5 %>% 
+toe_c <- usgs_clean_v1 %>% 
   filter(str_detect(sta_code, "^TOE")) %>% 
   select(df) %>% 
   unnest(df)
@@ -690,7 +940,7 @@ ryi_toe_c <- tibble(
   df = list(ryi_c_f, toe_c_f)
 )
 
-usgs_clean_v6 <- usgs_clean_v5 %>% 
+usgs_clean_v2 <- usgs_clean_v1 %>% 
   filter(!str_detect(sta_code, "^RYI|^TOE")) %>% 
   # remove site_no variable from all other stations
   mutate(df = map(df, ~select(.x, -site_no))) %>% 
@@ -698,21 +948,26 @@ usgs_clean_v6 <- usgs_clean_v5 %>%
 ```
 
 ### Add SDI flow data
-
-We have flow data for SDI that was provided separately and isn't available for download on the USGS NWIS website. We'll add the flow data to the water quality data for SDI.
+Now, we will add the flow data from SDI that was provided by Jared Frantzich to the water quality data.
 
 ```{r add sdi flow data, message = FALSE}
 # Pull out WQ data for SDI
-sdi_wq <- usgs_clean_v6 %>% 
+sdi_wq <- usgs_clean_v2 %>% 
   filter(sta_code == "SDI") %>% 
   pull(df) %>% 
   chuck(1)
 
-# Join flow data to the WQ data, DateTime variable for the flow data doesn't need to be rounded to the nearest 15-minute interval since it already is
-sdi_wq_flow_c <- full_join(sdi_wq, sdi_flow_clean_v1)
+# Pull out flow data for SDI
+sdi_flow <- usgs_xlsx_clean_v3 %>% 
+  filter(sta_code == "SDI") %>% 
+  pull(df) %>% 
+  chuck(1)
+
+# Join flow data to the WQ data
+sdi_wq_flow_c <- full_join(sdi_wq, sdi_flow)
 
 # Add back the SDI WQ and flow data to the main dataframe
-usgs_clean_v7 <- usgs_clean_v6 %>% 
+usgs_clean_v3 <- usgs_clean_v2 %>% 
   filter(sta_code != "SDI") %>% 
   add_row(sta_code = "SDI", df = list(sdi_wq_flow_c))
 ```
@@ -722,7 +977,7 @@ usgs_clean_v7 <- usgs_clean_v6 %>%
 Now, we can finish cleaning the continuous USGS data by adding a standardized StationName variable and reordering each dataframe to a consistent pattern.
 
 ```{r finish cleaning usgs data}
-usgs_clean_f <- usgs_clean_v7 %>% 
+usgs_clean_f <- usgs_clean_v3 %>% 
   mutate(
     # Add NDFA standardized station names to each dataframe
     df_names = map2(df, sta_code, ~mutate(.x, StationCode = .y)),
