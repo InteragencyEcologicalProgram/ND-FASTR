@@ -4,6 +4,7 @@
 ```
 
 ```{r functions}
+# import function
 ndfa_action_periods2 <- function(df, na_action_remove = TRUE, keep_action_dates = FALSE) {
   # Make sure Date variable exists in df
   assert_that(
@@ -73,7 +74,7 @@ source('global_ndfa_funcs.R')
 source('Water_Quality/global_wq_funcs.R')
 
 # import data
-fp_wq <- ndfa_abs_sp_path('/WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-02-19.csv')
+fp_wq <- ndfa_abs_sp_path('/WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-04-20.csv')
 fp_region <- ndfa_abs_sp_path('/WQ_Subteam/Processed_Data/Continuous/NDFA_Cont_WQ_Stations.csv')
 
 df_wq <- import_rtm_data(fp_wq, num_params = 10)
@@ -94,7 +95,7 @@ df_wq <- merge(df_wq, df_region, by = c('StationCode'))
 
 
 #remove sites we aren't including (not available for all years), create a column for year
-remove <- c('SRH', 'SHR', 'SRV', 'WWT', 'DWT', 'SDI')
+remove <- c('SRH', 'SHR', 'SRV', 'WWT', 'DWT', 'SDI', 'SGG') #TOE, LIBCUT
 df_wq <- filter(df_wq, !StationCode %in% remove)
 
 # pivot longer
@@ -109,27 +110,12 @@ df_wq <- df_wq %>%
 df_wq$Year <- as.character(df_wq$Year)
 df_wq <- df_wq %>% filter(!Year %in% c('2011','2012'))
 
-# add month col, double it up
-df_wq$Month <- format(df_wq$Date, '%b')
+# add month col
+df_wq$Month <- format(df_wq$Date, '%m')
 
-# set/rm Sac River varis
-# df_wq[df_wq$StationCode %in% c('SHR','SRV','SRH'),]$FlowActionPeriod <- 'None'
-
-# df_wq <- df_wq %>%
-#   mutate(
-#     Month = case_when(
-#       Month == 'Jan' | Month == 'Feb' ~ 'Jan_Feb',
-#       Month == 'Mar' | Month == 'Apr' ~ 'Mar_Apr',
-#       Month == 'May' | Month == 'Jun' ~ 'May_Jun',
-#       Month == 'Jul' | Month == 'Aug' ~ 'Jul_Aug',
-#       Month == 'Sep' | Month == 'Oct' ~ 'Sep_Oct',
-#       Month == 'Nov' | Month == 'Dec' ~ 'Nov_Dec'
-#     )
-#   )
-
-# average over week
+# average over day
 df_wq_day <- df_wq %>%
-  group_by(StationCode, BroadRegion, FlowActionPeriod, Year, Month, Analyte, Week = week(Date), WeekYear = paste(Week, Year)) %>% # Date
+  group_by(StationCode, BroadRegion, FlowActionPeriod, Year, Month, Analyte, Day = day(Date), DayMonYear = paste(Day, Month, Year)) %>% # Date
   summarize(Result = mean(Result, na.rm = TRUE))
 
 df_wq_day$Month <- as.character(df_wq_day$Month)
@@ -138,16 +124,16 @@ df_wq_day$Month <- as.character(df_wq_day$Month)
 df_wq_day$Result <- log(df_wq_day$Result)
 
 # create lags
-df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'WeekYear', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag1', slideBy = -1)
-df_wq_day <- slide(df_wq_day, 'lag1', TimeVar = 'WeekYear', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag2', slideBy = -1)
-df_wq_day <- slide(df_wq_day, 'lag2', TimeVar = 'WeekYear', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag3', slideBy = -1)
+df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'DayMonYear', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag1', slideBy = -1)
+df_wq_day <- slide(df_wq_day, 'lag1', TimeVar = 'DayMonYear', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag2', slideBy = -1)
+df_wq_day <- slide(df_wq_day, 'lag2', TimeVar = 'DayMonYear', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag3', slideBy = -1)
 
 # remove excess dfs
 rm(df_region, df_wq)
 ```
 
 ```{r all analytes}
-analytes <- unique(df_wq_day$Analyte)
+analytes <- 'Chla' # unique(df_wq_day$Analyte)
 analytes <- subset(analytes, !(analytes %in% c('Flow', 'FlowTF', 'fDOM')))
 all_reg <- list()
 all_aov <- list()
@@ -158,11 +144,23 @@ for (i in seq(analytes)){
   
   # pacf(df_temp$Result, na.action = na.pass)
 
-  lmer_fit <- lmer(Result ~ Month + Year + FlowActionPeriod + BroadRegion + (1|StationCode), data = df_temp)
+  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode), data = df_temp)
+  
+  # create and save pacf plots
+  png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/00_t_',analytes[i],'_rand3.png')))
+  acf(residuals(lmer_fit), na.action = na.pass, main = paste0(analytes[i],' - rand3'))
+  dev.off()
+  
+  print('here1')
 
   aov_lmer <- Anova(lmer_fit, type = 'II', test.statistic = 'F')
+  print('here7')
   aov_lmer$Analyte <- analytes[i]
+  print('here6')
   aov_lmer$Variable <- rownames(aov_lmer)
+  print('here4')
+  plot(aov_lmer)
+  print('here5')
   
   aov_lmer <- aov_lmer %>%
     mutate(Significance = case_when(
@@ -174,36 +172,38 @@ for (i in seq(analytes)){
       )
     )
   
-  lmer_rg <- ref_grid(lmer_fit)
-  lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ Year:Year, adjust = 'sidak') # manually change the pairs cause I'm lazy
-  cont <- test(lmer_emm)$contrasts
+  print('here')
+  # lmer_rg <- ref_grid(lmer_fit)
+  # lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ Year:Year, adjust = 'sidak') # manually change the pairs cause I'm lazy
+  # cont <- test(lmer_emm)$contrasts
   # print(lmer_emm) # to check adj method
 
-  cont$Analyte <- analytes[i]
-  df_cont <- cont %>%
-    mutate(Significance = case_when(
-      p.value >= 0 & p.value < 0.001 ~ '***',
-      p.value >= 0.001 & p.value < 0.01 ~ '**',
-      p.value >= 0.01 & p.value < 0.05 ~ '*',
-      p.value >= 0.05 & p.value < 0.1 ~ '.',
-      p.value >= 0.1 & p.value < 1 ~ ' ',
-      )
-    )
+  # cont$Analyte <- analytes[i]
+  # df_cont <- cont %>%
+  #   mutate(Significance = case_when(
+  #     p.value >= 0 & p.value < 0.001 ~ '***',
+  #     p.value >= 0.001 & p.value < 0.01 ~ '**',
+  #     p.value >= 0.01 & p.value < 0.05 ~ '*',
+  #     p.value >= 0.05 & p.value < 0.1 ~ '.',
+  #     p.value >= 0.1 & p.value < 1 ~ ' ',
+  #     )
+  #   )
 
-  all_reg[[i]] <- df_cont
+  # all_reg[[i]] <- df_cont
   all_aov[[i]] <- aov_lmer
+  print('here2')
 }
 
-all_reg_data <- do.call(rbind, all_reg)
+# all_reg_data <- do.call(rbind, all_reg)
 all_aov_data <- do.call(rbind,all_aov)
 
 # write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/no_SDI/cwq_emmeans_year_noSDI_0.csv'))
-# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/no_SDI/cwq_aov_noSDI_0.csv'))
+write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/no_SDI/1_cwq_aov_noSDI_0.csv'))
 ```
 
 ```{r chla only}
 # df_wq_wide <- reshape(df_wq_day,
-#          idvar = c('StationCode','BroadRegion','Week','Year','WeekYear','FlowActionPeriod','Month'),
+#          idvar = c('StationCode','BroadRegion','Day','Year','DayMonYear','FlowActionPeriod','Month'),
 #          timevar = 'Analyte',
 #          direction = 'wide')
 # 

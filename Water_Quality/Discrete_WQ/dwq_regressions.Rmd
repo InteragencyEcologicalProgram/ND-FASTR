@@ -78,7 +78,7 @@ ndfa_action_periods2 <- function(df, na_action_remove = TRUE, keep_action_dates 
 
 ```{r Import Data, message=FALSE}
 # define absolute filepaths
-fp_abs_discrete <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/WQ_INPUT_Discrete_Lab_3021-01-25.csv')
+fp_abs_discrete <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/WQ_INPUT_Discrete_Lab_2021-01-25.csv')
 fp_abs_wy <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/Analysis/FlowDatesDesignations_45days.csv')
 fp_abs_region <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Discrete/Analysis/NDFA_map.csv')
 
@@ -140,9 +140,11 @@ reg_func <- function(df, analyte_name){
   # fit model
   lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|Station), data = df_sub)
   
-  # png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/04',analyte,'_rand2-none.png')))
-  # acf((residuals(lmer_fit)), na.action = na.pass, main = paste0(analyte,' - rand2'))
-  # dev.off()
+    
+  # create and save pacf plots
+  png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/000_',analyte_name,'_rand3.png')))
+  acf(residuals(lmer_fit), na.action = na.pass, main = paste0(analytes[i],' - rand3'))
+  dev.off()
 
   aov_lmer <- Anova(lmer_fit, type = 'II', test.statistic = 'F')
 
@@ -247,11 +249,6 @@ for (i in seq(analytes)){
     }
   }
   
-  # create and save pacf plots
-  # png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/',analyte,'_rand2.png')))
-  # acf(log(df_sub$Result), na.action = na.pass, main = paste0(analyte,' - rand2'))
-  # dev.off()
-  
   # run regressions
   df_output_list <- reg_func(df_sub, analyte)
   df_aov <- df_output_list[[1]]
@@ -288,11 +285,6 @@ for (i in seq(analytes)){
     }
   }
 
-#   # create and save pacf plots
-#   png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/',analyte,'_rand3.png')))
-#   pacf(df_sub$Result, na.action = na.pass, main = paste0(analyte,' - rand3'))
-#   dev.off()
-  
   # run regressions
   df_output_list <- reg_func(df_sub, analyte)
   df_aov <- df_output_list[[1]]
