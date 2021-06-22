@@ -115,18 +115,31 @@ df_wq$Month <- format(df_wq$Date, '%m')
 
 # average over day
 df_wq_day <- df_wq %>%
-  group_by(StationCode, BroadRegion, FlowActionPeriod, Year, Month, Analyte, Day = day(Date), DayMonYear = paste(Day, Month, Year)) %>% # Date
+  group_by(StationCode, BroadRegion, FlowActionPeriod, Year, Month, Analyte, Day = day(Date), DayMonYear = paste(Day, Month, Year), date = as.Date(DayMonYear, '%d %m %Y')) %>%
+  mutate(julian = yday(date)) %>%# Date
   summarize(Result = mean(Result, na.rm = TRUE))
 
 df_wq_day$Month <- as.character(df_wq_day$Month)
 
+df_wq_day <- df_wq_day %>%
+  mutate(julian = yday(date))
+
 # log transform
 df_wq_day$Result <- log(df_wq_day$Result)
 
+
 # create lags
-df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'DayMonYear', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag1', slideBy = -1)
-df_wq_day <- slide(df_wq_day, 'lag1', TimeVar = 'DayMonYear', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag2', slideBy = -1)
-df_wq_day <- slide(df_wq_day, 'lag2', TimeVar = 'DayMonYear', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag3', slideBy = -1)
+df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag1', slideBy = -1)
+df_wq_day <- slide(df_wq_day, 'lag1', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag2', slideBy = -1)
+df_wq_day <- slide(df_wq_day, 'lag2', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag3', slideBy = -1)
+
+# another approach (filter df first, no loop) -- why does this give dif results for only some of the lag terms?
+chl = filter(df_wq_day, Analyte == "Chla") %>%
+  select(-lag1, -lag2, -lag3)
+
+chl <- slide(chl, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag1', slideBy = -1)
+chl <- slide(chl, 'lag1', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag2', slideBy = -1)
+chl <- slide(chl, 'lag2', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag3', slideBy = -1)
 
 # remove excess dfs
 rm(df_region, df_wq)
@@ -144,35 +157,31 @@ for (i in seq(analytes)){
   
   # pacf(df_temp$Result, na.action = na.pass)
 
-  lmer_fit <- lmer(Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode), data = df_temp)
+  lmer_fit <- lmer(Result ~ Year + Month + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), data = chl)
   
   # create and save pacf plots
-  png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/00_t_',analytes[i],'_rand3.png')))
+  png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/00_t_2',analytes[i],'_rand3.png')))
   acf(residuals(lmer_fit), na.action = na.pass, main = paste0(analytes[i],' - rand3'))
   dev.off()
-  
-  print('here1')
+  plot(residuals(lmer_fit))
+  qqnorm(residuals(lmer_fit))
+  print(stats::Box.test(residuals(lmer_fit), type = 'Ljung'))
+  hist(residuals(lmer_fit), breaks = 15)
 
-  aov_lmer <- Anova(lmer_fit, type = 'II', test.statistic = 'F')
-  print('here7')
-  aov_lmer$Analyte <- analytes[i]
-  print('here6')
-  aov_lmer$Variable <- rownames(aov_lmer)
-  print('here4')
-  plot(aov_lmer)
-  print('here5')
-  
-  aov_lmer <- aov_lmer %>%
-    mutate(Significance = case_when(
-      `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
-      `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
-      `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
-      `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
-      `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
-      )
-    )
-  
-  print('here')
+  # aov_lmer <- Anova(lmer_fit, type = 'II', test.statistic = 'F')
+  # aov_lmer$Analyte <- analytes[i]
+  # aov_lmer$Variable <- rownames(aov_lmer)
+  # 
+  # aov_lmer <- aov_lmer %>%
+  #   mutate(Significance = case_when(
+  #     `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
+  #     `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
+  #     `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
+  #     `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
+  #     `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
+  #     )
+  #   )
+
   # lmer_rg <- ref_grid(lmer_fit)
   # lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ Year:Year, adjust = 'sidak') # manually change the pairs cause I'm lazy
   # cont <- test(lmer_emm)$contrasts
@@ -190,15 +199,18 @@ for (i in seq(analytes)){
   #   )
 
   # all_reg[[i]] <- df_cont
-  all_aov[[i]] <- aov_lmer
-  print('here2')
+  # all_aov[[i]] <- aov_lmer
 }
 
 # all_reg_data <- do.call(rbind, all_reg)
-all_aov_data <- do.call(rbind,all_aov)
+# all_aov_data <- do.call(rbind,all_aov)
 
-# write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/no_SDI/cwq_emmeans_year_noSDI_0.csv'))
-write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/no_SDI/1_cwq_aov_noSDI_0.csv'))
+# write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_emmeans_year_noSDI_0.csv'))
+# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/1_cwq_aov_noSDI_0.csv'))
+```
+
+```{r df comparison}
+df_temp == chl
 ```
 
 ```{r chla only}
