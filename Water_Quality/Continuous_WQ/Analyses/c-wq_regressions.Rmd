@@ -7,11 +7,13 @@
 ```{r, message=FALSE}
 # import packages
 library(tidyverse)
-library(DataCombine)
-library(reshape2)
+library(lubridate)
+#library(DataCombine)
+#library(reshape2)
 library(lmerTest)
 library(emmeans)
 library(car)
+library(magrittr)
 source('global_ndfa_funcs.R')
 source('Water_Quality/global_wq_funcs.R')
 
@@ -23,68 +25,65 @@ df_wq <- import_rtm_data(fp_wq, num_params = 10)
 df_region <- read_csv(fp_region)
 
 # remove excess cols in df_region
-df_region <- subset(df_region, select = c(StationCode, BroadRegion))
+df_region %<>% select(StationCode, BroadRegion)
 
-# standardize/rename Date col
-df_wq$DateTime <- as.Date(df_wq$DateTime)
-df_wq <- rename(df_wq, c('Date' = 'DateTime'))
+# Create vector of sites we aren't including (not available for all years)
+remove <- c('SRH', 'SHR', 'SRV', 'WWT', 'DWT', 'SDI', 'SGG') # keep TOE, LIBCUT for now
 
-# add flow action dates
-df_wq <- ndfa_action_periods2(df_wq, na_action_remove = TRUE, keep_action_dates = FALSE)
-
-# add metadata cols
-df_wq <- merge(df_wq, df_region, by = c('StationCode')) 
-
-
-#remove sites we aren't including (not available for all years), create a column for year
-remove <- c('SRH', 'SHR', 'SRV', 'WWT', 'DWT', 'SDI', 'SGG') #TOE, LIBCUT
-df_wq <- filter(df_wq, !StationCode %in% remove)
-
-# pivot longer
-df_wq <- df_wq %>% 
-  dplyr::select(!ends_with('_Qual')) %>% 
-  tidyr::pivot_longer(
-    cols = -c(Date, Year, StationCode, FlowActionPeriod, BroadRegion),
-    names_to = 'Analyte',
-    values_to = 'Result')
-
-# convert year to character
-df_wq$Year <- as.character(df_wq$Year)
-df_wq <- df_wq %>% filter(!Year %in% c('2011','2012'))
-
-# add month col
-df_wq$Month <- format(df_wq$Date, '%m')
-
-# average over day
-df_wq_day <- df_wq %>%
-  group_by(StationCode, BroadRegion, FlowActionPeriod, Year, Month, Analyte, Day = day(Date), DayMonYear = paste(Day, Month, Year), date = as.Date(DayMonYear, '%d %m %Y')) %>%
-  mutate(julian = yday(date)) %>%# Date
-  summarize(Result = mean(Result, na.rm = TRUE))
-
-df_wq_day$Month <- as.character(df_wq_day$Month)
-
-df_wq_day <- df_wq_day %>%
-  mutate(julian = yday(date))
-
-# log transform
-df_wq_day$Result <- log(df_wq_day$Result)
-
-
-# create lags
-df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag1', slideBy = -1)
-df_wq_day <- slide(df_wq_day, 'lag1', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag2', slideBy = -1)
-df_wq_day <- slide(df_wq_day, 'lag2', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag3', slideBy = -1)
-
-# another approach (filter df first, no loop) -- why does this give dif results for only some of the lag terms?
-chl = filter(df_wq_day, Analyte == "Chla") %>%
-  select(-lag1, -lag2, -lag3)
-
-chl <- slide(chl, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag1', slideBy = -1)
-chl <- slide(chl, 'lag1', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag2', slideBy = -1)
-chl <- slide(chl, 'lag2', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag3', slideBy = -1)
-
-# remove excess dfs
-rm(df_region, df_wq)
+# Clean and Prepare df_wq for analysis
+df_wq_clean <- df_wq %>% 
+  # Parse DateTime variable and create Date and Year variables
+  mutate(
+    DateTime = ymd_hms(DateTime),
+    Date = date(DateTime),
+    Year = year(DateTime)
+  ) %>% 
+  # Remove sites, parameters, and years we aren't including in the analysis
+  filter(
+    !StationCode %in% remove,
+    Year > 2012
+  ) %>% 
+  select(
+    !c(
+      starts_with("Flow"), 
+      starts_with("fDOM"), 
+      starts_with("Nitrate"), 
+      starts_with("WaterTemp")
+    )
+  ) %>% 
+  # Pivot data longer
+  select(!ends_with("_Qual")) %>% 
+  pivot_longer(
+    cols = -c(StationCode, DateTime, Date, Year),
+    names_to = "Analyte",
+    values_to = "Result"
+  ) %>% 
+  # Remove NA values
+  filter(!is.na(Result)) %>% 
+  # Calculate daily averages
+  group_by(StationCode, Analyte, Year, Date) %>% 
+  summarize(Result = mean(Result)) %>% 
+  # Fill in missing days for each StationCode, Analyte, Year combination
+  complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>% 
+  ungroup() %>% 
+  # Log transform data
+  mutate(Result = log(Result)) %>% 
+  # Create lags
+  arrange(StationCode, Analyte, Year, Date) %>% 
+  group_by(StationCode, Analyte, Year) %>% 
+  mutate(
+    lag1 = lag(Result),
+    lag2 = lag(Result, 2),
+    lag3 = lag(Result, 3)
+  ) %>% 
+  ungroup() %>% 
+  # Add Flow Action Periods, Regions, Month, and Week variables
+  ndfa_action_periods() %>% 
+  left_join(df_region) %>% 
+  mutate(
+    Month = month(Date),
+    Week = week(Date)
+  )
 ```
 
 ```{r all analytes}
