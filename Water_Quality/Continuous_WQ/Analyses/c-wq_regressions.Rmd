@@ -82,33 +82,56 @@ df_wq_clean <- df_wq %>%
   left_join(df_region) %>% 
   mutate(
     Month = month(Date),
-    Week = week(Date)
+    Week = week(Date),
+    # Convert Year to character so it runs correctly in the model
+    Year = as.character(Year)
   )
 ```
 
 ```{r all analytes}
-analytes <- 'Chla' # unique(df_wq_day$Analyte)
-analytes <- subset(analytes, !(analytes %in% c('Flow', 'FlowTF', 'fDOM')))
-all_reg <- list()
+analytes <- unique(df_wq_clean$Analyte)
+all_reg_yr <- list()
+all_reg_fa <- list()
+all_reg_reg <- list()
 all_aov <- list()
 
+# Define file path for ANOVA Diagnostics Plots
+fp_anova_diag <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/ANOVA_Diagnostics")
+
+# Create function to add significance levels to pairwise tests
+add_sign_levels_pw <- function(df) {
+  df %>% 
+    mutate(Significance = case_when(
+      p.value >= 0 & p.value < 0.001 ~ '***',
+      p.value >= 0.001 & p.value < 0.01 ~ '**',
+      p.value >= 0.01 & p.value < 0.05 ~ '*',
+      p.value >= 0.05 & p.value < 0.1 ~ '.',
+      p.value >= 0.1 & p.value <= 1 ~ ' ',
+      )
+    )
+}
+
 for (i in seq(analytes)){
-  df_temp <- df_wq_day %>%
+  df_temp <- df_wq_clean %>%
     filter(Analyte == analytes[i])
   
   # pacf(df_temp$Result, na.action = na.pass)
 
-  lmer_fit <- lmer(Result ~ Year + Month + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), data = chl)
+  lmer_fit <- lmer(Result ~ Year + Month + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), data = df_temp)
   
-  # create and save pacf plots
-  png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/00_t_2',analytes[i],'_rand3.png')))
-  acf(residuals(lmer_fit), na.action = na.pass, main = paste0(analytes[i],' - rand3'))
-  dev.off()
+  # create and save ANOVA Diagnostics plots
+  pdf(paste0(fp_anova_diag, "/", analytes[i], "_daily_avg_ANOVA.pdf"))
+  acf(residuals(lmer_fit), na.action = na.pass, main = analytes[i])
   plot(residuals(lmer_fit))
   qqnorm(residuals(lmer_fit))
-  print(stats::Box.test(residuals(lmer_fit), type = 'Ljung'))
   hist(residuals(lmer_fit), breaks = 15)
-
+  dev.off()
+  
+  # Print results of Portmanteau test
+  print(analytes[i])
+  print(stats::Box.test(residuals(lmer_fit), lag = 10, type = 'Ljung-Box'))
+  
+  # Run Type II F-test
   aov_lmer <- Anova(lmer_fit, type = 'II', test.statistic = 'F')
   aov_lmer$Analyte <- analytes[i]
   aov_lmer$Variable <- rownames(aov_lmer)
@@ -119,34 +142,67 @@ for (i in seq(analytes)){
       `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
       `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
       `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
-      `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
+      `Pr(>F)` >= 0.1 & `Pr(>F)` <= 1 ~ ' ',
       )
     )
 
   lmer_rg <- ref_grid(lmer_fit)
-  lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ Year:Year, adjust = 'sidak') # manually change the pairs cause I'm lazy
-  cont <- test(lmer_emm)$contrasts
-  print(lmer_emm) # to check adj method
+  
+  # Pairwise comparisons for Year
+  lmer_emm_yr <- emmeans(
+    lmer_rg, 
+    specs = pairwise ~ Year:Year, 
+    adjust = 'sidak'
+  ) 
+  cont_yr <- test(lmer_emm_yr)$contrasts
+  cont_yr$Analyte <- analytes[i]
+  df_cont_yr <- add_sign_levels_pw(cont_yr)
+  
+  # Pairwise comparisons for FlowActionPeriod
+  lmer_emm_fa <- emmeans(
+    lmer_rg, 
+    specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, 
+    adjust = 'sidak'
+  ) 
+  cont_fa <- test(lmer_emm_fa)$contrasts
+  cont_fa$Analyte <- analytes[i]
+  df_cont_fa <- add_sign_levels_pw(cont_fa)
+  
+  # Pairwise comparisons for BroadRegion
+  lmer_emm_reg <- emmeans(
+    lmer_rg, 
+    specs = pairwise ~ BroadRegion:BroadRegion, 
+    adjust = 'sidak'
+  ) 
+  cont_reg <- test(lmer_emm_reg)$contrasts
+  cont_reg$Analyte <- analytes[i]
+  df_cont_reg <- add_sign_levels_pw(cont_reg)
 
-  cont$Analyte <- analytes[i]
-  df_cont <- cont %>%
-    mutate(Significance = case_when(
-      p.value >= 0 & p.value < 0.001 ~ '***',
-      p.value >= 0.001 & p.value < 0.01 ~ '**',
-      p.value >= 0.01 & p.value < 0.05 ~ '*',
-      p.value >= 0.05 & p.value < 0.1 ~ '.',
-      p.value >= 0.1 & p.value < 1 ~ ' ',
-      )
-    )
-
-  all_reg[[i]] <- df_cont
+  all_reg_yr[[i]] <- df_cont_yr
+  all_reg_fa[[i]] <- df_cont_fa
+  all_reg_reg[[i]] <- df_cont_reg
   all_aov[[i]] <- aov_lmer
 }
 
-all_reg_data <- do.call(rbind, all_reg)
-all_aov_data <- do.call(rbind,all_aov)
+# Combine results
+all_reg_data_yr <- do.call(rbind, all_reg_yr)
+all_reg_data_fa <- do.call(rbind, all_reg_fa)
+all_reg_data_reg <- do.call(rbind, all_reg_reg)
+all_aov_data <- do.call(rbind, all_aov)
 
-write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_emmeans_year_noSDI_0.csv'))
-write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/1_cwq_aov_noSDI_0.csv'))
+# Export results as .csv files
+fp_anova_results <- ndfa_abs_sp_path("WQ_Subteam/Analysis_Results/CWQ")
+
+all_aov_data %>% 
+  write_excel_csv(file.path(fp_anova_results, "cwq_aov_daily_avg_sea-month.csv"))
+
+all_reg_data_yr %>% 
+  write_excel_csv(file.path(fp_anova_results, "cwq_emmeans_year_daily_avg_sea-month.csv"))
+
+all_reg_data_fa %>% 
+  write_excel_csv(file.path(fp_anova_results, "cwq_emmeans_flowaction_daily_avg_sea-month.csv"))
+
+all_reg_data_reg %>% 
+  write_excel_csv(file.path(fp_anova_results, "cwq_emmeans_region_daily_avg_sea-month.csv"))
 ```
 
