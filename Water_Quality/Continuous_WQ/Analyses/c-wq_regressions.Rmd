@@ -79,8 +79,8 @@ df_wq_clean <- df_wq %>%
   ndfa_action_periods() %>% 
   left_join(df_region) %>% 
   mutate(
-    Month = month(Date),
-    Week = week(Date),
+    Month = as.character(month(Date)),
+    Week = as.character(week(Date)),
     # Convert Year to character so it runs correctly in the model
     Year = as.character(Year)
   )
