@@ -12,6 +12,7 @@ library(lmerTest)
 library(emmeans)
 library(car)
 library(magrittr)
+library(timetk)
 source('global_ndfa_funcs.R')
 source('Water_Quality/global_wq_funcs.R')
 
@@ -86,15 +87,72 @@ df_wq_clean <- df_wq %>%
   )
 ```
 
-```{r all analytes}
+```{r create diag plots}
 analytes <- unique(df_wq_clean$Analyte)
+
+# Define file path for ANOVA Diagnostics Plots
+fp_anova_diag <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/ANOVA_Diagnostics")
+
+for (ana in analytes) {
+  df_temp <- df_wq_clean %>% filter(Analyte == ana)
+  
+  # Run model without any seasonal terms
+  lmer_fit <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), 
+     data = df_temp
+   )
+  # Create and save ANOVA Diagnostics plots
+  pdf(paste0(fp_anova_diag, "/", ana, "_daily_avg_sea-none.pdf"))
+  acf(residuals(lmer_fit), na.action = na.pass, main = ana)
+  plot(residuals(lmer_fit))
+  qqnorm(residuals(lmer_fit))
+  hist(residuals(lmer_fit), breaks = 15)
+  plt <- df_temp %>% 
+    plot_seasonal_diagnostics(
+      Date, 
+      Result, 
+      .feature_set = c("week", "month.lbl"), 
+      .interactive = FALSE
+    )
+  print(plt)
+  dev.off()
+  
+  # Run model with month as seasonal term
+  lmer_fit_month <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + Month + lag1 + lag2 + (1|StationCode), 
+     data = df_temp
+   )
+  # Create and save ANOVA Diagnostics plots
+  pdf(paste0(fp_anova_diag, "/", ana, "_daily_avg_sea-month.pdf"))
+  acf(residuals(lmer_fit_month), na.action = na.pass, main = ana)
+  plot(residuals(lmer_fit_month))
+  qqnorm(residuals(lmer_fit_month))
+  hist(residuals(lmer_fit_month), breaks = 15)
+  dev.off()
+  
+  # Run model with week as seasonal term
+  lmer_fit_week <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + Week + lag1 + lag2 + (1|StationCode), 
+     data = df_temp
+   )
+  # Create and save ANOVA Diagnostics plots
+  pdf(paste0(fp_anova_diag, "/", ana, "_daily_avg_sea-week.pdf"))
+  acf(residuals(lmer_fit_week), na.action = na.pass, main = ana)
+  plot(residuals(lmer_fit_week))
+  qqnorm(residuals(lmer_fit_week))
+  hist(residuals(lmer_fit_week), breaks = 15)
+  dev.off()
+}
+```
+
+```{r all analytes}
 all_reg_yr <- list()
 all_reg_fa <- list()
 all_reg_reg <- list()
 all_aov <- list()
-
-# Define file path for ANOVA Diagnostics Plots
-fp_anova_diag <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/ANOVA_Diagnostics")
 
 # Create function to add significance levels to pairwise tests
 add_sign_levels_pw <- function(df) {
@@ -116,14 +174,6 @@ for (i in seq(analytes)){
   # pacf(df_temp$Result, na.action = na.pass)
 
   lmer_fit <- lmer(Result ~ Year + Month + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), data = df_temp)
-  
-  # create and save ANOVA Diagnostics plots
-  pdf(paste0(fp_anova_diag, "/", analytes[i], "_daily_avg_ANOVA.pdf"))
-  acf(residuals(lmer_fit), na.action = na.pass, main = analytes[i])
-  plot(residuals(lmer_fit))
-  qqnorm(residuals(lmer_fit))
-  hist(residuals(lmer_fit), breaks = 15)
-  dev.off()
   
   # Print results of Portmanteau test
   print(analytes[i])
