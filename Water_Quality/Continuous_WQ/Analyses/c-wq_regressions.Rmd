@@ -93,60 +93,221 @@ analytes <- unique(df_wq_clean$Analyte)
 # Define file path for ANOVA Diagnostics Plots
 fp_anova_diag <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/ANOVA_Diagnostics")
 
+# Create seasonal Diagnostics plots first
+pdf(file.path(fp_anova_diag, "Seasonal_Diagnostics.pdf"))
+  for (ana in analytes) {
+    df_temp <- df_wq_clean %>% filter(Analyte == ana)
+    
+    plt <- df_temp %>% 
+      plot_seasonal_diagnostics(
+        Date, 
+        Result, 
+        .feature_set = c("week", "month.lbl"), 
+        .interactive = FALSE
+      ) +
+      ggtitle(ana)
+    
+    print(plt)
+  }
+dev.off()  
+
+# Create ANOVA Diagnostics plots for no, 1, 2, and 3 lag terms without a seasonal term
 for (ana in analytes) {
   df_temp <- df_wq_clean %>% filter(Analyte == ana)
   
-  # Run model without any seasonal terms
-  lmer_fit <- 
+  # Create models
+  lmer_fit0 <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + (1|StationCode), 
+      data = df_temp
+    )
+  lmer_fit1 <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + (1|StationCode), 
+      data = df_temp
+    )
+  lmer_fit2 <- 
     lmer(
       Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), 
-     data = df_temp
-   )
+      data = df_temp
+    )
+  lmer_fit3 <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode), 
+      data = df_temp
+    )
+  
   # Create and save ANOVA Diagnostics plots
   pdf(paste0(fp_anova_diag, "/", ana, "_daily_avg_sea-none.pdf"))
-  acf(residuals(lmer_fit), na.action = na.pass, main = ana)
-  plot(residuals(lmer_fit))
-  qqnorm(residuals(lmer_fit))
-  hist(residuals(lmer_fit), breaks = 15)
-  plt <- df_temp %>% 
-    plot_seasonal_diagnostics(
-      Date, 
-      Result, 
-      .feature_set = c("week", "month.lbl"), 
-      .interactive = FALSE
-    )
-  print(plt)
+    acf(residuals(lmer_fit0), na.action = na.pass, main = paste0(ana, "- no lag terms"))
+    acf(residuals(lmer_fit1), na.action = na.pass, main = paste0(ana, "- 1 lag term"))
+    acf(residuals(lmer_fit2), na.action = na.pass, main = paste0(ana, "- 2 lag terms"))
+    acf(residuals(lmer_fit3), na.action = na.pass, main = paste0(ana, "- 3 lag terms"))
+    plot(residuals(lmer_fit0), main = paste0(ana, "- no lag terms"))
+    plot(residuals(lmer_fit1), main = paste0(ana, "- 1 lag term"))
+    plot(residuals(lmer_fit2), main = paste0(ana, "- 2 lag terms"))
+    plot(residuals(lmer_fit3), main = paste0(ana, "- 3 lag terms"))
+    qqnorm(residuals(lmer_fit0), main = paste0("Normal Q−Q Plot- ", ana, ", no lag terms"))
+    qqnorm(residuals(lmer_fit1), main = paste0("Normal Q−Q Plot- ", ana, ", 1 lag term"))
+    qqnorm(residuals(lmer_fit2), main = paste0("Normal Q−Q Plot- ", ana, ", 2 lag terms"))
+    qqnorm(residuals(lmer_fit3), main = paste0("Normal Q−Q Plot- ", ana, ", 3 lag terms"))
+    hist(residuals(lmer_fit0), breaks = 15)
+    hist(residuals(lmer_fit1), breaks = 15)
+    hist(residuals(lmer_fit2), breaks = 15)
+    hist(residuals(lmer_fit3), breaks = 15)
   dev.off()
   
-  # Run model with month as seasonal term
-  lmer_fit_month <- 
-    lmer(
-      Result ~ Year + FlowActionPeriod + BroadRegion + Month + lag1 + lag2 + (1|StationCode), 
-     data = df_temp
-   )
-  # Create and save ANOVA Diagnostics plots
-  pdf(paste0(fp_anova_diag, "/", ana, "_daily_avg_sea-month.pdf"))
-  acf(residuals(lmer_fit_month), na.action = na.pass, main = ana)
-  plot(residuals(lmer_fit_month))
-  qqnorm(residuals(lmer_fit_month))
-  hist(residuals(lmer_fit_month), breaks = 15)
-  dev.off()
-  
-  # Run model with week as seasonal term
-  lmer_fit_week <- 
-    lmer(
-      Result ~ Year + FlowActionPeriod + BroadRegion + Week + lag1 + lag2 + (1|StationCode), 
-     data = df_temp
-   )
-  # Create and save ANOVA Diagnostics plots
-  pdf(paste0(fp_anova_diag, "/", ana, "_daily_avg_sea-week.pdf"))
-  acf(residuals(lmer_fit_week), na.action = na.pass, main = ana)
-  plot(residuals(lmer_fit_week))
-  qqnorm(residuals(lmer_fit_week))
-  hist(residuals(lmer_fit_week), breaks = 15)
-  dev.off()
+  # Print off results of Portmanteau tests to look for autocorrelation among the residuals
+  print(ana)
+  print(stats::Box.test(residuals(lmer_fit0), lag = 10, type = 'Ljung-Box'))
+  print(stats::Box.test(residuals(lmer_fit1), lag = 10, type = 'Ljung-Box'))
+  print(stats::Box.test(residuals(lmer_fit2), lag = 10, type = 'Ljung-Box'))
+  print(stats::Box.test(residuals(lmer_fit3), lag = 10, type = 'Ljung-Box'))
 }
+
+# Chla: 3 lag terms is best
+# DO: 2 lag terms is best
+# pH: 3 lag terms is best
+# SpCnd: 3 lag terms is best
+# Turbidity: 1 lag term is best
+
+# Next, we'll add seasonal terms to these best-fitting models to see if they improve anything
+# Turbidity with 1 lag term
+df_turb <- df_wq_clean %>% filter(Analyte == "Turbidity")
+# Create models
+lmer_fit_turb1 <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + (1|StationCode), 
+      data = df_turb
+    )
+lmer_fit_turb1_month <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + Month + (1|StationCode), 
+      data = df_turb
+    )
+lmer_fit_turb1_week <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + Week + (1|StationCode), 
+      data = df_turb
+    )
+# Create and save ANOVA Diagnostics plots
+pdf(file.path(fp_anova_diag, "Turbidity_daily_avg_1lag_seasonal.pdf"))
+  acf(residuals(lmer_fit_turb1), na.action = na.pass, main = "Turbidity- 1 lag, no seasonal terms")
+  acf(residuals(lmer_fit_turb1_month), na.action = na.pass, main = "Turbidity- 1 lag, Month seasonal term")
+  acf(residuals(lmer_fit_turb1_week), na.action = na.pass, main = "Turbidity- 1 lag, Week seasonal term")
+  plot(residuals(lmer_fit_turb1), main = "Turbidity- 1 lag, no seasonal terms")
+  plot(residuals(lmer_fit_turb1_month), main = "Turbidity- 1 lag, Month seasonal term")
+  plot(residuals(lmer_fit_turb1_week), main = "Turbidity- 1 lag, Week seasonal term")
+  qqnorm(residuals(lmer_fit_turb1), main = paste0("Normal Q−Q Plot- Turbidity, 1 lag, no seasonal terms"))
+  qqnorm(residuals(lmer_fit_turb1_month), main = paste0("Normal Q−Q Plot- Turbidity, 1 lag, Month seasonal term"))
+  qqnorm(residuals(lmer_fit_turb1_week), main = paste0("Normal Q−Q Plot- Turbidity, 1 lag, Week seasonal term"))
+  hist(residuals(lmer_fit_turb1), breaks = 15)
+  hist(residuals(lmer_fit_turb1_month), breaks = 15)
+  hist(residuals(lmer_fit_turb1_week), breaks = 15)
+dev.off()
+  
+# Print off results of Portmanteau tests to look for autocorrelation among the residuals
+print(stats::Box.test(residuals(lmer_fit_turb1), lag = 10, type = 'Ljung-Box'))
+print(stats::Box.test(residuals(lmer_fit_turb1_month), lag = 10, type = 'Ljung-Box'))
+print(stats::Box.test(residuals(lmer_fit_turb1_week), lag = 10, type = 'Ljung-Box'))
+# 1 lag, no seasonal terms is best for Turbidity
+
+# DO with 2 lag terms
+df_do <- df_wq_clean %>% filter(Analyte == "DO")
+# Create models
+lmer_fit_do2 <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), 
+      data = df_do
+    )
+lmer_fit_do2_month <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + Month + (1|StationCode), 
+      data = df_do
+    )
+lmer_fit_do2_week <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + Week + (1|StationCode), 
+      data = df_do
+    )
+# Create and save ANOVA Diagnostics plots
+pdf(file.path(fp_anova_diag, "DO_daily_avg_2lag_seasonal.pdf"))
+  acf(residuals(lmer_fit_do2), na.action = na.pass, main = "DO- 2 lags, no seasonal terms")
+  acf(residuals(lmer_fit_do2_month), na.action = na.pass, main = "DO- 2 lags, Month seasonal term")
+  acf(residuals(lmer_fit_do2_week), na.action = na.pass, main = "DO- 2 lags, Week seasonal term")
+  plot(residuals(lmer_fit_do2), main = "DO- 2 lags, no seasonal terms")
+  plot(residuals(lmer_fit_do2_month), main = "DO- 2 lags, Month seasonal term")
+  plot(residuals(lmer_fit_do2_week), main = "DO- 2 lags, Week seasonal term")
+  qqnorm(residuals(lmer_fit_do2), main = paste0("Normal Q−Q Plot- DO, 2 lags, no seasonal terms"))
+  qqnorm(residuals(lmer_fit_do2_month), main = paste0("Normal Q−Q Plot- DO, 2 lags, Month seasonal term"))
+  qqnorm(residuals(lmer_fit_do2_week), main = paste0("Normal Q−Q Plot- DO, 2 lags, Week seasonal term"))
+  hist(residuals(lmer_fit_do2), breaks = 15)
+  hist(residuals(lmer_fit_do2_month), breaks = 15)
+  hist(residuals(lmer_fit_do2_week), breaks = 15)
+dev.off()
+  
+# Print off results of Portmanteau tests to look for autocorrelation among the residuals
+print(stats::Box.test(residuals(lmer_fit_do2), lag = 10, type = 'Ljung-Box'))
+print(stats::Box.test(residuals(lmer_fit_do2_month), lag = 10, type = 'Ljung-Box'))
+print(stats::Box.test(residuals(lmer_fit_do2_week), lag = 10, type = 'Ljung-Box'))
+# 2 lags, no seasonal terms is best for DO
+
+# Chla, pH, and SpCnd with 3 lag terms
+analytes3 <- c("Chla", "pH", "SpCnd")
+for (ana in analytes3) {
+  df_temp <- df_wq_clean %>% filter(Analyte == ana)
+  
+  # Create models
+  lmer_fit3 <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode), 
+      data = df_temp
+    )
+  lmer_fit3_month <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + Month + (1|StationCode), 
+      data = df_temp
+    )
+  lmer_fit3_week <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + Week + (1|StationCode), 
+      data = df_temp
+    )
+  # Create and save ANOVA Diagnostics plots
+  pdf(paste0(fp_anova_diag, "/", ana, "_daily_avg_3lag_seasonal.pdf"))
+    acf(residuals(lmer_fit3), na.action = na.pass, main = paste0(ana, "- 3 lags, no seasonal terms"))
+    acf(residuals(lmer_fit3_month), na.action = na.pass, main = paste0(ana, "- 3 lags, Month seasonal term"))
+    acf(residuals(lmer_fit3_week), na.action = na.pass, main = paste0(ana, "- 3 lags, Week seasonal term"))
+    plot(residuals(lmer_fit3), main = paste0(ana, "- 3 lags, no seasonal terms"))
+    plot(residuals(lmer_fit3_month), main = paste0(ana, "- 3 lags, Month seasonal term"))
+    plot(residuals(lmer_fit3_week), main = paste0(ana, "- 3 lags, Week seasonal term"))
+    qqnorm(residuals(lmer_fit3), main = paste0("Normal Q−Q Plot- ", ana, ", 3 lags, no seasonal terms"))
+    qqnorm(residuals(lmer_fit3_month), main = paste0("Normal Q−Q Plot- ", ana, ", 3 lags, Month seasonal term"))
+    qqnorm(residuals(lmer_fit3_week), main = paste0("Normal Q−Q Plot- ", ana, ", 3 lags, Week seasonal term"))
+    hist(residuals(lmer_fit3), breaks = 15)
+    hist(residuals(lmer_fit3_month), breaks = 15)
+    hist(residuals(lmer_fit3_week), breaks = 15)
+  dev.off()
+  
+  # Print off results of Portmanteau tests to look for autocorrelation among the residuals
+  print(ana)
+  print(stats::Box.test(residuals(lmer_fit3), lag = 10, type = 'Ljung-Box'))
+  print(stats::Box.test(residuals(lmer_fit3_month), lag = 10, type = 'Ljung-Box'))
+  print(stats::Box.test(residuals(lmer_fit3_week), lag = 10, type = 'Ljung-Box'))
+}
+
+# 3 lags, no seasonal terms is best for Chla
+# 3 lags, no seasonal terms is best for pH
+# 3 lags, no seasonal terms is best for SpCnd
 ```
+
+We are going to use the following model structures:
+
+* Chla: Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode)
+* DO: Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode)
+* pH: Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode)
+* SpCnd: Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode)
+* Turbidity: Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + (1|StationCode)
 
 ```{r all analytes}
 all_reg_yr <- list()
