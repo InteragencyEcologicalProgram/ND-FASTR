@@ -1,7 +1,7 @@
 # NDFA Water Quality
 # Purpose: Create figures of the continuous water quality data for the NDFA Synthesis report:
   # 1) Time-series plots of managed and non-managed years
-  # 2) Violin plots and Boxplots comparing years, flow pulse periods, and regions
+  # 2) Boxplots comparing years, flow pulse periods, and regions
 # Author: Dave Bosworth
 # Contact: David.Bosworth@water.ca.gov
 
@@ -409,7 +409,7 @@ pwalk(
 )
 
 
-# 5. Violin Plots and Boxplots --------------------------------------------
+# 5. Boxplots --------------------------------------------
 
 # 5.1 Prepare Data for Plots ----------------------------------------------
 
@@ -444,7 +444,7 @@ df_rtm_week_avg <- df_rtm_clean[[1]] %>%
 
 # 5.2 Create Plot Functions -----------------------------------------------------
 
-# Internal function to define x-axis labels for violin plots and boxplots
+# Internal function to define x-axis labels for boxplots
 int_define_vb_xaxis_lab <- function(x_var) {
   xaxis_lab <- case_when(
     x_var == "Year" ~ "Year",
@@ -455,27 +455,7 @@ int_define_vb_xaxis_lab <- function(x_var) {
   return(xaxis_lab)
 }
 
-create_violin_plot <- function(df, param, grp_var) {
-  
-  # define x-axis and y-axis labels
-  x_lab <- int_define_vb_xaxis_lab(grp_var)
-  y_lab <- glue("log({int_define_yaxis_lab(param)})")
-  
-  # convert grp_var to a symbol for tidy evaluation
-  grp_var_sym <- sym(grp_var)
-  
-  # create base plot
-  p <- df %>% 
-    ggplot(aes(x = !!grp_var_sym, y = Weekly_avg_log)) +
-    geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) +
-    theme_light() +
-    xlab(x_lab) +
-    ylab(y_lab)
-    
-  return(p)
-}
-
-create_box_plot <- function(df, param, grp_var) {
+create_boxplot <- function(df, param, grp_var) {
   
   # define x-axis and y-axis labels
   x_lab <- int_define_vb_xaxis_lab(grp_var)
@@ -506,37 +486,7 @@ create_box_plot <- function(df, param, grp_var) {
 
 # 5.3 Create and Export Plots ---------------------------------------------
 
-# Violin Plots:
-df_rtm_violin_plt <- df_rtm_week_avg %>% 
-  nest(df_data = -Parameter) %>% 
-  mutate(
-    plt_yr = map2(df_data, Parameter, .f = create_violin_plot, grp_var = "Year"),
-    plt_region = map2(df_data, Parameter, .f = create_violin_plot, grp_var = "Region"),
-    plt_fa = map2(df_data, Parameter, .f = create_violin_plot, grp_var = "FlowActionPeriod"),
-    plt_comb = pmap(
-      list(plt_yr, plt_region, plt_fa), 
-      ~ ..1 / (..2 + ..3) + plot_annotation(tag_levels = "A")
-    )
-  )
-
-# Define file path to export plots to
-fp_abs_violin_plt <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/Report/Violin")
-
-# Export Violin plots
-walk2(
-  df_rtm_violin_plt$plt_comb,
-  df_rtm_violin_plt$Parameter,
-  ~ggsave(
-    plot = .x,
-    filename = paste0(fp_abs_violin_plt, "/", .y, "_violin.jpg"),
-    width = 6.5, 
-    height = 8.25, 
-    units = "in", 
-    dpi = 300
-  )
-)
-
-# Boxplots:
+# Create boxplots
 df_rtm_box_plt <- df_rtm_week_avg %>% 
   nest(df_data = -Parameter) %>% 
   mutate(
@@ -549,12 +499,10 @@ df_rtm_box_plt <- df_rtm_week_avg %>%
     )
   )
 
-df_rtm_box_plt$plt_comb[[1]]
-
 # Define file path to export plots to
 fp_abs_box_plt <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/Report/Boxplot")
 
-# Export Boxplots
+# Export boxplots
 walk2(
   df_rtm_box_plt$plt_comb,
   df_rtm_box_plt$Parameter,
