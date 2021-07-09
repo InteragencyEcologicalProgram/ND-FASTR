@@ -266,7 +266,11 @@ df_rtm_ts_plt <- df_rtm_clean_ts %>%
   # keep only common parameters and stations
   filter(
     Parameter %in% c("Chla", "DO", "pH", "SpCnd", "Turbidity", "WaterTemp"),
-    !StationCode %in% c("TOE", "LIBCUT")
+    StationCode != "LIBCUT",
+    # keep Turbidity data for TOE for 2014 and 2015 since Turbidity 
+      # wasn't collected at STTD during those years
+    !(StationCode == "TOE" & Parameter != "Turbidity"),
+    !(StationCode == "TOE" & Year > 2015)
   ) %>% 
   mutate(StationCode = fct_drop(StationCode)) %>% 
   select(-FlowActionType_s) %>% 
