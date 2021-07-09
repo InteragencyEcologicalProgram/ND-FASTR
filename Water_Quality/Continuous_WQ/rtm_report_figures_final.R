@@ -38,50 +38,43 @@ int_define_yaxis_lab <- function(param) {
 
 # 2. Import Data -------------------------------------------------
 
-# Define relative file paths for files containing all QA'ed and cleaned continuous WQ data
-# Data set from 2/19/2021:
-fp_rel_rtm_data1 <- "WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-02-19.csv"
-# Data set from 4/20/2021 - only use for time-series plots for now:
-fp_rel_rtm_data2 <- "WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-04-20.csv"
+# Define relative file path for file containing all QA'ed and cleaned continuous WQ data
+fp_rel_rtm_data <- "WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-04-20.csv"
 
 # Define relative file path for file containing dates of flow action periods
 fp_rel_fa_dates <- "Data Management/FlowDatesDesignations_45days.csv"
 
 # Define absolute file paths
-fp_abs_rtm_data1 <- ndfa_abs_sp_path(fp_rel_rtm_data1)
-fp_abs_rtm_data2 <- ndfa_abs_sp_path(fp_rel_rtm_data2)
+fp_abs_rtm_data <- ndfa_abs_sp_path(fp_rel_rtm_data)
 fp_abs_fa_dates <- ndfa_abs_sp_path(fp_rel_fa_dates)
 
-# Import continuous WQ data
-df_rtm_orig1 <- import_rtm_data(fp_abs_rtm_data1, 10)
-df_rtm_orig2 <- import_rtm_data(fp_abs_rtm_data2, 10)
-
-# Import dates of flow action periods
+# Import continuous WQ data and dates of flow action periods
+df_rtm_orig <- import_rtm_data(fp_abs_rtm_data, 10)
 df_fa_dates_orig <- read_csv(fp_abs_fa_dates)
 
 
 # 3. Clean WQ Data ---------------------------------------------------------
 
-# Clean original continuous WQ data
-df_rtm_clean <-
-  list(df_rtm_orig1, df_rtm_orig2) %>% 
-  map(
-    ~mutate(
-      .x,
-      DateTime = ymd_hms(DateTime),
-      Date = date(DateTime),
-      Year = year(DateTime)
-    ) %>%
-    # Don't include Flow, FlowTF, and all Qual variables
-    select(-c(ends_with("_Qual"), starts_with("Flow"))) %>% 
-    # Exclude SDI from the plots
-    filter(StationCode != "SDI") %>% 
-    # Pivot parameters in the long format
-    pivot_longer(cols = where(is.numeric) & !Year, names_to = "Parameter", values_to = "Value") %>% 
-    # Remove all NA values
-    filter(!is.na(Value))
-  )
-
+# Clean original continuous WQ data and calculate daily averages
+df_rtm_clean <- df_rtm_orig %>% 
+  mutate(
+    DateTime = ymd_hms(DateTime),
+    Date = date(DateTime),
+    Year = year(DateTime)
+  ) %>%
+  # Don't include Flow, FlowTF, and all Qual variables
+  select(-c(ends_with("_Qual"), starts_with("Flow"))) %>% 
+  # Exclude SDI and SGG from the plots
+  filter(!StationCode %in% c("SDI", "SGG")) %>% 
+  # Pivot parameters in the long format
+  pivot_longer(cols = where(is.numeric) & !Year, names_to = "Parameter", values_to = "Value") %>% 
+  # Remove all NA values
+  filter(!is.na(Value)) %>% 
+  # Calculate daily averages
+  group_by(Parameter, Year, StationCode, Date) %>% 
+  summarize(Daily_avg = mean(Value)) %>% 
+  ungroup()
+  
 
 # 4. Time-series Plots ----------------------------------------------------
 
@@ -119,11 +112,10 @@ add_FlowActionType <- function(df) {
     )
 }
 
-# Calculate daily averages of continuous WQ data and prepare for plotting
-df_rtm_daily_avg <- df_rtm_clean[[2]] %>% 
-  group_by(Parameter, Year, StationCode, Date) %>% 
-  summarize(Daily_avg = mean(Value)) %>% 
+# Prepare daily average continuous WQ data for time-series plots
+df_rtm_clean_ts <- df_rtm_clean %>% 
   # Fill in missing dates with NA values for geom_line to not interpolate data gaps
+  group_by(Parameter, Year, StationCode) %>% 
   complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>%
   ungroup() %>% 
   mutate(
