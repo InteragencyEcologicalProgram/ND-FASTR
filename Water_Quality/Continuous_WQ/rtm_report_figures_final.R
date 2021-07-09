@@ -82,7 +82,6 @@ df_rtm_clean <- df_rtm_orig %>%
 
 # Create a vector for the factor order of StationCode
 sta_order <- c(
-  "RMB",
   "RCS",
   "RD22",
   "I80",
@@ -90,7 +89,6 @@ sta_order <- c(
   "TOE",
   "STTD",
   "LIBCUT",
-  "SGG",
   "LIB",
   "RYI",
   "RVB",
@@ -118,11 +116,13 @@ df_rtm_clean_ts <- df_rtm_clean %>%
   group_by(Parameter, Year, StationCode) %>% 
   complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>%
   ungroup() %>% 
+  # Only keep stations in sta_order
+  filter(StationCode %in% sta_order) %>% 
   mutate(
     # Add a grouping variable for Region and apply factor order for it
     Region = factor(
       if_else(
-        StationCode %in% c("RMB", "RCS", "RD22", "I80", "LIS", "TOE", "STTD"),
+        StationCode %in% c("RCS", "RD22", "I80", "LIS", "TOE", "STTD"),
         "a_Upstream",
         "b_Downstream_Sac"
       )
@@ -262,11 +262,11 @@ df_fa_dates_f_nest_s <- df_fa_dates_f %>%
   nest(df_fa_dates = -FlowActionType_s)
 
 # Create plots for common parameters (Chla, DO, pH, SpCnd, Turbidity, WaterTemp)
-df_rtm_ts_plt <- df_rtm_daily_avg %>% 
+df_rtm_ts_plt <- df_rtm_clean_ts %>% 
   # keep only common parameters and stations
   filter(
     Parameter %in% c("Chla", "DO", "pH", "SpCnd", "Turbidity", "WaterTemp"),
-    !StationCode %in% c("RMB", "TOE", "LIBCUT", "SGG")
+    !StationCode %in% c("TOE", "LIBCUT")
   ) %>% 
   mutate(StationCode = fct_drop(StationCode)) %>% 
   select(-FlowActionType_s) %>% 
