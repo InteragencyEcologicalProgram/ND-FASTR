@@ -409,11 +409,12 @@ pwalk(
 
 # 5.1 Prepare Data for Plots ----------------------------------------------
 
-df_rtm_week_avg <- df_rtm_clean[[1]] %>% 
-  # Remove SRH and fDOM
+df_rtm_clean_bp <- df_rtm_clean %>% 
+  # Remove sites, parameters, and years we aren't including in the boxplots
   filter(
     StationCode != "SRH",
-    Parameter != "fDOM"
+    !Parameter %in% c("fDOM", "NitrateNitrite", "WaterTemp"),
+    Year >2012
   ) %>% 
   # Add variables for Region and Flow Pulse Period
   ndfa_action_periods() %>% 
@@ -424,13 +425,8 @@ df_rtm_week_avg <- df_rtm_clean[[1]] %>%
       "Downstream"
     )
   ) %>% 
-  # Calculate weekly averages
-  mutate(Week = week(Date)) %>% 
-  group_by(StationCode, Parameter, FlowActionPeriod, Region, Year, Week) %>% 
-  summarize(Weekly_avg = mean(Value)) %>% 
-  ungroup() %>% 
-  # Log transform weekly averages
-  mutate(Weekly_avg_log = log(Weekly_avg)) %>% 
+  # Log transform daily averages
+  mutate(Daily_avg_log = log(Daily_avg)) %>% 
   # Convert Year, FlowActionPeriod, and Region to factors
   mutate(
     Year = factor(Year),
@@ -441,7 +437,7 @@ df_rtm_week_avg <- df_rtm_clean[[1]] %>%
 # 5.2 Create Plot Functions -----------------------------------------------------
 
 # Internal function to define x-axis labels for boxplots
-int_define_vb_xaxis_lab <- function(x_var) {
+int_define_box_xaxis_lab <- function(x_var) {
   xaxis_lab <- case_when(
     x_var == "Year" ~ "Year",
     x_var == "FlowActionPeriod" ~ "Flow Pulse Period",
@@ -454,7 +450,7 @@ int_define_vb_xaxis_lab <- function(x_var) {
 create_boxplot <- function(df, param, grp_var) {
   
   # define x-axis and y-axis labels
-  x_lab <- int_define_vb_xaxis_lab(grp_var)
+  x_lab <- int_define_box_xaxis_lab(grp_var)
   y_lab <- glue("log({int_define_yaxis_lab(param)})")
   
   # convert grp_var to a symbol for tidy evaluation
@@ -462,12 +458,11 @@ create_boxplot <- function(df, param, grp_var) {
   
   # create base plot
   p <- df %>% 
-    ggplot(aes(x = !!grp_var_sym, y = Weekly_avg_log)) +
+    ggplot(aes(x = !!grp_var_sym, y = Daily_avg_log)) +
     geom_boxplot() +
     #add a symbol representing the mean of each group to the plot
     stat_summary( 
       fun = mean, 
-      #fill = "red", 
       color = "red", 
       geom = "point", 
       shape = 8, 
@@ -483,12 +478,12 @@ create_boxplot <- function(df, param, grp_var) {
 # 5.3 Create and Export Plots ---------------------------------------------
 
 # Create boxplots
-df_rtm_box_plt <- df_rtm_week_avg %>% 
+df_rtm_boxplot <- df_rtm_clean_bp %>% 
   nest(df_data = -Parameter) %>% 
   mutate(
-    plt_yr = map2(df_data, Parameter, .f = create_box_plot, grp_var = "Year"),
-    plt_region = map2(df_data, Parameter, .f = create_box_plot, grp_var = "Region"),
-    plt_fa = map2(df_data, Parameter, .f = create_box_plot, grp_var = "FlowActionPeriod"),
+    plt_yr = map2(df_data, Parameter, .f = create_boxplot, grp_var = "Year"),
+    plt_region = map2(df_data, Parameter, .f = create_boxplot, grp_var = "Region"),
+    plt_fa = map2(df_data, Parameter, .f = create_boxplot, grp_var = "FlowActionPeriod"),
     plt_comb = pmap(
       list(plt_yr, plt_region, plt_fa), 
       ~ ..1 / (..2 + ..3) + plot_annotation(tag_levels = "A")
@@ -496,15 +491,15 @@ df_rtm_box_plt <- df_rtm_week_avg %>%
   )
 
 # Define file path to export plots to
-fp_abs_box_plt <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/Report/Boxplot")
+fp_abs_boxplot <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/Report/Boxplot")
 
 # Export boxplots
 walk2(
-  df_rtm_box_plt$plt_comb,
-  df_rtm_box_plt$Parameter,
+  df_rtm_boxplot$plt_comb,
+  df_rtm_boxplot$Parameter,
   ~ggsave(
     plot = .x,
-    filename = paste0(fp_abs_box_plt, "/", .y, "_boxplot.jpg"),
+    filename = paste0(fp_abs_boxplot, "/", .y, "_boxplot.jpg"),
     width = 6.5, 
     height = 8.25, 
     units = "in", 
