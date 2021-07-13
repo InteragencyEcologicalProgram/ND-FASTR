@@ -44,13 +44,23 @@ fp_rel_rtm_data <- "WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-04-2
 # Define relative file path for file containing dates of flow action periods
 fp_rel_fa_dates <- "Data Management/FlowDatesDesignations_45days.csv"
 
+# Define relative file path for files containing results of ANOVA models (F-tests and post-hoc)
+fp_rel_anova <- "WQ_Subteam/Analysis_Results/CWQ"
+
 # Define absolute file paths
 fp_abs_rtm_data <- ndfa_abs_sp_path(fp_rel_rtm_data)
 fp_abs_fa_dates <- ndfa_abs_sp_path(fp_rel_fa_dates)
+fp_abs_anova <- ndfa_abs_sp_path(fp_rel_anova)
 
 # Import continuous WQ data and dates of flow action periods
 df_rtm_orig <- import_rtm_data(fp_abs_rtm_data, 10)
 df_fa_dates_orig <- read_csv(fp_abs_fa_dates)
+
+# Import results of ANOVA models
+df_anova_f_test <- read_csv(file.path(fp_abs_anova, "cwq_aov_daily_avg_sea-none.csv"))
+df_anova_mc_yr <- read_csv(file.path(fp_abs_anova, "cwq_emmeans_year_daily_avg_sea-none.csv"))
+df_anova_mc_fa <- read_csv(file.path(fp_abs_anova, "cwq_emmeans_flowaction_daily_avg_sea-none.csv"))
+df_anova_mc_region <- read_csv(file.path(fp_abs_anova, "cwq_emmeans_region_daily_avg_sea-none.csv"))
 
 
 # 3. Clean WQ Data ---------------------------------------------------------
@@ -409,6 +419,7 @@ pwalk(
 
 # 5.1 Prepare Data for Plots ----------------------------------------------
 
+# Prepare daily average data
 df_rtm_clean_bp <- df_rtm_clean %>% 
   # Remove sites, parameters, and years we aren't including in the boxplots
   filter(
@@ -434,6 +445,117 @@ df_rtm_clean_bp <- df_rtm_clean %>%
     Region = factor(Region, levels = c("Upstream", "Downstream"))
   )
 
+# Prepare results of ANOVA models to add them to boxplots
+# We will only indicate significant results of post-hoc tests for which the F-test for the 
+  # main effect was significant
+# Find significant main effects for each parameter
+df_anova_f_test_signf <- df_anova_f_test %>% 
+  filter(
+    !str_detect(Variable, "^lag"),
+    !is.na(Significance)
+  ) %>% 
+  select(Analyte, Variable)
+
+# Create a list of vectors of the parameters with significant main effects for each effect
+pull_signf_param <- function(df, main_effect) {
+  df %>% 
+    filter(Variable == main_effect) %>% 
+    pull(Analyte)
+}
+
+signf_f_test_param <- 
+  map2(
+    rep(list(df_anova_f_test_signf), 3),
+    c("Year", "FlowActionPeriod", "BroadRegion"),
+    pull_signf_param
+  ) %>% 
+  set_names(c("yr", "fa", "region"))
+
+# Pull out significant post-hoc contrasts for each main effect and parameter with 
+  # a significant main effect
+pull_signf_post_hoc <- function(df, signf_param) {
+  df %>% 
+    filter(
+      Analyte %in% signf_param,
+      str_detect(Significance, "\\*")
+    )
+}
+
+format_signf_post_hoc <- function(df) {
+  df %>% 
+    separate(contrast, c("contrast1", "contrast2")) %>% 
+    mutate(direction = if_else(estimate > 0, "higher", "lower")) %>% 
+    select(Analyte, contrast1, contrast2, direction) %>% 
+    arrange(Analyte, contrast1, contrast2)
+}
+
+signf_mc <- 
+  map2(
+    list(df_anova_mc_yr, df_anova_mc_fa, df_anova_mc_region),
+    signf_f_test_param,
+    pull_signf_post_hoc
+  ) %>% 
+  # Format data frames of significant post-hoc contrasts for easier assessment
+  map(format_signf_post_hoc) %>% 
+  set_names(c("yr", "fa", "region"))
+
+# Prepare post-hoc results to be added as letters to the boxplots
+# Function to create data frame of all factor levels for the main effect for each parameter with 
+  # a significant main effect
+pull_all_fact_levels <- function(df, main_effect, signf_param) {
+  df %>% 
+    distinct(Parameter, {{ main_effect }}) %>% 
+    filter(Parameter %in% signf_param)
+}
+
+# Year:
+#View(signf_mc$yr)
+df_mc_yr <- df_rtm_clean_bp %>% 
+  pull_all_fact_levels(Year, signf_f_test_param$yr) %>% 
+  mutate(
+    txt_label = case_when(
+      Parameter == "Chla" & Year %in% c("2013", "2016") ~ "a",
+      Parameter == "Chla" & Year == 2018 ~ "b",
+      Parameter == "Chla" ~ "ab",
+      Parameter == "DO" & Year == 2015 ~ "a",
+      Parameter == "DO" & Year == 2019 ~ "b",
+      Parameter == "DO" ~ "ab",
+      Parameter == "pH" & Year %in% c("2015", "2017") ~ "a",
+      Parameter == "pH" & Year == 2019 ~ "b",
+      Parameter == "pH" ~ "ab",
+      Parameter == "SpCnd" & Year == 2014 ~ "ab",
+      Parameter == "SpCnd" & Year == 2015 ~ "a",
+      Parameter == "SpCnd" & Year %in% c("2016", "2019") ~ "bc",
+      Parameter == "SpCnd" & Year == 2017 ~ "c",
+      Parameter == "SpCnd" ~ "abc",
+      Parameter == "Turbidity" & Year %in% c("2013", "2015") ~ "ab",
+      Parameter == "Turbidity" & Year %in% c("2014", "2016") ~ "a",
+      Parameter == "Turbidity" & Year %in% c("2017", "2019") ~ "b",
+      Parameter == "Turbidity" & Year == 2018 ~ "c"
+    )
+  )
+
+# Flow Action Period:
+#View(signf_mc$fa)
+df_mc_fa <- df_rtm_clean_bp %>% 
+  pull_all_fact_levels(FlowActionPeriod, signf_f_test_param$fa) %>% 
+  mutate(
+    txt_label = case_when(
+      Parameter == "DO" & FlowActionPeriod %in% c("Before", "During") ~ "a",
+      Parameter == "DO" & FlowActionPeriod == "After" ~ "b",
+      Parameter == "SpCnd" & FlowActionPeriod %in% c("Before", "After") ~ "a",
+      Parameter == "SpCnd" & FlowActionPeriod == "During" ~ "b",
+      Parameter == "Turbidity" & FlowActionPeriod == "Before" ~ "a",
+      Parameter == "Turbidity" & FlowActionPeriod %in% c("During", "After") ~ "b"
+    )
+  )
+
+# Region:
+#View(signf_mc$region)
+df_mc_region <- df_rtm_clean_bp %>% 
+  pull_all_fact_levels(Region, signf_f_test_param$region) %>% 
+  mutate(txt_label = if_else(Region == "Upstream", "a", "b"))
+
 # 5.2 Create Plot Functions -----------------------------------------------------
 
 # Internal function to define x-axis labels for boxplots
@@ -447,7 +569,16 @@ int_define_box_xaxis_lab <- function(x_var) {
   return(xaxis_lab)
 }
 
-create_boxplot <- function(df, param, grp_var) {
+# Internal function to define vertical position of post-hoc letters
+int_define_ypos_mc_letters <- function(df) {
+  max_y <- max(df$Daily_avg_log)
+  min_y <- min(df$Daily_avg_log)
+  add_ypos <- (max_y - min_y) * 0.1
+  max_y + add_ypos
+}
+
+# Function to create boxplots for each parameter and main effect
+create_boxplot <- function(df, df_mc_signf, param, grp_var) {
   
   # define x-axis and y-axis labels
   x_lab <- int_define_box_xaxis_lab(grp_var)
@@ -460,7 +591,7 @@ create_boxplot <- function(df, param, grp_var) {
   p <- df %>% 
     ggplot(aes(x = !!grp_var_sym, y = Daily_avg_log)) +
     geom_boxplot() +
-    #add a symbol representing the mean of each group to the plot
+    # add a symbol representing the mean of each group to the plot
     stat_summary( 
       fun = mean, 
       color = "red", 
@@ -471,19 +602,57 @@ create_boxplot <- function(df, param, grp_var) {
     theme_light() +
     xlab(x_lab) +
     ylab(y_lab)
+    
+  # add letters to indicate significance of post-hoc tests for the parameters with significant
+    # main effects
+  if (!is.null(df_mc_signf)) {
+    p <- p +
+      geom_text(
+        data = df_mc_signf,
+        aes(
+          y = int_define_ypos_mc_letters(df),
+          label = txt_label
+        ),
+        size = 3.5
+      )
+  }
   
   return(p)
 }
 
 # 5.3 Create and Export Plots ---------------------------------------------
 
+# Nest the post-hoc results by parameter in order to join to the rtm data
+nest_mc_df <- function(df, var_name) {
+  var_name_sym <- ensym(var_name)
+  df %>% nest(!!var_name_sym := -Parameter)
+}
+
+df_mc_all <- 
+  list(df_mc_yr, df_mc_fa, df_mc_region) %>% 
+  map2(c("mc_yr", "mc_fa", "mc_region"), nest_mc_df) %>% 
+  reduce(left_join)
+
 # Create boxplots
 df_rtm_boxplot <- df_rtm_clean_bp %>% 
-  nest(df_data = -Parameter) %>% 
+  nest(df_data = -Parameter) %>%
+  left_join(df_mc_all) %>% 
   mutate(
-    plt_yr = map2(df_data, Parameter, .f = create_boxplot, grp_var = "Year"),
-    plt_region = map2(df_data, Parameter, .f = create_boxplot, grp_var = "Region"),
-    plt_fa = map2(df_data, Parameter, .f = create_boxplot, grp_var = "FlowActionPeriod"),
+    plt_yr = pmap(
+      list(df_data, mc_yr, Parameter),
+      .f = create_boxplot, 
+      grp_var = "Year"
+    ),
+    plt_region = pmap(
+      list(df_data, mc_region, Parameter),
+      .f = create_boxplot, 
+      grp_var = "Region"
+      ),
+    plt_fa = pmap(
+      list(df_data, mc_fa, Parameter),
+      .f = create_boxplot, 
+      grp_var = "FlowActionPeriod"
+    ),
     plt_comb = pmap(
       list(plt_yr, plt_region, plt_fa), 
       ~ ..1 / (..2 + ..3) + plot_annotation(tag_levels = "A")
