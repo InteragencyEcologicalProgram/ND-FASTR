@@ -12,6 +12,8 @@ int_define_yaxis_lab <- function(param) {
   yaxis_lab <- case_when(
     param == "Chla" ~ "Chlorophyll (ug/L)",
     param == "DO" ~ "Diss Oxygen (mg/L)",
+    param == "fDOM" ~ "fDOM (ug/L as QSE)",
+    param == "NitrateNitrite" ~ "N + N (mg/L as N)",
     param == "pH" ~ "pH (pH units)",
     param == "SpCnd" ~ "Sp Cond (uS/cm)",
     param == "Turbidity" ~ "Turbidity (FNU)",
@@ -83,9 +85,19 @@ create_ts_plot <- function(df, param, yr, plot_pos) {
       fill = "brown"
     )
   
-  # apply formatting for x-axis based on plot_pos
+  # apply formatting for x-axis based on plot_pos and param
   if (plot_pos == "d_Sac_River") {
     # only the bottom most plot gets x-axis labels and tick marks
+    p <- p +
+      scale_x_date(
+        name = "Date",
+        limits = c(fa_dates$x_lim_min, fa_dates$x_lim_max),
+        breaks = breaks_pretty(15),
+        labels = label_date_short(),
+        expand = expansion(mult = 0.01)
+      )
+  } else if (str_detect(param, "^fD|^Nitr") & plot_pos == "c_Downstream") {
+    # The bottom-most plot for fDOM and NitrateNitrite is the Downstream region
     p <- p +
       scale_x_date(
         name = "Date",

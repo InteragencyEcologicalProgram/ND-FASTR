@@ -1,7 +1,7 @@
 ---
 title: "NDFA RTM Data: Multi-station time-series plots"
 author: "Dave Bosworth"
-date: "3/15/2021"
+date: "7/8/2021"
 output: 
   html_document: 
     code_folding: show
@@ -86,13 +86,10 @@ df_rtm_clean <- df_rtm_orig %>%
     Date = date(DateTime),
     Year = year(DateTime)
   ) %>%
-  # Don't include Flow, FlowTF, fDOM, NitrateNitrite, and all Qual variables
-  select(-c(ends_with("_Qual"), starts_with("Flow"), fDOM, NitrateNitrite)) %>% 
-  # Exclude SDI from the plots and remove data for years 2011-2012
-  filter(
-    StationCode != "SDI",
-    Year > 2012
-  ) %>% 
+  # Don't include Flow, FlowTF, and all Qual variables
+  select(-c(ends_with("_Qual"), starts_with("Flow"))) %>% 
+  # Exclude SDI from the plots
+  filter(StationCode != "SDI") %>% 
   # Apply factor order to StationCode
   mutate(StationCode = factor(StationCode, levels = sta_order)) %>% 
   # Pivot parameters in the long format
@@ -135,7 +132,6 @@ df_rtm_daily_avg_f <- df_rtm_daily_avg %>%
 df_fa_dates_f <- df_fa_dates_orig %>% 
   select(Year, starts_with(c("Pre", "Post"))) %>% 
   mutate(across(where(is.character), mdy)) %>% 
-  filter(Year > 2012) %>% 
   # add 1 day to PreFlowEnd so that the highlight for the flow action periods aligns correctly
   mutate(PreFlowEnd = PreFlowEnd + days(1))
 ```
@@ -149,24 +145,101 @@ df_rtm_plots <- df_rtm_daily_avg_f %>%
   select(Parameter, Year, plot_indiv) %>% 
   nest(plot_list = plot_indiv) %>% 
   mutate(plot_comb = map(plot_list, ~wrap_plots(pull(.x, plot_indiv), ncol = 1))) %>% 
+  select(-plot_list)
+
+# Separate plots into multiple data frames to account for different printing requirements
+# All parameters except for fDOM and NitrateNitrite
+df_rtm_plots_main <- df_rtm_plots %>% 
+  filter(!str_detect(Parameter, "^fD|^Nitr")) %>% 
   # restructure data frame for efficient printing
-  select(-plot_list) %>% 
   nest(param_grp = -Parameter)
+
+# fDOM prior to 2018
+df_rtm_plots_fdom1 <- df_rtm_plots %>% 
+  filter(
+    Parameter == "fDOM",
+    Year < 2018
+  )
+
+# fDOM in 2018 and 2019
+df_rtm_plots_fdom2 <- df_rtm_plots %>% 
+  filter(
+    Parameter == "fDOM",
+    Year >= 2018
+  )
+
+# NitrateNitrite prior to 2018
+df_rtm_plots_nitr1 <- df_rtm_plots %>% 
+  filter(
+    Parameter == "NitrateNitrite",
+    Year < 2018
+  )
+
+# NitrateNitrite in 2018 and 2019
+df_rtm_plots_nitr2 <- df_rtm_plots %>% 
+  filter(
+    Parameter == "NitrateNitrite",
+    Year >= 2018
+  )
 ```
 
 # Multi-station Plots {.tabset .tabset-pills}
 
-```{r print plots, echo = FALSE, results = "asis", fig.width = 8.5, fig.height = 8}
-for (i in 1:nrow(df_rtm_plots)) {
+```{r print plots main, echo = FALSE, results = "asis", fig.width = 8.5, fig.height = 8}
+for (i in 1:nrow(df_rtm_plots_main)) {
   # Create subheadings for each Parameter
-  cat("## ", as.character(df_rtm_plots$Parameter[i]), " {.tabset .tabset-pills}\n\n")
-  for (j in 1:nrow(df_rtm_plots$param_grp[[i]])) {
+  cat("## ", as.character(df_rtm_plots_main$Parameter[i]), " {.tabset .tabset-pills}\n\n")
+  for (j in 1:nrow(df_rtm_plots_main$param_grp[[i]])) {
     # Create subheadings for each Year
-    cat("### ", as.character(df_rtm_plots$param_grp[[i]]$Year[j]), "\n\n")
+    cat("### ", as.character(df_rtm_plots_main$param_grp[[i]]$Year[j]), "\n\n")
     # Print plot
-    print(df_rtm_plots$param_grp[[i]]$plot_comb[[j]])
+    print(df_rtm_plots_main$param_grp[[i]]$plot_comb[[j]])
     cat("\n\n")
   }
+}
+```
+
+```{r print plots fdom earlier, echo = FALSE, results = "asis", fig.width = 8.5, fig.height = 4}
+# Create subheading for fDOM
+cat("## fDOM {.tabset .tabset-pills}\n\n")
+for (i in 1:nrow(df_rtm_plots_fdom1)) {
+  # Create subheadings for each Year
+  cat("### ", as.character(df_rtm_plots_fdom1$Year[i]), "\n\n")
+  # Print plot
+  print(df_rtm_plots_fdom1$plot_comb[[i]])
+  cat("\n\n")
+}
+```
+
+```{r print plots fdom later, echo = FALSE, results = "asis", fig.width = 8.5, fig.height = 8}
+for (i in 1:nrow(df_rtm_plots_fdom2)) {
+  # Create subheadings for each Year
+  cat("### ", as.character(df_rtm_plots_fdom2$Year[i]), "\n\n")
+  # Print plot
+  print(df_rtm_plots_fdom2$plot_comb[[i]])
+  cat("\n\n")
+}
+```
+
+```{r print plots nitr earlier, echo = FALSE, results = "asis", fig.width = 8.5, fig.height = 4}
+# Create subheading for NitrateNitrite
+cat("## NitrateNitrite {.tabset .tabset-pills}\n\n")
+for (i in 1:nrow(df_rtm_plots_nitr1)) {
+  # Create subheadings for each Year
+  cat("### ", as.character(df_rtm_plots_nitr1$Year[i]), "\n\n")
+  # Print plot
+  print(df_rtm_plots_nitr1$plot_comb[[i]])
+  cat("\n\n")
+}
+```
+
+```{r print plots nitr later, echo = FALSE, results = "asis", fig.width = 8.5, fig.height = 8}
+for (i in 1:nrow(df_rtm_plots_nitr2)) {
+  # Create subheadings for each Year
+  cat("### ", as.character(df_rtm_plots_nitr2$Year[i]), "\n\n")
+  # Print plot
+  print(df_rtm_plots_nitr2$plot_comb[[i]])
+  cat("\n\n")
 }
 ```
 
