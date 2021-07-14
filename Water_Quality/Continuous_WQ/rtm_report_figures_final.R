@@ -143,6 +143,71 @@ df_rtm_clean_ts <- df_rtm_clean %>%
   # Add a grouping variable for FlowActionType - low vs. high
   add_FlowActionType()
 
+# Prepare data for time-series plots of common parameters -
+  # Chla, DO, pH, SpCnd, Turbidity, WaterTemp
+df_rtm_ts_common <- df_rtm_clean_ts %>% 
+  # keep only common parameters and stations
+  filter(
+    Parameter %in% c("Chla", "DO", "pH", "SpCnd", "Turbidity", "WaterTemp"),
+    StationCode != "LIBCUT",
+    # keep Turbidity data for TOE for 2014 and 2015 since Turbidity 
+      # wasn't collected at STTD during those years
+    !(StationCode == "TOE" & Parameter != "Turbidity"),
+    !(StationCode == "TOE" & Year > 2015)
+  ) %>% 
+  mutate(StationCode = fct_drop(StationCode))
+
+# Prepare data for time-series plots of fDOM and Nitrate + Nitrite
+df_rtm_ts_nitr_fdom <- df_rtm_clean_ts %>% 
+  filter(
+    Parameter %in% c("fDOM", "NitrateNitrite"),
+    Year > 2012
+  ) %>% 
+  mutate(StationCode = fct_drop(StationCode))
+
+# Create a tibble to define max and min values for the y-axes of the time-series plots
+# Common parameters:
+df_ylim_common <- df_rtm_ts_common %>% 
+  group_by(Parameter, Region) %>% 
+  summarize(
+    ymin = floor(min(Daily_avg, na.rm = TRUE)),
+    ymax = ceiling(max(Daily_avg, na.rm = TRUE))
+  ) %>% 
+  ungroup() %>% 
+  # remove the combinations for which we want a free scale
+  filter(
+    !(Parameter == "Chla" & Region == "a_Upstream"),
+    !Parameter %in% c("SpCnd", "Turbidity")
+  ) %>% 
+  # Slightly modify some of the max and min values (pH and WaterTemp have same values across regions)
+  mutate(
+    ymin = case_when(
+      Parameter == "DO" & Region == "b_Downstream_Sac" ~ ymin + 0.8,
+      Parameter == "pH" ~ 6.9,
+      Parameter == "WaterTemp" ~ 8.5,
+      TRUE ~ ymin
+    ),
+    ymax = case_when(
+      Parameter == "DO" ~ ymax - 0.5,
+      Parameter == "WaterTemp" ~ 28.5,
+      TRUE ~ ymax
+    )
+  )
+
+# fDOM and Nitrate + Nitrite:
+df_ylim_nitr_fdom <- df_rtm_ts_nitr_fdom %>% 
+  group_by(Parameter) %>% 
+  summarize(
+    ymin = floor(min(Daily_avg, na.rm = TRUE)),
+    ymax = ceiling(max(Daily_avg, na.rm = TRUE)),
+  ) %>% 
+  ungroup() %>% 
+  # Slightly modify some of the max and min values
+  mutate(
+    ymin = if_else(Parameter == "fDOM", ymin + 0.5, ymin),
+    ymax = if_else(Parameter == "fDOM", ymax - 0.5, 0.8)
+  )
+
 # Prepare dates of flow action periods to highlight the flow action periods for each year 
   # in the plots and to define consistent x-axis limits
 df_fa_dates_f <- df_fa_dates_orig %>% 
@@ -200,8 +265,7 @@ add_fa_rect <- function(df) {
 }
 
 # Create time-series plot of continuous WQ Data by Region
-create_ts_plot_reg <- function(df, df_fa, param, region_cat, y_scale) {
-  
+create_ts_plot_region <- function(df, df_fa, param, region_cat, y_min, y_max) {
   # define y-axis label
   y_lab <- int_define_yaxis_lab(param)
   
@@ -216,18 +280,28 @@ create_ts_plot_reg <- function(df, df_fa, param, region_cat, y_scale) {
     ggtitle(plot_title) +
     add_fa_rect(df_fa)
   
-  # only label y-axis for the plot on the left (Upstream Region)
+  # label y-axis for the plot on the left (Upstream Region), create facets with either 
+    # fixed or free y-axis scales, and define y-axis limits if they are provided
   if (region_cat == "a_Upstream") {
-    p <- p + scale_y_continuous(name = y_lab, labels = label_comma())
+    if (!is.na(y_min)) {
+      p <- p + 
+        scale_y_continuous(name = y_lab, limits = c(y_min, y_max), labels = label_comma()) +
+        facet_wrap(vars(Year), ncol = 1, scales = "free_x")
+    } else {
+      p <- p + 
+        scale_y_continuous(name = y_lab, labels = label_comma()) +
+        facet_wrap(vars(Year), ncol = 1, scales = "free")
+    }
   } else {
-    p <- p + scale_y_continuous(name = NULL, labels = label_comma())
-  }
-  
-  # create facets with either fixed or free y-axis scales based on the y_scale argument
-  if (y_scale == "free") {
-    p <- p + facet_wrap(vars(Year), ncol = 1, scales = "free")
-  } else {
-    p <- p + facet_wrap(vars(Year), ncol = 1, scales = "free_x")
+    if (!is.na(y_min)) {
+      p <- p + 
+        scale_y_continuous(name = NULL, limits = c(y_min, y_max), labels = label_comma()) +
+        facet_wrap(vars(Year), ncol = 1, scales = "free_x")
+    } else {
+      p <- p + 
+        scale_y_continuous(name = NULL,  labels = label_comma()) +
+        facet_wrap(vars(Year), ncol = 1, scales = "free")
+    }
   }
   
   return(p)
@@ -235,7 +309,7 @@ create_ts_plot_reg <- function(df, df_fa, param, region_cat, y_scale) {
 
 # Create time-series plot of continuous WQ Data of all stations - for parameters that were
   # collected at a limited number of stations
-create_ts_plot_all <- function(df, df_fa, param) {
+create_ts_plot_all <- function(df, df_fa, param, y_min, y_max) {
   # define y-axis label
   y_lab <- int_define_yaxis_lab(param)
   
@@ -251,6 +325,7 @@ create_ts_plot_all <- function(df, df_fa, param) {
     ts_cust_format +
     scale_y_continuous(
       name = y_lab, 
+      limits = c(y_min, y_max),
       labels = label_comma()
     ) +
     add_fa_rect(df_fa)
@@ -272,33 +347,16 @@ df_fa_dates_f_nest_s <- df_fa_dates_f %>%
   nest(df_fa_dates = -FlowActionType_s)
 
 # Create plots for common parameters (Chla, DO, pH, SpCnd, Turbidity, WaterTemp)
-df_rtm_ts_plt <- df_rtm_clean_ts %>% 
-  # keep only common parameters and stations
-  filter(
-    Parameter %in% c("Chla", "DO", "pH", "SpCnd", "Turbidity", "WaterTemp"),
-    StationCode != "LIBCUT",
-    # keep Turbidity data for TOE for 2014 and 2015 since Turbidity 
-      # wasn't collected at STTD during those years
-    !(StationCode == "TOE" & Parameter != "Turbidity"),
-    !(StationCode == "TOE" & Year > 2015)
-  ) %>% 
-  mutate(StationCode = fct_drop(StationCode)) %>% 
-  select(-FlowActionType_s) %>% 
+df_rtm_ts_plt <- df_rtm_ts_common %>% 
   arrange(Parameter, FlowActionType, Region) %>% 
+  select(-FlowActionType_s) %>% 
   nest(df_data = -c(Parameter, FlowActionType, Region)) %>% 
   left_join(df_fa_dates_f_nest) %>% 
-  # create a y_scale variable to specify free or fixed y-axis scale
-  mutate(
-    y_scale = case_when(
-      Parameter %in% c("DO", "pH", "WaterTemp") & str_detect(Region, "^a") ~ "free",
-      Parameter %in% c("DO", "pH", "WaterTemp") & str_detect(Region, "^b") ~ "fixed",
-      Parameter %in% c("Chla", "SpCnd", "Turbidity") ~ "free"
-    )
-  ) %>% 
+  left_join(df_ylim_common) %>% 
   mutate(
     plt_indiv = pmap(
-      list(df_data, df_fa_dates, Parameter, Region, y_scale), 
-      .f = create_ts_plot_reg
+      list(df_data, df_fa_dates, Parameter, Region, ymin, ymax), 
+      .f = create_ts_plot_region
     )
   ) %>% 
   select(Parameter, FlowActionType, plt_indiv) %>% 
@@ -381,18 +439,15 @@ ggsave(
 )
 
 # Create plots for fDOM and Nitrate + Nitrite:
-df_rtm_ts_plt_nitr_fdom <- df_rtm_daily_avg %>% 
-  filter(
-    Parameter %in% c("fDOM", "NitrateNitrite"),
-    Year > 2012
-  ) %>%
+df_rtm_ts_plt_nitr_fdom <- df_rtm_ts_nitr_fdom %>% 
   arrange(Parameter, FlowActionType_s) %>%
   select(-FlowActionType) %>% 
   nest(df_data = -c(Parameter, FlowActionType_s)) %>% 
   left_join(df_fa_dates_f_nest_s) %>% 
+  left_join(df_ylim_nitr_fdom) %>% 
   mutate(
     plt = pmap(
-      list(df_data, df_fa_dates, Parameter),
+      list(df_data, df_fa_dates, Parameter, ymin, ymax),
       .f = create_ts_plot_all
     )
   )
