@@ -480,7 +480,7 @@ df_rtm_clean_bp <- df_rtm_clean %>%
   filter(
     StationCode != "SRH",
     !Parameter %in% c("fDOM", "NitrateNitrite", "WaterTemp"),
-    Year >2012
+    Year > 2012
   ) %>% 
   # Add variables for Region and Flow Pulse Period
   ndfa_action_periods() %>% 
@@ -714,6 +714,38 @@ df_rtm_boxplot <- df_rtm_clean_bp %>%
     )
   )
 
+# Create a boxplot for WaterTemp comparing regions
+boxplot_watertemp <- df_rtm_clean %>% 
+  # Remove sites and years we aren't including in the boxplot
+  filter(
+    Parameter == "WaterTemp",
+    StationCode != "SRH",
+    Year > 2012
+  ) %>% 
+  # Add variable for Region
+  mutate(
+    Region = factor(
+      if_else(
+        StationCode %in% c("RMB", "RCS", "RD22", "I80", "LIS", "TOE", "STTD"),
+        "Upstream",
+        "Downstream"
+      ),
+      levels = c("Upstream", "Downstream")
+    )
+  ) %>% 
+  ggplot(aes(x = Region, y = Daily_avg)) +
+  geom_boxplot() +
+  stat_summary( 
+    fun = mean, 
+    color = "red", 
+    geom = "point", 
+    shape = 8, 
+    size = 2 
+  ) +
+  theme_light() +
+  xlab("Region") +
+  ylab("Water Temperature (degrees C)")
+
 # Define file path to export plots to
 fp_abs_boxplot <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/Report/Boxplot")
 
@@ -731,3 +763,12 @@ walk2(
   )
 )
 
+ggsave(
+  filename = file.path(fp_abs_boxplot, "WaterTemp_boxplot.jpg"),
+  width = 4,
+  height = 4,
+  units = "in",
+  dpi = 300
+)
+
+  
