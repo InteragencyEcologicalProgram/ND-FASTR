@@ -1,75 +1,18 @@
 ```{r}
-# C-WQ Regressions for Hypotheis Table
-# Author: Sarah Perry
-```
-
-```{r functions}
-# import function
-ndfa_action_periods2 <- function(df, na_action_remove = TRUE, keep_action_dates = FALSE) {
-  # Make sure Date variable exists in df
-  assert_that(
-    "Date" %in% names(df),
-    msg = "ndfa_action_periods function\nDataframe requires a 'Date' variable that represents sample dates in the date data type (yyyy-mm-dd)."
-  )
-
-    # Make sure Date variable in df is date data type
-  assert_that(
-    is.date(df$Date),
-    msg = "ndfa_action_periods function\n'Date' variable must be in the date data type (yyyy-mm-dd)."
-  )
-  
-  # Import dates for flow action periods
-  fp_act_dates <- ndfa_abs_sp_path("Data Management/FlowDatesDesignations_45days.csv")
-  df_act_dates_orig <- read_csv(fp_act_dates)
-  
-  # Convert date columns in df_act_dates_orig to date type
-  df_act_dates_clean <- df_act_dates_orig %>% 
-    mutate(across(starts_with(c("Pre", "Post")), mdy))
-  
-  # Add a Year variable to df if it doesn't already exist
-  if (!"Year" %in% names(df)) {
-    df <- df %>% mutate(Year = year(Date))
-    message("Adding a Year variable to the dataframe.")
-  }
-  
-  # Join flow action dates to df and add FlowActionPeriod variable
-  df_join <- 
-    left_join(df, df_act_dates_clean, by  = "Year") %>% 
-    mutate(
-      FlowActionPeriod = case_when(
-        Date >= PreFlowStart & Date <= PreFlowEnd ~ "Before",
-        Date > PreFlowEnd & Date < PostFlowStart ~ "During",
-        Date >= PostFlowStart & Date <= PostFlowEnd ~ "After"
-      )
-    ) %>% 
-    # Remove some variables from df_act_dates_clean
-    dplyr::select(!c(WYType, FlowPulseType, NetFlowDays))
-  
-  # Remove sampling dates outside of before, during, and after flow action period window 
-    # if na_action_remove is TRUE
-
-  if (na_action_remove == TRUE) {
-    df_join <- df_join %>% filter(!is.na(FlowActionPeriod))
-  }
-
-  # Remove variables from df_act_dates_clean containing the flow action dates if 
-    # keep_action_dates is FALSE
-  if (keep_action_dates == FALSE) {
-    df_join <- df_join %>% dplyr::select(-c(PreFlowStart, PreFlowEnd, PostFlowStart, PostFlowEnd))
-  }
-
-  return(df_join)
-}
+# C-WQ Regressions for Hypothesis Table
+# Authors: Sarah Perry, Dave Bosworth
+# Contacts: seperry83@gmail.com; David.Bosworth@water.ca.gov
 ```
 
 ```{r, message=FALSE}
 # import packages
 library(tidyverse)
-library(DataCombine)
-library(reshape2)
+library(lubridate)
 library(lmerTest)
 library(emmeans)
 library(car)
+library(magrittr)
+library(timetk)
 source('global_ndfa_funcs.R')
 source('Water_Quality/global_wq_funcs.R')
 
@@ -81,6 +24,7 @@ df_wq <- import_rtm_data(fp_wq, num_params = 10)
 df_region <- read_csv(fp_region)
 
 # remove excess cols in df_region
+
 df_region <- subset(df_region, select = c(StationCode, BroadRegion))
 
 # standardize/rename Date col
@@ -125,8 +69,93 @@ df_wq_day$Month <- as.character(df_wq_day$Month)
 df_wq_day <- df_wq_day %>%
   mutate(julian = yday(date))
 
-# log transform
-df_wq_day$Result <- log(df_wq_day$Result)
+df_region %<>% select(StationCode, BroadRegion)
+
+# Create vector of sites we aren't including (not available for all years)
+remove <- c('SRH', 'SHR', 'SRV', 'WWT', 'DWT', 'SDI', 'SGG') # keep TOE, LIBCUT for now
+
+# Clean and Prepare df_wq for analysis
+df_wq_clean <- df_wq %>% 
+  # Parse DateTime variable and create Date and Year variables
+  mutate(
+    DateTime = ymd_hms(DateTime),
+    Date = date(DateTime),
+    Year = year(DateTime)
+  ) %>% 
+  # Remove sites, parameters, and years we aren't including in the analysis
+  filter(
+    !StationCode %in% remove,
+    Year > 2012
+  ) %>% 
+  select(
+    !c(
+      starts_with("Flow"), 
+      starts_with("fDOM"), 
+      starts_with("Nitrate"), 
+      starts_with("WaterTemp")
+    )
+  ) %>% 
+  # Pivot data longer
+  select(!ends_with("_Qual")) %>% 
+  pivot_longer(
+    cols = -c(StationCode, DateTime, Date, Year),
+    names_to = "Analyte",
+    values_to = "Result"
+  ) %>% 
+  # Remove NA values
+  filter(!is.na(Result)) %>% 
+  # Calculate daily averages
+  group_by(StationCode, Analyte, Year, Date) %>% 
+  summarize(Result = mean(Result)) %>% 
+  # Fill in missing days for each StationCode, Analyte, Year combination
+  complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>% 
+  ungroup() %>% 
+  # Log transform data
+  mutate(Result = log(Result)) %>% 
+  # Create lags
+  arrange(StationCode, Analyte, Year, Date) %>% 
+  group_by(StationCode, Analyte, Year) %>% 
+  mutate(
+    lag1 = lag(Result),
+    lag2 = lag(Result, 2),
+    lag3 = lag(Result, 3)
+  ) %>% 
+  ungroup() %>% 
+  # Add Flow Action Periods, Regions, Month, and Week variables
+  ndfa_action_periods() %>% 
+  left_join(df_region) %>% 
+  mutate(
+    Month = as.character(month(Date)),
+    Week = as.character(week(Date)),
+    # Convert Year to character so it runs correctly in the model
+    Year = as.character(Year)
+  )
+```
+>>>>>>> ee1321f37cd7b54f115f3fd64cce8c2859be3396
+
+```{r create diag plots}
+analytes <- unique(df_wq_clean$Analyte)
+
+# Define file path for ANOVA Diagnostics Plots
+fp_anova_diag <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/ANOVA_Diagnostics")
+
+# Create seasonal Diagnostics plots first
+pdf(file.path(fp_anova_diag, "Seasonal_Diagnostics.pdf"))
+  for (ana in analytes) {
+    df_temp <- df_wq_clean %>% filter(Analyte == ana)
+    
+    plt <- df_temp %>% 
+      plot_seasonal_diagnostics(
+        Date, 
+        Result, 
+        .feature_set = c("week", "month.lbl"), 
+        .interactive = FALSE
+      ) +
+      ggtitle(ana)
+    
+    print(plt)
+  }
+dev.off()  
 
 df_wq_day <- with(df_wq_day, df_wq_day[order(Analyte, StationCode, Year),])
 
@@ -135,81 +164,346 @@ df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'date', GroupVar = c('Analyte'
 df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'date', GroupVar = c('Analyte','StationCode','Year'), NewVar = 'lag2', slideBy = -2)
 df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'date', GroupVar = c('Analyte','StationCode','Year'), NewVar = 'lag3', slideBy = -3)
 
-# another approach (filter df first, no loop) -- why does this give dif results for only some of the lag terms?
-chl = filter(df_wq_day, Analyte == "Chla") %>%
-  select(-lag1, -lag2, -lag3)
+# Create ANOVA Diagnostics plots for no, 1, 2, and 3 lag terms without a seasonal term
+for (ana in analytes) {
+  df_temp <- df_wq_clean %>% filter(Analyte == ana)
+  
+  # Create models
+  lmer_fit0 <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + (1|StationCode), 
+      data = df_temp
+    )
+  lmer_fit1 <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + (1|StationCode), 
+      data = df_temp
+    )
+  lmer_fit2 <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), 
+      data = df_temp
+    )
+  lmer_fit3 <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode), 
+      data = df_temp
+    )
+  
+  # Create and save ANOVA Diagnostics plots
+  pdf(paste0(fp_anova_diag, "/", ana, "_daily_avg_sea-none.pdf"))
+    acf(residuals(lmer_fit0), na.action = na.pass, main = paste0(ana, "- no lag terms"))
+    acf(residuals(lmer_fit1), na.action = na.pass, main = paste0(ana, "- 1 lag term"))
+    acf(residuals(lmer_fit2), na.action = na.pass, main = paste0(ana, "- 2 lag terms"))
+    acf(residuals(lmer_fit3), na.action = na.pass, main = paste0(ana, "- 3 lag terms"))
+    plot(residuals(lmer_fit0), main = paste0(ana, "- no lag terms"))
+    plot(residuals(lmer_fit1), main = paste0(ana, "- 1 lag term"))
+    plot(residuals(lmer_fit2), main = paste0(ana, "- 2 lag terms"))
+    plot(residuals(lmer_fit3), main = paste0(ana, "- 3 lag terms"))
+    qqnorm(residuals(lmer_fit0), main = paste0("Normal Q−Q Plot- ", ana, ", no lag terms"))
+    qqnorm(residuals(lmer_fit1), main = paste0("Normal Q−Q Plot- ", ana, ", 1 lag term"))
+    qqnorm(residuals(lmer_fit2), main = paste0("Normal Q−Q Plot- ", ana, ", 2 lag terms"))
+    qqnorm(residuals(lmer_fit3), main = paste0("Normal Q−Q Plot- ", ana, ", 3 lag terms"))
+    hist(residuals(lmer_fit0), breaks = 15)
+    hist(residuals(lmer_fit1), breaks = 15)
+    hist(residuals(lmer_fit2), breaks = 15)
+    hist(residuals(lmer_fit3), breaks = 15)
+  dev.off()
+  
+  # Print off results of Portmanteau tests to look for autocorrelation among the residuals
+  print(ana)
+  print(stats::Box.test(residuals(lmer_fit0), lag = 20, type = 'Ljung-Box'))
+  print(stats::Box.test(residuals(lmer_fit1), lag = 20, type = 'Ljung-Box'))
+  print(stats::Box.test(residuals(lmer_fit2), lag = 20, type = 'Ljung-Box'))
+  print(stats::Box.test(residuals(lmer_fit3), lag = 20, type = 'Ljung-Box'))
+}
+
+# Chla: 2 lag terms is best
+# DO: 2 lag terms is best (lag 3 is significant)
+# pH: 3 lag terms is best
+# SpCnd: 3 lag terms is best
+# Turbidity: 3 lag terms is best
+
+# Next, we'll add seasonal terms to these best-fitting models to see if they improve anything
+# Chla and DO with 2 lag terms
+analytes2 <- c("Chla", "DO")
+for (ana in analytes2) {
+  df_temp <- df_wq_clean %>% filter(Analyte == ana)
+  
+  # Create models
+  lmer_fit2 <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), 
+      data = df_temp
+    )
+  lmer_fit2_month <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + Month + (1|StationCode), 
+      data = df_temp
+    )
+  lmer_fit2_week <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + Week + (1|StationCode), 
+      data = df_temp
+    )
+  # Create and save ANOVA Diagnostics plots
+  pdf(paste0(fp_anova_diag, "/", ana, "_daily_avg_2lag_seasonal.pdf"))
+    acf(
+      residuals(lmer_fit2), 
+      na.action = na.pass, 
+      main = paste0(ana, "- 2 lags, no seasonal terms")
+    )
+    acf(
+      residuals(lmer_fit2_month), 
+      na.action = na.pass, 
+      main = paste0(ana, "- 2 lags, Month seasonal term")
+    )
+    acf(
+      residuals(lmer_fit2_week), 
+      na.action = na.pass, 
+      main = paste0(ana, "- 2 lags, Week seasonal term")
+    )
+    plot(residuals(lmer_fit2), main = paste0(ana, "- 2 lags, no seasonal terms"))
+    plot(residuals(lmer_fit2_month), main = paste0(ana, "- 2 lags, Month seasonal term"))
+    plot(residuals(lmer_fit2_week), main = paste0(ana, "- 2 lags, Week seasonal term"))
+    qqnorm(
+      residuals(lmer_fit2), 
+      main = paste0("Normal Q−Q Plot- ", ana, ", 2 lags, no seasonal terms")
+    )
+    qqnorm(
+      residuals(lmer_fit2_month), 
+      main = paste0("Normal Q−Q Plot- ", ana, ", 2 lags, Month seasonal term")
+    )
+    qqnorm(
+      residuals(lmer_fit2_week), 
+      main = paste0("Normal Q−Q Plot- ", ana, ", 2 lags, Week seasonal term")
+    )
+    hist(residuals(lmer_fit2), breaks = 15)
+    hist(residuals(lmer_fit2_month), breaks = 15)
+    hist(residuals(lmer_fit2_week), breaks = 15)
+  dev.off()
+  
+  # Print off results of Portmanteau tests to look for autocorrelation among the residuals
+  print(ana)
+  print(stats::Box.test(residuals(lmer_fit2), lag = 20, type = 'Ljung-Box'))
+  print(stats::Box.test(residuals(lmer_fit2_month), lag = 20, type = 'Ljung-Box'))
+  print(stats::Box.test(residuals(lmer_fit2_week), lag = 20, type = 'Ljung-Box'))
+}
+# 2 lags, no seasonal terms is best for Chla and DO
+
+# DO, pH, SpCnd, and Turbidity with 3 lag terms
+analytes3 <- c("DO", "pH", "SpCnd", "Turbidity")
+for (ana in analytes3) {
+  df_temp <- df_wq_clean %>% filter(Analyte == ana)
+  
+  # Create models
+  lmer_fit3 <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode), 
+      data = df_temp
+    )
+  lmer_fit3_month <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + Month + (1|StationCode), 
+      data = df_temp
+    )
+  lmer_fit3_week <- 
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + Week + (1|StationCode), 
+      data = df_temp
+    )
+  # Create and save ANOVA Diagnostics plots
+  pdf(paste0(fp_anova_diag, "/", ana, "_daily_avg_3lag_seasonal.pdf"))
+    acf(
+      residuals(lmer_fit3), 
+      na.action = na.pass, 
+      main = paste0(ana, "- 3 lags, no seasonal terms")
+    )
+    acf(
+      residuals(lmer_fit3_month), 
+      na.action = na.pass, 
+      main = paste0(ana, "- 3 lags, Month seasonal term")
+    )
+    acf(
+      residuals(lmer_fit3_week), 
+      na.action = na.pass, 
+      main = paste0(ana, "- 3 lags, Week seasonal term")
+    )
+    plot(residuals(lmer_fit3), main = paste0(ana, "- 3 lags, no seasonal terms"))
+    plot(residuals(lmer_fit3_month), main = paste0(ana, "- 3 lags, Month seasonal term"))
+    plot(residuals(lmer_fit3_week), main = paste0(ana, "- 3 lags, Week seasonal term"))
+    qqnorm(
+      residuals(lmer_fit3), 
+      main = paste0("Normal Q−Q Plot- ", ana, ", 3 lags, no seasonal terms")
+    )
+    qqnorm(
+      residuals(lmer_fit3_month), 
+      main = paste0("Normal Q−Q Plot- ", ana, ", 3 lags, Month seasonal term")
+    )
+    qqnorm(
+      residuals(lmer_fit3_week), 
+      main = paste0("Normal Q−Q Plot- ", ana, ", 3 lags, Week seasonal term")
+    )
+    hist(residuals(lmer_fit3), breaks = 15)
+    hist(residuals(lmer_fit3_month), breaks = 15)
+    hist(residuals(lmer_fit3_week), breaks = 15)
+  dev.off()
+  
+  # Print off results of Portmanteau tests to look for autocorrelation among the residuals
+  print(ana)
+  print(stats::Box.test(residuals(lmer_fit3), lag = 20, type = 'Ljung-Box'))
+  print(stats::Box.test(residuals(lmer_fit3_month), lag = 20, type = 'Ljung-Box'))
+  print(stats::Box.test(residuals(lmer_fit3_week), lag = 20, type = 'Ljung-Box'))
+}
+# 3 lags, no seasonal terms is best for pH, SpCnd, and Turbidity
+```
 
 chl <- slide(chl, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag1', slideBy = -1)
 chl <- slide(chl, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag2', slideBy = -2)
 chl <- slide(chl, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag3', slideBy = -3)
 
-# remove excess dfs
-rm(df_region, df_wq)
-```
+We are going to use the following model structures:
+
+* Chla: Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode)
+* DO: Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode)
+* pH: Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode)
+* SpCnd: Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode)
+* Turbidity: Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode)
 
 ```{r all analytes}
-analytes <- 'Chla' # unique(df_wq_day$Analyte)
-analytes <- subset(analytes, !(analytes %in% c('Flow', 'FlowTF', 'fDOM')))
-all_reg <- list()
-all_aov <- list()
+# Create function to make lmer model object with either 2 or 3 lag terms
+create_lmer_obj <- function(df, num_lags = c(2, 3)) {
+  # Define options for num_lags argument
+  match.arg(num_lags, c(2, 3))
+  
+  # Create lmer model object
+  if (num_lags == 2) {
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode),
+      data = df
+    )
+  } else {
+    lmer(
+      Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + lag3 + (1|StationCode),
+      data = df
+    )
+  }
+}
 
 for (i in seq(analytes)){
   df_temp <- df_wq_day %>%
     filter(Analyte == 'Chla')
-  
-  # pacf(df_temp$Result, na.action = na.pass)
 
-  lmer_fit <- lmer(Result ~ Year + Month + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), data = df_temp)
-  
-  # create and save pacf plots
-  png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/00_t_2',analytes[i],'_rand3.png')))
-  acf(residuals(lmer_fit), na.action = na.pass, main = paste0(analytes[i],' - rand3'))
-  dev.off()
-  plot(residuals(lmer_fit))
-  qqnorm(residuals(lmer_fit))
-  print(stats::Box.test(residuals(lmer_fit), type = 'Ljung'))
-  hist(residuals(lmer_fit), breaks = 15)
+  # Create function to run Anova F-test with type II sum of squares on a lmer object and format it
+run_anova2 <- function(lmer_obj) {
+  aov_lmer <- Anova(lmer_obj, type = 'II', test.statistic = 'F')
 
-  # aov_lmer <- Anova(lmer_fit, type = 'II', test.statistic = 'F')
-  # aov_lmer$Analyte <- analytes[i]
-  # aov_lmer$Variable <- rownames(aov_lmer)
-  # 
-  # aov_lmer <- aov_lmer %>%
-  #   mutate(Significance = case_when(
-  #     `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
-  #     `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
-  #     `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
-  #     `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
-  #     `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
-  #     )
-  #   )
-
-  # lmer_rg <- ref_grid(lmer_fit)
-  # lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ Year:Year, adjust = 'sidak') # manually change the pairs cause I'm lazy
-  # cont <- test(lmer_emm)$contrasts
-  # print(lmer_emm) # to check adj method
-
-  # cont$Analyte <- analytes[i]
-  # df_cont <- cont %>%
-  #   mutate(Significance = case_when(
-  #     p.value >= 0 & p.value < 0.001 ~ '***',
-  #     p.value >= 0.001 & p.value < 0.01 ~ '**',
-  #     p.value >= 0.01 & p.value < 0.05 ~ '*',
-  #     p.value >= 0.05 & p.value < 0.1 ~ '.',
-  #     p.value >= 0.1 & p.value < 1 ~ ' ',
-  #     )
-  #   )
-
-  # all_reg[[i]] <- df_cont
-  # all_aov[[i]] <- aov_lmer
+  aov_lmer %>% 
+    rownames_to_column(var = "Variable") %>% 
+    mutate(
+      Significance = case_when(
+        `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
+        `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
+        `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
+        `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
+        `Pr(>F)` >= 0.1 & `Pr(>F)` <= 1 ~ ' ',
+      )
+    )
 }
 
-# all_reg_data <- do.call(rbind, all_reg)
-# all_aov_data <- do.call(rbind,all_aov)
 
-# write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_emmeans_year_noSDI_0.csv'))
-# write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/1_cwq_aov_noSDI_0.csv'))
-```
+  lmer_fit <- lmer(Result ~ Year + Month + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), data = df_temp)
+
+# Create function to format emmeans pairwise results
+format_emm_pw <- function(emm_obj) {
+  emm_cont <- test(emm_obj)$contrasts
+  emm_cont %>% 
+    mutate(
+      Significance = case_when(
+        p.value >= 0 & p.value < 0.001 ~ '***',
+        p.value >= 0.001 & p.value < 0.01 ~ '**',
+        p.value >= 0.01 & p.value < 0.05 ~ '*',
+        p.value >= 0.05 & p.value < 0.1 ~ '.',
+        p.value >= 0.1 & p.value <= 1 ~ ' ',
+      )
+    )
+}
+
+# Create function to run emmeans pairwise tests with Sidak adjustment method
+run_emm_pw_all <- function(lmer_obj) {
+  lmer_rg <- ref_grid(lmer_obj, pbkrtest.limit = 15000, lmerTest.limit = 15000)
+
+  # Run pairwise test on Year variable
+  lmer_emm_yr <- emmeans(
+    lmer_rg, 
+    specs = pairwise ~ Year:Year, 
+    adjust = 'sidak'
+  ) 
+  cont_yr <- format_emm_pw(lmer_emm_yr)
+  
+  # Run pairwise test on FlowActionPeriod variable
+  lmer_emm_fa <- emmeans(
+    lmer_rg, 
+    specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, 
+    adjust = 'sidak'
+  ) 
+  cont_fa <- format_emm_pw(lmer_emm_fa)
+  
+  # Run pairwise test on BroadRegion variable
+  lmer_emm_region <- emmeans(
+    lmer_rg, 
+    specs = pairwise ~ BroadRegion:BroadRegion, 
+    adjust = 'sidak'
+  ) 
+  cont_region <- format_emm_pw(lmer_emm_region)
+  
+  # Return a named list of the results
+  lmer_emm_list <- list(
+    "Year" = cont_yr, 
+    "FlowActionPeriod" = cont_fa,
+    "BroadRegion" = cont_region
+  )
+  
+  return(lmer_emm_list)
+}
+
+# Create models for each parameter
+df_models <- df_wq_clean %>% 
+  nest(df = -Analyte) %>% 
+  mutate(
+    n_lags = as.character(if_else(Analyte %in% c("Chla", "DO"), 2, 3)),
+    Model = map2(df, n_lags, create_lmer_obj)
+  )
+
+# Run Anova F-tests with type II sum of squares on each model
+df_models_aov <- df_models %>% mutate(aov_Model = map(Model, run_anova2))
+
+# Run emmeans pairwise tests on each model and variable, then separate results by variable
+df_emm_test <- df_models %>% 
+  mutate(emm_pw_all = map(Model, run_emm_pw_all)) %>% 
+  mutate(
+    emm_pw_yr = map(emm_pw_all, ~chuck(.x, "Year")),
+    emm_pw_fa = map(emm_pw_all, ~chuck(.x, "FlowActionPeriod")),
+    emm_pw_region = map(emm_pw_all, ~chuck(.x, "BroadRegion"))
+  )
+
+# Export results as .csv files
+fp_anova_results <- ndfa_abs_sp_path("WQ_Subteam/Analysis_Results/CWQ")
+
+df_models_aov %>% 
+  select(Analyte, aov_Model) %>% 
+  unnest(aov_Model) %>% 
+  write_excel_csv(file.path(fp_anova_results, "cwq_aov_daily_avg_sea-none.csv"))
+
+df_emm_test %>% 
+  select(Analyte, emm_pw_yr) %>% 
+  unnest(emm_pw_yr) %>% 
+  write_excel_csv(file.path(fp_anova_results, "cwq_emmeans_year_daily_avg_sea-none.csv"))
+
+df_emm_test %>% 
+  select(Analyte, emm_pw_fa) %>% 
+  unnest(emm_pw_fa) %>%  
+  write_excel_csv(file.path(fp_anova_results, "cwq_emmeans_flowaction_daily_avg_sea-none.csv"))
 
 ```{r chla only}
 # df_wq_wide <- reshape(df_wq_day,
@@ -252,4 +546,9 @@ for (i in seq(analytes)){
 # 
 # write_csv(df_cont, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_emmeans.csv'))
 # write_csv(aov_lmer, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_aov.csv'))
+```
+df_emm_test %>% 
+  select(Analyte, emm_pw_region) %>% 
+  unnest(emm_pw_region) %>%  
+  write_excel_csv(file.path(fp_anova_results, "cwq_emmeans_region_daily_avg_sea-none.csv"))
 ```
