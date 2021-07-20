@@ -117,7 +117,8 @@ df_wq$Month <- format(df_wq$Date, '%m')
 df_wq_day <- df_wq %>%
   group_by(StationCode, BroadRegion, FlowActionPeriod, Year, Month, Analyte, Day = day(Date), DayMonYear = paste(Day, Month, Year), date = as.Date(DayMonYear, '%d %m %Y')) %>%
   mutate(julian = yday(date)) %>%# Date
-  summarize(Result = mean(Result, na.rm = TRUE))
+  summarize(Result = mean(Result, na.rm = TRUE)) %>%
+  ungroup()
 
 df_wq_day$Month <- as.character(df_wq_day$Month)
 
@@ -127,19 +128,20 @@ df_wq_day <- df_wq_day %>%
 # log transform
 df_wq_day$Result <- log(df_wq_day$Result)
 
+df_wq_day <- with(df_wq_day, df_wq_day[order(Analyte, StationCode, Year),])
 
 # create lags
-df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag1', slideBy = -1)
-df_wq_day <- slide(df_wq_day, 'lag1', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag2', slideBy = -1)
-df_wq_day <- slide(df_wq_day, 'lag2', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag3', slideBy = -1)
+df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'date', GroupVar = c('Analyte','StationCode','Year'), NewVar = 'lag1', slideBy = -1)
+df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'date', GroupVar = c('Analyte','StationCode','Year'), NewVar = 'lag2', slideBy = -2)
+df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'date', GroupVar = c('Analyte','StationCode','Year'), NewVar = 'lag3', slideBy = -3)
 
 # another approach (filter df first, no loop) -- why does this give dif results for only some of the lag terms?
 chl = filter(df_wq_day, Analyte == "Chla") %>%
   select(-lag1, -lag2, -lag3)
 
 chl <- slide(chl, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag1', slideBy = -1)
-chl <- slide(chl, 'lag1', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag2', slideBy = -1)
-chl <- slide(chl, 'lag2', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag3', slideBy = -1)
+chl <- slide(chl, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag2', slideBy = -2)
+chl <- slide(chl, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag3', slideBy = -3)
 
 # remove excess dfs
 rm(df_region, df_wq)
@@ -153,11 +155,11 @@ all_aov <- list()
 
 for (i in seq(analytes)){
   df_temp <- df_wq_day %>%
-    filter(Analyte == analytes[i])
+    filter(Analyte == 'Chla')
   
   # pacf(df_temp$Result, na.action = na.pass)
 
-  lmer_fit <- lmer(Result ~ Year + Month + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), data = chl)
+  lmer_fit <- lmer(Result ~ Year + Month + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), data = df_temp)
   
   # create and save pacf plots
   png(ndfa_abs_sp_path(paste0('WQ_Subteam/Plots/Discrete/PACF/00_t_2',analytes[i],'_rand3.png')))
@@ -207,10 +209,6 @@ for (i in seq(analytes)){
 
 # write_csv(all_reg_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_emmeans_year_noSDI_0.csv'))
 # write_csv(all_aov_data, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/1_cwq_aov_noSDI_0.csv'))
-```
-
-```{r df comparison}
-df_temp == chl
 ```
 
 ```{r chla only}
