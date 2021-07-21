@@ -24,51 +24,6 @@ df_wq <- import_rtm_data(fp_wq, num_params = 10)
 df_region <- read_csv(fp_region)
 
 # remove excess cols in df_region
-
-df_region <- subset(df_region, select = c(StationCode, BroadRegion))
-
-# standardize/rename Date col
-df_wq$DateTime <- as.Date(df_wq$DateTime)
-df_wq <- rename(df_wq, c('Date' = 'DateTime'))
-
-# add flow action dates
-df_wq <- ndfa_action_periods2(df_wq, na_action_remove = TRUE, keep_action_dates = FALSE)
-
-# add metadata cols
-df_wq <- merge(df_wq, df_region, by = c('StationCode')) 
-
-
-#remove sites we aren't including (not available for all years), create a column for year
-remove <- c('SRH', 'SHR', 'SRV', 'WWT', 'DWT', 'SDI', 'SGG') #TOE, LIBCUT
-df_wq <- filter(df_wq, !StationCode %in% remove)
-
-# pivot longer
-df_wq <- df_wq %>% 
-  dplyr::select(!ends_with('_Qual')) %>% 
-  tidyr::pivot_longer(
-    cols = -c(Date, Year, StationCode, FlowActionPeriod, BroadRegion),
-    names_to = 'Analyte',
-    values_to = 'Result')
-
-# convert year to character
-df_wq$Year <- as.character(df_wq$Year)
-df_wq <- df_wq %>% filter(!Year %in% c('2011','2012'))
-
-# add month col
-df_wq$Month <- format(df_wq$Date, '%m')
-
-# average over day
-df_wq_day <- df_wq %>%
-  group_by(StationCode, BroadRegion, FlowActionPeriod, Year, Month, Analyte, Day = day(Date), DayMonYear = paste(Day, Month, Year), date = as.Date(DayMonYear, '%d %m %Y')) %>%
-  mutate(julian = yday(date)) %>%# Date
-  summarize(Result = mean(Result, na.rm = TRUE)) %>%
-  ungroup()
-
-df_wq_day$Month <- as.character(df_wq_day$Month)
-
-df_wq_day <- df_wq_day %>%
-  mutate(julian = yday(date))
-
 df_region %<>% select(StationCode, BroadRegion)
 
 # Create vector of sites we aren't including (not available for all years)
@@ -131,7 +86,6 @@ df_wq_clean <- df_wq %>%
     Year = as.character(Year)
   )
 ```
->>>>>>> ee1321f37cd7b54f115f3fd64cce8c2859be3396
 
 ```{r create diag plots}
 analytes <- unique(df_wq_clean$Analyte)
@@ -156,13 +110,6 @@ pdf(file.path(fp_anova_diag, "Seasonal_Diagnostics.pdf"))
     print(plt)
   }
 dev.off()  
-
-df_wq_day <- with(df_wq_day, df_wq_day[order(Analyte, StationCode, Year),])
-
-# create lags
-df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'date', GroupVar = c('Analyte','StationCode','Year'), NewVar = 'lag1', slideBy = -1)
-df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'date', GroupVar = c('Analyte','StationCode','Year'), NewVar = 'lag2', slideBy = -2)
-df_wq_day <- slide(df_wq_day, 'Result', TimeVar = 'date', GroupVar = c('Analyte','StationCode','Year'), NewVar = 'lag3', slideBy = -3)
 
 # Create ANOVA Diagnostics plots for no, 1, 2, and 3 lag terms without a seasonal term
 for (ana in analytes) {
@@ -358,10 +305,6 @@ for (ana in analytes3) {
 # 3 lags, no seasonal terms is best for pH, SpCnd, and Turbidity
 ```
 
-chl <- slide(chl, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag1', slideBy = -1)
-chl <- slide(chl, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag2', slideBy = -2)
-chl <- slide(chl, 'Result', TimeVar = 'date', GroupVar = c('StationCode','Analyte','Year'), NewVar = 'lag3', slideBy = -3)
-
 We are going to use the following model structures:
 
 * Chla: Result ~ Year + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode)
@@ -390,14 +333,10 @@ create_lmer_obj <- function(df, num_lags = c(2, 3)) {
   }
 }
 
-for (i in seq(analytes)){
-  df_temp <- df_wq_day %>%
-    filter(Analyte == 'Chla')
-
-  # Create function to run Anova F-test with type II sum of squares on a lmer object and format it
+# Create function to run Anova F-test with type II sum of squares on a lmer object and format it
 run_anova2 <- function(lmer_obj) {
   aov_lmer <- Anova(lmer_obj, type = 'II', test.statistic = 'F')
-
+  
   aov_lmer %>% 
     rownames_to_column(var = "Variable") %>% 
     mutate(
@@ -410,9 +349,6 @@ run_anova2 <- function(lmer_obj) {
       )
     )
 }
-
-
-  lmer_fit <- lmer(Result ~ Year + Month + FlowActionPeriod + BroadRegion + lag1 + lag2 + (1|StationCode), data = df_temp)
 
 # Create function to format emmeans pairwise results
 format_emm_pw <- function(emm_obj) {
@@ -432,7 +368,7 @@ format_emm_pw <- function(emm_obj) {
 # Create function to run emmeans pairwise tests with Sidak adjustment method
 run_emm_pw_all <- function(lmer_obj) {
   lmer_rg <- ref_grid(lmer_obj, pbkrtest.limit = 15000, lmerTest.limit = 15000)
-
+  
   # Run pairwise test on Year variable
   lmer_emm_yr <- emmeans(
     lmer_rg, 
@@ -505,50 +441,9 @@ df_emm_test %>%
   unnest(emm_pw_fa) %>%  
   write_excel_csv(file.path(fp_anova_results, "cwq_emmeans_flowaction_daily_avg_sea-none.csv"))
 
-```{r chla only}
-# df_wq_wide <- reshape(df_wq_day,
-#          idvar = c('StationCode','BroadRegion','Day','Year','DayMonYear','FlowActionPeriod','Month'),
-#          timevar = 'Analyte',
-#          direction = 'wide')
-# 
-# lmer_fit <- lmer(Result.Chla ~ Month + Year + FlowActionPeriod + BroadRegion + Result.DO + Result.Turbidity + Result.SpCnd + Result.WaterTemp + lag1.Chla + lag2.Chla + lag3.Chla + (1|StationCode), data = df_wq_wide)
-# 
-# aov_lmer <- anova(lmer_fit, type = 'III')
-# aov_lmer$Analyte <- 'Chla'
-# aov_lmer$Variable <- rownames(aov_lmer)
-# 
-# aov_lmer <- aov_lmer %>%
-#   mutate(Significance = case_when(
-#     `Pr(>F)` >= 0 & `Pr(>F)` < 0.001 ~ '***',
-#     `Pr(>F)` >= 0.001 & `Pr(>F)` < 0.01 ~ '**',
-#     `Pr(>F)` >= 0.01 & `Pr(>F)` < 0.05 ~ '*',
-#     `Pr(>F)` >= 0.05 & `Pr(>F)` < 0.1 ~ '.',
-#     `Pr(>F)` >= 0.1 & `Pr(>F)` < 1 ~ ' ',
-#     )
-#   )
-# 
-# lmer_rg <- ref_grid(lmer_fit)
-# lmer_emm <- emmeans(lmer_rg, specs = pairwise ~ FlowActionPeriod:FlowActionPeriod, adjust = 'tukey', pbkrtest.limit = 15000)
-# cont <- test(lmer_emm)$contrasts
-# 
-# cont$Analyte <- 'Chla'
-# df_cont <- cont %>%
-#   mutate(Significance = case_when(
-#     p.value >= 0 & p.value < 0.001 ~ '***',
-#     p.value >= 0.001 & p.value < 0.01 ~ '**',
-#     p.value >= 0.01 & p.value < 0.05 ~ '*',
-#     p.value >= 0.05 & p.value < 0.1 ~ '.',
-#     p.value >= 0.1 & p.value < 1 ~ ' ',
-#     )
-#   )
-# 
-# fp_region <- ndfa_abs_sp_path('WQ_Subteam/Processed_Data/Continuous/NDFA_Cont_WQ_Stations.csv')
-# 
-# write_csv(df_cont, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_emmeans.csv'))
-# write_csv(aov_lmer, ndfa_abs_sp_path('WQ_Subteam/Analysis_Results/CWQ/cwq_chla_aov.csv'))
-```
 df_emm_test %>% 
   select(Analyte, emm_pw_region) %>% 
   unnest(emm_pw_region) %>%  
   write_excel_csv(file.path(fp_anova_results, "cwq_emmeans_region_daily_avg_sea-none.csv"))
 ```
+
