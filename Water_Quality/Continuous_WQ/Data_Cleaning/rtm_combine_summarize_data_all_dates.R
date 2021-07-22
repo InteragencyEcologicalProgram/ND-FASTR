@@ -1,6 +1,9 @@
 # NDFA Water Quality
-# Purpose: Summarize periods of record and sample counts of all available continuous 
-  # WQ data (not just the filtered dates). This is for the raw (not QA'ed) data.
+# Purpose: 
+  # 1) Summarize periods of record of all available continuous WQ data 
+    # (not just the filtered dates). This is for the raw (not QA'ed) data.
+  # 2) For just the few stations that were collected year-round, summarize periods of record,
+    # sample counts, numbers of missing samples, and percent missing.
 # Author: Dave Bosworth
 # Contact: David.Bosworth@water.ca.gov
 
@@ -65,10 +68,10 @@ rtm_wq_proc_clean <- rtm_wq_proc_orig %>%
   filter(!is.na(Value))
 
 
-# 3. Summarize available data ---------------------------------------------
+# 3. Summarize all available data ---------------------------------------------
 
-# Determine min and max dates for each StationCode, Year, and Parameter combination
-rtm_wq_max_min_dates <- rtm_wq_proc_clean %>% 
+# Determine periods of record for each StationCode, Year, and Parameter combination
+rtm_wq_por <- rtm_wq_proc_clean %>% 
   group_by(StationCode, Year, Parameter) %>% 
   summarize(
     min_date = min(Date),
@@ -77,86 +80,39 @@ rtm_wq_max_min_dates <- rtm_wq_proc_clean %>%
   ungroup() %>%
   group_by(StationCode) %>% 
   complete(nesting(StationCode, Parameter), Year = seq.int(min(Year), max(Year), by = 1)) %>%
-  ungroup()
-
-
-# 3.1 Instantaneous record - 15 minute data -------------------------------
-
-# Determine sample counts for each StationCode, Year, and Parameter combination
-rtm_wq_counts15 <- rtm_wq_proc_clean %>% count(StationCode, Year, Parameter, name = "n_samples")
-
-# Determine all possible number of samples for each StationCode, Year, and Parameter combination
-all_poss_samples15 <- rtm_wq_proc_clean %>% 
-  group_by(StationCode, Year, Parameter) %>%
-  complete(DateTime = seq.POSIXt(min(DateTime), max(DateTime), by = "15 min")) %>%
-  tally(name = "n_all") %>% 
-  ungroup()
-
-# Join all summary statistics together and calculate the number of missing time stamps 
-  # and the percentage
-rtm_wq_summ15 <- rtm_wq_max_min_dates %>% 
-  left_join(rtm_wq_counts15) %>% 
-  left_join(all_poss_samples15) %>% 
-  mutate(
-    n_missing = n_all - n_samples,
-    perc_missing = n_missing/n_all
-  ) %>% 
-  select(-n_all) %>% 
+  ungroup() %>% 
   arrange(StationCode, Parameter, Year)
 
-# Export summary data as a .csv file
-rtm_wq_summ15 %>% write_excel_csv("rtm_sample_summ_all_dates_15min.csv", na = "")
+# Export period of record data as a .csv file
+rtm_wq_por %>% write_excel_csv("rtm_por_all_dates.csv", na = "")
 
 
-# 3.2 Daily record --------------------------------------------------------
+# 4. Summarize just the stations with year-round continuous records -----------
 
-# Determine number of days within each StationCode, Year, and Parameter combination
-rtm_wq_counts_day <- rtm_wq_proc_clean %>% 
-  distinct(StationCode, Date, Year, Parameter) %>% 
-  count(StationCode, Year, Parameter, name = "n_days")
-
-# Determine all possible number of days for each StationCode, Year, and Parameter combination
-all_poss_days <- rtm_wq_proc_clean %>% 
-  distinct(StationCode, Date, Year, Parameter) %>% 
-  group_by(StationCode, Year, Parameter) %>%
-  complete(Date = seq.Date(min(Date), max(Date), by = "day")) %>% 
-  tally(name = "n_all") %>% 
-  ungroup()
-
-# Join all summary statistics together and calculate the number of missing days 
-  # and the percentage
-rtm_wq_summ_day <- rtm_wq_max_min_dates %>% 
-  left_join(rtm_wq_counts_day) %>% 
-  left_join(all_poss_days) %>% 
-  mutate(
-    n_missing = n_all - n_days,
-    perc_missing = n_missing/n_all
-  ) %>% 
-  select(-n_all) %>% 
-  arrange(StationCode, Parameter, Year)
-
-# Export summary data as a .csv file
-rtm_wq_summ_day %>% write_excel_csv("rtm_sample_summ_all_dates_daily.csv", na = "")
-
-
-# 3.3 Just the stations with year-round continuous records ---------------------------
-
-# Focus on the few stations with continuous records
+# Focus on the few stations with year-round continuous records
 l_rtm_wq_cont_rec <- 
   list(
     "df_data" = rtm_wq_proc_clean, 
-    "df_max_min" = rtm_wq_max_min_dates,
-    "counts15" = rtm_wq_counts15,
-    "counts_day" = rtm_wq_counts_day
+    "df_por" = rtm_wq_por
   ) %>% 
   map(
     ~filter(.x, StationCode %in% c("LIB", "LIS", "RVB", "SRH", "STTD")) %>% 
       filter(!(StationCode == "STTD" & Year < 2016))
   )
 
+# Determine sample counts for each StationCode, Year, and Parameter combination for the
+  # instantaneous 15-minute data
+rtm_wq_counts15 <- l_rtm_wq_cont_rec$df_data %>% 
+  count(StationCode, Year, Parameter, name = "n_samples")
+
+# Determine number of days with samples within each StationCode, Year, and Parameter combination
+rtm_wq_counts_day <- l_rtm_wq_cont_rec$df_data %>% 
+  distinct(StationCode, Date, Year, Parameter) %>% 
+  count(StationCode, Year, Parameter, name = "n_days")
+
 # Add all possible 15-min time stamps for each StationCode and Parameter combination
-  # for min-max for entire period of record
-rtm_wq_cont_rec_all_dt <- l_rtm_wq_cont_rec$df_data %>% 
+  # for the entire period of record
+rtm_wq_all_dt <- l_rtm_wq_cont_rec$df_data %>% 
   group_by(StationCode, Parameter) %>%
   complete(DateTime = seq.POSIXt(min(DateTime), max(DateTime), by = "15 min")) %>%
   ungroup() %>% 
@@ -166,20 +122,21 @@ rtm_wq_cont_rec_all_dt <- l_rtm_wq_cont_rec$df_data %>%
     Year = year(DateTime)
   )
 
-# Determine all possible number of 15-min samples for each StationCode, Year, and Parameter combination
-all_poss_samples15_cont_rec <- rtm_wq_cont_rec_all_dt %>% 
+# Determine all possible number of 15-min samples for each StationCode, Year, and 
+  # Parameter combination
+all_poss_samples15 <- rtm_wq_all_dt %>% 
   count(StationCode, Parameter, Year, name = "n_all")
 
 # Determine all possible number of days for each StationCode, Year, and Parameter combination
-all_poss_days_cont_rec <- rtm_wq_cont_rec_all_dt %>%
+all_poss_days <- rtm_wq_all_dt %>%
   distinct(StationCode, Date, Year, Parameter) %>% 
   count(StationCode, Parameter, Year, name = "n_all")
 
 # Join all summary statistics for the 15-min data together and calculate the number of 
   # missing time stamps and the percentage
-rtm_wq_summ15_cont_rec <- l_rtm_wq_cont_rec$df_max_min %>% 
-  left_join(l_rtm_wq_cont_rec$counts15) %>% 
-  left_join(all_poss_samples15_cont_rec) %>% 
+rtm_wq_summ15 <- l_rtm_wq_cont_rec$df_por %>% 
+  left_join(rtm_wq_counts15) %>% 
+  left_join(all_poss_samples15) %>% 
   mutate(
     n_missing = n_all - n_samples,
     perc_missing = n_missing/n_all
@@ -189,9 +146,9 @@ rtm_wq_summ15_cont_rec <- l_rtm_wq_cont_rec$df_max_min %>%
 
 # Join all summary statistics for daily data together and calculate the number of 
   # missing days and the percentage
-rtm_wq_summ_day_cont_rec <- l_rtm_wq_cont_rec$df_max_min %>% 
-  left_join(l_rtm_wq_cont_rec$counts_day) %>% 
-  left_join(all_poss_days_cont_rec) %>% 
+rtm_wq_summ_day <- l_rtm_wq_cont_rec$df_por %>% 
+  left_join(rtm_wq_counts_day) %>% 
+  left_join(all_poss_days) %>% 
   mutate(
     n_missing = n_all - n_days,
     perc_missing = n_missing/n_all
@@ -200,6 +157,6 @@ rtm_wq_summ_day_cont_rec <- l_rtm_wq_cont_rec$df_max_min %>%
   arrange(StationCode, Parameter, Year)
 
 # Export data summaries as .csv files
-rtm_wq_summ15_cont_rec %>% write_excel_csv("rtm_sample_summ_all_dates_15min_cont_rec.csv", na = "")
-rtm_wq_summ_day_cont_rec %>% write_excel_csv("rtm_sample_summ_all_dates_daily_cont_rec.csv", na = "")
+rtm_wq_summ15 %>% write_excel_csv("rtm_sample_summ_all_dates_15min.csv", na = "")
+rtm_wq_summ_day %>% write_excel_csv("rtm_sample_summ_all_dates_daily.csv", na = "")
 
