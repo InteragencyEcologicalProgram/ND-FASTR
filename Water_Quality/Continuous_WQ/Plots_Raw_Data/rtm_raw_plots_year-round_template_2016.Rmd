@@ -1,0 +1,44 @@
+---
+output: html_document
+---
+
+## {{parameter}} {.tabset .tabset-pills}
+
+```{r filter {{parameter}} plots, include = FALSE}
+filt_param <- "{{parameter}}"
+
+rtm_wq_plots_filt <- filter(rtm_wq_plots, Parameter == filt_param)
+```
+
+### 2016
+
+```{r plot {{parameter}} 2016, echo = FALSE, fig.width = 8, fig.height = 6}
+rtm_wq_plots_filt %>% 
+  filter(Year == 2016) %>% 
+  print_plot()
+```
+
+### 2017
+
+```{r plot {{parameter}} 2017, echo = FALSE, fig.width = 8, fig.height = 6}
+rtm_wq_plots_filt %>% 
+  filter(Year == 2017) %>% 
+  print_plot()
+```
+
+### 2018
+
+```{r plot {{parameter}} 2018, echo = FALSE, fig.width = 8, fig.height = 6}
+rtm_wq_plots_filt %>% 
+  filter(Year == 2018) %>% 
+  print_plot()
+```
+
+### 2019
+
+```{r plot {{parameter}} 2019, echo = FALSE, fig.width = 8, fig.height = 6}
+rtm_wq_plots_filt %>% 
+  filter(Year == 2019) %>% 
+  print_plot()
+```
+
