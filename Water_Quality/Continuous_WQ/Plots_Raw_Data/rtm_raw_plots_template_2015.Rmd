@@ -1,7 +1,4 @@
 ---
-title: "Raw Data Plots template - 2015"
-author: "Dave Bosworth"
-date: "11/6/2020"
 output: html_document
 ---
 
