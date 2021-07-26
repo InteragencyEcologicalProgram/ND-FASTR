@@ -269,7 +269,7 @@ lib_clean_v3 %>%
 ```
 
 ```{r rm lib fdom sept oct 2017}
-# Flag and exclude chlorophyll values in Sept and Oct 2017
+# Flag and exclude fDOM values in Sept and Oct 2017
 lib_clean_v4 <- lib_clean_v3 %>% 
   rm_flag_val_range(fDOM, "2017-09-05 08:30:00", "2017-09-05 11:15:00") %>% 
   rm_flag_val_range(fDOM, "2017-09-12 10:45:00", "2017-09-12 11:30:00") %>%
