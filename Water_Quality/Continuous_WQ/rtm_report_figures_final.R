@@ -13,7 +13,6 @@ library(tidyverse)
 library(lubridate)
 library(scales)
 library(patchwork)
-library(glue)
 
 # Source functions
 source("global_ndfa_funcs.R")
@@ -491,8 +490,6 @@ df_rtm_clean_bp <- df_rtm_clean %>%
       "Downstream"
     )
   ) %>% 
-  # Log transform daily averages
-  mutate(Daily_avg_log = log(Daily_avg)) %>% 
   # Convert Year, FlowActionPeriod, and Region to factors
   mutate(
     Year = factor(Year),
@@ -626,8 +623,8 @@ int_define_box_xaxis_lab <- function(x_var) {
 
 # Internal function to define vertical position of post-hoc letters
 int_define_ypos_mc_letters <- function(df) {
-  max_y <- max(df$Daily_avg_log)
-  min_y <- min(df$Daily_avg_log)
+  max_y <- max(df$Daily_avg)
+  min_y <- min(df$Daily_avg)
   add_ypos <- (max_y - min_y) * 0.1
   max_y + add_ypos
 }
@@ -637,14 +634,14 @@ create_boxplot <- function(df, df_mc_signf, param, grp_var) {
   
   # define x-axis and y-axis labels
   x_lab <- int_define_box_xaxis_lab(grp_var)
-  y_lab <- glue("log({int_define_yaxis_lab(param)})")
+  y_lab <- int_define_yaxis_lab(param)
   
   # convert grp_var to a symbol for tidy evaluation
   grp_var_sym <- sym(grp_var)
   
   # create base plot
   p <- df %>% 
-    ggplot(aes(x = !!grp_var_sym, y = Daily_avg_log)) +
+    ggplot(aes(x = !!grp_var_sym, y = Daily_avg)) +
     geom_boxplot() +
     # add a symbol representing the mean of each group to the plot
     stat_summary( 
@@ -656,7 +653,7 @@ create_boxplot <- function(df, df_mc_signf, param, grp_var) {
     ) +
     theme_light() +
     xlab(x_lab) +
-    ylab(y_lab)
+    scale_y_continuous(name = y_lab, labels = label_comma())
     
   # add letters to indicate significance of post-hoc tests for the parameters with significant
     # main effects
@@ -747,7 +744,7 @@ boxplot_watertemp <- df_rtm_clean %>%
   ylab("Water Temperature (degrees C)")
 
 # Define file path to export plots to
-fp_abs_boxplot <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/Report/Boxplot")
+fp_abs_boxplot <- ndfa_abs_sp_path("WQ_Subteam/Plots/Continuous/Report/Boxplot_ANOVA_results")
 
 # Export boxplots
 walk2(
