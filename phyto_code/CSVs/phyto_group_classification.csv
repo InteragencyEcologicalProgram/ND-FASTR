@@ -1,0 +1,261 @@
+Genus,Group
+Colpidium,Ciliates
+Halteria,Ciliates
+Strobilidium,Ciliates
+Strombidium,Ciliates
+Chroomonas,Cryptophytes
+Cryptomonas,Cryptophytes
+Hemiselmis,Cryptophytes
+Hillea,Cryptophytes
+Plagioselmis,Cryptophytes
+Rhodomonas,Cryptophytes
+Teleaulax,Cryptophytes
+Anabaenopsis,Cyanobacteria
+Aphanizomenon,Cyanobacteria
+Aphanocapsa,Cyanobacteria
+Chroococcus,Cyanobacteria
+Cyanodictyon,Cyanobacteria
+Cylindrospermopsis,Cyanobacteria
+Dolichospermum,Cyanobacteria
+Eucapsis,Cyanobacteria
+Geitlerinema,Cyanobacteria
+Glaucospira,Cyanobacteria
+Heteroleibleinia,Cyanobacteria
+Komvophoron,Cyanobacteria
+Lemmermannia,Cyanobacteria
+Merismopedia,Cyanobacteria
+Microcystis,Cyanobacteria
+Phormidium,Cyanobacteria
+Planktolyngbya,Cyanobacteria
+Planktothrix,Cyanobacteria
+Pseudanabaena,Cyanobacteria
+Snowella,Cyanobacteria
+Sphaerospermopsis,Cyanobacteria
+Spirulina,Cyanobacteria
+Synechococcus,Cyanobacteria
+Synechocystis,Cyanobacteria
+Achnanthidium,Diatoms
+Adlafia,Diatoms
+Amphora,Diatoms
+Asterionella,Diatoms
+Aulacoseira,Diatoms
+Bacillaria,Diatoms
+Belonastrum,Diatoms
+Caloneis,Diatoms
+Campylodiscus,Diatoms
+Ceratoneis,Diatoms
+Cocconeis,Diatoms
+Craticula,Diatoms
+Cyclotella,Diatoms
+Cylindrotheca,Diatoms
+Cymatopleura,Diatoms
+Cymbella,Diatoms
+Diatoma,Diatoms
+Diploneis,Diatoms
+Encyonema,Diatoms
+Entomoneis,Diatoms
+Eolimna,Diatoms
+Epithemia,Diatoms
+Fragilaria,Diatoms
+Fragilariopsis,Diatoms
+Frustulia,Diatoms
+Geissleria,Diatoms
+Gomphoneis,Diatoms
+Gomphonema,Diatoms
+Gyrosigma,Diatoms
+Halamphora,Diatoms
+Hantzschia,Diatoms
+Hippodonta,Diatoms
+Karayevia,Diatoms
+Lemnicola,Diatoms
+Lindavia,Diatoms
+Luticola,Diatoms
+Melosira,Diatoms
+Minutocellus,Diatoms
+Navicula,Diatoms
+Navigeia,Diatoms
+Nitzschia,Diatoms
+Odontidium,Diatoms
+Pinnularia,Diatoms
+Planothidium,Diatoms
+Pleurosigma,Diatoms
+Psammothidium,Diatoms
+Pseudostaurosira,Diatoms
+Reimeria,Diatoms
+Rhoicosphenia,Diatoms
+Rhopalodia,Diatoms
+Sellaphora,Diatoms
+Skeletonema,Diatoms
+Staurosira,Diatoms
+Staurosirella,Diatoms
+Stephanodiscus,Diatoms
+Surirella,Diatoms
+Synedra,Diatoms
+Thalassiosira,Diatoms
+Tryblionella,Diatoms
+Ulnaria,Diatoms
+Urosolenia,Diatoms
+Gymnodinium,Dinoflagellates
+Gyrodinium,Dinoflagellates
+Karlodinium,Dinoflagellates
+Peridinium,Dinoflagellates
+Protoperidinium,Dinoflagellates
+Chromulina,Golden Algae
+Chrysococcus,Golden Algae
+Dinobryon,Golden Algae
+Kephyrion,Golden Algae
+Ochromonas,Golden Algae
+Pseudokephyrion,Golden Algae
+Actinastrum,Green Algae
+Acutodesmus,Green Algae
+Ankistrodesmus,Green Algae
+Ankyra,Green Algae
+Botryococcus,Green Algae
+Carteria,Green Algae
+Characium,Green Algae
+Chlamydomonas,Green Algae
+Chlorella,Green Algae
+Closteriopsis,Green Algae
+Coelastrum,Green Algae
+Crucigenia,Green Algae
+Crucigeniella,Green Algae
+Desmodesmus,Green Algae
+Dictyosphaerium,Green Algae
+Drepanochloris,Green Algae
+Dunaliella,Green Algae
+Elakatothrix,Green Algae
+Enallax,Green Algae
+Kirchneriella,Green Algae
+Lagerheimia,Green Algae
+Micromonas,Green Algae
+Microspora,Green Algae
+Monomastix,Green Algae
+Monoraphidium,Green Algae
+Mucidosphaerium,Green Algae
+Nephroselmis,Green Algae
+Oocystis,Green Algae
+Pediastrum,Green Algae
+Pedinomonas,Green Algae
+Pseudoscourfieldia,Green Algae
+Pyramimonas,Green Algae
+Raphidocelis,Green Algae
+Scenedesmus,Green Algae
+Schroederia,Green Algae
+Sphaerellopsis,Green Algae
+Sphaerocystis,Green Algae
+Spirogyra,Green Algae
+Tetrabaena,Green Algae
+Tetradesmus,Green Algae
+Tetraedron,Green Algae
+Tetrastrum,Green Algae
+Treubaria,Green Algae
+Westella,Green Algae
+Willea,Green Algae
+Cosmarium,Green Algae
+Klebsormidium,Green Algae
+Chlamydonephris,Green Algae
+Chlorococcum,Green Algae
+Chlorolobion,Green Algae
+Coenochloris,Green Algae
+Coenococcus,Green Algae
+Dictyochloris,Green Algae
+Korshikoviella,Green Algae
+Nautococcus,Green Algae
+Pandorina,Green Algae
+Planktosphaeria,Green Algae
+Rusalka,Green Algae
+Selenastrum,Green Algae
+Myochloris,Green Algae
+Chloroidium,Green Algae
+Coccomyxa,Green Algae
+Diacanthos,Green Algae
+Keratococcus,Green Algae
+Cladophora,Green Algae
+Komma,Cryptophytes
+Anabaena,Cyanobacteria
+Aphanothece,Cyanobacteria
+Cuspidothrix,Cyanobacteria
+Cyanophanon,Cyanobacteria
+Cylindrospermum,Cyanobacteria
+Gloeocapsa,Cyanobacteria
+Lyngbya,Cyanobacteria
+Myxobaktron,Cyanobacteria
+Oscillatoria,Cyanobacteria
+Rhabdoderma,Cyanobacteria
+Romeria,Cyanobacteria
+Stigonema,Cyanobacteria
+Woronichinia,Cyanobacteria
+Xenococcus,Cyanobacteria
+Eutreptiella,Other
+Actinocyclus,Diatoms
+Ceratium,Dinoflagellates
+Gonyaulax,Dinoflagellates
+Heterocapsa,Dinoflagellates
+Oblea,Dinoflagellates
+Peridiniopsis,Dinoflagellates
+Phalacroma,Dinoflagellates
+Prorocentrum,Dinoflagellates
+Scrippsiella,Dinoflagellates
+Acanthoceras,Diatoms
+Achnanthes,Diatoms
+Actinoptychus,Diatoms
+Aneumastus,Diatoms
+Anomoeoneis,Diatoms
+Astartiella,Diatoms
+Asterionellopsis,Diatoms
+Capartogramma,Diatoms
+Cerataulina,Diatoms
+Chaetoceros,Diatoms
+Corethron,Diatoms
+Coscinodiscus,Diatoms
+Cyclostephanos,Diatoms
+Cymbopleura,Diatoms
+Diadesmis,Diatoms
+Didymosphenia,Diatoms
+Encyonopsis,Diatoms
+Eunotia,Diatoms
+Eunotogramma,Diatoms
+Fallacia,Diatoms
+Fragilariforma,Diatoms
+Gomphosinica,Diatoms
+Guinardia,Diatoms
+Hemiaulus,Diatoms
+Hydrosera,Diatoms
+Iconella,Diatoms
+Martyana,Diatoms
+Mastogloia,Diatoms
+Mayamaea,Diatoms
+Membraneis,Diatoms
+Microcostatus,Diatoms
+Nupela,Diatoms
+Odontella,Diatoms
+Paralia,Diatoms
+Plagiotropis,Diatoms
+Pleurosira,Diatoms
+Psammodictyon,Diatoms
+Rhizosolenia,Diatoms
+Seminavis,Diatoms
+Stauroforma,Diatoms
+Stauroneis,Diatoms
+Stephanocyclus,Diatoms
+Tabellaria,Diatoms
+Thalassionema,Diatoms
+Epipyxis,Golden Algae
+Nannochloropsis,Other
+Heterosigma,Other
+Characiopsis,Other
+Unidentified Cyanobacteria,Cyanobacteria
+Unidentified Dinoflagellate,Dinoflagellates
+Bicosoeca,Other
+Chrysochromulina,Other
+Chrysosaccus,Other
+Euglena,Other
+Eutreptia,Other
+Goniochloris,Other
+Lepocinclis,Other
+Mallomonas,Other
+Ophiocytium,Other
+Phacus,Other
+Strombomonas,Other
+Synura,Other
+Trachelomonas,Other

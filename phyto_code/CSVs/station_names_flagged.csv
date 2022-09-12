@@ -1,0 +1,89 @@
+﻿StationCode,Flag
+BL5,Keep
+BL5 DUP,Duplicate
+DI-SAV-1,Remove
+DI-SAV-18,Remove
+DI-SAV-2,Remove
+DI-WAT-1,Remove
+DI-WAT-2,Remove
+DI_SAV_1,Remove
+DI_SAV_2,Remove
+DI_WAT_1,Remove
+DI_WAT_2,Remove
+FC-SAV-1,Remove
+FC-SAV-2,Remove
+FC-WAT-1,Remove
+FC-WAT-2,Remove
+FC_SAV_1,Remove
+FC_SAV_2,Remove
+FC_WAT_1,Remove
+FC_WAT_2,Remove
+FI-SAV-1,Remove
+FI-SAV-2,Remove
+FI-WAT-1,Remove
+FI-WAT-2,Remove
+FI_SAV_1,Remove
+FI_SAV_2,Remove
+FI_WAT_1,Remove
+FI_WAT_2,Remove
+I80,Keep
+I80 DUP,Duplicate
+Knaggs FX,Remove
+LH-SAV-1,Remove
+LH-SAV-2,Remove
+LH-WAT-1,Remove
+LH-WAT-2,Remove
+LH_SAV_1,Remove
+LH_SAV_2,Remove
+LH_WAT_1,Remove
+LH_WAT_2,Remove
+LIB,Keep
+LIB 3,Remove
+LIB 3m,Remove
+LIB 3M,Remove
+LIB DUP,Duplicate
+LIS,Keep
+LIS-DUP,Duplicate
+LIS DUP,Duplicate
+R41,Remove
+RCS,Keep
+RCS-DUP,Duplicate
+RD22,Keep
+RD22-DUP,Duplicate
+RMB,Keep
+RMB Dup,Duplicate
+RVB,Keep
+RVB-DUP,Duplicate
+RVB 3M,Remove
+RVB3,Remove
+RYI,Keep
+RYI 3,Remove
+RYI 3M,Remove
+RYI DUP,Duplicate
+SD1,Remove
+SD1 3M,Remove
+SDI,Remove
+SDI 3M,Remove
+SHR,Remove
+SHR DUP,Remove
+SRV,Remove
+STTD,Keep
+STTD-Dup,Duplicate
+STTD-DUP,Duplicate
+STTD DUP,Duplicate
+US 649,Remove
+US 653,Remove
+US 655,Remove
+US 657,Remove
+US2,Remove
+US3,Remove
+US4,Remove
+US5,Remove
+US649,Remove
+US653,Remove
+US655,Remove
+US657,Remove
+YTR1,Remove
+YTR2,Remove
+YTR3,Remove
+YTR4,Remove
