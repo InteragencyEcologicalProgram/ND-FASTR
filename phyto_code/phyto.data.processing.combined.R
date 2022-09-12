@@ -4,13 +4,12 @@
 ## Goal is to combine these datasets while retaining all data
 ## including GALD and Biovolume
 
-
 library("tidyverse");packageVersion("tidyverse")
 library("lubridate");packageVersion("lubridate")
 library("janitor");packageVersion("janitor")
 
 # Set working directory
-setwd("./FASTR.phyto.final/")
+setwd("./phyto_code")
 getwd()
 
 # Clean workspace
@@ -235,7 +234,6 @@ df_phyto <- df_phyto %>%
   relocate(Year, .after = DateTime) %>% 
   relocate(Month, .after = DateTime)
 
-
 # Convert years to factors for plotting
 df_phyto$Year <- as.factor(df_phyto$Year)
 
@@ -327,5 +325,3 @@ rm(taxa)
 
 ## Save df to use for making plots
 save(df_phyto, file = "RData/df_phyto.RData")
-
-

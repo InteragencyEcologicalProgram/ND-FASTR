@@ -6,7 +6,7 @@
 library("Rmisc");packageVersion("Rmisc")
 
 # Set working directory
-setwd("./FASTR.phyto.final/")
+setwd("./phyto_code/")
 getwd()
 
 # Clean workspace

@@ -10,7 +10,7 @@ library("vegan");packageVersion("vegan")
 library("RColorBrewer");packageVersion("RColorBrewer")
 
 # Set working directory
-setwd("./FASTR.phyto.final/")
+setwd("./phyto_code/")
 getwd()
 
 # Set visual theme in ggplot

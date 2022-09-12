@@ -7,7 +7,7 @@ library("lubridate");packageVersion("lubridate")
 library("janitor");packageVersion("janitor")
 
 # Set working directory
-setwd("./FASTR.phyto.final/")
+setwd("./phyto_code/")
 getwd()
 
 # Set visual theme in ggplot

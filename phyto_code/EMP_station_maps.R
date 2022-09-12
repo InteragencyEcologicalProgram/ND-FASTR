@@ -9,7 +9,7 @@ library("maps");packageVersion("maps")
 library("RColorBrewer");packageVersion("RColorBrewer")
 
 # Set working directory
-setwd("./FASTR.phyto.final/")
+setwd("./phyto_code/")
 getwd()
 
 ## Clean workspace
