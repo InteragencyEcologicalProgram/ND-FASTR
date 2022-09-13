@@ -1,8 +1,8 @@
-## Extracting phyto data from EMP and AEU datasheets
-## AEU's Yolo Bypass Phyto datasheets
-## 9/7/2022
-## Goal is to combine these datasets while retaining all data
-## including GALD and Biovolume
+# Extracting phyto data from EMP and AEU datasheets
+# AEU's Yolo Bypass Phyto datasheets
+# 9/7/2022
+# Goal is to combine these datasets while retaining all data
+# including GALD and Biovolume
 
 library("tidyverse");packageVersion("tidyverse")
 library("lubridate");packageVersion("lubridate")
@@ -49,7 +49,7 @@ df_phyto2021 <- df_phyto2021 %>%
   rename("Number of cells per unit" = "Total Number of Cells") %>%
   rename("Unit Abundance" = "Unit Abundance (# of Natural Units)")
 
-## Combine oddball files with others
+# Combine oddball files with others
 df_phyto_EMP <- bind_rows(df_phyto_EMP, df_phyto2013)
 df_phyto_EMP <- bind_rows(df_phyto_EMP, df_phyto2021)
 
@@ -57,10 +57,10 @@ df_phyto_EMP <- bind_rows(df_phyto_EMP, df_phyto2021)
 rm(df_phyto2013)
 rm(df_phyto2021)
 
-## Remove empty rows
+# Remove empty rows
 df_phyto_EMP <- df_phyto_EMP %>% filter_all(any_vars(!is.na(.)))
 
-## Correct GALD, which is imported into two separate columns
+# Correct GALD, which is imported into two separate columns
 # Test to see if NAs are 'either/or' and that there aren't some rows with a 
 # value in both GALD and GALD 1
 
@@ -130,7 +130,7 @@ df_phyto_FASTR <- df_phyto_FASTR %>% select(!(Flag))
 unique(df_phyto_FASTR$StationCode) # Shows only 10 FASTR stations
 table(df_phyto_FASTR$StationCode)
 
-## Remove blank columns
+# Remove blank columns
 df_phyto_FASTR <- df_phyto_FASTR %>% select_if(~ !all(is.na(.)))
 
 # Remove individual measurment columns as they are only present in a small 
@@ -180,7 +180,7 @@ df_phyto_FASTR <- df_phyto_FASTR %>% mutate(Study = "FASTR", .after = StationCod
 
 df_phyto <- bind_rows(df_phyto_EMP, df_phyto_FASTR)
 
-## Average all 10 biovolume measurements for each taxon
+# Average all 10 biovolume measurements for each taxon
 df_phyto <- df_phyto %>% rowwise() %>% 
   mutate(BV.Avg = mean(c_across(Biovolume1:Biovolume10), na.rm = T)) %>% 
   select(!(Biovolume1:Biovolume10)) # Remove Individual Biovolume Columns
@@ -205,7 +205,7 @@ df_phyto$DateTime <- as_datetime(df_phyto$DateTime,
                               format = c("%Y-%m-%d %H:%M:%OS"))
 
 # Check for missing dates
-df_phyto %>% filter(is.na(DateTime)) ## No missing dates
+df_phyto %>% filter(is.na(DateTime)) # No missing dates
 
 # Correct BSA header
 df_phyto <- df_phyto %>% rename("TotalCells" = "NumberOfCellsPerUnit")
@@ -246,7 +246,7 @@ df_phyto$StationCode <- gsub("D16-Twitchell","D16",df_phyto$StationCode)
 df_phyto$StationCode <- gsub("D16-Twitchel","D16",df_phyto$StationCode)
 df_phyto$StationCode <- gsub("D16 - Twitchell","D16",df_phyto$StationCode)
 df_phyto$StationCode <- gsub("D16 Twitchell","D16",df_phyto$StationCode)
-df_phyto$StationCode <- gsub("NZ328","NZ325",df_phyto$StationCode) ## Typo in August 2019
+df_phyto$StationCode <- gsub("NZ328","NZ325",df_phyto$StationCode) # Typo in August 2019
 df_phyto$StationCode <- gsub("C3A-HOOD","C3A",df_phyto$StationCode)
 df_phyto$StationCode <- gsub("C3A Hood","C3A",df_phyto$StationCode)
 df_phyto$StationCode <- gsub("C3A- Hood","C3A",df_phyto$StationCode)
@@ -315,3 +315,11 @@ rm(taxa)
 
 # Save df to use for making plots
 save(df_phyto, file = "RData/df_phyto.RData")
+
+# Calculate Biomass Values------------------------------------------------------
+# Convert biovolume to biomass using relationships from Menden-Deuer and Lussard
+# (2000) doi: 10.4319/lo.2000.45.3.0569
+# Only relevant to group-level data
+# Units of BV.Density are um^3 per L
+
+
