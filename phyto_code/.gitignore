@@ -37,3 +37,12 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Image files
+*.png
+*.jpg
+*.ai
+
+# Folders 
+plots/
+Primer/
