@@ -1,12 +1,10 @@
+# Load Libraries and Data Files ------------------------------------------------
 ## Script just to look at Aulacoseira
 
 library("tidyverse");packageVersion("tidyverse")
-library("lubridate");packageVersion("lubridate")
-library("janitor");packageVersion("janitor")
-library("vegan");packageVersion("vegan")
 
 # Set working directory
-setwd("./FASTR.phyto.final/")
+setwd("./phyto_code/")
 getwd()
 
 # Set visual theme in ggplot
@@ -26,11 +24,19 @@ df_Aul <- df_phyto %>%
   filter(Genus == "Aulacoseira") %>%
   filter(Year %in% c(2014,2015,2016,2017,2018,2019))
 
-ggplot(df_Aul, aes(x = Year, y = GALD)) +
+# Plot GALD by year
+plot_GALD <- ggplot(df_Aul, aes(x = Year, y = GALD)) +
   geom_jitter(width = 0.1)
 
-ggplot(df_Aul, aes(x = Year, y = BV.Avg)) +
+plot_GALD +
+  facet_wrap(Study ~ ., ncol = 1)
+
+# Plot Cell Biovolume by Year
+plot_Cell_BV <- ggplot(df_Aul, aes(x = Year, y = BV.Avg)) +
   geom_jitter(width = 0.1)
+
+plot_Cell_BV +
+  facet_wrap(Study ~ ., ncol = 1)
 
 ## Plot EMP and FASTR samples by year, facet by study
 ggplot(df_Aul, aes(x = Year, y = BV.um3.per.L)) +
@@ -74,16 +80,11 @@ ggsave(path = output,
        dpi="print")
 
 
-## Combine EMP and FASTR datasets for Aulacosiera graphs
-phyto_gen_FASTR <- phyto.gen.BV %>% select(Year:Genus,BV.um3.per.L)
-phyto_gen_EMP <- phyto_gen_EMP %>% select(Year:Genus,BV.um3.per.L)
 
-# Add column identifying study
-phyto_gen_EMP <- phyto_gen_EMP %>% mutate(Study = "EMP")
-phyto_gen_FASTR <- phyto_gen_FASTR %>% mutate(Study = "FASTR")
 
-# Combine data frames
-phyto_combined <- bind_rows(phyto_gen_FASTR, phyto_gen_EMP)
+
+
+
 
 # Rename FASTR Regions
 phyto_combined$Region <- gsub("Downstream", "NDFA.Downstream", phyto_combined$Region)
