@@ -31,6 +31,10 @@ load("RData/FlowDesignation.RData")
 load("RData/phyto.grp.gen.BV.RA.tot.Rdata")
 load("RData/phyto.types")
 
+test <- phyto.gen.NMDS %>% filter(Year == "2016")
+
+table(test$StationCode)
+
 # Create Biovolume-only data frame at genus level
 phyto.gen.BV <- phyto.gen %>% select(Year:Region,Genus:ActionPhase,BV.um3.per.L)
 
@@ -165,27 +169,42 @@ ggsave(path = output,
 
 # Bar Charts with Error Bars --------------------------------------------------- 
 
-fig3 <- ggplot(phyto.grp.sum.error, aes(x=Year, 
-                                        y=Total.BV.per.L, 
-                                        ymin=Total.BV.per.L-se, 
-                                        ymax=Total.BV.per.L+se, 
-                                        fill=ActionPhase)) +
-  geom_bar(position=position_dodge(), 
-           aes(y=Total.BV.per.L), 
-           stat="identity", 
-           color = "black") +
-  geom_errorbar(position=position_dodge(width=0.9), 
-                color="black", 
-                width = 0.2) 
+fig3 <- ggplot(phyto.sum, aes(x = Year, y = log10(Total.BV.per.L), fill = ActionPhase)) +
+  geom_jitter(width = 0.1,
+              size = 2,
+              pch = 21, 
+              color = "black") +
+  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+  #scale_fill_brewer(palette = "Dark2") +
+  labs(x = "Year", 
+       y = bquote(Log[10]~'Biovolume Density'~(um^3~L^-1)), 
+       title = "Yearly Abundance of Phytoplankton During Flow Pulses") 
 
-fig3 +
-  ylab(bquote('Biovolume Density'~(um^3~L^-1))) + 
-  xlab("Month") + 
-  labs(title = "Phytoplankton Abundance During Flow Actions") +
-  facet_wrap(StationCode ~ ., ncol = 2, dir = "v") 
+fig3 + 
+  facet_wrap(StationCode ~ ., ncol = 2, dir = "h") 
+
+# fig3 <- ggplot(phyto.grp.sum.error, aes(x=Year, 
+#                                         y=Total.BV.per.L, 
+#                                         ymin=Total.BV.per.L-se, 
+#                                         ymax=Total.BV.per.L+se, 
+#                                         fill=ActionPhase)) +
+#    geom_bar(position=position_dodge(), 
+#             aes(y=Total.BV.per.L), 
+#             stat="identity", 
+#             color = "black") +
+#    geom_errorbar(position=position_dodge(width=0.9), 
+#                  color="black", 
+#                  width = 0.2) 
+# 
+# fig3 +
+#   ylab(bquote('Biovolume Density'~(um^3~L^-1))) + 
+#   xlab("Month") + 
+#   labs(title = "Phytoplankton Abundance During Flow Actions") +
+#   facet_wrap(StationCode ~ ., ncol = 2, dir = "v") 
 
 ggsave(path = output,
-       filename = "fig3_phyto_BV_w_errorbars.png", 
+       filename = "fig3_phyto_BV_jitter.png", 
        device = "png",
        scale=1.0, 
        units="in",
