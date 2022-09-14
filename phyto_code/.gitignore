@@ -42,6 +42,7 @@ vignettes/*.pdf
 *.png
 *.jpg
 *.ai
+*.pdf
 
 # Folders 
 plots/
