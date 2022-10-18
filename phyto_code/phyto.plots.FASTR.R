@@ -386,15 +386,15 @@ for (year in years) {
 
   df_temp <- phyto.grp.gen.BV %>% 
     filter(Year==year) %>%
-    filter(Group == "Dinoflagellates")
+    filter(Group == "Diatoms")
   
   jitter.plot <- ggplot(df_temp, aes(x = StationCode, y = BV.um3.per.L, color = Type, shape = Type)) +
-    geom_point(width = 0.1, size = 2) +
+    geom_jitter(width = 0.1, size = 2) +
     theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
     theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
     labs(x = "Station", 
          y = "Biovolume (um^3 per L)", 
-         title = paste0("Dinoflagellate Biovolume During Flow Pulses - ",year)) 
+         title = paste0("Diatom Biovolume During Flow Pulses - ",year)) 
     #ylim(c(0,2e10))
   
   jitter.plot +
@@ -403,8 +403,8 @@ for (year in years) {
     facet_wrap(ActionPhase ~ ., ncol = 1, dir = "h")
   
   ggsave(path = output,
-         filename = paste0("jitter_Dinoflagellates_BV_by_station_and_Region_",year,".png"), 
-         device = "png",
+         filename = paste0("jitter_Diatom_BV_by_station_and_Region_",year,".pdf"), 
+         device = "pdf",
          scale=1.0, 
          units="in",
          height=3.5,
