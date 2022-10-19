@@ -31,10 +31,6 @@ load("RData/FlowDesignation.RData")
 load("RData/phyto.grp.gen.BV.RA.tot.Rdata")
 load("RData/phyto.types")
 
-test <- phyto.gen.NMDS %>% filter(Year == "2016")
-
-table(test$StationCode)
-
 # Create Biovolume-only data frame at genus level
 phyto.gen.BV <- phyto.gen %>% select(Year:Region,Genus:ActionPhase,BV.um3.per.L)
 
@@ -376,7 +372,7 @@ ggsave(path = output,
        width=5.5, 
        dpi="print")
 
-## Make individual abundance jitter plots for each year
+## Make individual abundance jitter plots for each year biovolume 
 years <- unique(phyto.grp.gen.BV$Year) 
 years <- sort(years, decreasing = F, na.last = T)
 
@@ -405,6 +401,46 @@ for (year in years) {
   ggsave(path = output,
          filename = paste0("jitter_Diatom_BV_by_station_and_Region_",year,".pdf"), 
          device = "pdf",
+         scale=1.0, 
+         units="in",
+         height=3.5,
+         width=6.5, 
+         dpi="print")
+  
+  rm(df_temp)
+  
+}
+
+## Make individual abundance jitter plots for each year LCEFA 
+years <- unique(phyto.grp.LCEFA$Year) 
+years <- sort(years, decreasing = F, na.last = T)
+
+for (year in years) {
+  
+  df_temp <- phyto.grp.LCEFA %>% 
+    filter(Year==year)
+  
+  LCEFA.plot <- ggplot(df_temp, aes(x = StationCode, y = LCEFA.per.L, fill = Group, shape = Group)) +
+    geom_bar(data = subset(phyto.grp.LCEFA, Year == year), 
+             position = "stack",  
+             width = 0.6, 
+             stat = "summary", 
+             fun = "mean") +
+    theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+    theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+    labs(x = "Station", 
+         y = "LCEFA (ug per L)", 
+         title = paste0("Est. Mass of LCEFA During Flow Pulses - ",year)) 
+  #ylim(c(0,2e10))
+  
+  LCEFA.plot +
+    scale_fill_brewer(palette = "Dark2") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.7)) +
+    facet_wrap(ActionPhase ~ ., ncol = 1, dir = "h")
+  
+  ggsave(path = output,
+         filename = paste0("barplot_LCEFA_by_station_and_Region_",year,".png"), 
+         device = "png",
          scale=1.0, 
          units="in",
          height=3.5,
