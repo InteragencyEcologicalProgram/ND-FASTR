@@ -1,0 +1,175 @@
+﻿Analyte,PesticideType,PesticideClass
+"3,4-Dichloroaniline",Herbicide Degradate,Amine
+"3,4-Dichlorophenylurea",Herbicide Degradate,Urea
+"3,5-Dichloroaniline",Herbicide Degradate,Amine
+Acetamiprid,Insecticide,Neonicotinoid
+Acetochlor,Herbicide,Chloroacetanilide
+Acibenzolar-S-methyl,Fungicide,Benzothiadiazole
+Alachlor,Herbicide,Chloroacetanilide
+Allethrin,Insecticide,Pyrethroid
+Atrazine,Herbicide,Triazine
+Azinphos-methyl,Insecticide,Organophosphorus
+Azinphos-methyl oxygen analog,Breakdown product,Organophosphorus
+Azoxystrobin,Fungicide,Strobin
+Benfluralin,Herbicide,"2,6-Dinitroaniline"
+Benzovindiflupyr,Fungicide,Amide
+Bifenthrin,Insecticide,Pyrethroid
+Boscalid,Fungicide,Anilide
+Bromoconazole,Fungicide,Azole
+Butralin,Herbicide,"2,6-Dinitroaniline"
+Butylate,Herbicide,Thiocarbamate
+Captan,Fungicide,Thiophthalimide
+Carbaryl,Insecticide,N-Methyl Carbamate
+Carbendazim,Fungicide,Benzimidazole
+Carbofuran,Insecticide,N-Methyl Carbamate
+Carboxin,Fungicide,Anilide
+Chlorantraniliprole,Insecticide,Anthranilic diamide
+Chlorfenapyr,Insecticide,Pyrrole
+Chlorothalonil,Fungicide,Substituted Benzene
+Chlorpyrifos,Insecticide,Organophosphorus
+Chlorpyrifos oxon,Insecticide,Organophosphorus
+Clomazone,Herbicide,Oxazolidinone
+Clothianidin,Insecticide,Neonicotinoid
+Coumaphos,Insecticide,Organophosphorus
+Cyantraniliprole,Insecticide,Anthranilic diamide
+Cyazofamid,Fungicide,Azole
+Cycloate,Herbicide,Thiocarbamate
+Cyfluthrin,Insecticide,Pyrethroid
+Cyhalofop-butyl,Herbicide,Aryloxyphenoxy propionic acid
+Cyhalothrin (all isomers),Insecticide,Pyrethroid
+Cymoxanil,Fungicide,Urea
+Cypermethrin,Insecticide,Pyrethroid
+Cyproconazole,Fungicide,Azole
+Cyprodinil,Fungicide,Pyrimidine
+DCPA,Herbicide,Alkyl Phthalate
+Deltamethrin,Insecticide,Pyrethroid
+Desthio-prothioconazole,Fungicide Degradate,Azole
+Desulfinylfipronil,Insecticide Degradate,Pyrazole
+Desulfinylfipronil amide,Insecticide Degradate,Pyrazole
+Diazinon,Insecticide,Organophosphorus
+Diazoxon,Insecticide Degradate,Organophosphorus
+Dichlorvos,Insecticide,Organophosphorus
+Difenoconazole,Fungicide,Azole
+Dimethomorph,Fungicide,Morpholine
+Dinotefuran,Insecticide,Neonicotinoid
+Dithiopyr,Herbicide,Pyridinecarboxylic acid
+Diuron,Herbicide,Urea
+EPTC,Herbicide,Thiocarbamate
+Esfenvalerate,Insecticide,Pyrethroid
+Ethaboxam,Fungicide,Aromatic Amide
+Ethalfluralin,Herbicide,"2,6-Dinitroaniline"
+Etofenprox,Insecticide,Pyrethroid Ether
+Etoxazole,Insecticide,Diphenyl Oxazoline
+Famoxadone,Fungicide,Oxazolidinedione
+Fenamidone,Fungicide,Imidazole
+Fenarimol,Fungicide,Pyrimidine
+Fenbuconazole,Fungicide,Azole
+Fenhexamid,Fungicide,Anilide
+Fenpropathrin,Insecticide,Pyrethroid
+Fenpyroximate,Insecticide,Pyrazole
+Fenthion,Insecticide,Organophosphorus
+Fipronil,Insecticide,Pyrazole
+Fipronil sulfide,Insecticide Degradate,Pyrazole
+Fipronil sulfone,Insecticide Degradate,Pyrazole
+Flonicamid,Insecticide,Pyridinecarboxamide
+Fluazinam,Fungicide,"2,6-Dinitroaniline"
+Flubendiamide,Insecticide,Organofluorine
+Fludioxonil,Fungicide,Benzodioxole
+Flufenacet,Herbicide,Anilide
+Flumetralin,Plant growth regulator,"2,6-Dinitroaniline"
+Fluopicolide,Fungicide,Benzamide Pyridine
+Fluopyram,Fungicide,Amide
+Fluoxastrobin,Fungicide,Strobin
+Flupyradifurone,Insecticide,Butenolides
+Fluridone,Herbicide,Phenylpyridine
+Flusilazole,Fungicide,Azole
+Flutolanil,Fungicide,Anilide
+Flutriafol,Fungicide,Azole
+Fluxapyroxad,Fungicide,"Anilide, Pyrazole"
+Hexazinone,Herbicide,Triazinone
+Imazalil,Fungicide,Azole
+Imidacloprid,Insecticide,Neonicotinoid
+Imidacloprid urea,Insecticide Degradate,Neonicotinoid
+Indaziflam,Herbicide,Alkylazine
+Indoxacarb,Insecticide,Oxadiazine
+Ipconazole,Fungicide,Triazole
+Iprodione,Fungicide,Dicarboximide
+Isofetamid,Fungicide,Amide
+Kresoxim-methyl,Fungicide,Strobin
+Malaoxon,Insecticide Degradate,Organophosphorus
+Malathion,Insecticide,Organophosphorus
+Mandipropamid,Fungicide,Amide
+Metalaxyl,Fungicide,Xylylalanine
+Metconazole,Fungicide,Azole
+Methidathion,Insecticide,Organophosphorus
+Methoprene,Insect growth regulator,Juvenile hormone mimic
+Methoxyfenozide,Insecticide,Diacylhydrazine
+Methyl parathion,Insecticide,Organophosphorus
+Metolachlor,Herbicide,Chloroacetanilide
+Molinate,Herbicide,Thiocarbamate
+Myclobutanil,Fungicide,Azole
+"N-(3,4-Dichlorophenyl)-N'-methylurea",Herbicide Degradate,Urea
+Napropamide,Herbicide,Amide
+Novaluron,Herbicide,Benzoylurea
+Oryzalin,Herbicide,"2,6-Dinitroaniline"
+Oxadiazon,Herbicide,Unclassified
+Oxathiapiprolin,Fungicide,Pyrazole
+Oxyfluorfen,Herbicide,Diphenyl ether
+"p,p'-DDD",Insecticide Degradate,Organochlorine
+"p,p'-DDE",Insecticide Degradate,Organochlorine
+"p,p'-DDT",Insecticide,Organochlorine
+Paclobutrazol,Plant growth regulator,Azole
+Pebulate,Herbicide,Thiocarbamate
+Pendimethalin,Herbicide,"2,6-Dinitroaniline"
+Penoxsulam,Herbicide,Triazolopyrimidine
+Pentachloroanisole,Insecticide Degradate,Organochlorine
+Pentachloronitrobenzene,Fungicide,Substituted Benzene
+Penthiopyrad,Fungicide,Pyrazole
+Permethrin,Insecticide,Pyrethroid
+Phenothrin,Insecticide,Pyrethroid
+Phosmet,Insecticide,Organophosphorus
+Picoxystrobin,Fungicide,Strobin
+Piperonyl butoxide,Synergist,Unclassified
+Prodiamine,Herbicide,"2,6-Dinitroaniline"
+Prometon,Herbicide,Triazine
+Prometryn,Herbicide,Triazine
+Propanil,Herbicide,Anilide
+Propargite,Insecticide,Unclassified
+Propiconazole,Fungicide,Azole
+Propyzamide,Herbicide,Amide
+Pyraclostrobin,Fungicide,Strobin
+Pyridaben,Insecticide,Pyridazinone
+Pyrimethanil,Fungicide,Pyrimidine
+Pyriproxyfen,Insecticide,Hormone mimic
+Quinoxyfen,Fungicide,Quinoline
+Resmethrin,Insecticide,Pyrethroid
+Sedaxane,Fungicide,"Anilide, Pyrazole"
+Simazine,Herbicide,Triazine
+Sulfoxaflor,Insecticide,Sulfoximine
+tau-Fluvalinate,Insecticide,Pyrethroid
+Tebuconazole,Fungicide,Azole
+Tebufenozide,Insecticide,Moulting hormone agonist
+Tebupirimfos,Insecticide,Organophosphorus
+Tebupirimfos oxon,Insecticide Degradate,Organophosphorus
+Tefluthrin,Insecticide,Pyrethroid
+Tetraconazole,Fungicide,Azole
+Tetradifon,Insecticide,Unclassified
+Tetramethrin,Insecticide,Pyrethroid
+Thiabendazole,Fungicide,Benzimidazole
+Thiacloprid,Insecticide,Neonicotinoid
+Thiamethoxam,Insecticide,Neonicotinoid
+Thiamethoxam degradate CGA-355190,Insecticide Degradate,Neonicotinoid
+Thiamethoxam degradate NOA-407475,Insecticide Degradate,Neonicotinoid
+Thiazopyr,Herbicide,Pyridinecarboxylic acid
+Thiobencarb,Herbicide,Thiocarbamate
+Tolfenpyrad,Insecticide,Pyrazole
+Triadimefon,Fungicide,Azole
+Triadimenol,Fungicide,Azole
+Triallate,Herbicide,Thiocarbamate
+Tribufos,Defoliant,Organophosphorus
+Tricyclazole,Fungicide,Azole
+Trifloxystrobin,Fungicide,Strobin
+Triflumizole,Fungicide,Azole
+Trifluralin,Herbicide,"2,6-Dinitroaniline"
+Triticonazole,Fungicide,Azole
+Zoxamide,Fungicide,Amide
