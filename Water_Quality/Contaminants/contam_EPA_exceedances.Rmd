@@ -26,37 +26,42 @@ Produce a simple bar plot showing the number of EPA benchmark exceedances for th
 # Load packages
 library(tidyverse)
 library(lubridate)
-```
-
-```{r load global functions, message = FALSE, warning = FALSE}
-source("global_ndfa_funcs.R")
-```
-
-```{r define file paths}
-# Define relative file path for data file
-fp_rel_proc <- "WQ_Subteam/Analysis_Results/Contaminants/chronic_fish_toxicity.csv"
-
-# Define absolute file path
-fp_abs_proc <- ndfa_abs_sp_path(fp_rel_proc)
+library(here)
 ```
 
 # Import and Prepare Data
 
 ```{r import data, message = FALSE}
-epa_exceed_orig <- read_csv(fp_abs_proc)
+# Define file path of Contaminants directory
+fp_contam <- here("Water_Quality/Contaminants")
+
+# Create vector of file paths for the csv files containing EPA benchmark
+  # exceedance data within the Contaminants directory
+dir_epa_exceed <- dir(fp_contam, pattern = "toxicity\\.csv$", full.names = TRUE)
+
+# Import 4 csv files
+lst_epa_exceed <- map(dir_epa_exceed, read_csv)
 ```
 
 ```{r prepare data}
-epa_exceed_clean <- epa_exceed_orig %>% 
-  rename_with(~str_remove(.x, "^N_pesticides_"), starts_with("N_")) %>% 
+# Combine and prepare data for plot
+df_epa_exceed <- lst_epa_exceed %>% 
+  map(~ select(.x, -...1)) %>% 
+  reduce(full_join, by = c("Year", "FlowPeriod")) %>% 
+  rename_with(~str_remove(.x, "^N_"), starts_with("N_")) %>% 
   mutate(FlowPeriod = factor(FlowPeriod, levels = c("Before", "During", "After"))) %>% 
-  pivot_longer(cols = chronic_fish:acute_invert, names_to = "Benchmark", values_to = "Exceedances")
+  pivot_longer(
+    cols = starts_with(c("acute", "chronic")),
+    names_to = "Benchmark", 
+    values_to = "Exceedances"
+  ) %>% 
+  drop_na(Exceedances)
 ```
 
 # Create Plot
 
 ```{r create plot}
-epa_exceed_clean %>% 
+df_epa_exceed %>% 
   ggplot(aes(FlowPeriod, Exceedances)) +
   geom_col() +
   facet_grid(cols = vars(Benchmark), rows = vars(Year))

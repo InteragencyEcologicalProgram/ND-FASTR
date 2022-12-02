@@ -14,6 +14,7 @@
 library(tidyverse)
 library(lubridate)
 library(scales)
+library(here)
 
 # Source functions
 source("global_ndfa_funcs.R")
@@ -21,30 +22,27 @@ source("global_ndfa_funcs.R")
 
 # 2. Import Data -------------------------------------------------------------
 
-# Define relative file path for processed contaminants data files
-fp_rel_proc_data <- "WQ_Subteam/Processed_Data/Contaminants"
-
-# Define relative file path for data file with counts of EPA benchmark exceedances
-fp_rel_tox_data <- "WQ_Subteam/Analysis_Results/Contaminants/chronic_fish_toxicity.csv"
-
-# Define absolute file paths
-fp_abs_proc_data <- ndfa_abs_sp_path(fp_rel_proc_data)
-fp_abs_tox_data <- ndfa_abs_sp_path(fp_rel_tox_data)
+# Define file path of Contaminants directory
+fp_contam <- here("Water_Quality/Contaminants")
 
 # Import contaminants concentrations in water data
-contam_water_orig <- read_csv(file.path(fp_abs_proc_data, "WQ_INPUT_Contam_Water_2021-02-11.csv"))
+contam_water_orig <- read_csv(file.path(fp_contam, "WQ_INPUT_Contam_Water_2021-02-11.csv"))
 
 # Import contaminants concentrations in zooplankton data
 contam_zoop_orig <- read_csv(
-  file.path(fp_abs_proc_data, "WQ_INPUT_Contam_Zoop_2021-02-11.csv"),
+  file.path(fp_contam, "WQ_INPUT_Contam_Zoop_2021-02-11.csv"),
   col_types = "cccccdc"
 )
 
-# Import counts of EPA benchmark exceedances
-epa_exceed_orig <- read_csv(fp_abs_tox_data)
+# Create vector of file paths for the csv files containing EPA benchmark
+  # exceedance data within the Contaminants directory
+dir_epa_exceed <- dir(fp_contam, pattern = "toxicity\\.csv$", full.names = TRUE)
+
+# Import 4 csv files containing EPA benchmark exceedance data
+lst_epa_exceed <- map(dir_epa_exceed, read_csv)
 
 # Import pesticide type and class designations
-contam_type_class <- read_csv(file.path(fp_abs_proc_data, "Contam_Types_and_Classes.csv"))
+contam_type_class <- read_csv(file.path(fp_contam, "Contam_Types_and_Classes.csv"))
 
 
 # 3. Clean Data ---------------------------------------------------------
@@ -53,7 +51,7 @@ contam_type_class <- read_csv(file.path(fp_abs_proc_data, "Contam_Types_and_Clas
 contam_water_clean <- contam_water_orig %>% 
   # Parse DateTime variable, add Date and Year variables
   mutate(
-    DateTime = ymd_hms(DateTime),
+    DateTime = mdy_hm(DateTime),
     Date = date(DateTime),
     Year = year(DateTime)
   ) %>% 
@@ -78,7 +76,7 @@ contam_water_clean <- contam_water_orig %>%
 contam_zoop_clean <- contam_zoop_orig %>% 
   # Parse DateTime variable, add Date and Year variables
   mutate(
-    DateTime = ymd_hms(DateTime),
+    DateTime = mdy_hm(DateTime),
     Date = date(DateTime),
     Year = year(DateTime)
   ) %>% 
@@ -98,10 +96,12 @@ contam_zoop_clean <- contam_zoop_orig %>%
   mutate(Result = as.numeric(if_else(str_detect(Result, "^<"), "0", Result)))
 
 # Counts of EPA benchmark exceedances:
-epa_exceed_clean <- epa_exceed_orig %>% 
+epa_exceed_clean <- lst_epa_exceed %>%
+  map(~ select(.x, -...1)) %>% 
+  reduce(full_join, by = c("Year", "FlowPeriod")) %>%
   rename(FlowActionPeriod = FlowPeriod) %>% 
   pivot_longer(
-    cols = N_pesticides_chronic_fish:N_pesticides_acute_invert, 
+    cols = starts_with("N_"), 
     names_to = "Benchmark", 
     values_to = "Exceedances"
   )
@@ -175,10 +175,10 @@ plt_zoop_stack <- contam_zoop_sum_type %>%
 # Barplots of the percent of samples that exceed EPA benchmarks
 # Create a named vector for the Benchmark facet labels
 benchmark_label <- c(
-  "N_pesticides_acute_fish" = "A) Acute Fish",
-  "N_pesticides_acute_invert" = "B) Acute Invertebrates",
-  "N_pesticides_chronic_fish" = "C) Chronic Fish",
-  "N_pesticides_chronic_invert" = "D) Chronic Invertebrates"
+  "N_acute_fish" = "A) Acute Fish",
+  "N_acute_invert" = "B) Acute Invertebrates",
+  "N_chronic_fish" = "C) Chronic Fish",
+  "N_chronic_invert" = "D) Chronic Invertebrates"
 )
 
 plt_epa_exceed_perc <- epa_exceed_perc %>% 
@@ -201,7 +201,7 @@ plt_epa_exceed_perc <- epa_exceed_perc %>%
 # 6. Export Plots ---------------------------------------------------------
 
 # Define file path to export plots to
-fp_abs_contam_plt <- ndfa_abs_sp_path("WQ_Subteam/Plots/Contaminants/Report")
+fp_abs_contam_plt <- ndfa_abs_sp_path("2011-2019 Synthesis Study/WQ_Subteam/Plots/Contaminants/Report")
 
 # Export Plots
 ggsave(
