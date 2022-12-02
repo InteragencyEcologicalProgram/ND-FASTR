@@ -51,7 +51,7 @@ ndfa_action_periods <- function(df, na_action_remove = TRUE, keep_action_dates =
   )
   
   # Import dates for flow action periods
-  fp_act_dates <- ndfa_abs_sp_path("Data Management/FlowDatesDesignations_45days.csv")
+  fp_act_dates <- ndfa_abs_sp_path("2011-2019 Synthesis Study/Data Management/FlowDatesDesignations_45days.csv")
   df_act_dates_orig <- read_csv(fp_act_dates)
   
   # Convert date columns in df_act_dates_orig to date type
