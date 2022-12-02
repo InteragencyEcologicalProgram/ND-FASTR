@@ -13,15 +13,24 @@ library(emmeans)
 library(car)
 library(visreg)
 library(cowplot)
+library(here)
 
-setwd("~/FASTR/Contaminants_analysis")
-load("~/FASTR/Contaminants_analysis/Contaminants_analysis.RData")
-water<-read.csv("WQ_INPUT_Contam_Water_2021-02-11.csv", stringsAsFactors = FALSE,na.strings=c(""))
-sediment<-read.csv("WQ_INPUT_Contam_SuspSed_2021-02-11.csv", stringsAsFactors = FALSE, na.strings=c(""))
-zoop<-read.csv("WQ_INPUT_Contam_Zoop_2021-02-11.csv", stringsAsFactors = FALSE, na.strings=c(""))
-contam_classes<-read.csv("Contam_Types_and_Classes.csv", stringsAsFactors = FALSE, na.strings=c(""))
-epa_benchmarks<-read.csv("Aquatic_life_benchmarks3.csv", na.strings=c("NA", "NR", "", " "))
-flow_dates<-read.csv("~/FASTR/FlowDatesDesignations_45days.csv", stringsAsFactors = FALSE)
+# setwd("~/FASTR/Contaminants_analysis") # this path doesn't exist on the repository
+# load("~/FASTR/Contaminants_analysis/Contaminants_analysis.RData") # this file doesn't exist on the repository
+
+# Define file path of Contaminants directory
+fp_contam <- here("Water_Quality/Contaminants")
+
+# Create vector of file paths for the csv files within the Contaminants directory
+dir_contam <- dir(fp_contam, pattern = "\\.csv$", full.names = TRUE)
+
+# Import data
+water<-read_csv(str_subset(dir_contam, "Water_2021-02-11"))
+sediment<-read_csv(str_subset(dir_contam, "SuspSed_2021-02-11"))
+zoop<-read_csv(str_subset(dir_contam, "Zoop_2021-02-11"))
+contam_classes<-read_csv(str_subset(dir_contam, "Contam_Types_and_Classes"))
+epa_benchmarks<-read_csv(str_subset(dir_contam, "Aquatic_life_benchmarks3"), na = c("NR"))
+flow_dates<-read_csv(str_subset(dir_contam, "FlowDatesDesignations_45days"))
 flow_dates$Year<-as.character(flow_dates$Year)
 
 water2<-water%>%separate(DateTime,  c("Date", "Time"), sep=" ")
@@ -116,7 +125,7 @@ year_flowperiod_water_total<-water_total %>% ggplot(aes(x=interaction(FlowPeriod
 #Use cowplot to align and stack plots. Save figures to project file.
 contaminants_water_plot <- plot_grid(year_water_total,flowperiod_water_total,year_flowperiod_water_total,ncol=1,align = "v")
 
-ggsave(filename="~contaminants_water_v2.png", plot=contaminants_water_plot, height=12, width=8, dpi=600)
+ggsave(filename= file.path(fp_contam, "contaminants_water_v2.png"), plot=contaminants_water_plot, height=12, width=8, dpi=600)
 
 
 #two-way anova (Year*FlowPeriod) and unbalanced design
@@ -187,7 +196,7 @@ year_flowperiod2<-zoop_total %>% ggplot(aes(x=FlowPeriod, y=log(zoop_total$total
 
 contaminants_zoop_plot <- plot_grid(year_zoop,flowperiod,year_flowperiod2,ncol=1,axis="lr",align = "v")
 
-ggsave(filename="~contaminants_zoop_v2.png", plot=contaminants_zoop_plot, height=12, width=8, dpi=600)
+ggsave(filename= file.path(fp_contam, "contaminants_zoop_v2.png"), plot=contaminants_zoop_plot, height=12, width=8, dpi=600)
 
 #two-way anova (Year*FlowPeriod) and unbalanced design- not enough power to run this model
 zoop.total.anova<-lm(log(totals)~Year*FlowPeriod, data = zoop_total)
@@ -216,7 +225,7 @@ zoop_total2<-water4%>%filter(Response_type=="zooplankton")%>%filter(Result!="< M
 
 #run welch's two-sample t-test for SHR and STTD for zoop samples
 #convert data to wide format
-zoop_total_wide<-pivot_wider(zoop_total2, names_from = ?..StationCode, values_from=totals)
+zoop_total_wide<-pivot_wider(zoop_total2, names_from = StationCode, values_from=totals)
 
 #SHR significantly higher than STTD overall
 zoop.t.test<-t.test(log(zoop_total_wide$SHR), log(zoop_total_wide$STTD), na.action(na.omit))
@@ -254,7 +263,7 @@ site<-water_total %>%filter(StationCode=="RD22"|StationCode=="BL5")%>% ggplot(ae
   theme(legend.text = element_text(size=12), legend.title = element_text(size=15))
 
 #year effect
-year<-water_total %>%filter(StationCode=="RD22"|?..StationCode=="BL5")%>% ggplot(aes(x=Year, y=log(totals)))+
+year<-water_total %>%filter(StationCode=="RD22"|StationCode=="BL5")%>% ggplot(aes(x=Year, y=log(totals)))+
   geom_boxplot(aes(fill=Year),notch = FALSE)+scale_y_continuous(name=expression(paste("log total contaminant concentration (ng/L)")), limits=c(5,9),expand=c(0,0))+
   scale_x_discrete(limits=c("2016","2017","2018", "2019"), labels=c("2016", "2017","2018",  "2019"))+scale_colour_viridis_d(aesthetics="fill",limits=c("2016", "2017", "2018", "2019"))+
   theme_bw()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
@@ -266,7 +275,7 @@ year<-water_total %>%filter(StationCode=="RD22"|?..StationCode=="BL5")%>% ggplot
 #flowperiod effect
 flowperiod<-water_total %>%filter(StationCode=="RD22"|StationCode=="BL5")%>% ggplot(aes(x=FlowPeriod, y=log(totals)))+
   geom_boxplot(aes(fill=Year),notch = FALSE)+scale_y_continuous(name=expression(paste("log total contaminant concentration (ng/L)")), limits=c(5,9),expand=c(0,0))+
-  scale_x_discrete(limits=c("Before","During","After"), labels=c("Before", "During","After"))+scale_colour_viridis_d(aesthetics="fill",limits=c("Before", "During", "After"))+
+  scale_x_discrete(limits=c("Before","During","After"), labels=c("Before", "During","After"))+scale_colour_viridis_d(aesthetics="fill",limits=c("2016", "2017", "2018", "2019"))+
   theme_bw()+theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())+
   labs(fill="Year", title="C)")+
   xlab("Year")+
@@ -297,14 +306,14 @@ station_year_flow_interaction<-water_total %>%filter(StationCode=="RD22"|Station
 
 contaminants_interaction_water_plot <- plot_grid(site,station_year_flow_interaction,ncol=1,align = "v")
 
-ggsave(filename="~contaminants_water_interaction_v1.png", plot=contaminants_interaction_water_plot, height=12, width=8, dpi=600)
+ggsave(filename= file.path(fp_contam, "contaminants_water_interaction_v1.png"), plot=contaminants_interaction_water_plot, height=12, width=8, dpi=600)
 
 
 #run lsmeans on year by flowperiod interaction and effect of stationcode
 emmeans4<-emmeans(by_station, specs=pairwise ~Year:FlowPeriod,adjust="sidak")
 print(test(emmeans4)$contrasts)
 
-emmeans5<-emmeans(by_station, specs=pairwise ~?..StationCode,adjust="sidak")
+emmeans5<-emmeans(by_station, specs=pairwise ~StationCode,adjust="sidak")
 print(test(emmeans5)$contrasts)
 #RD22 is significantly higher
 #no differences among years in before period
@@ -328,10 +337,10 @@ print(test(emmeans6)$contrasts)
 #remove leading symbols from epa_benchmarks- want acute 1 and chronic 2 (for fish) and acute 3 and chronic 4 (inverts)
 epa_benchmarks$Acute1<-sub('> ', '', epa_benchmarks$Acute1)
 epa_benchmarks$Acute3<-sub('> ', '', epa_benchmarks$Acute3)
-epa_benchmarks$Chronic2<-sub('> ', '', epa_benchmarks$Chronic2)
-epa_benchmarks$Chronic2<-sub('> ', '', epa_benchmarks$Chronic4)
-epa_benchmarks$Acute1<-sub('< ', '', epa_benchmarks$Acute1)
 epa_benchmarks$Acute3<-sub('< ', '', epa_benchmarks$Acute3)
+epa_benchmarks$Chronic2<-sub('> ', '', epa_benchmarks$Chronic2)
+epa_benchmarks$Chronic2<-sub('< ', '', epa_benchmarks$Chronic2)
+epa_benchmarks$Chronic4<-sub('> ', '', epa_benchmarks$Chronic4)
 epa_benchmarks$Chronic4<-sub('< ', '', epa_benchmarks$Chronic4)
 
 #remove trailing characters in pesticide compound name using regex
@@ -351,16 +360,16 @@ acute_fish_summary<-water_benchmarks%>%group_by(Year, FlowPeriod)%>%filter(!is.n
 chronic_fish_summary<-water_benchmarks%>%group_by(Year, FlowPeriod)%>%filter(!is.na(FlowPeriod))%>%filter(Exceeds_Chronic2=="Yes")%>%summarize(N_chronic_fish=length(Exceeds_Chronic2))%>%arrange(Year,(factor(FlowPeriod, levels = c("Before", "During", "After"))), desc(FlowPeriod))
 acute_invert_summary<-water_benchmarks%>%group_by(Year, FlowPeriod)%>%filter(!is.na(FlowPeriod))%>%filter(Exceeds_Acute3=="Yes")%>%summarize(N_acute_invert=length(Exceeds_Acute3))%>%arrange(Year,(factor(FlowPeriod, levels = c("Before", "During", "After"))), desc(FlowPeriod))
 chronic_invert_summary<-water_benchmarks%>%group_by(Year, FlowPeriod)%>%filter(!is.na(FlowPeriod))%>%filter(Exceeds_Chronic4=="Yes")%>%summarize(N_chronic_invert=length(Exceeds_Chronic4))%>%arrange(Year,(factor(FlowPeriod, levels = c("Before", "During", "After"))), desc(FlowPeriod))
-write.csv(acute_fish_summary, "acute_fish_toxicity.csv")
-write.csv(acute_invert_summary, "acute_invert_toxicity.csv")
-write.csv(chronic_fish_summary, "chronic_fish_toxicity.csv")
-write.csv(chronic_invert_summary, "chronic_invert_toxicity.csv")
+write.csv(acute_fish_summary, file.path(fp_contam, "acute_fish_toxicity.csv"))
+write.csv(acute_invert_summary, file.path(fp_contam, "acute_invert_toxicity.csv"))
+write.csv(chronic_fish_summary, file.path(fp_contam, "chronic_fish_toxicity.csv"))
+write.csv(chronic_invert_summary, file.path(fp_contam, "chronic_invert_toxicity.csv"))
 
 #provide a table of analytes above benchmarks- for fish and inverts together
 water_benchmarks_table<-water_benchmarks%>%select(c(Year, Analyte, Exceeds_Acute1, Exceeds_Chronic2, Exceeds_Acute3, Exceeds_Chronic4))%>%
   filter(Exceeds_Acute1=="Yes"|Exceeds_Chronic2=="Yes"|Exceeds_Acute3=="Yes"|Exceeds_Chronic4=="Yes")%>%
   left_join(contam_classes, by=c("Analyte"="Analyte"))%>%unique()%>%arrange(Year)
-write.csv(water_benchmarks_table, "epa_benchmark_exceedances.csv")
+write.csv(water_benchmarks_table, file.path(fp_contam, "epa_benchmark_exceedances.csv"))
 
 
-save.image("Contaminants_analysis.RData")
+# save.image("Contaminants_analysis.RData")
