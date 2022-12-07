@@ -43,8 +43,8 @@ source("Water_Quality/Contaminants/contam_clean_data_funcs.R")
 
 ```{r define file paths}
 # Define relative file paths for raw and processed contaminants data files
-fp_rel_raw <- "WQ_Subteam/Raw_Data/Contaminants"
-fp_rel_proc <- "WQ_Subteam/Processed_Data/Contaminants"
+fp_rel_raw <- "2011-2019 Synthesis Study/WQ_Subteam/Raw_Data/Contaminants"
+fp_rel_proc <- "2011-2019 Synthesis Study/WQ_Subteam/Processed_Data/Contaminants"
 
 # Define absolute file paths
 fp_abs_raw <- ndfa_abs_sp_path(fp_rel_raw)
