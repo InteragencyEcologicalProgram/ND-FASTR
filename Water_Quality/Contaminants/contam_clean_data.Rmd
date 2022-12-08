@@ -896,7 +896,10 @@ rm(list = ls()[!(ls() %in% obj_keep)])
 
 Save all data frames related to the contaminants data as an .RData file in the ND-FASTR repository for easier loading into other scripts in the repository.
 
-```{r save final contam RData}
+```{r save final contam RData, eval = FALSE}
+# Code chunk is set to eval = FALSE, so this code is not executed when this file is knitted
+# change eval option to TRUE when you want to export the data when knitting this file
+
 # Rename data frames to be more descriptive
 contam_water <- water_conc_all_f
 contam_ss <- ss_conc_all_f
