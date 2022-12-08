@@ -565,12 +565,28 @@ We can now use the `ss_mdl_val_f` dataframe to assign MDL values to each paramet
 ss_conc_all2 <- left_join(ss_conc_all1, ss_mdl_val_f)
 ```
 
-The Method Detection Limit (MDL) values downloaded from NWIS are reported in ng/L while the suspended sediment concentration data provided by Jim Orlando are reported in ng/g. We need to make these units consistent by converting the MDL values to ng/g by multiplying each MDL value by the volume filtered and dividing by the sediment mass recovered from the whole water sample.
+The Method Detection Limit (MDL) values downloaded from NWIS are reported in ng/L while the suspended sediment concentration data provided by Jim Orlando are reported in ng/g. We need to make these units consistent by converting the concentration values to ng/L by multiplying each concentration value by the sediment mass recovered from the whole water sample and dividing by the volume filtered.
 
-```{r convert mdl val susp sed}
-# Convert MDL values to units of ng/g
+```{r convert conc val susp sed}
+# Convert concentration values to units of ng/L
 ss_conc_all3 <- ss_conc_all2 %>% 
-  mutate(MDL = MDL * Vol/Mass)
+  mutate(
+    Result = as.numeric(na_if(Result, "< MDL")),
+    Result = Result * Mass / Vol
+  ) %>% 
+  # Round the result variable to 1 number to the right of the decimal for values
+    # less than 100 and 3 significant figures for values greater than or equal to 100
+  round_val(Result) %>% 
+  mutate(
+    # Convert two extremely low values (less than 1 ng/L) to < MDL to be
+      # consistent with data provided by Jim Orlando
+    Result = if_else(Result < 1, NA_real_, Result),
+    # Create ResultQual variable to flag reported values that are less than the MDL as "J- estimated"
+    ResultQual = if_else(Result < MDL, "J- estimated", NA_character_),
+    # Convert NA values back to < MDL
+    Result = as.character(Result),
+    Result = replace_na(Result, "< MDL")
+  ) 
 ```
 
 ### Finish Cleaning data
@@ -578,9 +594,7 @@ ss_conc_all3 <- ss_conc_all2 %>%
 We'll finish cleaning the dataframe with the 2016-2019 suspended sediment concentrations by:
 
 * Adding the Date and Time variables together to a datetime object - `DateTime`
-* Creating a new variable `ResultQual` to identify estimated values (reported values below the MDL)
 * Creating a new variable `Units` for the measurement units
-* Rounding the `Result` and `MDL` variables to 1 number to the right of the decimal for values less than 100 and 3 significant figures for values greater than or equal to 100 to be consistent with the data in NWIS
 * Changing some variable names to standardized names for the NDFA synthesis
 
 ```{r finish cleaning susp sed df, warning = FALSE}
@@ -591,19 +605,8 @@ ss_conc_all_f <- ss_conc_all3 %>%
     m = minute(Time),
     # Create a new variable DateTime with the Date and h and m variables added together
     DateTime = as_datetime(Date + hours(h) + minutes(m)),
-    # Create a temporary variable Conc with results converted to numeric
-    Conc = as.numeric(Result),
     # Create a variable for measurement units
-    Units = "ng/g"
-  ) %>% 
-  # Round the Conc and MDL variables to the appropriate number of significant figures
-  round_val(Conc) %>% 
-  round_val(MDL) %>% 
-  mutate(
-    # Create ResultQual variable to flag reported values that are less than the MDL as "J- estimated"
-    ResultQual = if_else(Conc < MDL, "J- estimated", NA_character_),
-    # Convert Conc variable back to character with rounded values
-    Result = if_else(Result == "< MDL", "< MDL", as.character(Conc))
+    Units = "ng/L"
   ) %>% 
   # Standardize variable names
   select(
