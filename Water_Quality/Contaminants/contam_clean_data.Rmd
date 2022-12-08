@@ -596,9 +596,10 @@ We'll finish cleaning the dataframe with the 2016-2019 suspended sediment concen
 * Adding the Date and Time variables together to a datetime object - `DateTime`
 * Creating a new variable `Units` for the measurement units
 * Changing some variable names to standardized names for the NDFA synthesis
+* Pulling out `Vol` and `Mass` variables to a separate dataframe and calculating the suspended sediment concentration to be used to join back to the suspended sediment contaminant concentrations if desired
 
 ```{r finish cleaning susp sed df, warning = FALSE}
-ss_conc_all_f <- ss_conc_all3 %>% 
+ss_conc_all4 <- ss_conc_all3 %>% 
   mutate(
     # Create temporary variables for hours and minutes from the Time variable
     h = hour(Time), 
@@ -616,13 +617,28 @@ ss_conc_all_f <- ss_conc_all3 %>%
     Result,
     ResultQual,
     MDL,
-    Units
+    Units,
+    Vol,
+    Mass
   )
+
+# Pull out and calculate suspended sediment concentrations
+ss_conc_ss <- ss_conc_all4 %>% 
+  distinct(StationCode, DateTime, Vol, Mass) %>% 
+  transmute(
+    StationCode,
+    DateTime,
+    ResultSS = Mass / Vol * 1000,
+    Units = "mg/L"
+  )
+
+# Finish cleaning the contaminants data
+ss_conc_all_f <- ss_conc_all4 %>% select(-c(Vol, Mass))
 ```
 
 ## Export Data
 
-Export the contaminant concentration data in suspended sediment as a .csv file to the Processed_Data/Contaminants folder on SharePoint.
+Export the contaminant concentration data in suspended sediment and the suspended sediment concentration data as .csv files to the Processed_Data/Contaminants folder on SharePoint.
 
 ```{r export susp sed data as csv, eval = FALSE}
 # Code chunk is set to eval = FALSE, so this code is not executed when this file is knitted
@@ -630,6 +646,12 @@ Export the contaminant concentration data in suspended sediment as a .csv file t
 ss_conc_all_f %>% 
   write_excel_csv(
     file = file.path(fp_abs_proc, "WQ_INPUT_Contam_SuspSed_2021-02-11.csv"),
+    na = ""
+  )
+
+ss_conc_ss %>% 
+  write_excel_csv(
+    file = file.path(fp_abs_proc, "WQ_INPUT_SuspSed_2021-02-11.csv"),
     na = ""
   )
 ```
