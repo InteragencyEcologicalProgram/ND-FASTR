@@ -31,27 +31,29 @@ library(readxl)
 library(lubridate)
 library(knitr)
 library(kableExtra)
+library(here)
 ```
 
 ```{r load functions, message = FALSE}
 # Source global NDFA functions
-source("global_ndfa_funcs.R")
+source(here("global_ndfa_funcs.R"))
 
 # Source contaminants data cleaning functions
-source("Water_Quality/Contaminants/contam_clean_data_funcs.R")
+source(here("Water_Quality/Contaminants/contam_clean_data_funcs.R"))
 ```
 
 ```{r define file paths}
 # Define relative file paths for raw and processed contaminants data files
 fp_rel_raw <- "2011-2019 Synthesis Study/WQ_Subteam/Raw_Data/Contaminants"
-fp_rel_proc <- "2011-2019 Synthesis Study/WQ_Subteam/Processed_Data/Contaminants"
+fp_rel_proc_sp <- "2011-2019 Synthesis Study/WQ_Subteam/Processed_Data/Contaminants"
 
 # Define absolute file paths
 fp_abs_raw <- ndfa_abs_sp_path(fp_rel_raw)
-fp_abs_proc <- ndfa_abs_sp_path(fp_rel_proc)
+fp_abs_proc_sp <- ndfa_abs_sp_path(fp_rel_proc_sp)
+fp_proc_repo <- here("Water_Quality/Data_Processed")
 
 # Clean up
-rm(fp_rel_raw, fp_rel_proc)
+rm(fp_rel_raw, fp_rel_proc_sp)
 ```
 
 The data downloaded from NWIS has 5-digit numeric codes to represent each parameter measured. We developed a crosswalk table to convert these numeric codes to standardized names of the parameters. We also used this crosswalk table to standardize the parameter names in the Excel spreadsheets provided by Jim Orlando.
@@ -63,6 +65,9 @@ param_code_cw <-
     file.path(fp_abs_raw, "USGS_Data_Download_metadata.xlsx"), 
     sheet = "Parameter Codes"
   )
+
+# Create a vector of object names to keep throughout the script
+obj_keep <- append(objects(), "obj_keep")
 ```
 
 # Water Concentration Data
@@ -326,7 +331,7 @@ Export the contaminant concentration data in water as a .csv file to the Process
 # change eval option to TRUE when you want to export the data when knitting this file
 water_conc_all_f %>% 
   write_excel_csv(
-    file = file.path(fp_abs_proc, "WQ_INPUT_Contam_Water_2021-02-11.csv"),
+    file = file.path(fp_abs_proc_sp, "WQ_INPUT_Contam_Water_2021-02-11.csv"),
     na = ""
   )
 ```
@@ -335,7 +340,8 @@ Clean up objects in the global environment to only keep necessary objects at thi
 
 ```{r clean obj from global env water}
 # Remove all objects related to cleaning the water concentration data
-rm(list = ls()[str_detect(ls(), "^water")])
+obj_keep <- append(obj_keep, "water_conc_all_f")
+rm(list = ls()[!(ls() %in% obj_keep)])
 ```
 
 
@@ -645,13 +651,13 @@ Export the contaminant concentration data in suspended sediment and the suspende
 # change eval option to TRUE when you want to export the data when knitting this file
 ss_conc_all_f %>% 
   write_excel_csv(
-    file = file.path(fp_abs_proc, "WQ_INPUT_Contam_SuspSed_2021-02-11.csv"),
+    file = file.path(fp_abs_proc_sp, "WQ_INPUT_Contam_SuspSed_2021-02-11.csv"),
     na = ""
   )
 
 ss_conc_ss %>% 
   write_excel_csv(
-    file = file.path(fp_abs_proc, "WQ_INPUT_SuspSed_2021-02-11.csv"),
+    file = file.path(fp_abs_proc_sp, "WQ_INPUT_SuspSed_2021-02-11.csv"),
     na = ""
   )
 ```
@@ -660,7 +666,8 @@ Clean up objects in the global environment to only keep necessary objects at thi
 
 ```{r clean obj from global env susp sed}
 # Remove all objects related to cleaning the suspended sediment concentration data
-rm(list = ls()[str_detect(ls(), "^ss")])
+obj_keep <- append(obj_keep, c("ss_conc_all_f", "ss_conc_ss"))
+rm(list = ls()[!(ls() %in% obj_keep)])
 ```
 
 
@@ -871,10 +878,41 @@ Export the contaminant concentration data in zooplankton as a .csv file to the P
 # change eval option to TRUE when you want to export the data when knitting this file
 zoop_conc_all_f %>% 
   write_excel_csv(
-    file = file.path(fp_abs_proc, "WQ_INPUT_Contam_Zoop_2021-02-11.csv"),
+    file = file.path(fp_abs_proc_sp, "WQ_INPUT_Contam_Zoop_2021-02-11.csv"),
     na = ""
   )
 ```
+
+Clean up objects in the global environment to only keep necessary objects at this point.
+
+```{r clean obj from global env zoop}
+# Remove all objects related to cleaning the zooplankton concentration data
+obj_keep <- append(obj_keep, "zoop_conc_all_f")
+rm(list = ls()[!(ls() %in% obj_keep)])
+```
+
+
+# Save R Data
+
+Save all data frames related to the contaminants data as an .RData file in the ND-FASTR repository for easier loading into other scripts in the repository.
+
+```{r save final contam RData}
+# Rename data frames to be more descriptive
+contam_water <- water_conc_all_f
+contam_ss <- ss_conc_all_f
+ss_conc <- ss_conc_ss
+contam_zoop <- zoop_conc_all_f
+
+# Import pesticide type and class designations
+contam_type_class <- read_csv(file.path(fp_proc_repo, "Contam_Types_and_Classes.csv"))
+
+# Save all data frames
+save(
+  contam_water, contam_ss, ss_conc, contam_zoop, contam_type_class, 
+  file = file.path(fp_proc_repo, "contam_proc_data.RData")
+)
+```
+
 
 End of script
 
