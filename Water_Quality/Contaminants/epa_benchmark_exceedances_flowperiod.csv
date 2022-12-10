@@ -1,0 +1,97 @@
+Response_type,Year,FlowActionPeriod,Benchmark,N_Exceedance
+Water,2016,Before,Acute_fish,0
+Water,2016,Before,Chronic_fish,0
+Water,2016,Before,Acute_invert,0
+Water,2016,Before,Chronic_invert,1
+Water,2016,During,Acute_fish,0
+Water,2016,During,Chronic_fish,0
+Water,2016,During,Acute_invert,1
+Water,2016,During,Chronic_invert,2
+Water,2016,After,Acute_fish,0
+Water,2016,After,Chronic_fish,0
+Water,2016,After,Acute_invert,0
+Water,2016,After,Chronic_invert,0
+Water,2017,Before,Acute_fish,0
+Water,2017,Before,Chronic_fish,1
+Water,2017,Before,Acute_invert,1
+Water,2017,Before,Chronic_invert,2
+Water,2017,During,Acute_fish,0
+Water,2017,During,Chronic_fish,0
+Water,2017,During,Acute_invert,0
+Water,2017,During,Chronic_invert,1
+Water,2017,After,Acute_fish,0
+Water,2017,After,Chronic_fish,3
+Water,2017,After,Acute_invert,0
+Water,2017,After,Chronic_invert,3
+Water,2018,Before,Acute_fish,0
+Water,2018,Before,Chronic_fish,0
+Water,2018,Before,Acute_invert,0
+Water,2018,Before,Chronic_invert,8
+Water,2018,During,Acute_fish,0
+Water,2018,During,Chronic_fish,0
+Water,2018,During,Acute_invert,0
+Water,2018,During,Chronic_invert,0
+Water,2018,After,Acute_fish,0
+Water,2018,After,Chronic_fish,0
+Water,2018,After,Acute_invert,0
+Water,2018,After,Chronic_invert,1
+Water,2019,Before,Acute_fish,0
+Water,2019,Before,Chronic_fish,0
+Water,2019,Before,Acute_invert,0
+Water,2019,Before,Chronic_invert,2
+Water,2019,During,Acute_fish,0
+Water,2019,During,Chronic_fish,1
+Water,2019,During,Acute_invert,1
+Water,2019,During,Chronic_invert,1
+Water,2019,After,Acute_fish,0
+Water,2019,After,Chronic_fish,2
+Water,2019,After,Acute_invert,2
+Water,2019,After,Chronic_invert,3
+Suspended Sediment,2016,Before,Acute_fish,0
+Suspended Sediment,2016,Before,Chronic_fish,1
+Suspended Sediment,2016,Before,Acute_invert,4
+Suspended Sediment,2016,Before,Chronic_invert,4
+Suspended Sediment,2016,During,Acute_fish,0
+Suspended Sediment,2016,During,Chronic_fish,0
+Suspended Sediment,2016,During,Acute_invert,0
+Suspended Sediment,2016,During,Chronic_invert,0
+Suspended Sediment,2016,After,Acute_fish,0
+Suspended Sediment,2016,After,Chronic_fish,0
+Suspended Sediment,2016,After,Acute_invert,0
+Suspended Sediment,2016,After,Chronic_invert,0
+Suspended Sediment,2017,Before,Acute_fish,0
+Suspended Sediment,2017,Before,Chronic_fish,0
+Suspended Sediment,2017,Before,Acute_invert,3
+Suspended Sediment,2017,Before,Chronic_invert,3
+Suspended Sediment,2017,During,Acute_fish,0
+Suspended Sediment,2017,During,Chronic_fish,0
+Suspended Sediment,2017,During,Acute_invert,1
+Suspended Sediment,2017,During,Chronic_invert,1
+Suspended Sediment,2017,After,Acute_fish,0
+Suspended Sediment,2017,After,Chronic_fish,0
+Suspended Sediment,2017,After,Acute_invert,2
+Suspended Sediment,2017,After,Chronic_invert,2
+Suspended Sediment,2018,Before,Acute_fish,0
+Suspended Sediment,2018,Before,Chronic_fish,0
+Suspended Sediment,2018,Before,Acute_invert,2
+Suspended Sediment,2018,Before,Chronic_invert,2
+Suspended Sediment,2018,During,Acute_fish,0
+Suspended Sediment,2018,During,Chronic_fish,0
+Suspended Sediment,2018,During,Acute_invert,0
+Suspended Sediment,2018,During,Chronic_invert,0
+Suspended Sediment,2018,After,Acute_fish,0
+Suspended Sediment,2018,After,Chronic_fish,0
+Suspended Sediment,2018,After,Acute_invert,0
+Suspended Sediment,2018,After,Chronic_invert,0
+Suspended Sediment,2019,Before,Acute_fish,0
+Suspended Sediment,2019,Before,Chronic_fish,0
+Suspended Sediment,2019,Before,Acute_invert,1
+Suspended Sediment,2019,Before,Chronic_invert,1
+Suspended Sediment,2019,During,Acute_fish,0
+Suspended Sediment,2019,During,Chronic_fish,0
+Suspended Sediment,2019,During,Acute_invert,0
+Suspended Sediment,2019,During,Chronic_invert,0
+Suspended Sediment,2019,After,Acute_fish,0
+Suspended Sediment,2019,After,Chronic_fish,0
+Suspended Sediment,2019,After,Acute_invert,0
+Suspended Sediment,2019,After,Chronic_invert,0
