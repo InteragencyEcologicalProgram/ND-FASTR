@@ -20,12 +20,12 @@ source(here("global_ndfa_funcs.R"))
 # Define file path in the repository for figure and table outputs
 fp_output <- here("Water_Quality/Output_Report")
 
-# Define file path in the repository for contaminants directory
-fp_contam <- here("Water_Quality/Contaminants")
+# Define file path in the repository for contaminants analyses directory
+fp_contam <- here("Water_Quality/Contaminants/Analyses")
 
 # Import data
 load(here("Water_Quality/Data_Processed/contam_proc_data.RData"))
-epa_benchmarks <- read_csv(here("Water_Quality/Contaminants/Aquatic_life_benchmarks3.csv"), na = c("NR"))
+epa_benchmarks <- read_csv(file.path(fp_contam, "Aquatic_life_benchmarks3.csv"), na = c("NR"))
 
 # Prepare and combine data
 contam_all <- 

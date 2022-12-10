@@ -39,7 +39,7 @@ library(here)
 source(here("global_ndfa_funcs.R"))
 
 # Source contaminants data cleaning functions
-source(here("Water_Quality/Contaminants/contam_clean_data_funcs.R"))
+source(here("Water_Quality/Contaminants/Data_Cleaning/contam_clean_data_funcs.R"))
 ```
 
 ```{r define file paths}

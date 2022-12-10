@@ -10,12 +10,13 @@
 library(tidyverse)
 library(dataRetrieval)
 library(readxl)
+library(here)
 
 # Source global NDFA functions
-source("global_ndfa_funcs.R")
+source(here("global_ndfa_funcs.R"))
 
 # Define relative file path for the raw contaminants USGS data
-fp_rel_contam_raw <- "WQ_Subteam/Raw_Data/Contaminants"
+fp_rel_contam_raw <- "2011-2019 Synthesis Study/WQ_Subteam/Raw_Data/Contaminants"
 
 # Define absolute file path
 fp_abs_contam_raw <- ndfa_abs_sp_path(fp_rel_contam_raw)
