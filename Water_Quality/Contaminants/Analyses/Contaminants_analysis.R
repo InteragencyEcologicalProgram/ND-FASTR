@@ -1,6 +1,6 @@
 # Analyze FASTR contaminants data- ANOVAs/comparison with EPA benchmarks
-# Laura Twardochleb
-# 2/12/21
+# Laura Twardochleb & Dave Bosworth
+# 2/12/2021, updated 12/12/2022
 
 library(tidyverse)
 library(lubridate)
@@ -12,6 +12,8 @@ library(emmeans)
 library(car)
 library(visreg)
 library(cowplot)
+library(scales)
+library(patchwork)
 library(here)
 
 # Source functions
@@ -622,12 +624,80 @@ water_ss_benchmarks_exceed <- water_ss_benchmarks %>%
 
 # Count number of EPA benchmark exceedances by sample type, year, flow period,
 # and benchmark type, and export for report figures
-water_ss_benchmarks_exceed %>% 
+df_benchmark_rpt_fig <- water_ss_benchmarks_exceed %>% 
   group_by(Response_type, Year, FlowActionPeriod, Benchmark) %>% 
   summarize(N_Exceedance = sum(N_Exceedance)) %>% 
   ungroup() %>% 
   complete(Response_type, Year, FlowActionPeriod, Benchmark, fill = list(N_Exceedance = 0)) %>% 
   write_csv(file.path(fp_contam, "epa_benchmark_exceedances_flowperiod.csv"))
+
+# Create Barplots of the percent of samples that exceed EPA benchmarks:
+# Count the number of water and suspended sediment samples collected by year and
+# flow pulse period
+contam_n_samples <- contam_all %>% 
+  filter(Response_type != "zooplankton") %>% 
+  count(Response_type, Year, FlowActionPeriod, name = "N_Samples") %>% 
+  mutate(
+    Response_type = dplyr::recode(
+      Response_type, 
+      "water" = "Water", 
+      "sediment" = "Suspended Sediment"
+    )
+  )
+
+# Calculate the percent of water and suspended sediment samples that exceed EPA benchmarks 
+# grouped by year and flow pulse period
+df_benchmark_rpt_fig_c <- df_benchmark_rpt_fig %>% 
+  left_join(contam_n_samples) %>% 
+  mutate(Perc_Exceedance = N_Exceedance/N_Samples)
+
+# Create a function for the barplots
+barplot_benchmark_exceed <- function(df, plt_title, x_lab) {
+  # Create a named vector for the Benchmark facet labels
+  benchmark_label <- c(
+    "Acute_fish" = "Acute Fish",
+    "Chronic_fish" = "Chronic Fish",
+    "Acute_invert" = "Acute Invertebrates",
+    "Chronic_invert" = "Chronic Invertebrates"
+  )
+  
+  p <- df %>% 
+    ggplot(aes(x = FlowActionPeriod, y = Perc_Exceedance)) +
+    geom_col() +
+    facet_grid(
+      cols = vars(Benchmark), 
+      rows = vars(Year),
+      labeller = labeller(Benchmark = benchmark_label)
+    ) +
+    theme_light() +
+    theme(
+      strip.text = element_text(color = "black"),
+      panel.grid.minor = element_blank()
+    ) +
+    ggtitle(plt_title) +
+    scale_y_continuous(
+      name = "Percent of samples with exceedances",
+      limits = c(0, 0.008),
+      labels = label_percent()
+    )
+  
+  if (x_lab == TRUE) p + xlab("Flow Pulse Period") else p + xlab(NULL)
+}
+
+plt_benchmark_exceed <- df_benchmark_rpt_fig_c %>% 
+  nest(df_data = -Response_type) %>% 
+  mutate(plt = pmap(list(df_data, Response_type, c(FALSE, TRUE)), barplot_benchmark_exceed))
+
+plt_benchmark_exceed_c <- wrap_plots(plt_benchmark_exceed$plt, ncol = 1) + plot_annotation(tag_levels = "A")
+
+ggsave(
+  file.path(fp_output, "contaminants_epa_exceed.jpg"),
+  plot = plt_benchmark_exceed_c, 
+  width = 6.5, 
+  height = 9, 
+  units = "in", 
+  dpi = 300
+)
 
 # Count number of EPA benchmark exceedances by sample type, year, analyte,
 # and benchmark type, and export for report table

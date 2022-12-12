@@ -1,7 +1,7 @@
 ---
 title: "NDFA Contaminants Data: EPA Benchmark Exceedences"
 author: "Dave Bosworth"
-date: "3/11/2021"
+date: "`r Sys.Date()`"
 output: 
   html_document: 
     code_folding: hide
@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Purpose
 
-Produce a simple bar plot showing the number of EPA benchmark exceedances for the contaminant concentrations in water data set collected for the NDFA project. Includes data collected from 2015-2019 and benchmarks for acute and chronic toxicity for both fish and invertebrates.
+Produce a simple plots showing the number of EPA benchmark exceedances for the contaminant concentrations in water and suspended sediment data sets collected for the NDFA project. Includes data collected from 2015-2019 and benchmarks for acute and chronic toxicity for both fish and invertebrates.
 
 # Global code and functions
 
@@ -26,44 +26,84 @@ Produce a simple bar plot showing the number of EPA benchmark exceedances for th
 # Load packages
 library(tidyverse)
 library(lubridate)
+library(scales)
 library(here)
+
+# Source functions
+source(here("global_ndfa_funcs.R"))
 ```
 
 # Import and Prepare Data
 
 ```{r import data, message = FALSE}
-# Define file path of Contaminants directory
-fp_contam <- here("Water_Quality/Contaminants")
-
-# Create vector of file paths for the csv files containing EPA benchmark
-  # exceedance data within the Contaminants directory
-dir_epa_exceed <- dir(fp_contam, pattern = "toxicity\\.csv$", full.names = TRUE)
-
-# Import 4 csv files
-lst_epa_exceed <- map(dir_epa_exceed, read_csv)
+# Import data
+load(here("Water_Quality/Data_Processed/contam_proc_data.RData"))
+df_epa_exceed <- read_csv(here("Water_Quality/Contaminants/Analyses/epa_benchmark_exceedances_flowperiod.csv"))
 ```
 
-```{r prepare data}
+```{r prepare data, message = FALSE}
 # Combine and prepare data for plot
-df_epa_exceed <- lst_epa_exceed %>% 
-  map(~ select(.x, -...1)) %>% 
-  reduce(full_join, by = c("Year", "FlowPeriod")) %>% 
-  rename_with(~str_remove(.x, "^N_"), starts_with("N_")) %>% 
-  mutate(FlowPeriod = factor(FlowPeriod, levels = c("Before", "During", "After"))) %>% 
-  pivot_longer(
-    cols = starts_with(c("acute", "chronic")),
-    names_to = "Benchmark", 
-    values_to = "Exceedances"
+# Count the number of water and suspended sediment samples collected by year and
+  # flow pulse period
+contam_n_samples <- 
+  list(
+    Water = contam_water,
+    "Suspended Sediment" = contam_ss
   ) %>% 
-  drop_na(Exceedances)
+  bind_rows(.id = "Response_type") %>% 
+  mutate(
+    Date = date(DateTime),
+    Year = year(DateTime)
+  ) %>% 
+  ndfa_action_periods() %>% 
+  count(Response_type, Year, FlowActionPeriod, name = "N_Samples")
+
+# Calculate the percent of water and suspended sediment samples that exceed EPA benchmarks 
+  # grouped by year and flow pulse period
+df_epa_exceed_perc <- df_epa_exceed %>% 
+  left_join(contam_n_samples) %>% 
+  mutate(Perc_Exceedance = N_Exceedance/N_Samples) %>% 
+  # Apply plotting order for flow pulse period
+  mutate(FlowActionPeriod = factor(FlowActionPeriod, levels = c("Before", "During", "After")))
 ```
 
-# Create Plot
+# Create Plots
 
-```{r create plot}
-df_epa_exceed %>% 
-  ggplot(aes(FlowPeriod, Exceedances)) +
+## Water
+
+```{r plot water N}
+df_epa_exceed_perc %>% 
+  filter(Response_type == "Water") %>% 
+  ggplot(aes(x = FlowActionPeriod, y = N_Exceedance)) +
   geom_col() +
   facet_grid(cols = vars(Benchmark), rows = vars(Year))
+```
+
+```{r plot water perc}
+df_epa_exceed_perc %>% 
+  filter(Response_type == "Water") %>% 
+  ggplot(aes(x = FlowActionPeriod, y = Perc_Exceedance)) +
+  geom_col() +
+  facet_grid(cols = vars(Benchmark), rows = vars(Year)) +
+  scale_y_continuous(labels = label_percent())
+```
+
+## Suspended Sediment
+
+```{r plot susp sed N}
+df_epa_exceed_perc %>% 
+  filter(Response_type == "Suspended Sediment") %>% 
+  ggplot(aes(x = FlowActionPeriod, y = N_Exceedance)) +
+  geom_col() +
+  facet_grid(cols = vars(Benchmark), rows = vars(Year))
+```
+
+```{r plot susp sed perc}
+df_epa_exceed_perc %>% 
+  filter(Response_type == "Suspended Sediment") %>% 
+  ggplot(aes(x = FlowActionPeriod, y = Perc_Exceedance)) +
+  geom_col() +
+  facet_grid(cols = vars(Benchmark), rows = vars(Year)) +
+  scale_y_continuous(labels = label_percent())
 ```
 
