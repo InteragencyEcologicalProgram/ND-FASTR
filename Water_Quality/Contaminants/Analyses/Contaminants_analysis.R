@@ -577,34 +577,31 @@ epa_benchmarks_c2 <- epa_benchmarks_c1 %>%
       Pesticide == "Dichlorvos (DDVP)" ~ "Dichlorvos",
       Pesticide == "Imidacloprid urea degradate" ~ "Imidacloprid urea",
       TRUE ~ Pesticide
-    )
+    ),
+    across(starts_with(c("Acute", "Chronic")), as.numeric)
   )
 
-# Find water and suspended sediment samples that exceeded an EPA benchmark
-water_ss_benchmarks <- contam_all %>%
+# Sum the water and suspended sediment concentrations to estimate a
+# "whole-water" concentration, and find samples that exceed an EPA benchmark
+water_ss_benchmarks_exceed <- contam_all %>%
   filter(
     Response_type != "zooplankton",
     Result != "< MDL"
   ) %>%
+  group_by(StationCode, Year, Date, Analyte, FlowActionPeriod) %>% 
+  summarize(Result_total = sum(as.numeric(Result))) %>% 
+  ungroup() %>% 
   left_join(epa_benchmarks_c2, by = c("Analyte" = "Pesticide")) %>% 
   mutate(
     # convert Result values to micrograms to be consistent with EPA benchmarks
-    Result = as.numeric(Result) / 1000,
-    across(starts_with(c("Acute", "Chronic")), as.numeric),
-    across(starts_with(c("Acute", "Chronic")), ~ if_else(Result > .x, "Yes", "No"), .names = "Exceeds_{.col}")
-  ) %>% 
-  select(Response_type, Year, Analyte, FlowActionPeriod, starts_with("Exceeds")) %>% 
-  mutate(
-    Response_type = recode_factor(
-      Response_type, 
-      "water" = "Water", 
-      "sediment" = "Suspended Sediment"
+    Result_total = Result_total / 1000,
+    across(
+      starts_with(c("Acute", "Chronic")), 
+      ~ if_else(Result_total > .x, "Yes", "No"), 
+      .names = "Exceeds_{.col}"
     )
-  )
-
-# Count number of EPA benchmark exceedances by sample type, year, analyte, flow
-# period, and benchmark type
-water_ss_benchmarks_exceed <- water_ss_benchmarks %>% 
+  ) %>% 
+  select(StationCode, Year, Date, Analyte, FlowActionPeriod, starts_with("Exceeds")) %>% 
   pivot_longer(
     cols = starts_with("Exceeds"),
     names_to = "Benchmark",
@@ -619,31 +616,22 @@ water_ss_benchmarks_exceed <- water_ss_benchmarks %>%
       "Exceeds_Chronic4" = "Chronic_invert"
     )
   ) %>% 
-  filter(Exceedance == "Yes") %>% 
-  count(Response_type, Year, Analyte, FlowActionPeriod, Benchmark, name = "N_Exceedance")
+  filter(Exceedance == "Yes")
 
-# Count number of EPA benchmark exceedances by sample type, year, flow period,
-# and benchmark type, and export for report figures
+# Count number of samples that exceed at least one EPA benchmark for each
+# benchmark type and export for report figures
 df_benchmark_rpt_fig <- water_ss_benchmarks_exceed %>% 
-  group_by(Response_type, Year, FlowActionPeriod, Benchmark) %>% 
-  summarize(N_Exceedance = sum(N_Exceedance)) %>% 
-  ungroup() %>% 
-  complete(Response_type, Year, FlowActionPeriod, Benchmark, fill = list(N_Exceedance = 0)) %>% 
+  distinct(StationCode, Year, Date, FlowActionPeriod, Benchmark) %>% 
+  count(Year, FlowActionPeriod, Benchmark, name = "N_Exceedance") %>% 
+  complete(Year, FlowActionPeriod, Benchmark, fill = list(N_Exceedance = 0)) %>% 
   write_csv(file.path(fp_contam, "epa_benchmark_exceedances_flowperiod.csv"))
 
 # Create Barplots of the percent of samples that exceed EPA benchmarks:
-# Count the number of water and suspended sediment samples collected by year and
-# flow pulse period
+# Count the number of samples collected by year and flow pulse period
 contam_n_samples <- contam_all %>% 
   filter(Response_type != "zooplankton") %>% 
-  count(Response_type, Year, FlowActionPeriod, name = "N_Samples") %>% 
-  mutate(
-    Response_type = dplyr::recode(
-      Response_type, 
-      "water" = "Water", 
-      "sediment" = "Suspended Sediment"
-    )
-  )
+  distinct(StationCode, Year, Date, FlowActionPeriod) %>% 
+  count(Year, FlowActionPeriod, name = "N_Samples") 
 
 # Calculate the percent of water and suspended sediment samples that exceed EPA benchmarks 
 # grouped by year and flow pulse period
@@ -651,61 +639,47 @@ df_benchmark_rpt_fig_c <- df_benchmark_rpt_fig %>%
   left_join(contam_n_samples) %>% 
   mutate(Perc_Exceedance = N_Exceedance/N_Samples)
 
-# Create a function for the barplots
-barplot_benchmark_exceed <- function(df, plt_title, x_lab) {
-  # Create a named vector for the Benchmark facet labels
-  benchmark_label <- c(
-    "Acute_fish" = "Acute Fish",
-    "Chronic_fish" = "Chronic Fish",
-    "Acute_invert" = "Acute Invertebrates",
-    "Chronic_invert" = "Chronic Invertebrates"
-  )
-  
-  p <- df %>% 
-    ggplot(aes(x = FlowActionPeriod, y = Perc_Exceedance)) +
-    geom_col() +
-    facet_grid(
-      cols = vars(Benchmark), 
-      rows = vars(Year),
-      labeller = labeller(Benchmark = benchmark_label)
-    ) +
-    theme_light() +
-    theme(
-      strip.text = element_text(color = "black"),
-      panel.grid.minor = element_blank()
-    ) +
-    ggtitle(plt_title) +
-    scale_y_continuous(
-      name = "Percent of samples with exceedances",
-      limits = c(0, 0.008),
-      labels = label_percent()
-    )
-  
-  if (x_lab == TRUE) p + xlab("Flow Pulse Period") else p + xlab(NULL)
-}
+# Create a named vector for the Benchmark facet labels
+benchmark_label <- c(
+  "Acute_fish" = "A) Acute Fish",
+  "Chronic_fish" = "B) Chronic Fish",
+  "Acute_invert" = "C) Acute Invertebrates",
+  "Chronic_invert" = "D) Chronic Invertebrates"
+)
 
 plt_benchmark_exceed <- df_benchmark_rpt_fig_c %>% 
-  nest(df_data = -Response_type) %>% 
-  mutate(plt = pmap(list(df_data, Response_type, c(FALSE, TRUE)), barplot_benchmark_exceed))
-
-plt_benchmark_exceed_c <- wrap_plots(plt_benchmark_exceed$plt, ncol = 1) + plot_annotation(tag_levels = "A")
+  ggplot(aes(x = FlowActionPeriod, y = Perc_Exceedance)) +
+  geom_col() +
+  facet_grid(
+    cols = vars(Benchmark), 
+    rows = vars(Year),
+    labeller = labeller(Benchmark = benchmark_label)
+  ) +
+  scale_y_continuous(
+    name = "Percent of samples with at least one exceedance",
+    labels = label_percent()
+  ) +
+  xlab("Flow Pulse Period") +
+  theme_light() +
+  theme(
+    strip.text = element_text(color = "black"),
+    panel.grid.minor = element_blank()
+  )
 
 ggsave(
   file.path(fp_output, "contaminants_epa_exceed.jpg"),
-  plot = plt_benchmark_exceed_c, 
-  width = 6.5, 
-  height = 9, 
+  plot = plt_benchmark_exceed, 
+  width = 7, 
+  height = 7, 
   units = "in", 
   dpi = 300
 )
 
-# Count number of EPA benchmark exceedances by sample type, year, analyte,
-# and benchmark type, and export for report table
+# Count number of EPA benchmark exceedances by year, analyte, and benchmark
+# type, and export for report table
 water_ss_benchmarks_exceed %>%
-  group_by(Response_type, Year, Analyte, Benchmark) %>% 
-  summarize(N_Exceedance = sum(N_Exceedance)) %>% 
-  ungroup() %>%
-  complete(nesting(Response_type, Year, Analyte), Benchmark, fill = list(N_Exceedance = 0)) %>% 
+  count(Year, Analyte, Benchmark, name = "N_Exceedance") %>% 
+  complete(nesting(Year, Analyte), Benchmark, fill = list(N_Exceedance = 0)) %>% 
   pivot_wider(names_from = Benchmark, values_from = N_Exceedance) %>% 
   left_join(contam_type_class, by = "Analyte") %>%
   select(
@@ -714,9 +688,8 @@ water_ss_benchmarks_exceed %>%
     PesticideType,
     PesticideClass,
     ends_with("fish"),
-    ends_with("invert"),
-    Response_type
+    ends_with("invert")
   ) %>% 
-  arrange(Year, Analyte, Response_type) %>% 
+  arrange(Year, Analyte) %>% 
   write_csv(file.path(fp_output, "epa_benchmark_exceedances_analytes.csv"))
 
