@@ -26,32 +26,22 @@ This document contains plots and data summary tables used for exploratory data a
 library(tidyverse)
 library(lubridate)
 library(DT)
+library(here)
 ```
 
 ```{r load functions, message = FALSE, warning = FALSE}
 # Source global NDFA functions
-source("global_ndfa_funcs.R")
+source(here("global_ndfa_funcs.R"))
 
 # Source contaminants EDA functions
-source("Water_Quality/Contaminants/contam_EDA_funcs.R")
-```
-
-```{r define file paths}
-# Define relative file path for processed contaminants data files
-fp_rel_proc <- "WQ_Subteam/Processed_Data/Contaminants"
-
-# Define absolute file path
-fp_abs_proc <- ndfa_abs_sp_path(fp_rel_proc)
+source(here("Water_Quality/Contaminants/Analyses/contam_EDA_funcs.R"))
 ```
 
 # Import and Prepare Data
 
 ```{r import data, message = FALSE}
-# Import contaminants concentrations in water data
-contam_water_orig <- read_csv(file.path(fp_abs_proc, "WQ_INPUT_Contam_Water_2021-02-11.csv"))
-
-# Import pesticide type and class designations
-contam_type_class <- read_csv(file.path(fp_abs_proc, "Contam_Types_and_Classes.csv"))
+# Import contaminants data
+load(here("Water_Quality/Data_Processed/contam_proc_data.RData"))
 ```
 
 To prepare the contaminants data for the exploratory data analysis (EDA) plots and summary tables, we will need do the following:
@@ -62,10 +52,9 @@ To prepare the contaminants data for the exploratory data analysis (EDA) plots a
 * Create a `SamplingEvent` variable. Some of the stations were sampled 1-2 days apart. This variable will group these within one sampling event.
 
 ```{r prepare data, message = FALSE}
-contam_water_clean_v1 <- contam_water_orig %>% 
-  # Parse DateTime variable, add Date and Year variables
+contam_water_clean_v1 <- contam_water %>% 
+  # Add Date and Year variables
   mutate(
-    DateTime = ymd_hms(DateTime),
     Date = date(DateTime),
     Year = year(DateTime)
   ) %>% 
