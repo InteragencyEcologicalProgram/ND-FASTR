@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Purpose
 
-Produce a simple plots showing the number of EPA benchmark exceedances for the contaminant concentrations in water and suspended sediment data sets collected for the NDFA project. Includes data collected from 2015-2019 and benchmarks for acute and chronic toxicity for both fish and invertebrates.
+Produce simple plots showing the number of EPA benchmark exceedances for the contaminant concentrations in water and suspended sediment data sets collected for the NDFA project. Includes data collected from 2015-2019 and benchmarks for acute and chronic toxicity for both fish and invertebrates.
 
 # Global code and functions
 
