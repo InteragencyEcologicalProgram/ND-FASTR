@@ -636,7 +636,9 @@ water_ss_benchmarks_exceed <- contam_all %>%
 df_benchmark_rpt_fig <- water_ss_benchmarks_exceed %>% 
   distinct(StationCode, Year, Date, FlowActionPeriod, Benchmark) %>% 
   count(Year, FlowActionPeriod, Benchmark, name = "N_Exceedance") %>% 
-  complete(Year, FlowActionPeriod, Benchmark, fill = list(N_Exceedance = 0)) %>% 
+  complete(Year = 2015:2019, FlowActionPeriod, Benchmark, fill = list(N_Exceedance = 0)) %>% 
+  # No samples were collected before or during flow pulse in 2015 - remove these
+  filter(!(Year == 2015 & FlowActionPeriod %in% c("Before", "During"))) %>% 
   write_csv(file.path(fp_contam, "epa_benchmark_exceedances_flowperiod.csv"))
 
 # Create Barplots of the percent of samples that exceed EPA benchmarks:
