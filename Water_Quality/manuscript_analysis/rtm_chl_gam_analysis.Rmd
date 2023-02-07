@@ -1,5 +1,5 @@
 ---
-title: "NDFS synthesis manuscript: Chlorophyll analysis"
+title: "NDFS Synthesis Manuscript: Chlorophyll GAM analysis"
 author: "Dave Bosworth"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output: 
