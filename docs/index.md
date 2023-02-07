@@ -6,4 +6,4 @@ layout: default
 
 ### Synthesis Manuscript
 
-* [Continuous Chlorophyll GAM Analysis](rtm_chla_gam_analysis.html)
+* [Continuous Chlorophyll GAM Analysis](rtm_chl_gam_analysis.html)
