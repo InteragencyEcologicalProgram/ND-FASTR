@@ -31,6 +31,26 @@ load("RData/FlowDesignation.RData")
 load("RData/phyto.grp.gen.BV.RA.tot.Rdata")
 load("RData/phyto.types")
 
+test <- phyto.grp.BV %>%
+  group_by(Year, StationCode, Region, ActionPhase, DateTime) %>%
+  summarize(Total.BV = sum(BV.um3.per.L, na.rm = TRUE)) %>%
+  ungroup
+
+plot <- ggplot(test, aes(x = Year, fill = ActionPhase)) +
+  geom_histogram()
+
+plot
+
+plot2 <- ggplot(test, aes(x = Year, fill = Region)) +
+  geom_histogram()
+
+plot2
+
+plot3 <- ggplot(test, aes(x = Year, fill = StationCode)) +
+  geom_histogram()
+
+plot3
+
 # Create Biovolume-only data frame at genus level
 phyto.gen.BV <- phyto.gen %>% select(Year:Region,Genus:ActionPhase,BV.um3.per.L)
 
