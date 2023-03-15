@@ -184,6 +184,24 @@ df_rtm_chla_c1 <- df_rtm_chla %>%
 df_fa_dates_c1 <- df_fa_dates %>% filter(Year > 2012)
 ```
 
+Read in the phyto data
+```{Ted Data}
+load("C:/R/ND-FASTR/phyto_code/GAMs/phyto.sum.RData")
+
+df_phyto <- phyto.sum %>%
+  mutate(Date = date(DateTime)) %>%
+  select(Year,Date,StationCode,Region,ActionPhase,Total.BV.per.L) %>%
+  mutate(DOY = yday(Date)) %>%
+  mutate(Year_fct = factor(Year)) %>%
+  rename("BV_Density" = "Total.BV.per.L") %>%
+  rename("FlowActionPeriod" = "ActionPhase") %>%
+  mutate(BV_log = log10(BV_Density))
+
+# Check headers to see if they match Dave's
+sort(colnames(df_phyto))
+sort(colnames(df_rtm_chla_c1))
+
+```
 Now, let's look at the sample counts by station after removing under-sampled years and stations.
 
 ```{r rtm chla sample counts station 2}
