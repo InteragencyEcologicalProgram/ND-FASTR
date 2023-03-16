@@ -184,10 +184,32 @@ df_rtm_chla_c1 <- df_rtm_chla %>%
 df_fa_dates_c1 <- df_fa_dates %>% filter(Year > 2012)
 ```
 
+Read in the phyto data
+```{Ted Data}
+load("C:/R/ND-FASTR/phyto_code/GAMs/phyto.sum.RData")
+
+df_phyto <- phyto.sum %>%
+  mutate(Date = date(DateTime)) %>%
+  select(Year,Date,StationCode,Region,ActionPhase,Total.BV.per.L) %>%
+  mutate(DOY = yday(Date)) %>%
+  mutate(Year_fct = factor(Year)) %>%
+  rename("BV_Density" = "Total.BV.per.L") %>%
+  rename("FlowActionPeriod" = "ActionPhase") %>%
+  mutate(BV_log = log10(BV_Density))
+
+df_phyto <- df_phyto %>%
+  filter(StationCode != "RMB") %>%
+  filter(Year >= 2015)
+
+# Check headers to see if they match Dave's
+sort(colnames(df_phyto))
+sort(colnames(df_rtm_chla_c1))
+
+```
 Now, let's look at the sample counts by station after removing under-sampled years and stations.
 
 ```{r rtm chla sample counts station 2}
-df_rtm_chla_c1 %>% 
+df_phyto %>% 
   count(Year, FlowActionPeriod, StationCode) %>% 
   arrange(StationCode) %>% 
   pivot_wider(names_from = StationCode, values_from = n) %>% 
@@ -202,9 +224,9 @@ RCS and RYI have some gaps, but we'll keep them in for now.
 We would like to include interaction terms in the model, so we need to look at sample sizes and visuals of the data.
 
 ```{r rtm chla sample counts region}
-df_rtm_chla_c1 %>% distinct(Region, StationCode) %>% arrange(Region, StationCode)
+df_phyto %>% distinct(Region, StationCode) %>% arrange(Region, StationCode)
 
-df_rtm_chla_c1 %>% 
+df_phyto %>% 
   count(Year, FlowActionPeriod, Region) %>% 
   pivot_wider(names_from = Region, values_from = n) %>% 
   kable()
@@ -219,8 +241,8 @@ It looks like there is an adequate number of samples in each group.
 Let's explore the data with some plots. First lets plot the data in boxplots facetted by Year and Region using a log10 scale to see the results better.
 
 ```{r rtm chla boxplot region, fig.height = 9}
-df_rtm_chla_c1 %>% 
-  ggplot(aes(x = FlowActionPeriod, y = Chla, fill = FlowActionPeriod)) +
+df_phyto %>% 
+  ggplot(aes(x = FlowActionPeriod, y = BV_Density, fill = FlowActionPeriod)) +
   geom_boxplot() +
   facet_grid(rows = vars(Year), cols = vars(Region)) +
   scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
@@ -234,9 +256,9 @@ There may be some interaction between Flow Period, Year, and Region, but it's di
 Now let's look at the same boxplots but grouped by Station. First, the stations in the Upstream region:
 
 ```{r rtm chla boxplot station us, fig.width = 8.5, fig.height = 9}
-df_rtm_chla_c1 %>%
+df_phyto %>%
   filter(Region == "Upstream") %>% 
-  ggplot(aes(x = FlowActionPeriod, y = Chla, fill = FlowActionPeriod)) +
+  ggplot(aes(x = FlowActionPeriod, y = BV_Density, fill = FlowActionPeriod)) +
   geom_boxplot() +
   facet_grid(rows = vars(Year), cols = vars(StationCode)) +
   scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
@@ -248,9 +270,9 @@ The patterns differ by Station, however we'll keep these all in the same region 
 Next, let's look at the stations in the Downstream region:
 
 ```{r rtm chla boxplot station ds, fig.width = 8, fig.height = 9}
-df_rtm_chla_c1 %>%
+df_phyto %>%
   filter(Region == "Downstream") %>% 
-  ggplot(aes(x = FlowActionPeriod, y = Chla, fill = FlowActionPeriod)) +
+  ggplot(aes(x = FlowActionPeriod, y = BV_Density, fill = FlowActionPeriod)) +
   geom_boxplot() +
   facet_grid(rows = vars(Year), cols = vars(StationCode)) +
   scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
@@ -264,8 +286,8 @@ The patterns appear to differ by Station, but not as obviously as with the stati
 Let's look at time-series plots based on day of year for each Region facetted by Year. The brown shaded areas represent the flow pulse periods for each year.
 
 ```{r rtm chla time series plot point, fig.width = 8, fig.height = 6}
-df_rtm_chla_c1 %>% 
-  ggplot(aes(x = DOY, y = Chla, color = Region)) +
+df_phyto %>% 
+  ggplot(aes(x = DOY, y = BV_Density, color = Region)) +
   geom_point(size = 1, alpha = 0.2) +
   scale_color_viridis_d(option = "plasma", end = 0.8) +
   facet_wrap(vars(Year), scales = "free_y") +
@@ -289,8 +311,8 @@ df_rtm_chla_c1 %>%
 Now, let's fit some GAM models to these time-series plots.
 
 ```{r rtm chla time series plot gam, warning = FALSE, fig.width = 8, fig.height = 6}
-df_rtm_chla_c1 %>% 
-  ggplot(aes(x = DOY, y = Chla, color = Region)) +
+df_phyto %>% 
+  ggplot(aes(x = DOY, y = BV_Density, color = Region)) +
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "tp")) +
   scale_color_viridis_d(option = "plasma", end = 0.8) +
   facet_wrap(vars(Year), scales = "free_y") +
@@ -314,8 +336,8 @@ These GAMs do a nice job of displaying the general trends for each Region. Overa
 Since the model will fit the smooth to all the data across years, regions and flow action periods, lets take a look at what that looks like using the log-transformed data.
 
 ```{r rtm chla time series plot gam all data, warning = FALSE}
-df_rtm_chla_c1 %>% 
-  ggplot(aes(x = DOY, y = Chla_log)) +
+df_phyto %>% 
+  ggplot(aes(x = DOY, y = BV_log)) +
   geom_point(size = 1, alpha = 0.2) +
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "tp")) +
   theme_bw()
@@ -324,8 +346,8 @@ df_rtm_chla_c1 %>%
 Finally, let's see how these smooths look if we group by Region.
 
 ```{r rtm chla time series plot gam grp region, warning = FALSE}
-df_rtm_chla_c1 %>% 
-  ggplot(aes(x = DOY, y = Chla_log, color = Region)) +
+df_phyto %>% 
+  ggplot(aes(x = DOY, y = BV_log, color = Region)) +
   geom_point(size = 1, alpha = 0.2) +
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "tp")) +
   scale_color_viridis_d(option = "plasma", end = 0.8) +
@@ -339,9 +361,9 @@ We'll try running a GAM including all two-way interactions between Year, Flow Ac
 ## Initial Model
 
 ```{r gam no autocorr, warning = FALSE}
-m_chla_gam <- gam(
-  Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY) + s(StationCode, bs = "re"), 
-  data = df_rtm_chla_c1,
+m_phyto_gam <- gam(
+  BV_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY) + s(StationCode, bs = "re"), 
+  data = df_phyto,
   method = "REML"
 )
 ```
@@ -349,12 +371,12 @@ m_chla_gam <- gam(
 Lets look at the model summary and diagnostics:
 
 ```{r gam no autocorr diag, warning = FALSE}
-summary(m_chla_gam)
-appraise(m_chla_gam)
-k.check(m_chla_gam)
-plot(m_chla_gam, pages = 1, all.terms = TRUE)
-acf(residuals(m_chla_gam))
-Box.test(residuals(m_chla_gam), lag = 20, type = 'Ljung-Box')
+summary(m_phyto_gam)
+appraise(m_phyto_gam)
+k.check(m_phyto_gam)
+plot(m_phyto_gam, pages = 1, all.terms = TRUE)
+acf(residuals(m_phyto_gam))
+Box.test(residuals(m_phyto_gam), lag = 20, type = 'Ljung-Box')
 ```
 
 ## Model with k=5
@@ -362,15 +384,16 @@ Box.test(residuals(m_chla_gam), lag = 20, type = 'Ljung-Box')
 The model definitely has residual autocorrelation as indicated by the ACF plot and the Box-Ljung test. The smooth term for day of year may also be overfitted. Let's try a smaller k-value for the smooth first, then lets try to address the residual autocorrelation.
 
 ```{r gam no autocorr k5, warning = FALSE}
-m_chla_gam_k5 <- gam(
-  Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY, k = 5) + s(StationCode, bs = "re"), 
-  data = df_rtm_chla_c1,
+m_phyto_gam_k5 <- gam(
+  BV_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY, k = 5) + s(StationCode, bs = "re"), 
+  data = df_phyto,
   method = "REML"
 )
 
-summary(m_chla_gam_k5)
-k.check(m_chla_gam_k5)
-plot(m_chla_gam_k5, pages = 1, all.terms = TRUE)
+summary(m_phyto_gam_k5)
+k.check(m_phyto_gam_k5)
+anova(m_phyto_gam_k5)
+plot(m_phyto_gam_k5, pages = 1, all.terms = TRUE)
 ```
 
 ## Model with lag1 term
@@ -378,17 +401,17 @@ plot(m_chla_gam_k5, pages = 1, all.terms = TRUE)
 Changing the k-value to 5 seems to help reduce the "wiggliness" of the smooth term for DOY. Now, lets add a lag1 term to the model to see if that helps with the residual autocorrelation.
 
 ```{r gam lag1, warning = FALSE}
-df_rtm_chla_lag1 <- df_rtm_chla_c1 %>% 
+df_phyto_lag1 <- df_phyto %>% 
   # Fill in missing days for each StationCode-Year combination
   group_by(StationCode, Year) %>% 
   complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>% 
   # Create lag1 of scaled log transformed chlorophyll values
-  mutate(lag1 = lag(Chla_log)) %>% 
+  mutate(lag1 = lag(BV_log)) %>% 
   ungroup()
 
-m_chla_gam_lag1 <- gam(
-  Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY, k = 5) + s(StationCode, bs = "re") + lag1, 
-  data = df_rtm_chla_lag1,
+m_phyto_gam_lag1 <- gam(
+  BV_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY, k = 5) + s(StationCode, bs = "re") + lag1,
+  data = df_phyto_lag1,
   na.action = "na.omit",
   method = "REML"
 )
@@ -407,35 +430,35 @@ Well, adding a lag1 term to the model helped with the residual autocorrelation, 
 
 ```{r gam with AR comparison, warning = FALSE}
 # Define model formula as an object
-f_chla_gam_k5 <- as.formula("Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY, k = 5)")
+f_phyto_gam_k5 <- as.formula("BV_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY, k = 5)")
 
 # Fit original model with k = 5 and two successive AR(p) models
-m_chla_gamm_k5 <- gamm(
-  f_chla_gam_k5, 
-  data = df_rtm_chla_c1, 
+m_phyto_gamm_k5 <- gamm(
+  f_phyto_gam_k5, 
+  data = df_phyto, 
   random = list(StationCode = ~ 1), 
   method = "REML"
 )
 
-m_chla_gamm_k5_ar1 <- gamm(
-  f_chla_gam_k5, 
-  data = df_rtm_chla_c1, 
+m_phyto_gamm_k5_ar1 <- gamm(
+  f_phyto_gam_k5, 
+  data = df_phyto, 
   random = list(StationCode = ~ 1),
   correlation = corARMA(form = ~ 1|Year_fct, p = 1), # grouped by Year_fct
   method = "REML"
 )
 
-m_chla_gamm_k5_ar3 <- gamm(
-  f_chla_gam_k5, 
-  data = df_rtm_chla_c1, 
+m_phyto_gamm_k5_ar3 <- gamm(
+  f_phyto_gam_k5, 
+  data = df_phyto, 
   random = list(StationCode = ~ 1),
   correlation = corARMA(form = ~ 1|Year_fct, p = 3),
   method = "REML"
 )
 
-m_chla_gamm_k5_ar4 <- gamm(
-  f_chla_gam_k5, 
-  data = df_rtm_chla_c1, 
+m_phyto_gamm_k5_ar4 <- gamm(
+  f_phyto_gam_k5, 
+  data = df_phyto, 
   random = list(StationCode = ~ 1),
   correlation = corARMA(form = ~ 1|Year_fct, p = 4),
   method = "REML"
@@ -443,10 +466,10 @@ m_chla_gamm_k5_ar4 <- gamm(
 
 # Compare models
 anova(
-  m_chla_gamm_k5$lme, 
-  m_chla_gamm_k5_ar1$lme, 
-  m_chla_gamm_k5_ar3$lme, 
-  m_chla_gamm_k5_ar4$lme
+  m_phyto_gamm_k5$lme, 
+  m_phyto_gamm_k5_ar1$lme, 
+  m_phyto_gamm_k5_ar3$lme, 
+  m_phyto_gamm_k5_ar4$lme
 )
 ```
 
@@ -454,13 +477,13 @@ It looks like the AR(3) model has the best fit according to the AIC values. Let'
 
 ```{r gam ar3 diag, warning = FALSE}
 # Pull out the residuals and the GAM model
-resid_ar3 <- residuals(m_chla_gamm_k5_ar3$lme, type = "normalized")
-m_chla_gamm_k5_ar3_gam <- m_chla_gamm_k5_ar3$gam
+resid_ar3 <- residuals(m_phyto_gamm_k5_ar3$lme, type = "normalized")
+m_phyto_gamm_k5_ar3_gam <- m_phyto_gamm_k5_ar3$gam
 
-summary(m_chla_gamm_k5_ar3_gam)
-appraise(m_chla_gamm_k5_ar3_gam)
-k.check(m_chla_gamm_k5_ar3_gam)
-plot(m_chla_gamm_k5_ar3_gam, pages = 1, all.terms = TRUE)
+summary(m_phyto_gamm_k5_ar3_gam)
+appraise(m_phyto_gamm_k5_ar3_gam)
+k.check(m_phyto_gamm_k5_ar3_gam)
+plot(m_phyto_gamm_k5_ar3_gam, pages = 1, all.terms = TRUE)
 acf(resid_ar3)
 Box.test(resid_ar3, lag = 20, type = 'Ljung-Box')
 ```
@@ -469,7 +492,7 @@ The AR(3) model has much less residual autocorrelation, and the diagnostics plot
 
 ```{r gam ar3 anova, warning = FALSE}
 # the anova.gam function is similar to a type 3 ANOVA
-anova(m_chla_gamm_k5_ar3_gam)
+anova(m_phyto_gamm_k5_ar3_gam)
 ```
 
 ## AR(3) Model
@@ -477,9 +500,9 @@ anova(m_chla_gamm_k5_ar3_gam)
 Only Region and the Year:Region interaction was significant among the parametric terms of the model. Let's re-run the AR(3) GAM model dropping the two interactions that weren't significant.
 
 ```{r gam ar3 less interaction, warning = FALSE}
-m_chla_gamm_k5_ar3b <- gamm(
-  Chla_log ~ Year_fct * Region + FlowActionPeriod + s(DOY, k = 5), 
-  data = df_rtm_chla_c1, 
+m_phyto_gamm_k5_ar3b <- gamm(
+  BV_log ~ Year_fct * Region + FlowActionPeriod + s(DOY, k = 5), 
+  data = df_phyto, 
   random = list(StationCode = ~ 1),
   correlation = corARMA(form = ~ 1|Year_fct, p = 3),
   method = "REML"
@@ -488,29 +511,29 @@ m_chla_gamm_k5_ar3b <- gamm(
 
 ```{r gam ar3 less interaction diag, warning = FALSE}
 # Pull out the residuals and the GAM model
-resid_ar3b <- residuals(m_chla_gamm_k5_ar3b$lme, type = "normalized")
-m_chla_gamm_k5_ar3b_gam <- m_chla_gamm_k5_ar3b$gam
+resid_ar3b <- residuals(m_phyto_gamm_k5_ar3b$lme, type = "normalized")
+m_phyto_gamm_k5_ar3b_gam <- m_phyto_gamm_k5_ar3b$gam
 
-summary(m_chla_gamm_k5_ar3b_gam)
-appraise(m_chla_gamm_k5_ar3b_gam)
-k.check(m_chla_gamm_k5_ar3b_gam)
-plot(m_chla_gamm_k5_ar3b_gam, pages = 1, all.terms = TRUE)
+summary(m_phyto_gamm_k5_ar3b_gam)
+appraise(m_phyto_gamm_k5_ar3b_gam)
+k.check(m_phyto_gamm_k5_ar3b_gam)
+plot(m_phyto_gamm_k5_ar3b_gam, pages = 1, all.terms = TRUE)
 acf(resid_ar3b)
 Box.test(resid_ar3b, lag = 20, type = 'Ljung-Box')
-anova(m_chla_gamm_k5_ar3b_gam)
+anova(m_phyto_gamm_k5_ar3b_gam)
 ```
 
 Only the main effect of Region and the Year:Region interaction is significant in the model. Let's take a closer look at the pairwise contrasts.
 
 ```{r gam ar3 contrasts, warning = FALSE}
 # Contrasts in Region main effect
-emmeans(m_chla_gamm_k5_ar3b, specs = pairwise ~ Region, data = df_rtm_chla_c1)
+emmeans(m_phyto_gamm_k5_ar3b, specs = pairwise ~ Region, data = df_phyto)
 
 # Contrasts in Region for each Year
-emmeans(m_chla_gamm_k5_ar3b, specs = pairwise ~ Region | Year_fct, data = df_rtm_chla_c1)
+emmeans(m_phyto_gamm_k5_ar3b, specs = pairwise ~ Region | Year_fct, data = df_phyto)
 
 # Contrasts in Year for each Region
-em_gamm_yr_reg <- emmeans(m_chla_gamm_k5_ar3b, specs = pairwise ~ Year_fct | Region, data = df_rtm_chla_c1)
+em_gamm_yr_reg <- emmeans(m_phyto_gamm_k5_ar3b, specs = pairwise ~ Year_fct | Region, data = df_phyto)
 multcomp::cld(em_gamm_yr_reg$emmeans, sort = FALSE, Letters = letters)
 ```
 
@@ -521,14 +544,14 @@ Upstream was always higher than downstream in all years. None of the years diffe
 Let's compare the results of the GAM model to a linear mixed effects model like we used in the FASTR report. We'll start by adding a lag1 term to account for residual autocorrelation.
 
 ```{r lme lag1}
-m_chla_lmer_lag1 <- 
+m_phyto_lmer_lag1 <- 
   lmer(
-    Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + lag1 + (1|StationCode),
-    data = df_rtm_chla_lag1
+    BV_log ~ (Year_fct + FlowActionPeriod + Region)^2 + lag1 + (1|StationCode),
+    data = df_phyto_lag1
   )
 
 # Pull out residuals and look at autocorrelation
-resid_lmer_lag1 <- residuals(m_chla_lmer_lag1)
+resid_lmer_lag1 <- residuals(m_phyto_lag1)
 acf(resid_lmer_lag1)
 Box.test(resid_lmer_lag1, lag = 20, type = 'Ljung-Box')
 ```
