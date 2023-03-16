@@ -179,7 +179,10 @@ df_rtm_chla_c1 <- df_rtm_chla %>%
     Year > 2012,
     !StationCode %in% c("RMB", "TOE")
   ) %>% 
-  mutate(StationCode = fct_drop(StationCode))
+  mutate(
+    StationCode = fct_drop(StationCode),
+    Year_fct = fct_drop(Year_fct)
+  )
 
 df_fa_dates_c1 <- df_fa_dates %>% filter(Year > 2012)
 ```
@@ -229,7 +232,7 @@ df_rtm_chla_c1 %>%
 
 There may be some interaction between Flow Period, Year, and Region, but it's difficult to see clearly. Its obvious that Upstream is higher than Downstream. Also 2018 and 2019 stand out in the Upstream region - During appears lower than Before and After.
 
-## Boxplots by Station and Region {#boxplots-station}
+## Boxplots by Year and Station {#boxplots-station}
 
 Now let's look at the same boxplots but grouped by Station. First, the stations in the Upstream region:
 
@@ -291,6 +294,7 @@ Now, let's fit some GAM models to these time-series plots.
 ```{r rtm chla time series plot gam, warning = FALSE, fig.width = 8, fig.height = 6}
 df_rtm_chla_c1 %>% 
   ggplot(aes(x = DOY, y = Chla, color = Region)) +
+  # using bs = "tp" since this is the default smooth for s terms in mgcv::gam
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "tp")) +
   scale_color_viridis_d(option = "plasma", end = 0.8) +
   facet_wrap(vars(Year), scales = "free_y") +
@@ -317,6 +321,7 @@ Since the model will fit the smooth to all the data across years, regions and fl
 df_rtm_chla_c1 %>% 
   ggplot(aes(x = DOY, y = Chla_log)) +
   geom_point(size = 1, alpha = 0.2) +
+  # using bs = "tp" since this is the default smooth for s terms in mgcv::gam
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "tp")) +
   theme_bw()
 ```
@@ -327,6 +332,7 @@ Finally, let's see how these smooths look if we group by Region.
 df_rtm_chla_c1 %>% 
   ggplot(aes(x = DOY, y = Chla_log, color = Region)) +
   geom_point(size = 1, alpha = 0.2) +
+  # using bs = "tp" since this is the default smooth for s terms in mgcv::gam
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "tp")) +
   scale_color_viridis_d(option = "plasma", end = 0.8) +
   theme_bw()
@@ -352,6 +358,7 @@ Lets look at the model summary and diagnostics:
 summary(m_chla_gam)
 appraise(m_chla_gam)
 k.check(m_chla_gam)
+plot(m_chla_gam, pages = 1, residuals = TRUE)
 plot(m_chla_gam, pages = 1, all.terms = TRUE)
 acf(residuals(m_chla_gam))
 Box.test(residuals(m_chla_gam), lag = 20, type = 'Ljung-Box')
@@ -370,6 +377,7 @@ m_chla_gam_k5 <- gam(
 
 summary(m_chla_gam_k5)
 k.check(m_chla_gam_k5)
+plot(m_chla_gam_k5, pages = 1, residuals = TRUE)
 plot(m_chla_gam_k5, pages = 1, all.terms = TRUE)
 ```
 
@@ -396,6 +404,7 @@ m_chla_gam_lag1 <- gam(
 summary(m_chla_gam_lag1)
 appraise(m_chla_gam_lag1)
 k.check(m_chla_gam_lag1)
+plot(m_chla_gam_lag1, pages = 1, residuals = TRUE)
 plot(m_chla_gam_lag1, pages = 1, all.terms = TRUE)
 acf(residuals(m_chla_gam_lag1), na.action = na.pass)
 Box.test(residuals(m_chla_gam_lag1), lag = 20, type = 'Ljung-Box')
@@ -452,6 +461,8 @@ anova(
 
 It looks like the AR(3) model has the best fit according to the AIC values and backed up by the BIC values. Let's take a closer look at that one.
 
+## AR(3) Model
+
 ```{r gam ar3 diag, warning = FALSE}
 # Pull out the residuals and the GAM model
 resid_ar3 <- residuals(m_chla_gamm_k5_ar3$lme, type = "normalized")
@@ -460,6 +471,7 @@ m_chla_gamm_k5_ar3_gam <- m_chla_gamm_k5_ar3$gam
 summary(m_chla_gamm_k5_ar3_gam)
 appraise(m_chla_gamm_k5_ar3_gam)
 k.check(m_chla_gamm_k5_ar3_gam)
+plot(m_chla_gamm_k5_ar3_gam, residuals = TRUE)
 plot(m_chla_gamm_k5_ar3_gam, pages = 1, all.terms = TRUE)
 acf(resid_ar3)
 Box.test(resid_ar3, lag = 20, type = 'Ljung-Box')
@@ -472,9 +484,9 @@ The AR(3) model has much less residual autocorrelation, and the diagnostics plot
 anova(m_chla_gamm_k5_ar3_gam)
 ```
 
-## AR(3) Model
-
 Only Region and the Year:Region interaction was significant among the parametric terms of the model. Let's re-run the AR(3) GAM model dropping the two interactions that weren't significant.
+
+### Remove non-significant interactions
 
 ```{r gam ar3 less interaction, warning = FALSE}
 m_chla_gamm_k5_ar3b <- gamm(
@@ -494,6 +506,7 @@ m_chla_gamm_k5_ar3b_gam <- m_chla_gamm_k5_ar3b$gam
 summary(m_chla_gamm_k5_ar3b_gam)
 appraise(m_chla_gamm_k5_ar3b_gam)
 k.check(m_chla_gamm_k5_ar3b_gam)
+plot(m_chla_gamm_k5_ar3b_gam, residuals = TRUE)
 plot(m_chla_gamm_k5_ar3b_gam, pages = 1, all.terms = TRUE)
 acf(resid_ar3b)
 Box.test(resid_ar3b, lag = 20, type = 'Ljung-Box')
@@ -502,16 +515,33 @@ anova(m_chla_gamm_k5_ar3b_gam)
 
 Only the main effect of Region and the Year:Region interaction is significant in the model. Let's take a closer look at the pairwise contrasts.
 
+### Pairwise contrasts
+
 ```{r gam ar3 contrasts, warning = FALSE}
 # Contrasts in Region main effect
-emmeans(m_chla_gamm_k5_ar3b, specs = pairwise ~ Region, data = df_rtm_chla_c1)
+emmeans(
+  m_chla_gamm_k5_ar3b,
+  data = df_rtm_chla_c1,
+  specs = pairwise ~ Region
+)
 
 # Contrasts in Region for each Year
-emmeans(m_chla_gamm_k5_ar3b, specs = pairwise ~ Region | Year_fct, data = df_rtm_chla_c1)
+emmeans(
+  m_chla_gamm_k5_ar3b, 
+  data = df_rtm_chla_c1,
+  specs = pairwise ~ Region | Year_fct
+)
 
 # Contrasts in Year for each Region
-em_gamm_yr_reg <- emmeans(m_chla_gamm_k5_ar3b, specs = pairwise ~ Year_fct | Region, data = df_rtm_chla_c1)
-multcomp::cld(em_gamm_yr_reg$emmeans, sort = FALSE, Letters = letters)
+multcomp::cld(
+  emmeans(
+    m_chla_gamm_k5_ar3b, 
+    data = df_rtm_chla_c1,
+    specs = pairwise ~ Year_fct | Region
+  )$emmeans,
+  sort = FALSE, 
+  Letters = letters
+)
 ```
 
 Upstream was always higher than downstream in all years. None of the years differed significantly in the upstream region. In the downstream region, 2018 was lower than 2013-2017, and 2019 was lower than 2013-2016.
@@ -635,6 +665,7 @@ Lets look at the model summary and diagnostics:
 summary(m_chla_gam_st)
 appraise(m_chla_gam_st)
 k.check(m_chla_gam_st)
+plot(m_chla_gam_st, pages = 1, residuals = TRUE)
 plot(m_chla_gam_st, pages = 1, all.terms = TRUE)
 acf(residuals(m_chla_gam_st))
 Box.test(residuals(m_chla_gam_st), lag = 20, type = 'Ljung-Box')
@@ -653,6 +684,7 @@ m_chla_gam_st_k5 <- gam(
 
 summary(m_chla_gam_st_k5)
 k.check(m_chla_gam_st_k5)
+plot(m_chla_gam_st_k5, pages = 1, residuals = TRUE)
 plot(m_chla_gam_st_k5, pages = 1, all.terms = TRUE)
 ```
 
@@ -714,6 +746,8 @@ anova(
 
 It looks like the AR(4) model has the best fit according to the AIC values. However, the AR(2) model is best according to the BIC values. Since AIC tends to pick more complex models than BIC, let's choose the AR(2) model and take a closer look at that one.
 
+## AR(2) Model
+
 ```{r gam station ar2 diag, warning = FALSE}
 # Pull out the residuals and the GAM model
 resid_st_ar2 <- residuals(m_chla_gamm_st_k5_ar2$lme, type = "normalized")
@@ -722,6 +756,7 @@ m_chla_gamm_st_k5_ar2_gam <- m_chla_gamm_st_k5_ar2$gam
 summary(m_chla_gamm_st_k5_ar2_gam)
 appraise(m_chla_gamm_st_k5_ar2_gam)
 k.check(m_chla_gamm_st_k5_ar2_gam)
+plot(m_chla_gamm_st_k5_ar2_gam, residuals = TRUE)
 plot(m_chla_gamm_st_k5_ar2_gam, pages = 1, all.terms = TRUE)
 acf(resid_st_ar2)
 Box.test(resid_st_ar2, lag = 20, type = 'Ljung-Box')
@@ -737,6 +772,8 @@ anova(m_chla_gamm_st_k5_ar2_gam)
 ```
 
 All the interaction terms are significant in the AR(2) model. Let's take a closer look at the pairwise contrasts.
+
+### Pairwise contrasts
 
 ```{r gam station ar2 contrasts, warning = FALSE}
 # Contrasts in FlowActionPeriod for each Year
