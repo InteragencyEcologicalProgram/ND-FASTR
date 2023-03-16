@@ -392,6 +392,7 @@ m_phyto_gam_k5 <- gam(
 
 summary(m_phyto_gam_k5)
 k.check(m_phyto_gam_k5)
+anova(m_phyto_gam_k5)
 plot(m_phyto_gam_k5, pages = 1, all.terms = TRUE)
 ```
 
