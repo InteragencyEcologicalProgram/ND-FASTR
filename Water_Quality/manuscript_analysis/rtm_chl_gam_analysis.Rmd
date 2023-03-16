@@ -375,7 +375,7 @@ plot(m_chla_gam_k5, pages = 1, all.terms = TRUE)
 
 ## Model with lag1 term
 
-Changing the k-value to 5 seems to help reduce the "wiggliness" of the smooth term for DOY. Now, lets add a lag1 term to the model to see if that helps with the residual autocorrelation.
+Changing the k-value to 5 seems to help reduce the "wiggliness" of the smooth term for DOY. Now, let's add a lag1 term to the model to see if that helps with the residual autocorrelation.
 
 ```{r gam lag1, warning = FALSE}
 df_rtm_chla_lag1 <- df_rtm_chla_c1 %>% 
@@ -409,7 +409,7 @@ Well, adding a lag1 term to the model helped with the residual autocorrelation, 
 # Define model formula as an object
 f_chla_gam_k5 <- as.formula("Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY, k = 5)")
 
-# Fit original model with k = 5 and two successive AR(p) models
+# Fit original model with k = 5 and three successive AR(p) models
 m_chla_gamm_k5 <- gamm(
   f_chla_gam_k5, 
   data = df_rtm_chla_c1, 
@@ -450,7 +450,7 @@ anova(
 )
 ```
 
-It looks like the AR(3) model has the best fit according to the AIC values. Let's take a closer look at that one.
+It looks like the AR(3) model has the best fit according to the AIC values and backed up by the BIC values. Let's take a closer look at that one.
 
 ```{r gam ar3 diag, warning = FALSE}
 # Pull out the residuals and the GAM model
@@ -591,7 +591,6 @@ Box.test(resid_lmer_lag2b, lag = 20, type = 'Ljung-Box')
 plot(resid_lmer_lag2b)
 qqnorm(resid_lmer_lag2b)
 hist(resid_lmer_lag2b)
-
 ```
 
 The residuals still look a little strange. Let's look at the ANOVA table.
@@ -616,7 +615,148 @@ multcomp::cld(em_lmer_yr_reg$emmeans, sort = FALSE, Letters = letters)
 
 These results are very similar to the GAM model results. Like with the GAM model, upstream was always higher than downstream in all years, and none of the years differed significantly in the upstream region. In the downstream region, 2018 was lower than 2013-2016, and 2019 was lower than 2016.
 
-# Next Steps
+# Re-run GAM at Station level
 
-It's encouraging that the GAM and LMER models had similar results. Unfortunately, neither found a significant effect of flow action period. Looking at the [station level plots](#boxplots-station), it does appear that there is a chlorophyll response to flow action period at some of the stations. I wonder if it makes sense to run the models at the station level, choosing a few representative stations in our analysis.
+It's encouraging that the GAM and LMER models had similar results. Unfortunately, neither found a significant effect of flow action period. Looking at the [station level plots](#boxplots-station), it does appear that there is a chlorophyll response to flow action period at some of the stations. Let's re-run the GAM model at the station level, including all stations at first. We'll include all two-way interactions between Year, Flow Action Period, and Station and a smooth term for day of year to account for seasonality. We won't account for serial autocorrelation in our initial GAM model.
+
+## Initial Model
+
+```{r gam station no autocorr, warning = FALSE}
+m_chla_gam_st <- gam(
+  Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY), 
+  data = df_rtm_chla_c1,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam station no autocorr diag, warning = FALSE}
+summary(m_chla_gam_st)
+appraise(m_chla_gam_st)
+k.check(m_chla_gam_st)
+plot(m_chla_gam_st, pages = 1, all.terms = TRUE)
+acf(residuals(m_chla_gam_st))
+Box.test(residuals(m_chla_gam_st), lag = 20, type = 'Ljung-Box')
+```
+
+## Model with k=5
+
+Not surprisingly, the model definitely has residual autocorrelation as indicated by the ACF plot and the Box-Ljung test. The smooth term for day of year may also be overfitted as it was with the initial model using Regions. Again, let's try a smaller k-value for the smooth first, then lets try to address the residual autocorrelation.
+
+```{r gam station no autocorr k5, warning = FALSE}
+m_chla_gam_st_k5 <- gam(
+  Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY, k = 5), 
+  data = df_rtm_chla_c1,
+  method = "REML"
+)
+
+summary(m_chla_gam_st_k5)
+k.check(m_chla_gam_st_k5)
+plot(m_chla_gam_st_k5, pages = 1, all.terms = TRUE)
+```
+
+Changing the k-value to 5 seems to help reduce the "wiggliness" of the smooth term for DOY. Now, let's use an AR(p) model to account for the correlated residuals. We'll run AR(1), AR(2), AR(3), and AR(4) models and compare them using AIC. The `nlme` model engine that underlies the `gamm()` function produces an error when there are empty station-year-action period combinations in the data set, so for now we'll remove the two stations (RCS and RYI) that are missing data for a few years.
+
+## Model with AR() correlation structure
+
+```{r gam station with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_chla_gam_st_k5 <- as.formula("Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY, k = 5)")
+
+# Remove RCS and RYI from the data set
+df_rtm_chla_c2 <- df_rtm_chla_c1 %>% filter(!StationCode %in% c("RCS", "RYI"))
+
+# Fit original model with k = 5 and four successive AR(p) models
+m_chla_gamm_st_k5 <- gamm(
+  f_chla_gam_st_k5, 
+  data = df_rtm_chla_c2, 
+  method = "REML"
+)
+
+m_chla_gamm_st_k5_ar1 <- gamm(
+  f_chla_gam_st_k5, 
+  data = df_rtm_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct, p = 1), # grouped by Year_fct
+  method = "REML"
+)
+
+m_chla_gamm_st_k5_ar2 <- gamm(
+  f_chla_gam_st_k5, 
+  data = df_rtm_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct, p = 2),
+  method = "REML"
+)
+
+m_chla_gamm_st_k5_ar3 <- gamm(
+  f_chla_gam_st_k5, 
+  data = df_rtm_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct, p = 3),
+  method = "REML"
+)
+
+m_chla_gamm_st_k5_ar4 <- gamm(
+  f_chla_gam_st_k5, 
+  data = df_rtm_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct, p = 4),
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_chla_gamm_st_k5$lme, 
+  m_chla_gamm_st_k5_ar1$lme,
+  m_chla_gamm_st_k5_ar2$lme,
+  m_chla_gamm_st_k5_ar3$lme,
+  m_chla_gamm_st_k5_ar4$lme
+)
+```
+
+It looks like the AR(4) model has the best fit according to the AIC values. However, the AR(2) model is best according to the BIC values. Since AIC tends to pick more complex models than BIC, let's choose the AR(2) model and take a closer look at that one.
+
+```{r gam station ar2 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_st_ar2 <- residuals(m_chla_gamm_st_k5_ar2$lme, type = "normalized")
+m_chla_gamm_st_k5_ar2_gam <- m_chla_gamm_st_k5_ar2$gam
+
+summary(m_chla_gamm_st_k5_ar2_gam)
+appraise(m_chla_gamm_st_k5_ar2_gam)
+k.check(m_chla_gamm_st_k5_ar2_gam)
+plot(m_chla_gamm_st_k5_ar2_gam, pages = 1, all.terms = TRUE)
+acf(resid_st_ar2)
+Box.test(resid_st_ar2, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(2) model has much less residual autocorrelation, and the diagnostics plots look pretty good. For some reason the p-value for the `k.check` is zero which may indicate that `k = 5` is too low. I may have to look into this further. 
+
+What does the ANOVA table look like for the AR(2) model?
+
+```{r gam station ar2 anova, warning = FALSE}
+# the anova.gam function is similar to a type 3 ANOVA
+anova(m_chla_gamm_st_k5_ar2_gam)
+```
+
+All the interaction terms are significant in the AR(2) model. Let's take a closer look at the pairwise contrasts.
+
+```{r gam station ar2 contrasts, warning = FALSE}
+# Contrasts in FlowActionPeriod for each Year
+emmeans(m_chla_gamm_st_k5_ar2, specs = pairwise ~ FlowActionPeriod | Year_fct, data = df_rtm_chla_c2)
+
+# Contrasts in FlowActionPeriod for each Station
+emmeans(m_chla_gamm_st_k5_ar2, specs = pairwise ~ FlowActionPeriod | StationCode, data = df_rtm_chla_c2)
+
+# Contrasts in Station for each Year
+multcomp::cld(
+  emmeans(m_chla_gamm_st_k5_ar2, specs = pairwise ~ StationCode | Year_fct, data = df_rtm_chla_c2)$emmeans,
+  sort = FALSE,
+  Letters = letters
+)
+
+# Contrasts in Year for each Station
+multcomp::cld(
+  emmeans(m_chla_gamm_st_k5_ar2, specs = pairwise ~ Year_fct | StationCode, data = df_rtm_chla_c2)$emmeans,
+  sort = FALSE,
+  Letters = letters
+)
+```
 
