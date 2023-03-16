@@ -358,7 +358,7 @@ Lets look at the model summary and diagnostics:
 summary(m_chla_gam)
 appraise(m_chla_gam)
 k.check(m_chla_gam)
-plot(m_chla_gam, pages = 1, residuals = TRUE)
+draw(m_chla_gam, select = 1, residuals = TRUE, rug = FALSE)
 plot(m_chla_gam, pages = 1, all.terms = TRUE)
 acf(residuals(m_chla_gam))
 Box.test(residuals(m_chla_gam), lag = 20, type = 'Ljung-Box')
@@ -377,7 +377,7 @@ m_chla_gam_k5 <- gam(
 
 summary(m_chla_gam_k5)
 k.check(m_chla_gam_k5)
-plot(m_chla_gam_k5, pages = 1, residuals = TRUE)
+draw(m_chla_gam_k5, select = 1, residuals = TRUE, rug = FALSE)
 plot(m_chla_gam_k5, pages = 1, all.terms = TRUE)
 ```
 
@@ -404,13 +404,13 @@ m_chla_gam_lag1 <- gam(
 summary(m_chla_gam_lag1)
 appraise(m_chla_gam_lag1)
 k.check(m_chla_gam_lag1)
-plot(m_chla_gam_lag1, pages = 1, residuals = TRUE)
+draw(m_chla_gam_lag1, select = 1, residuals = TRUE, rug = FALSE)
 plot(m_chla_gam_lag1, pages = 1, all.terms = TRUE)
 acf(residuals(m_chla_gam_lag1), na.action = na.pass)
 Box.test(residuals(m_chla_gam_lag1), lag = 20, type = 'Ljung-Box')
 ```
 
-Well, adding a lag1 term to the model helped with the residual autocorrelation, but it basically turned the smooth term of day of year into a straight line with a lot of uncertainty. This isn't what we are looking for. After a brief internet search, I found a [blog post](https://fromthebottomoftheheap.net/2014/05/09/modelling-seasonal-data-with-gam/) that suggests using an AR(p) model to account for the correlated residuals. We can give that a try. We'll run AR(1), AR(3), and AR(4) models and compare them using AIC. It wasn't possible running an AR(2) model.
+Well, adding a lag1 term to the model helped with the residual autocorrelation, but it basically turned the smooth term of day of year into a straight line. This isn't what we are looking for. After a brief internet search, I found a [blog post](https://fromthebottomoftheheap.net/2014/05/09/modelling-seasonal-data-with-gam/) that suggests using an AR(p) model to account for the correlated residuals. We can give that a try. We'll run AR(1), AR(3), and AR(4) models and compare them using AIC. It wasn't possible running an AR(2) model.
 
 ## Model with AR() correlation structure
 
@@ -471,7 +471,7 @@ m_chla_gamm_k5_ar3_gam <- m_chla_gamm_k5_ar3$gam
 summary(m_chla_gamm_k5_ar3_gam)
 appraise(m_chla_gamm_k5_ar3_gam)
 k.check(m_chla_gamm_k5_ar3_gam)
-plot(m_chla_gamm_k5_ar3_gam, residuals = TRUE)
+draw(m_chla_gamm_k5_ar3_gam, select = 1, residuals = TRUE, rug = FALSE)
 plot(m_chla_gamm_k5_ar3_gam, pages = 1, all.terms = TRUE)
 acf(resid_ar3)
 Box.test(resid_ar3, lag = 20, type = 'Ljung-Box')
@@ -506,7 +506,7 @@ m_chla_gamm_k5_ar3b_gam <- m_chla_gamm_k5_ar3b$gam
 summary(m_chla_gamm_k5_ar3b_gam)
 appraise(m_chla_gamm_k5_ar3b_gam)
 k.check(m_chla_gamm_k5_ar3b_gam)
-plot(m_chla_gamm_k5_ar3b_gam, residuals = TRUE)
+draw(m_chla_gamm_k5_ar3b_gam, select = 1, residuals = TRUE, rug = FALSE)
 plot(m_chla_gamm_k5_ar3b_gam, pages = 1, all.terms = TRUE)
 acf(resid_ar3b)
 Box.test(resid_ar3b, lag = 20, type = 'Ljung-Box')
@@ -665,7 +665,7 @@ Lets look at the model summary and diagnostics:
 summary(m_chla_gam_st)
 appraise(m_chla_gam_st)
 k.check(m_chla_gam_st)
-plot(m_chla_gam_st, pages = 1, residuals = TRUE)
+draw(m_chla_gam_st, select = 1, residuals = TRUE, rug = FALSE)
 plot(m_chla_gam_st, pages = 1, all.terms = TRUE)
 acf(residuals(m_chla_gam_st))
 Box.test(residuals(m_chla_gam_st), lag = 20, type = 'Ljung-Box')
@@ -684,7 +684,7 @@ m_chla_gam_st_k5 <- gam(
 
 summary(m_chla_gam_st_k5)
 k.check(m_chla_gam_st_k5)
-plot(m_chla_gam_st_k5, pages = 1, residuals = TRUE)
+draw(m_chla_gam_st_k5, select = 1, residuals = TRUE, rug = FALSE)
 plot(m_chla_gam_st_k5, pages = 1, all.terms = TRUE)
 ```
 
@@ -756,7 +756,7 @@ m_chla_gamm_st_k5_ar2_gam <- m_chla_gamm_st_k5_ar2$gam
 summary(m_chla_gamm_st_k5_ar2_gam)
 appraise(m_chla_gamm_st_k5_ar2_gam)
 k.check(m_chla_gamm_st_k5_ar2_gam)
-plot(m_chla_gamm_st_k5_ar2_gam, residuals = TRUE)
+draw(m_chla_gamm_st_k5_ar2_gam, select = 1, residuals = TRUE, rug = FALSE)
 plot(m_chla_gamm_st_k5_ar2_gam, pages = 1, all.terms = TRUE)
 acf(resid_st_ar2)
 Box.test(resid_st_ar2, lag = 20, type = 'Ljung-Box')
@@ -777,21 +777,37 @@ All the interaction terms are significant in the AR(2) model. Let's take a close
 
 ```{r gam station ar2 contrasts, warning = FALSE}
 # Contrasts in FlowActionPeriod for each Year
-emmeans(m_chla_gamm_st_k5_ar2, specs = pairwise ~ FlowActionPeriod | Year_fct, data = df_rtm_chla_c2)
+emmeans(
+  m_chla_gamm_st_k5_ar2, 
+  data = df_rtm_chla_c2,
+  specs = pairwise ~ FlowActionPeriod | Year_fct 
+)
 
 # Contrasts in FlowActionPeriod for each Station
-emmeans(m_chla_gamm_st_k5_ar2, specs = pairwise ~ FlowActionPeriod | StationCode, data = df_rtm_chla_c2)
+emmeans(
+  m_chla_gamm_st_k5_ar2, 
+  data = df_rtm_chla_c2,
+  specs = pairwise ~ FlowActionPeriod | StationCode 
+)
 
 # Contrasts in Station for each Year
 multcomp::cld(
-  emmeans(m_chla_gamm_st_k5_ar2, specs = pairwise ~ StationCode | Year_fct, data = df_rtm_chla_c2)$emmeans,
+  emmeans(
+    m_chla_gamm_st_k5_ar2, 
+    data = df_rtm_chla_c2,
+    specs = pairwise ~ StationCode | Year_fct
+  )$emmeans,
   sort = FALSE,
   Letters = letters
 )
 
 # Contrasts in Year for each Station
 multcomp::cld(
-  emmeans(m_chla_gamm_st_k5_ar2, specs = pairwise ~ Year_fct | StationCode, data = df_rtm_chla_c2)$emmeans,
+  emmeans(
+    m_chla_gamm_st_k5_ar2, 
+    data = df_rtm_chla_c2,
+    specs = pairwise ~ Year_fct | StationCode
+  )$emmeans,
   sort = FALSE,
   Letters = letters
 )
