@@ -647,7 +647,7 @@ These results are very similar to the GAM model results. Like with the GAM model
 
 # Re-run GAM at Station level
 
-It's encouraging that the GAM and LMER models had similar results. Unfortunately, neither found a significant effect of flow action period. Looking at the [station level plots](#boxplots-station), it does appear that there is a chlorophyll response to flow action period at some of the stations. Let's re-run the GAM model at the station level, including all stations at first. We'll include all two-way interactions between Year, Flow Action Period, and Station and a smooth term for day of year to account for seasonality. We won't account for serial autocorrelation in our initial GAM model.
+It's encouraging that the GAM and LMER models had similar results. Unfortunately, neither found a significant effect of flow pulse period. Looking at the [station level plots](#boxplots-station), it does appear that there is a chlorophyll response to flow pulse period at some of the stations. Let's re-run the GAM model at the station level, including all stations at first. We'll include all two-way interactions between Year, Flow Action Period, and Station and a smooth term for day of year to account for seasonality. We won't account for serial autocorrelation in our initial GAM model.
 
 ## Initial Model
 
@@ -812,4 +812,11 @@ multcomp::cld(
   Letters = letters
 )
 ```
+
+The differences between flow pulse periods were not significant in most years except During was higher than After in 2017 and After was higher than Before in 2019. Before was marginally higher than both During and After in 2018.
+
+Similarly, the differences between flow pulse periods were not significant at most stations except After was lower than both Before and During at STTD. 
+
+Comparing Stations in each Year, there was an obvious gradient from the upstream to downstream stations with the highest chlorophyll values at the most upstream stations in the Toe Drain and the lowest values at the downstream stations across all years. 
+
 
