@@ -1,0 +1,822 @@
+---
+title: "NDFS Synthesis Manuscript: Chlorophyll GAM analysis"
+author: "Dave Bosworth"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = here::here("docs"),
+      envir = globalenv()
+    )
+    })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.kable.NA = "")
+```
+
+# Purpose
+
+Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit a generalized additive model (GAM) to the data set to help account for seasonality in the data. We will also include interaction terms in the model which wasn't explored in the analysis for the NDFS Synthesis report.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(knitr)
+library(mgcv)
+library(lme4)
+library(car)
+library(emmeans)
+library(gratia)
+library(here)
+```
+
+```{r load functions, message = FALSE, warning = FALSE}
+# Source functions
+source(here("global_ndfa_funcs.R"))
+source(here("Water_Quality/global_wq_funcs.R"))
+```
+
+Display current versions of R and packages used for this analysis:
+
+```{r print session info}
+devtools::session_info()
+```
+
+# Import Data
+
+```{r define rtm file paths}
+# Define relative file path for file containing all QA'ed and cleaned continuous WQ data
+fp_rel_rtm_data <- 
+  "2011-2019 Synthesis Study-FASTR/WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-04-20.csv"
+
+# Define relative file path for file containing region assignments for the continuous stations
+fp_rel_rtm_region <- 
+  "2011-2019 Synthesis Study-FASTR/WQ_Subteam/Processed_Data/Continuous/NDFA_Cont_WQ_Stations.csv"
+
+# Define relative file path for file containing dates of flow action periods
+fp_rel_fa_dates <- 
+  "2011-2019 Synthesis Study-FASTR/Data Management/FlowDatesDesignations_45days.csv"
+
+# Define absolute file paths
+fp_abs_rtm_data <- ndfa_abs_sp_path(fp_rel_rtm_data)
+fp_abs_rtm_region <- ndfa_abs_sp_path(fp_rel_rtm_region)
+fp_abs_fa_dates <- ndfa_abs_sp_path(fp_rel_fa_dates)
+```
+
+```{r import rtm data, message = FALSE}
+# Import continuous WQ data
+df_rtm_orig <- import_rtm_data(fp_abs_rtm_data, 10)
+
+# Import region assignments for the continuous stations
+df_rtm_region <- read_csv(fp_abs_rtm_region) %>% select(StationCode, Region = BroadRegion)
+
+# Import dates of flow action periods
+df_fa_dates_orig <- read_csv(fp_abs_fa_dates)
+```
+
+# Prepare Data
+
+```{r prepare rtm chla data, message = FALSE}
+# Create a vector for the factor order of StationCode
+sta_order <- c(
+  "RMB",
+  "RCS",
+  "RD22",
+  "I80",
+  "LIS",
+  "TOE",
+  "STTD",
+  "LIB",
+  "RYI",
+  "RVB"
+)
+
+# Prepare continuous chlorophyll for exploration and analysis
+df_rtm_chla <- df_rtm_orig %>% 
+  transmute(
+    StationCode,
+    # Parse DateTime variable and create Date and Year variables
+    DateTime = ymd_hms(DateTime),
+    Date = date(DateTime),
+    Year = year(DateTime),
+    Chla
+  ) %>%
+  # Remove all NA Chlorophyll values
+  drop_na(Chla) %>% 
+  # Calculate daily average Chlorophyll values
+  group_by(StationCode, Year, Date) %>% 
+  summarize(Chla = mean(Chla)) %>% 
+  ungroup() %>% 
+  # Scale and log transform chlorophyll values
+  mutate(Chla_log = log(Chla * 1000)) %>% 
+  # Add Flow Action Periods, Region assignments, and DOY
+  ndfa_action_periods() %>% 
+  left_join(df_rtm_region) %>% 
+  mutate(DOY = yday(Date)) %>% 
+  # Remove stations in Middle Sac River region since we only want to include
+    # stations within the Yolo Bypass when comparing Flow Action Periods
+  # Also remove SDI since it's further downstream in the Sacramento River
+  filter(
+    Region != "Middle Sac River",
+    StationCode != "SDI"
+  ) %>% 
+  arrange(StationCode, Date) %>% 
+  mutate(
+    # Apply factor orders to FlowActionPeriod, Region, and StationCode
+    FlowActionPeriod = factor(FlowActionPeriod, levels = c("Before", "During", "After")),
+    Region = factor(Region, levels = c("Upstream", "Downstream")),
+    StationCode = factor(StationCode, levels = sta_order),
+    # Add a column for Year as a factor for the model
+    Year_fct = factor(Year)
+  )
+```
+
+```{r prepare flow action period data}
+# Prepare dates of flow action periods to highlight the flow action periods for
+  # each year in the plots
+df_fa_dates <- df_fa_dates_orig %>% 
+  transmute(
+    Year,
+    across(c(PreFlowEnd, PostFlowStart), mdy),
+    # add 1 day to PreFlowEnd so that the highlight for the flow action periods
+      # aligns correctly
+    PreFlowEnd = PreFlowEnd + days(1),
+    # Add DOY for PreFlowEnd and PostFlowStart
+    across(where(is.Date), yday, .names = "{.col}_DOY")
+  )
+```
+
+# Explore sample counts by Station
+
+```{r rtm chla sample counts station}
+df_rtm_chla %>% 
+  count(Year, FlowActionPeriod, StationCode) %>% 
+  arrange(StationCode) %>% 
+  pivot_wider(names_from = StationCode, values_from = n) %>% 
+  arrange(Year, FlowActionPeriod) %>% 
+  kable()
+```
+
+Remove under-sampled years (2011 and 2012) and stations (RMB, TOE)
+
+```{r rtm chla remove under sampled}
+df_rtm_chla_c1 <- df_rtm_chla %>% 
+  filter(
+    Year > 2012,
+    !StationCode %in% c("RMB", "TOE")
+  ) %>% 
+  mutate(
+    StationCode = fct_drop(StationCode),
+    Year_fct = fct_drop(Year_fct)
+  )
+
+df_fa_dates_c1 <- df_fa_dates %>% filter(Year > 2012)
+```
+
+Now, let's look at the sample counts by station after removing under-sampled years and stations.
+
+```{r rtm chla sample counts station 2}
+df_rtm_chla_c1 %>% 
+  count(Year, FlowActionPeriod, StationCode) %>% 
+  arrange(StationCode) %>% 
+  pivot_wider(names_from = StationCode, values_from = n) %>% 
+  arrange(Year, FlowActionPeriod) %>% 
+  kable()
+```
+
+RCS and RYI have some gaps, but we'll keep them in for now.
+
+# Explore sample counts by Region
+
+We would like to include interaction terms in the model, so we need to look at sample sizes and visuals of the data.
+
+```{r rtm chla sample counts region}
+df_rtm_chla_c1 %>% distinct(Region, StationCode) %>% arrange(Region, StationCode)
+
+df_rtm_chla_c1 %>% 
+  count(Year, FlowActionPeriod, Region) %>% 
+  pivot_wider(names_from = Region, values_from = n) %>% 
+  kable()
+```
+
+It looks like there is an adequate number of samples in each group.
+
+# Plots
+
+## Boxplots by Year and Region
+
+Let's explore the data with some plots. First lets plot the data in boxplots facetted by Year and Region using a log10 scale to see the results better.
+
+```{r rtm chla boxplot region, fig.height = 9}
+df_rtm_chla_c1 %>% 
+  ggplot(aes(x = FlowActionPeriod, y = Chla, fill = FlowActionPeriod)) +
+  geom_boxplot() +
+  facet_grid(rows = vars(Year), cols = vars(Region)) +
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
+  annotation_logticks(sides = "l")
+```
+
+There may be some interaction between Flow Period, Year, and Region, but it's difficult to see clearly. Its obvious that Upstream is higher than Downstream. Also 2018 and 2019 stand out in the Upstream region - During appears lower than Before and After.
+
+## Boxplots by Year and Station {#boxplots-station}
+
+Now let's look at the same boxplots but grouped by Station. First, the stations in the Upstream region:
+
+```{r rtm chla boxplot station us, fig.width = 8.5, fig.height = 9}
+df_rtm_chla_c1 %>%
+  filter(Region == "Upstream") %>% 
+  ggplot(aes(x = FlowActionPeriod, y = Chla, fill = FlowActionPeriod)) +
+  geom_boxplot() +
+  facet_grid(rows = vars(Year), cols = vars(StationCode)) +
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
+  annotation_logticks(sides = "l")
+```
+
+The patterns differ by Station, however we'll keep these all in the same region for consistency purposes.
+
+Next, let's look at the stations in the Downstream region:
+
+```{r rtm chla boxplot station ds, fig.width = 8, fig.height = 9}
+df_rtm_chla_c1 %>%
+  filter(Region == "Downstream") %>% 
+  ggplot(aes(x = FlowActionPeriod, y = Chla, fill = FlowActionPeriod)) +
+  geom_boxplot() +
+  facet_grid(rows = vars(Year), cols = vars(StationCode)) +
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
+  annotation_logticks(sides = "l")
+```
+
+The patterns appear to differ by Station, but not as obviously as with the stations in the upstream region.
+
+## Time-series Plots by Year and Region
+
+Let's look at time-series plots based on day of year for each Region facetted by Year. The brown shaded areas represent the flow pulse periods for each year.
+
+```{r rtm chla time series plot point, fig.width = 8, fig.height = 6}
+df_rtm_chla_c1 %>% 
+  ggplot(aes(x = DOY, y = Chla, color = Region)) +
+  geom_point(size = 1, alpha = 0.2) +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  facet_wrap(vars(Year), scales = "free_y") +
+  geom_rect(
+    data = df_fa_dates_c1,
+    aes( 
+      xmin = PreFlowEnd_DOY, 
+      xmax = PostFlowStart_DOY, 
+      ymin = -Inf, 
+      ymax = Inf
+    ),
+    inherit.aes = FALSE,
+    alpha = 0.2,
+    fill = "brown"
+  ) +
+  theme_bw()
+```
+
+## GAM smooth plots
+
+Now, let's fit some GAM models to these time-series plots.
+
+```{r rtm chla time series plot gam, warning = FALSE, fig.width = 8, fig.height = 6}
+df_rtm_chla_c1 %>% 
+  ggplot(aes(x = DOY, y = Chla, color = Region)) +
+  # using bs = "tp" since this is the default smooth for s terms in mgcv::gam
+  geom_smooth(method = "gam", formula = y ~ s(x, bs = "tp")) +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  facet_wrap(vars(Year), scales = "free_y") +
+  geom_rect(
+    data = df_fa_dates_c1,
+    aes( 
+      xmin = PreFlowEnd_DOY, 
+      xmax = PostFlowStart_DOY, 
+      ymin = -Inf, 
+      ymax = Inf
+    ),
+    inherit.aes = FALSE,
+    alpha = 0.2,
+    fill = "brown"
+  ) +
+  theme_bw()
+```
+
+These GAMs do a nice job of displaying the general trends for each Region. Overall, the Downstream region didn't vary much through time except for in 2016. There is an obvious decrease in chlorophyll in the Upstream region during flow pulses in 2015 and 2017-2019.
+
+Since the model will fit the smooth to all the data across years, regions and flow action periods, lets take a look at what that looks like using the log-transformed data.
+
+```{r rtm chla time series plot gam all data, warning = FALSE}
+df_rtm_chla_c1 %>% 
+  ggplot(aes(x = DOY, y = Chla_log)) +
+  geom_point(size = 1, alpha = 0.2) +
+  # using bs = "tp" since this is the default smooth for s terms in mgcv::gam
+  geom_smooth(method = "gam", formula = y ~ s(x, bs = "tp")) +
+  theme_bw()
+```
+
+Finally, let's see how these smooths look if we group by Region.
+
+```{r rtm chla time series plot gam grp region, warning = FALSE}
+df_rtm_chla_c1 %>% 
+  ggplot(aes(x = DOY, y = Chla_log, color = Region)) +
+  geom_point(size = 1, alpha = 0.2) +
+  # using bs = "tp" since this is the default smooth for s terms in mgcv::gam
+  geom_smooth(method = "gam", formula = y ~ s(x, bs = "tp")) +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  theme_bw()
+```
+
+# GAM Model
+
+We'll try running a GAM including all two-way interactions between Year, Flow Action Period, and Region, a smooth term for day of year to account for seasonality, and Station as a random effect. First we'll run the GAM without accounting for serial autocorrelation.
+
+## Initial Model
+
+```{r gam no autocorr, warning = FALSE}
+m_chla_gam <- gam(
+  Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY) + s(StationCode, bs = "re"), 
+  data = df_rtm_chla_c1,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam no autocorr diag, warning = FALSE}
+summary(m_chla_gam)
+appraise(m_chla_gam)
+k.check(m_chla_gam)
+draw(m_chla_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_chla_gam, pages = 1, all.terms = TRUE)
+acf(residuals(m_chla_gam))
+Box.test(residuals(m_chla_gam), lag = 20, type = 'Ljung-Box')
+```
+
+## Model with k=5
+
+The model definitely has residual autocorrelation as indicated by the ACF plot and the Box-Ljung test. The smooth term for day of year may also be overfitted. Let's try a smaller k-value for the smooth first, then lets try to address the residual autocorrelation.
+
+```{r gam no autocorr k5, warning = FALSE}
+m_chla_gam_k5 <- gam(
+  Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY, k = 5) + s(StationCode, bs = "re"), 
+  data = df_rtm_chla_c1,
+  method = "REML"
+)
+
+summary(m_chla_gam_k5)
+k.check(m_chla_gam_k5)
+draw(m_chla_gam_k5, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_chla_gam_k5, pages = 1, all.terms = TRUE)
+```
+
+## Model with lag1 term
+
+Changing the k-value to 5 seems to help reduce the "wiggliness" of the smooth term for DOY. Now, let's add a lag1 term to the model to see if that helps with the residual autocorrelation.
+
+```{r gam lag1, warning = FALSE}
+df_rtm_chla_lag1 <- df_rtm_chla_c1 %>% 
+  # Fill in missing days for each StationCode-Year combination
+  group_by(StationCode, Year) %>% 
+  complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>% 
+  # Create lag1 of scaled log transformed chlorophyll values
+  mutate(lag1 = lag(Chla_log)) %>% 
+  ungroup()
+
+m_chla_gam_lag1 <- gam(
+  Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY, k = 5) + s(StationCode, bs = "re") + lag1, 
+  data = df_rtm_chla_lag1,
+  na.action = "na.omit",
+  method = "REML"
+)
+
+summary(m_chla_gam_lag1)
+appraise(m_chla_gam_lag1)
+k.check(m_chla_gam_lag1)
+draw(m_chla_gam_lag1, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_chla_gam_lag1, pages = 1, all.terms = TRUE)
+acf(residuals(m_chla_gam_lag1), na.action = na.pass)
+Box.test(residuals(m_chla_gam_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+Well, adding a lag1 term to the model helped with the residual autocorrelation, but it basically turned the smooth term of day of year into a straight line. This isn't what we are looking for. After a brief internet search, I found a [blog post](https://fromthebottomoftheheap.net/2014/05/09/modelling-seasonal-data-with-gam/) that suggests using an AR(p) model to account for the correlated residuals. We can give that a try. We'll run AR(1), AR(3), and AR(4) models and compare them using AIC. It wasn't possible running an AR(2) model.
+
+## Model with AR() correlation structure
+
+```{r gam with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_chla_gam_k5 <- as.formula("Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY, k = 5)")
+
+# Fit original model with k = 5 and three successive AR(p) models
+m_chla_gamm_k5 <- gamm(
+  f_chla_gam_k5, 
+  data = df_rtm_chla_c1, 
+  random = list(StationCode = ~ 1), 
+  method = "REML"
+)
+
+m_chla_gamm_k5_ar1 <- gamm(
+  f_chla_gam_k5, 
+  data = df_rtm_chla_c1, 
+  random = list(StationCode = ~ 1),
+  correlation = corARMA(form = ~ 1|Year_fct, p = 1), # grouped by Year_fct
+  method = "REML"
+)
+
+m_chla_gamm_k5_ar3 <- gamm(
+  f_chla_gam_k5, 
+  data = df_rtm_chla_c1, 
+  random = list(StationCode = ~ 1),
+  correlation = corARMA(form = ~ 1|Year_fct, p = 3),
+  method = "REML"
+)
+
+m_chla_gamm_k5_ar4 <- gamm(
+  f_chla_gam_k5, 
+  data = df_rtm_chla_c1, 
+  random = list(StationCode = ~ 1),
+  correlation = corARMA(form = ~ 1|Year_fct, p = 4),
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_chla_gamm_k5$lme, 
+  m_chla_gamm_k5_ar1$lme, 
+  m_chla_gamm_k5_ar3$lme, 
+  m_chla_gamm_k5_ar4$lme
+)
+```
+
+It looks like the AR(3) model has the best fit according to the AIC values and backed up by the BIC values. Let's take a closer look at that one.
+
+## AR(3) Model
+
+```{r gam ar3 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_ar3 <- residuals(m_chla_gamm_k5_ar3$lme, type = "normalized")
+m_chla_gamm_k5_ar3_gam <- m_chla_gamm_k5_ar3$gam
+
+summary(m_chla_gamm_k5_ar3_gam)
+appraise(m_chla_gamm_k5_ar3_gam)
+k.check(m_chla_gamm_k5_ar3_gam)
+draw(m_chla_gamm_k5_ar3_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_chla_gamm_k5_ar3_gam, pages = 1, all.terms = TRUE)
+acf(resid_ar3)
+Box.test(resid_ar3, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(3) model has much less residual autocorrelation, and the diagnostics plots look pretty good. What does the ANOVA table look like?
+
+```{r gam ar3 anova, warning = FALSE}
+# the anova.gam function is similar to a type 3 ANOVA
+anova(m_chla_gamm_k5_ar3_gam)
+```
+
+Only Region and the Year:Region interaction was significant among the parametric terms of the model. Let's re-run the AR(3) GAM model dropping the two interactions that weren't significant.
+
+### Remove non-significant interactions
+
+```{r gam ar3 less interaction, warning = FALSE}
+m_chla_gamm_k5_ar3b <- gamm(
+  Chla_log ~ Year_fct * Region + FlowActionPeriod + s(DOY, k = 5), 
+  data = df_rtm_chla_c1, 
+  random = list(StationCode = ~ 1),
+  correlation = corARMA(form = ~ 1|Year_fct, p = 3),
+  method = "REML"
+)
+```
+
+```{r gam ar3 less interaction diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_ar3b <- residuals(m_chla_gamm_k5_ar3b$lme, type = "normalized")
+m_chla_gamm_k5_ar3b_gam <- m_chla_gamm_k5_ar3b$gam
+
+summary(m_chla_gamm_k5_ar3b_gam)
+appraise(m_chla_gamm_k5_ar3b_gam)
+k.check(m_chla_gamm_k5_ar3b_gam)
+draw(m_chla_gamm_k5_ar3b_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_chla_gamm_k5_ar3b_gam, pages = 1, all.terms = TRUE)
+acf(resid_ar3b)
+Box.test(resid_ar3b, lag = 20, type = 'Ljung-Box')
+anova(m_chla_gamm_k5_ar3b_gam)
+```
+
+Only the main effect of Region and the Year:Region interaction is significant in the model. Let's take a closer look at the pairwise contrasts.
+
+### Pairwise contrasts
+
+```{r gam ar3 contrasts, warning = FALSE}
+# Contrasts in Region main effect
+emmeans(
+  m_chla_gamm_k5_ar3b,
+  data = df_rtm_chla_c1,
+  specs = pairwise ~ Region
+)
+
+# Contrasts in Region for each Year
+emmeans(
+  m_chla_gamm_k5_ar3b, 
+  data = df_rtm_chla_c1,
+  specs = pairwise ~ Region | Year_fct
+)
+
+# Contrasts in Year for each Region
+multcomp::cld(
+  emmeans(
+    m_chla_gamm_k5_ar3b, 
+    data = df_rtm_chla_c1,
+    specs = pairwise ~ Year_fct | Region
+  )$emmeans,
+  sort = FALSE, 
+  Letters = letters
+)
+```
+
+Upstream was always higher than downstream in all years. None of the years differed significantly in the upstream region. In the downstream region, 2018 was lower than 2013-2017, and 2019 was lower than 2013-2016.
+
+# Compare to linear mixed effects model
+
+Let's compare the results of the GAM model to a linear mixed effects model like we used in the FASTR report. We'll start by adding a lag1 term to account for residual autocorrelation.
+
+```{r lme lag1}
+m_chla_lmer_lag1 <- 
+  lmer(
+    Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + lag1 + (1|StationCode),
+    data = df_rtm_chla_lag1
+  )
+
+# Pull out residuals and look at autocorrelation
+resid_lmer_lag1 <- residuals(m_chla_lmer_lag1)
+acf(resid_lmer_lag1)
+Box.test(resid_lmer_lag1, lag = 20, type = 'Ljung-Box')
+```
+
+There is still some residual autocorrelation so lets add a second lag term, lag2.
+
+```{r lme lag2}
+df_rtm_chla_lag2 <- df_rtm_chla_c1 %>% 
+  # Fill in missing days for each StationCode-Year combination
+  group_by(StationCode, Year) %>% 
+  complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>% 
+  # Create lag1 of scaled log transformed chlorophyll values
+  mutate(
+    lag1 = lag(Chla_log),
+    lag2 = lag(Chla_log, 2)
+  ) %>% 
+  ungroup()
+
+m_chla_lmer_lag2 <- 
+  lmer(
+    Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + lag1 + lag2 + (1|StationCode),
+    data = df_rtm_chla_lag2
+  )
+
+# Pull out residuals and look at autocorrelation
+resid_lmer_lag2 <- residuals(m_chla_lmer_lag2)
+acf(resid_lmer_lag2)
+Box.test(resid_lmer_lag2, lag = 20, type = 'Ljung-Box')
+```
+
+There is still some residual autocorrelation, but less than with the lag1 model. Let's go with this one for now. Let's look at its diagnostic plots.
+
+```{r lme lag2 diag}
+plot(resid_lmer_lag2)
+qqnorm(resid_lmer_lag2)
+hist(resid_lmer_lag2)
+```
+
+The residuals look a little funky. Let's take a look at the ANOVA table
+
+```{r lme lag2 anova}
+Anova(m_chla_lmer_lag2, type = 3, contrasts=list(topic=contr.sum, sys=contr.sum))
+```
+
+As with the GAM model, only the Region main effect and the Year:Region interaction terms are significant. Let's re-run the model dropping the two interactions that weren't significant.
+
+```{r lme lag2 less interaction}
+m_chla_lmer_lag2b <- 
+  lmer(
+    Chla_log ~ Year_fct * Region + FlowActionPeriod + lag1 + lag2 + (1|StationCode),
+    data = df_rtm_chla_lag2
+  )
+```
+
+```{r lme lag2 less interaction diag}
+# Pull out residuals and look at autocorrelation and diagnostic plots
+resid_lmer_lag2b <- residuals(m_chla_lmer_lag2b)
+acf(resid_lmer_lag2b)
+Box.test(resid_lmer_lag2b, lag = 20, type = 'Ljung-Box')
+plot(resid_lmer_lag2b)
+qqnorm(resid_lmer_lag2b)
+hist(resid_lmer_lag2b)
+```
+
+The residuals still look a little strange. Let's look at the ANOVA table.
+
+```{r lme lag2 less interaction anova}
+Anova(m_chla_lmer_lag2b, type = 3, contrasts=list(topic=contr.sum, sys=contr.sum))
+```
+
+Again, only the main effect of Region and the Year:Region interaction is significant in the model. Let's take a closer look at the pairwise contrasts.
+
+```{r lme lag2 contrasts, warning = FALSE, message = FALSE}
+# Contrasts in Region main effect
+emmeans(m_chla_lmer_lag2b, specs = pairwise ~ Region, adjust = "sidak")
+
+# Contrasts in Region for each Year
+emmeans(m_chla_lmer_lag2b, specs = pairwise ~ Region | Year_fct, adjust = "sidak")
+
+# Contrasts in Year for each Region
+em_lmer_yr_reg <- emmeans(m_chla_lmer_lag2b, specs = pairwise ~ Year_fct | Region, adjust = "sidak")
+multcomp::cld(em_lmer_yr_reg$emmeans, sort = FALSE, Letters = letters)
+```
+
+These results are very similar to the GAM model results. Like with the GAM model, upstream was always higher than downstream in all years, and none of the years differed significantly in the upstream region. In the downstream region, 2018 was lower than 2013-2016, and 2019 was lower than 2016.
+
+# Re-run GAM at Station level
+
+It's encouraging that the GAM and LMER models had similar results. Unfortunately, neither found a significant effect of flow pulse period. Looking at the [station level plots](#boxplots-station), it does appear that there is a chlorophyll response to flow pulse period at some of the stations. Let's re-run the GAM model at the station level, including all stations at first. We'll include all two-way interactions between Year, Flow Action Period, and Station and a smooth term for day of year to account for seasonality. We won't account for serial autocorrelation in our initial GAM model.
+
+## Initial Model
+
+```{r gam station no autocorr, warning = FALSE}
+m_chla_gam_st <- gam(
+  Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY), 
+  data = df_rtm_chla_c1,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam station no autocorr diag, warning = FALSE}
+summary(m_chla_gam_st)
+appraise(m_chla_gam_st)
+k.check(m_chla_gam_st)
+draw(m_chla_gam_st, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_chla_gam_st, pages = 1, all.terms = TRUE)
+acf(residuals(m_chla_gam_st))
+Box.test(residuals(m_chla_gam_st), lag = 20, type = 'Ljung-Box')
+```
+
+## Model with k=5
+
+Not surprisingly, the model definitely has residual autocorrelation as indicated by the ACF plot and the Box-Ljung test. The smooth term for day of year may also be overfitted as it was with the initial model using Regions. Again, let's try a smaller k-value for the smooth first, then lets try to address the residual autocorrelation.
+
+```{r gam station no autocorr k5, warning = FALSE}
+m_chla_gam_st_k5 <- gam(
+  Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY, k = 5), 
+  data = df_rtm_chla_c1,
+  method = "REML"
+)
+
+summary(m_chla_gam_st_k5)
+k.check(m_chla_gam_st_k5)
+draw(m_chla_gam_st_k5, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_chla_gam_st_k5, pages = 1, all.terms = TRUE)
+```
+
+Changing the k-value to 5 seems to help reduce the "wiggliness" of the smooth term for DOY. Now, let's use an AR(p) model to account for the correlated residuals. We'll run AR(1), AR(2), AR(3), and AR(4) models and compare them using AIC. The `nlme` model engine that underlies the `gamm()` function produces an error when there are empty station-year-action period combinations in the data set, so for now we'll remove the two stations (RCS and RYI) that are missing data for a few years.
+
+## Model with AR() correlation structure
+
+```{r gam station with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_chla_gam_st_k5 <- as.formula("Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY, k = 5)")
+
+# Remove RCS and RYI from the data set
+df_rtm_chla_c2 <- df_rtm_chla_c1 %>% filter(!StationCode %in% c("RCS", "RYI"))
+
+# Fit original model with k = 5 and four successive AR(p) models
+m_chla_gamm_st_k5 <- gamm(
+  f_chla_gam_st_k5, 
+  data = df_rtm_chla_c2, 
+  method = "REML"
+)
+
+m_chla_gamm_st_k5_ar1 <- gamm(
+  f_chla_gam_st_k5, 
+  data = df_rtm_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct, p = 1), # grouped by Year_fct
+  method = "REML"
+)
+
+m_chla_gamm_st_k5_ar2 <- gamm(
+  f_chla_gam_st_k5, 
+  data = df_rtm_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct, p = 2),
+  method = "REML"
+)
+
+m_chla_gamm_st_k5_ar3 <- gamm(
+  f_chla_gam_st_k5, 
+  data = df_rtm_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct, p = 3),
+  method = "REML"
+)
+
+m_chla_gamm_st_k5_ar4 <- gamm(
+  f_chla_gam_st_k5, 
+  data = df_rtm_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct, p = 4),
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_chla_gamm_st_k5$lme, 
+  m_chla_gamm_st_k5_ar1$lme,
+  m_chla_gamm_st_k5_ar2$lme,
+  m_chla_gamm_st_k5_ar3$lme,
+  m_chla_gamm_st_k5_ar4$lme
+)
+```
+
+It looks like the AR(4) model has the best fit according to the AIC values. However, the AR(2) model is best according to the BIC values. Since AIC tends to pick more complex models than BIC, let's choose the AR(2) model and take a closer look at that one.
+
+## AR(2) Model
+
+```{r gam station ar2 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_st_ar2 <- residuals(m_chla_gamm_st_k5_ar2$lme, type = "normalized")
+m_chla_gamm_st_k5_ar2_gam <- m_chla_gamm_st_k5_ar2$gam
+
+summary(m_chla_gamm_st_k5_ar2_gam)
+appraise(m_chla_gamm_st_k5_ar2_gam)
+k.check(m_chla_gamm_st_k5_ar2_gam)
+draw(m_chla_gamm_st_k5_ar2_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_chla_gamm_st_k5_ar2_gam, pages = 1, all.terms = TRUE)
+acf(resid_st_ar2)
+Box.test(resid_st_ar2, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(2) model has much less residual autocorrelation, and the diagnostics plots look pretty good. For some reason the p-value for the `k.check` is zero which may indicate that `k = 5` is too low. I may have to look into this further. 
+
+What does the ANOVA table look like for the AR(2) model?
+
+```{r gam station ar2 anova, warning = FALSE}
+# the anova.gam function is similar to a type 3 ANOVA
+anova(m_chla_gamm_st_k5_ar2_gam)
+```
+
+All the interaction terms are significant in the AR(2) model. Let's take a closer look at the pairwise contrasts.
+
+### Pairwise contrasts
+
+```{r gam station ar2 contrasts, warning = FALSE}
+# Contrasts in FlowActionPeriod for each Year
+emmeans(
+  m_chla_gamm_st_k5_ar2, 
+  data = df_rtm_chla_c2,
+  specs = pairwise ~ FlowActionPeriod | Year_fct 
+)
+
+# Contrasts in FlowActionPeriod for each Station
+emmeans(
+  m_chla_gamm_st_k5_ar2, 
+  data = df_rtm_chla_c2,
+  specs = pairwise ~ FlowActionPeriod | StationCode 
+)
+
+# Contrasts in Station for each Year
+multcomp::cld(
+  emmeans(
+    m_chla_gamm_st_k5_ar2, 
+    data = df_rtm_chla_c2,
+    specs = pairwise ~ StationCode | Year_fct
+  )$emmeans,
+  sort = FALSE,
+  Letters = letters
+)
+
+# Contrasts in Year for each Station
+multcomp::cld(
+  emmeans(
+    m_chla_gamm_st_k5_ar2, 
+    data = df_rtm_chla_c2,
+    specs = pairwise ~ Year_fct | StationCode
+  )$emmeans,
+  sort = FALSE,
+  Letters = letters
+)
+```
+
+The differences between flow pulse periods were not significant in most years except During was higher than After in 2017 and After was higher than Before in 2019. Before was marginally higher than both During and After in 2018.
+
+Similarly, the differences between flow pulse periods were not significant at most stations except After was lower than both Before and During at STTD. 
+
+Comparing Stations in each Year, there was an obvious gradient from the upstream to downstream stations with the highest chlorophyll values at the most upstream stations in the Toe Drain and the lowest values at the downstream stations across all years. 
+
+
