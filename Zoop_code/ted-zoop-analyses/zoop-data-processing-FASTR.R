@@ -142,48 +142,37 @@ sort(table(df_zoop$Genus), decreasing = TRUE)
 # Look at which taxa do not have a genus-level classification
 df_no_genus <- df_zoop %>% filter(is.na(Genus))
 
-table(df_no_genus$TaxonName)
+sort(table(df_no_genus$TaxonName), decreasing = TRUE)
+sort(table(df_no_genus$Taxlife), decreasing = TRUE)
 
+# Taxon level
 
 table(is.na(df_zoop$TaxonName)) # no missing taxon identifiers
 
+sort(table(df_zoop$TaxonName), decreasing = TRUE)
 
-# Summarize by genus for NMDS plots
+# Summarize by taxon for NMDS plots
 df_zoop_gen <- df_zoop %>%
-  group_by(Year, Month, Date, WYType, FlowPulseType, StationCode, Family, Genus, Taxlife) %>%
+  group_by(Year, Month, Date, WYType, FlowPulseType, StationCode, Family, Genus, TaxonName) %>%
   summarize(across(CPUEZoop:BPUE, ~sum(.x, na.rm = TRUE))) %>%
   ungroup
 
-
-
-
-
-## Add zeros to genus data frame
-temp <- phyto.gen %>% select(Year:ActionPhase,BV.um3.per.L)
+# Add zeros to genus data frame
+temp <- df_zoop_gen %>% select(Year:CPUEZoop)
 
 temp <- pivot_wider(temp, 
-                    names_from = "Genus", 
-                    values_from = "BV.um3.per.L",
+                    names_from = "TaxonName", 
+                    values_from = "CPUEZoop",
                     values_fill = 0)
 
-phyto.grp.gen.BV <- pivot_longer(temp,
-                                 cols = Chlorella:last_col(),
-                                 names_to = "Genus",
-                                 values_to = "BV.um3.per.L")
+df_zoop_gen <- pivot_longer(temp,
+                            cols = `Sinocalanus doerrii`:last_col(),
+                            names_to = "Taxon",
+                            values_to = "CPUEZoop")
 
-## Re-add group data to genus table
-phyto.grp.gen.BV <- left_join(phyto.grp.gen.BV, taxa)
 
-## Rearrange location of Group column
-phyto.grp.gen.BV <- phyto.grp.gen.BV %>% relocate(Group, .before = Genus)
-
-## Calculate relative abundance of biovolume by group
-phyto.grp.BV.RA <- phyto.grp.BV %>%
-  group_by(Year, Region, ActionPhase, Group) %>%
-  summarize(Mean.BV.per.L = mean(BV.um3.per.L)) %>%
-  ungroup()
-
-phyto.grp.BV.RA <- phyto.grp.BV.RA %>%
+# Calculate relative abundance of CPUE by taxon
+df_zoop_RA <- df_zoop_gen %>%
   group_by(Year, Region, ActionPhase) %>%
   mutate(MeanRelAbund = Mean.BV.per.L/sum(Mean.BV.per.L)) %>%
   ungroup
