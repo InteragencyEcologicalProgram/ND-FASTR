@@ -153,12 +153,12 @@ sort(table(df_zoop$TaxonName), decreasing = TRUE)
 
 # Summarize by taxon for NMDS plots
 df_zoop_gen <- df_zoop %>%
-  group_by(Year, Month, Date, WYType, FlowPulseType, StationCode, Family, Genus, TaxonName) %>%
+  group_by(Year, Month, Date, Region, WYType, FlowPulseType, StationCode, Family, Genus, TaxonName) %>%
   summarize(across(CPUEZoop:BPUE, ~sum(.x, na.rm = TRUE))) %>%
   ungroup
 
 # Add zeros to genus data frame
-temp <- df_zoop_gen %>% select(Year:CPUEZoop)
+temp <- df_zoop_gen %>% select(Year:StationCode,TaxonName:CPUEZoop)
 
 temp <- pivot_wider(temp, 
                     names_from = "TaxonName", 
@@ -167,38 +167,34 @@ temp <- pivot_wider(temp,
 
 df_zoop_gen <- pivot_longer(temp,
                             cols = `Sinocalanus doerrii`:last_col(),
-                            names_to = "Taxon",
+                            names_to = "TaxonName",
                             values_to = "CPUEZoop")
 
 
 # Calculate relative abundance of CPUE by taxon
 df_zoop_RA <- df_zoop_gen %>%
-  group_by(Year, Region, ActionPhase) %>%
-  mutate(MeanRelAbund = Mean.BV.per.L/sum(Mean.BV.per.L)) %>%
+  group_by(Year, Month, Date, Region, WYType, FlowPulseType, StationCode) %>%
+  mutate(MeanRelAbund = CPUEZoop/sum(CPUEZoop)) %>%
   ungroup
 
-## Calculate relative abundance of each genus within a group
-phyto.grp.gen.BV.RA <- phyto.grp.gen.BV %>%
-  group_by(Group, Genus) %>%
-  summarize(Mean.BV.per.L = mean(BV.um3.per.L)) %>%
-  mutate(MeanRelAbund = Mean.BV.per.L/sum(Mean.BV.per.L)) %>%
-  ungroup()
-
 # Highlight most abundant genera
-phyto.grp.gen.BV.RA <- phyto.grp.gen.BV.RA %>%
-  mutate(Type = case_when(MeanRelAbund > 0.05 ~ Genus,
+df_zoop_RA <- df_zoop_RA %>%
+  mutate(Type = case_when(MeanRelAbund > 0.05 ~ TaxonName,
                           TRUE ~ 'Other'))
 
+length(unique(df_zoop_RA$Type)) # 32 remaining taxa not lumped together
+
 # lump together all "other" taxa
-phyto.grp.gen.BV.RA.tot <- phyto.grp.gen.BV.RA %>%
-  group_by(Group, Type) %>%
+df_zoop_RA_tot <- df_zoop_RA %>%
+  group_by(Year, Month, Date, Region, WYType, FlowPulseType, StationCode, Type) %>%
   summarize(MeanRelAbund = sum(MeanRelAbund)) %>%
   ungroup()
 
 ## Create cross-walk table for what taxa are lumped into the Other category
-phyto.types <- phyto.grp.gen.BV.RA %>% select(Genus, Type)
+df_zoop_types <- df_zoop_RA_tot %>% select(Type, Type)
 
-## Calculate NMDS axes
+# Calculate NMDS axes ----------------------------------------------------------
+
 ## Create Biovolume-only data frame at genus level
 phyto.gen.BV <- phyto.gen %>% select(Year:ActionPhase,BV.um3.per.L)
 
