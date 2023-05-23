@@ -225,7 +225,7 @@ for (i in 1:length(years)) {
     comm = genw[c(8:76)],
     distance = "bray",
     k = 3,
-    trymax = 50
+    trymax = 150
     #trace = F,
     #autotransform = F
   )
