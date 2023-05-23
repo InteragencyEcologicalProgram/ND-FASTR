@@ -11,6 +11,9 @@ library(here)
 # Set visual theme in ggplot ---------------------------------------------------
 theme_set(theme_bw())
 
+# Set output location
+output = here("Zoop_code","ted-zoop-analyses","plots")
+
 # Import processed data --------------------------------------------------------
 df_zoop <- read_csv(file = here("Zoop_code",
                                 "ted-zoop-analyses",
@@ -191,16 +194,13 @@ df_zoop_RA_tot <- df_zoop_RA %>%
   ungroup()
 
 ## Create cross-walk table for what taxa are lumped into the Other category
-df_zoop_types <- df_zoop_RA_tot %>% select(Type, Type)
+df_zoop_types <- df_zoop_RA_tot %>% select(Type)
 
 # Calculate NMDS axes ----------------------------------------------------------
 
-## Create Biovolume-only data frame at genus level
-phyto.gen.BV <- phyto.gen %>% select(Year:ActionPhase,BV.um3.per.L)
-
 ## Generate NMDS data with metaMDS by each year separately
 
-years <- unique(phyto.gen.BV$Year) 
+years <- unique(df_zoop_gen$Year) 
 years <- sort(years, decreasing = F, na.last = T)
 
 ## Create blank data frame to fill stresses in
@@ -208,9 +208,9 @@ stresses <- data.frame(Year = years, stress = NA)
 ls_dfs <- list()
 
 for (i in 1:length(years)) {
-  genw <- pivot_wider(phyto.gen.BV, 
-                      names_from = "Genus", 
-                      values_from = "BV.um3.per.L",
+  genw <- pivot_wider(df_zoop_gen, 
+                      names_from = "TaxonName", 
+                      values_from = "CPUEZoop",
                       values_fill = 0)
   
   genw <- genw %>% filter(Year == years[i])
@@ -221,32 +221,28 @@ for (i in 1:length(years)) {
   # Calculate the nMDS using vegan 
   # A good rule of thumb: stress < 0.05 provides an excellent representation in reduced dimensions,
   # < 0.1 is great, < 0.2 is good/ok, and stress < 0.3 provides a poor representation.
-  phyto.NMDS <- metaMDS(
-    comm = genw[c(10:142)],
+  zoop_NMDS <- metaMDS(
+    comm = genw[c(8:76)],
     distance = "bray",
     k = 3,
-    trymax = 10000
+    trymax = 50
     #trace = F,
     #autotransform = F
   )
   
-  #paste0("phyto.NMDS.",year) <- phyto.NMDS
-  
-  #save(phyto.NMDS, file = paste("NMDS", year,".RData"))
-  
-  stresses$stress[which(stresses$Year == years[i])] <- phyto.NMDS$stress
+  stresses$stress[which(stresses$Year == years[i])] <- zoop_NMDS$stress
   
   #look at Shepard plot which shows scatter around the regression between the interpoint distances 
   #in the final configuration (i.e., the distances between each pair of communities) against their 
   #original dissimilarities.
-  stressplot(phyto.NMDS)
+  stressplot(zoop_NMDS)
   
   # Using the scores function from vegan to extract the site scores and convert to a data.frame
-  data.scores <- as_tibble(scores(phyto.NMDS, display = "sites"))
+  df_data_scores <- as_tibble(scores(zoop_NMDS, display = "sites"))
   
   # Combine metadata with NMDS data scores to plot in ggplot
-  meta <- genw %>% select(1:9)
-  meta <- cbind(meta, data.scores)
+  meta <- genw %>% select(Year:StationCode)
+  meta <- cbind(meta, df_data_scores)
   
   # Read in years as a character otherwise it shows up as a number and gets displayed as a gradient
   meta$Year <- as.character(meta$Year)
@@ -255,18 +251,77 @@ for (i in 1:length(years)) {
   
 }
 
-phyto.gen.NMDS <- do.call(rbind, ls_dfs)
+df_zoop_gen_NMDS <- do.call(rbind, ls_dfs)
+
+# Create NMDS Plots ------------------------------------------------------------
+
+# Create NMDS plots for each year by Region
+p_zoop_NMDS_Region <- ggplot(df_zoop_gen_NMDS, aes(x = NMDS1, 
+                                                   y = NMDS2, 
+                                                   color = Region)) +
+  geom_point(size = 3) +
+  stat_ellipse() + 
+  labs(title = "Zooplankton Community Composition") +
+  labs(color = "Region") +
+  theme_bw() +
+  scale_color_brewer(palette = "Set1")
+
+p_zoop_NMDS_Region +
+  facet_wrap(Year ~ ., ncol = 3, dir = "h") +
+  labs(x = NULL,
+       y = NULL,
+       title = "NDFA - Zooplankton Community Comparison (2014-2019)",
+       color = "Region") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+
+ggsave(path = output,
+       filename = "p_zoop_NMDS_region.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=5,
+       width=6.5, 
+       dpi="print")
+
+# Calculate PERMANOVA comparisons for zoop communities by Region and Year
+adon.results <- adonis2(genw[c(8:76)] ~ genw$Region + genw$Year, 
+                        strata = genw$StationCode,
+                        method = "bray",
+                        perm = 999)
+
+dm_zoop_gen <- vegdist(genw[c(8:76)], method = "bray")
+
+bd <- betadisper(dm_zoop_gen, genw$Region)
+
+anova(bd)
+permutest(bd)
+
+# Calculate ANOSIM comparisons for zoop communities by Region
+anosim_r <- data.frame(Year = years, 
+                       R_value = NA,
+                       p_value = NA)
+
+for (year in years) {
+  
+  df_temp <- genw %>% filter(Year==year)
+  
+  test <- anosim(df_temp[c(8:76)], 
+                 df_temp$Region, 
+                 permutations = 10000, 
+                 distance = "bray")
+  
+  anosim_r$R_value[which(anosim_r$Year == year)] <- test$statistic
+  
+  anosim_r$p_value[which(anosim_r$Year == year)] <- test$signif
+  
+}
 
 
-## Save data files
-save(phyto.sum, file = "RData/phyto.sum.RData")
-save(phyto.gen, file = "RData/phyto.gen.RData")
-save(phyto.grp.gen.BV, file = "RData/phyto.grp.gen.BV.RData")
-save(phyto.grp.BV, file = "RData/phyto.grp.BV.RData")
-save(phyto.grp.BM, file = "RData/phyto.grp.BM.RData")
-save(phyto.grp.LCEFA, file = "RData/phyto.grp.LCEFA.RData")
-save(phyto.gen.NMDS, file = "RData/phyto.gen.NMDS.Rdata")
-save(phyto.grp.gen.BV.RA.tot, file = "RData/phyto.grp.gen.BV.RA.tot.Rdata")
-save(phyto.types, file = "RData/phyto.types.RData")
 
-write_csv(stresses, file = "analyses/NMDS_stress.csv")
+
