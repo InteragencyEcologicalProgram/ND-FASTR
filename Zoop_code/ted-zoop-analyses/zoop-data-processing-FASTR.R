@@ -125,6 +125,7 @@ df_zoop <- df_zoop %>% filter(Year >= 2014)
 # Summarize data ---------------------------------------------------------------
 
 # Examine all samples for high-level diversity
+table(df_zoop$Phylum)
 table(df_zoop$Class) # 4 (Branchiopoda, Hexanauplia, Insecta, Ostracoda)
 table(df_zoop$Order) # 3 (Calanoida, Cyclopoida, Diplostraca)
 
