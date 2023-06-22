@@ -150,15 +150,24 @@ df_conc_flow_all <- bind_rows(df_conc_flow_shr, df_conc_flow_sttd)
 print(df_conc_flow_all, n = 70)
 ```
 
-It looks like all of the flow data was available for SHR, but STTD is missing a few flow values in July 2019.
+It looks like all of the flow data was available for SHR, but STTD is missing a few flow values in July 2019. We'll restrict the date ranges to July 1 - Oct 31 for each year since some of the data extends outside of the summer-fall period.
+
+```{r restrict time period}
+df_conc_flow_all_c <- df_conc_flow_all %>% filter(month(Date) %in% 7:10)
+
+# Look at filtered data
+print(df_conc_flow_all_c, n = 50)
+```
 
 # Zooplankton Analysis
 
 ```{r prepare data zoop}
 # Prepare zooplankton concentration data for analysis
-df_zoop <- df_conc_flow_all %>% 
+df_zoop <- df_conc_flow_all_c %>% 
   select(-TotalConc_Water) %>% 
   drop_na() %>% 
+  # Remove two samples with total concentrations equal to zero
+  filter(TotalConc_Zoop > 0) %>% 
   mutate(Year = as.character(year(Date)), .after = Date)
 ```
 
@@ -202,7 +211,7 @@ df_zoop %>%
   ylab("Total pesticide concentration in zooplankton (ng/g)")
 ```
 
-The median concentrations are pretty similar between stations, but STTD has some higher values than SHR particularly in 2018 and 2019. Let's break apart the boxplot by station and year.
+SHR has a higher median concentration than STTD, but STTD has some higher values than SHR particularly in 2018. Let's break apart the boxplot by station and year.
 
 ```{r boxplot station year zoop}
 df_zoop %>% 
@@ -214,7 +223,7 @@ df_zoop %>%
   ylab("Total pesticide concentration in zooplankton (ng/g)")
 ```
 
-Overall, STTD in 2019 had the highest concentrations. Let's look at a boxplot grouped only by year.
+Overall, STTD in 2018 had the highest concentrations. Let's look at a boxplot grouped only by year.
 
 ```{r boxplot yr zoop}
 df_zoop %>% 
@@ -224,7 +233,18 @@ df_zoop %>%
   ylab("Total pesticide concentration in zooplankton (ng/g)")
 ```
 
-Total concentrations were slightly higher in 2019 than other years when both stations are grouped together.
+The median of total concentrations was slightly higher in 2019 than other years when both stations are grouped together.
+
+Now, let's see how total concentrations varied seasonally using day of year for each station and year.
+
+```{r plt conc ts zoop}
+df_zoop %>% 
+  ggplot(aes(x = yday(Date), y = TotalConc_Zoop, color = Station)) +
+  geom_point() +
+  facet_grid(rows = vars(Year)) +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  labs(x = "DOY", y = "Total pesticide concentration in zooplankton (ng/g)")
+```
 
 Lastly, let's take a look at the histogram of all total pesticide concentrations in zooplankton to look at its distribution.
 
@@ -257,10 +277,10 @@ df_zoop %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_sta_flow)
 shapiro.test(m_zoop_sta_flow$residuals)
 ```
 
-The residuals deviate from a normal distribution according to the Shapiro-Wilk normality test and visual inspection. We'll re-run the model using the natural log of the concentration values summed by 1 to account for the two concentrations equal to zero.
+The residuals deviate from a normal distribution according to the Shapiro-Wilk normality test and visual inspection. We'll re-run the model using the natural log of the concentration values.
 
 ```{r lm sta flow zoop log}
-df_zoop_log <- df_zoop %>% mutate(TotalConc_Zoop = log(TotalConc_Zoop + 1))
+df_zoop_log <- df_zoop %>% mutate(TotalConc_Zoop = log(TotalConc_Zoop))
 
 m_zoop_sta_flow_log <- df_zoop_log %>% lm(TotalConc_Zoop ~ Station * DailyAvgNetFlow, data = .)
 ```
@@ -272,25 +292,10 @@ df_zoop_log %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_sta_flow_log, log
 shapiro.test(m_zoop_sta_flow_log$residuals)
 ```
 
-This is actually worse than the model with original values. Let's try a square root transformation.
-
-```{r lm sta flow zoop sqrt}
-df_zoop_sqrt <- df_zoop %>% mutate(TotalConc_Zoop = sqrt(TotalConc_Zoop))
-
-m_zoop_sta_flow_sqrt <- df_zoop_sqrt %>% lm(TotalConc_Zoop ~ Station * DailyAvgNetFlow, data = .)
-```
-
-Plot the diagnostics
-
-```{r lm sta flow zoop sqrt diag, message = FALSE}
-df_zoop_sqrt %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_sta_flow_sqrt)
-shapiro.test(m_zoop_sta_flow_sqrt$residuals)
-```
-
-The square root transformed data looks to be slightly better than the original values. Let's take a look at the Anova table using type 3 sum of squares for the model using square root transformation.
+This is somewhat better than the model with original values. Let's take a look at the Anova table using type 3 sum of squares for the model using log transformation.
 
 ```{r anova sta flow zoop}
-Anova(m_zoop_sta_flow_sqrt, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+Anova(m_zoop_sta_flow_log, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
 ```
 
 The significant interaction between station and daily average net flow indicates that the regression slopes are different between the two stations. This isn't surprising looking at the concentration vs flow plots above. The Anova table also shows that the main effect of station was significant while the main effect of flow wasn't. These probably shouldn't be interpreted as such since the interaction term is strongly significant. To look at how flow affects total pesticide concentrations in zooplankton, we'll need to run separate models for each station.
@@ -312,36 +317,14 @@ df_zoop_shr %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_flow_shr)
 shapiro.test(m_zoop_flow_shr$residuals)
 ```
 
-There are a couple of outliers with much lower predicted values, but the residuals appear to be fairly normally-distributed, so we'll take a closer look at this model.
+The model diagnostics actually look pretty good with the original values, so we'll take a closer look at this model.
 
 ```{r lm flow zoop shr summ, warning = FALSE}
 summary(m_zoop_flow_shr)
 visreg(m_zoop_flow_shr, gg = TRUE) + theme_bw() + geom_point(size = 1)
 ```
 
-The relationship between concentration and flow is significant at SHR, with a negative slope; however, there are two values with flows larger than 40,000 cfs that have a lot of leverage on the model. Let's see what happens if we remove these two values.
-
-```{r lm flow zoop shr 2}
-df_zoop_shr2 <- df_zoop_shr %>% filter(DailyAvgNetFlow < 40000)
-
-m_zoop_flow_shr2 <- df_zoop_shr2 %>% lm(TotalConc_Zoop ~ DailyAvgNetFlow, data = .)
-```
-
-Plot the diagnostics
-
-```{r lm flow zoop shr 2 diag, message = FALSE}
-df_zoop_shr2 %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_flow_shr2)
-shapiro.test(m_zoop_flow_shr2$residuals)
-```
-
-The diagnostics look really good. Let's see how concentration varies with flow at SHR with the two values with higher flows removed.
-
-```{r lm flow zoop shr 2 summ, warning = FALSE}
-summary(m_zoop_flow_shr2)
-visreg(m_zoop_flow_shr2, gg = TRUE) + theme_bw() + geom_point(size = 1)
-```
-
-The relationship between concentration and flow is no longer significant at SHR without the two values with high leverage.
+Total pesticide concentrations decrease significantly with flow at the SHR station; however, there is a gap in samples between 13,000-16,000 cfs.
 
 #### STTD
 
@@ -360,29 +343,29 @@ df_zoop_sttd %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_flow_sttd)
 shapiro.test(m_zoop_flow_sttd$residuals)
 ```
 
-The residuals deviate from a normal distribution according to the Shapiro-Wilk normality test and visual inspection. We'll re-run the model using the square root transformation since that worked well for all data combined.
+The residuals deviate from a normal distribution according to the Shapiro-Wilk normality test and visual inspection. We'll re-run the model using the natural log transformation since that worked well for all data combined.
 
-```{r lm flow zoop sqrt sttd}
-df_zoop_sttd_sqrt <- df_zoop_sttd %>% mutate(TotalConc_Zoop = sqrt(TotalConc_Zoop))
+```{r lm flow zoop log sttd}
+df_zoop_sttd_log <- df_zoop_sttd %>% mutate(TotalConc_Zoop = log(TotalConc_Zoop))
 
-m_zoop_flow_sttd_sqrt <- df_zoop_sttd_sqrt %>% lm(TotalConc_Zoop ~ DailyAvgNetFlow, data = .)
+m_zoop_flow_sttd_log <- df_zoop_sttd_log %>% lm(TotalConc_Zoop ~ DailyAvgNetFlow, data = .)
 ```
 
 Plot the diagnostics
 
-```{r lm flow zoop sqrt sttd diag, message = FALSE}
-df_zoop_sttd_sqrt %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_flow_sttd_sqrt)
-shapiro.test(m_zoop_flow_sttd_sqrt$residuals)
+```{r lm flow zoop log sttd diag, message = FALSE}
+df_zoop_sttd_log %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_flow_sttd_log, log_trans = TRUE)
+shapiro.test(m_zoop_flow_sttd_log$residuals)
 ```
 
-The square root transformation worked really well for this data. Let's take a closer look at this model.
+The natural log transformation worked pretty well for this data. Let's take a closer look at this model.
 
-```{r lm flow zoop sqrt sttd summ, warning = FALSE}
-summary(m_zoop_flow_sttd_sqrt)
-visreg(m_zoop_flow_sttd_sqrt, gg = TRUE) + theme_bw() + geom_point(size = 1)
+```{r lm flow zoop log sttd summ, warning = FALSE}
+summary(m_zoop_flow_sttd_log)
+visreg(m_zoop_flow_sttd_log, gg = TRUE) + theme_bw() + geom_point(size = 1)
 ```
 
-Total pesticide concentrations increase significantly with flow at the STTD station.
+Total pesticide concentrations increase significantly with flow at the STTD station; however, there is one low outlier at a flow of about 100 cfs and there is a gap in samples between 100-300 cfs.
 
 ### Model with Station and Year
 
@@ -402,7 +385,7 @@ df_zoop %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_sta_yr)
 shapiro.test(m_zoop_sta_yr$residuals)
 ```
 
-The residuals deviate from a normal distribution according to the Shapiro-Wilk normality test and visual inspection. Also, the variance among groups isn't consistent. We'll re-run the model using the natural log of the concentration values summed by 1 to account for the two concentrations equal to zero.
+The residuals deviate from a normal distribution according to the Shapiro-Wilk normality test and visual inspection. Also, the variance among groups isn't consistent. We'll re-run the model using the natural log of the concentration values.
 
 ```{r lm sta yr zoop log}
 m_zoop_sta_yr_log <- df_zoop_log %>% lm(TotalConc_Zoop ~ Station * Year, data = .)
@@ -415,54 +398,46 @@ df_zoop_log %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_sta_yr_log, log_t
 shapiro.test(m_zoop_sta_yr_log$residuals)
 ```
 
-This is actually worse than the model with original values because of the two concentrations equal to zero. Let's try a square root transformation.
-
-```{r lm sta yr zoop sqrt}
-m_zoop_sta_yr_sqrt <- df_zoop_sqrt %>% lm(TotalConc_Zoop ~ Station * Year, data = .)
-```
-
-Plot the diagnostics
-
-```{r lm sta yr zoop sqrt diag, message = FALSE}
-df_zoop_sqrt %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_sta_yr_sqrt)
-shapiro.test(m_zoop_sta_yr_sqrt$residuals)
-```
-
-The square root transformed data looks to be better than the original values for both model assumptions of normally-distributed residuals and homogeneity of variance. Let's take a look at the Anova table using type 3 sum of squares for the model using square root transformation.
+This is much better than the model with original values. Let's take a look at the Anova table using type 3 sum of squares for the model using natural log transformation.
 
 ```{r anova sta yr zoop}
-Anova(m_zoop_sta_yr_sqrt, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+Anova(m_zoop_sta_yr_log, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
 ```
 
-Well, the interaction term is not significant which means we can take a look at the main effects. Before we do this, we'll remove the interaction from the model since it's not necessary. We'll stick with the model using square root transformation.
+Well, the interaction term is not significant which means we can take a look at the main effects. Before we do this, we'll remove the interaction from the model since it's not necessary. We'll stick with the model using natural log transformation.
 
-```{r lm sta yr zoop sqrt no int, message = FALSE}
-m_zoop_sta_yr_sqrt2 <- df_zoop_sqrt %>% lm(TotalConc_Zoop ~ Station + Year, data = .)
-df_zoop_sqrt %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_sta_yr_sqrt2)
-shapiro.test(m_zoop_sta_yr_sqrt2$residuals)
+```{r lm sta yr zoop log no int, message = FALSE}
+m_zoop_sta_yr_log2 <- df_zoop_log %>% lm(TotalConc_Zoop ~ Station + Year, data = .)
+df_zoop_log %>% plot_model_diag(TotalConc_Zoop, "ng/g", m_zoop_sta_yr_log2, log_trans = TRUE)
+shapiro.test(m_zoop_sta_yr_log2$residuals)
 ```
 
-The diagnostics still look good with this model. Let's take a look at the Anova table using type 2 sum of squares.
+The diagnostics still look good with this model. Let's take a look at the Anova table using type 2 sum of squares because of the unbalanced design.
 
 ```{r anova sta yr zoop no int, warning = FALSE}
-Anova(m_zoop_sta_yr_sqrt2, type = 2)
+Anova(m_zoop_sta_yr_log2, type = 2)
 ```
 
-The main effect of station is not significant meaning that total pesticide concentrations in zooplankton don't differ between SHR and STTD. However, the main effect of Year is marginally significant, so we can take a look at the pairwise contrasts to see how concentrations differ among the years.
+The main effect of station is not significant (p = 0.083) meaning that total pesticide concentrations in zooplankton don't differ between SHR and STTD. However, the main effect of Year is significant, so we can take a look at the pairwise contrasts to see how concentrations differ among the years. We'll also take a look at the pairwise contrasts for station since it is close to significant.
 
 ```{r contrast sta yr zoop no int, warning = FALSE}
-emmeans(m_zoop_sta_yr_sqrt2, specs = pairwise ~ Year)
-visreg(m_zoop_sta_yr_sqrt2, xvar = "Year")
+# Contrasts for Year main effect
+emmeans(m_zoop_sta_yr_log2, specs = pairwise ~ Year)
+visreg(m_zoop_sta_yr_log2, xvar = "Year")
+
+# Contrasts for Station main effect
+emmeans(m_zoop_sta_yr_log2, specs = pairwise ~ Station)
+visreg(m_zoop_sta_yr_log2, xvar = "Station")
 ```
 
-Pairwise tests indicate that total pesticide concentration in zooplankton in 2019 is marginally significantly higher than 2017.
+Pairwise tests indicate that total pesticide concentration in zooplankton in 2019 is marginally significantly higher than 2017, but the p-value is 0.053. Also, the p-value isn't significant, but SHR is slightly higher than STTD.
 
 
 # Water Analysis
 
 ```{r prepare data water}
 # Prepare water concentration data for analysis
-df_water <- df_conc_flow_all %>% 
+df_water <- df_conc_flow_all_c %>% 
   select(-TotalConc_Zoop) %>% 
   # only include 2019 since that was the only year water samples were collected
     # at STTD
@@ -496,7 +471,7 @@ df_water %>%
   theme_bw()
 ```
 
-Both SHR and STTD seem to have positive relationships between concentration and flow, but they look weak and strongly affected by values with the highest flows at each station. Both of these values with the highest flows have much lower than "expected" concentrations. Also as with the zooplankton data, the ranges of the daily average flows don't overlap between the two stations, so it may not make sense to run the Station-Flow model including both stations.
+Both SHR and STTD seem to have positive relationships between concentration and flow, but STTD looks weak and strongly affected by values with the highest flows. Also as with the zooplankton data, the ranges of the daily average flows don't overlap between the two stations, so it may not make sense to run the Station-Flow model including both stations.
 
 Next, lets look at a boxplot comparing total pesticide concentrations in water between stations.
 
@@ -509,6 +484,16 @@ df_water %>%
 ```
 
 STTD seems to have higher concentrations with much more variation than SHR.
+
+Now, let's see how total concentrations varied seasonally in 2019 for each station.
+
+```{r plt conc ts water}
+df_water %>% 
+  ggplot(aes(x = Date, y = TotalConc_Water, color = Station)) +
+  geom_point() +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  labs(x = "Date", y = "Total pesticide concentration in water (ng/L)")
+```
 
 Lastly, let's take a look at the histogram of all total pesticide concentrations in water to look at its distribution.
 
@@ -541,28 +526,13 @@ df_water %>% plot_model_diag(TotalConc_Water, "ng/L", m_water_sta_flow)
 shapiro.test(m_water_sta_flow$residuals)
 ```
 
-The residuals deviate from a normal distribution according to the Shapiro-Wilk normality test and visual inspection. Also, the variance of the residuals isn't homogeneous. We'll re-run the model using the natural log of the concentration values.
-
-```{r lm sta flow water log}
-df_water_log <- df_water %>% mutate(TotalConc_Water = log(TotalConc_Water))
-
-m_water_sta_flow_log <- df_water_log %>% lm(TotalConc_Water ~ Station * DailyAvgNetFlow, data = .)
-```
-
-Plot the diagnostics
-
-```{r lm sta flow water log diag, message = FALSE}
-df_water_log %>% plot_model_diag(TotalConc_Water, "ng/L", m_water_sta_flow_log, log_trans = TRUE)
-shapiro.test(m_water_sta_flow_log$residuals)
-```
-
-The diagnostics look much better with the log-transformed values. Let's take a look at the Anova table using type 3 sum of squares for the model using natural log transformation.
+The residuals look pretty good according to the Shapiro-Wilk normality test and visual inspection; however, there are two values with much higher total pesticide concentrations which could be exerting a lot of leverage on the model. Let's take a look at the Anova table using type 3 sum of squares.
 
 ```{r anova sta flow water}
-Anova(m_water_sta_flow_log, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+Anova(m_water_sta_flow, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
 ```
 
-The interaction between station and daily average net flow is marginally significant indicating that the regression slopes are somewhat different between the two stations. This is corroborated by the concentration vs flow plots above. To look at how flow affects total pesticide concentrations in water, it would be best to run separate models for each station.
+The interaction between station and daily average net flow is significant indicating that the regression slopes are different between the two stations. This is corroborated by the concentration vs flow plots above. To look at how flow affects total pesticide concentrations in water, it would be best to run separate models for each station.
 
 #### SHR
 
@@ -588,29 +558,7 @@ summary(m_water_flow_shr)
 visreg(m_water_flow_shr, gg = TRUE) + theme_bw() + geom_point(size = 1)
 ```
 
-The relationship between concentration and flow isn't significant at SHR, but, there are two values with flows larger than 40,000 cfs that have some leverage on the model. Let's see what happens if we remove these two values.
-
-```{r lm flow water shr 2}
-df_water_shr2 <- df_water_shr %>% filter(DailyAvgNetFlow < 40000)
-
-m_water_flow_shr2 <- df_water_shr2 %>% lm(TotalConc_Water ~ DailyAvgNetFlow, data = .)
-```
-
-Plot the diagnostics
-
-```{r lm flow water shr 2 diag}
-df_water_shr2 %>% plot_model_diag(TotalConc_Water, "ng/L", m_water_flow_shr2, bins = 8)
-shapiro.test(m_water_flow_shr2$residuals)
-```
-
-The diagnostics look really good. Let's see how concentration varies with flow at SHR with the two values with higher flows removed.
-
-```{r lm flow water shr 2 summ, warning = FALSE}
-summary(m_water_flow_shr2)
-visreg(m_water_flow_shr2, gg = TRUE) + theme_bw() + geom_point(size = 1)
-```
-
-The positive relationship between concentration and flow is significant at SHR without the two values with the highest flows. These two values were collected at the end of May and beginning of June in 2019. 2019 was a wet year in N CA, so these two samples were most likely collected when flows were receding in the Sacramento River after the wet winter.
+Total pesticide concentrations increase significantly with flow at the SHR station; however, there is a gap in samples between 13,000-17,000 cfs.
 
 #### STTD
 
@@ -629,57 +577,22 @@ df_water_sttd %>% plot_model_diag(TotalConc_Water, "ng/L", m_water_flow_sttd, bi
 shapiro.test(m_water_flow_sttd$residuals)
 ```
 
-The diagnostics look pretty good with this model, but it may be better with the log transformed values. Let's take a look at that.
+The diagnostics look pretty good with this model, so let's take a closer look at this one.
 
-```{r lm flow water log sttd}
-df_water_sttd_log <- df_water_sttd %>% mutate(TotalConc_Water = log(TotalConc_Water))
-
-m_water_flow_sttd_log <- df_water_sttd_log %>% lm(TotalConc_Water ~ DailyAvgNetFlow, data = .)
+```{r lm flow water sttd summ, warning = FALSE}
+summary(m_water_flow_sttd)
+visreg(m_water_flow_sttd, gg = TRUE) + theme_bw() + geom_point(size = 1)
 ```
 
-Plot the diagnostics
-
-```{r lm flow water log sttd diag}
-df_water_sttd_log %>% plot_model_diag(TotalConc_Water, "ng/L", m_water_flow_sttd_log, log_trans = TRUE, bins = 5)
-shapiro.test(m_water_flow_sttd_log$residuals)
-```
-
-The diagnostics look better for STTD with the log transformed values, so let's take a closer look at this one.
-
-```{r lm flow water log sttd summ, warning = FALSE}
-summary(m_water_flow_sttd_log)
-visreg(m_water_flow_sttd_log, gg = TRUE) + theme_bw() + geom_point(size = 1)
-```
-
-Total pesticide concentrations increase significantly with flow at the STTD station, but only marginally. Again, there is one value with a flow larger than 1,000 cfs that has some leverage on the model. Let's see what happens if we remove it.
-
-```{r lm flow water log sttd 2}
-df_water_sttd_log2 <- df_water_sttd_log %>% filter(DailyAvgNetFlow < 1000)
-
-m_water_flow_sttd_log2 <- df_water_sttd_log2 %>% lm(TotalConc_Water ~ DailyAvgNetFlow, data = .)
-```
-
-Plot the diagnostics
-
-```{r lm flow water log sttd 2 diag}
-df_water_sttd_log2 %>% plot_model_diag(TotalConc_Water, "ng/L", m_water_flow_sttd_log2, bins = 5)
-shapiro.test(m_water_flow_sttd_log2$residuals)
-```
-
-The diagnostics look good. Let's see how concentration varies with flow at STTD with the one value with higher flow removed.
-
-```{r lm flow water log sttd 2 summ, warning = FALSE}
-summary(m_water_flow_sttd_log2)
-visreg(m_water_flow_sttd_log2, gg = TRUE) + theme_bw() + geom_point(size = 1)
-```
-
-Now the positive relationship between total pesticide concentrations in water and flow at the STTD station is much more significant without the one value with the highest flow. Again, this sample was collected at the end of May in 2019, most likely when flows were receding in the Yolo Bypass after the wet winter.
+Total pesticide concentrations increase significantly with flow at the STTD station, but there are two values with flows of about 600 cfs that have a lot leverage on the model.
 
 ### Station comparison
 
 Next, let's compare total pesticide concentrations in water between the two stations, SHR and STTD. Since samples were only collected at both stations in 2019, we can run a simple t-test to compare them. The histogram of all water concentrations above showed that they are not normally-distributed. Let's take a look at the natural log transformed values to see if we can use these for the t-test.
 
 ```{r sta water diag}
+df_water_log <- df_water %>% mutate(TotalConc_Water = log(TotalConc_Water))
+
 df_water_log %>% 
   ggplot(aes(x = TotalConc_Water)) +
   geom_histogram(bins = 10) +
@@ -710,7 +623,7 @@ The natural log transformed values seem to be more normally distributed and have
 df_water_log %>% t.test(TotalConc_Water ~ Station, data = .)
 ```
 
-The mean total pesticide concentration in water was significantly higher at STTD than SHR during 2019.
+The mean total pesticide concentration in water was marginally significantly higher at STTD than SHR during 2019.
 
 # Overall Conclusions
 
@@ -719,15 +632,13 @@ Models including station and daily average net flow for both response variables,
 Total pesticide concentrations in Zooplankton:
 
 * There was a significant interaction (p < 0.0001) between station and daily average net flow indicating that the regression slopes are different between the two stations. This implies that concentrations at the two stations respond differently to flow.
-* The negative relationship between concentration and flow was significant at SHR; however, there are two values with flows larger than 40,000 cfs that had a lot of leverage on the model. When these two values were removed from the analysis, the relationship between concentration and flow was no longer significant. These two values were collected at the end of May and beginning of June in 2019, most likely when flows were receding in the Sacramento River after the wet winter.
-* In contrast, total pesticide concentrations increased significantly with flow at the STTD station (p < 0.0001).
-* Total pesticide concentrations didn't differ significantly between SHR and STTD when controlling for the year when the samples were collected.
-* Zooplankton concentrations were marginally significantly higher (p = 0.07) in 2019 than 2017 across both stations.
+* Total pesticide concentrations decreased significantly with flow at the SHR station (p = 0.0012). In contrast, total pesticide concentrations increased significantly with flow at the STTD station (p = 0.0014).
+* Total pesticide concentrations didn't differ significantly between SHR and STTD when controlling for the year when the samples were collected; however, SHR had a higher median concentration than STTD, and the p-value for their pairwise difference was 0.083.
+* Zooplankton concentrations were marginally significantly higher (p = 0.053) in 2019 than 2017 across both stations.
 
 Total pesticide concentrations in Water:
 
-* There was a marginally significant (p = 0.05) interaction between station and daily average net flow indicating that concentrations at the two stations respond somewhat differently to flow. 
-* The relationship between concentration and flow wasn't significant at SHR, but there are two values with flows larger than 40,000 cfs that had some leverage on the model. When these two values were removed from the analysis, the relationship between concentration and flow was significantly positive (p < 0.001) at SHR. As with the zooplankton analysis, these two values were collected at the end of May and beginning of June in 2019, most likely when flows were receding in the Sacramento River after the wet winter.
-* Total pesticide concentrations increased significantly with flow at the STTD station, but only marginally (p = 0.9); however, there is one value with a flow larger than 1,000 cfs that had some leverage on the model. When this value was removed from the analysis, the positive relationship between concentration and flow at the STTD station was much more significant (p < 0.001). Again, this sample was collected at the end of May in 2019, most likely when flows were receding in the Yolo Bypass after the wet winter.
-* The mean total pesticide concentration in water was significantly higher (p = 0.011) at STTD than SHR during 2019.
+* There was a significant (p < 0.0001) interaction between station and daily average net flow indicating that concentrations at the two stations respond differently to flow. 
+* Total pesticide concentrations increased significantly with flow at both SHR (p = 0.017) and STTD (p < 0.0001); however, there were no samples collected at the mid-range flows at both stations and the two values with the highest flows have a lot of leverage on the STTD model.
+* The mean total pesticide concentration in water was marginally significantly higher (p = 0.052) at STTD than SHR during 2019.
 
