@@ -48,7 +48,7 @@ conflicts_prefer(dplyr::filter())
 
 ```{r check working dir}
 # Check if we are in the correct working directory
-i_am("manuscript_contam/src/contam_conc_water_zoop_analysis.Rmd")
+i_am("manuscript_contam/src/analysis_contam_conc_water_zoop.Rmd")
 ```
 
 Display current versions of R and packages used for this analysis:

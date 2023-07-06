@@ -16,7 +16,7 @@ library(conflicted)
 conflicts_prefer(dplyr::filter())
 
 # Check if we are in the correct working directory
-i_am("manuscript_contam/src/contam_conc_clean_integrate_2017-2019.R")
+i_am("manuscript_contam/src/process_data_contam_conc.R")
 
 
 # 1. Import Data ----------------------------------------------------------
