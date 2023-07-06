@@ -16,20 +16,20 @@ library(conflicted)
 conflicts_prefer(dplyr::filter())
 
 # Check if we are in the correct working directory
-i_am("manuscript_contam/contam_conc_clean_integrate_2017-2019.R")
+i_am("manuscript_contam/src/contam_conc_clean_integrate_2017-2019.R")
 
 
 # 1. Import Data ----------------------------------------------------------
 
 # Import total pesticide concentration data for SHR and STTD
 df_shr_conc <- read_excel(
-  here("manuscript_contam/data-raw/DataforReportFigs_toDWR.xlsx"),
+  here("manuscript_contam/data/raw/DataforReportFigs_toDWR.xlsx"),
   sheet = "Figs 3&4",
   range = "A1:D37"
 )
 
 df_sttd_conc <- read_excel(
-  here("manuscript_contam/data-raw/DataforReportFigs_toDWR.xlsx"),
+  here("manuscript_contam/data/raw/DataforReportFigs_toDWR.xlsx"),
   sheet = "Figs 3&4",
   range = "I1:L38"
 )
@@ -69,10 +69,10 @@ df_conc_all <- bind_rows(df_shr_conc_c, df_sttd_conc_c)
 # Save final data set containing total pesticide concentration data for SHR and
   # STTD for the NDFS contaminants manuscript analyses as csv file for easier
   # diffing
-df_conc_all %>% write_csv(here("manuscript_contam/data/contam_conc_water_zoop_2017-2019.csv"))
+df_conc_all %>% write_csv(here("manuscript_contam/data/processed/contam_conc_water_zoop_2017-2019.csv"))
 
 # Save final data set containing total pesticide concentration data for SHR and
   # STTD for the NDFS contaminants manuscript analyses as an rds object in the
   # GitHub repo for easier import
-saveRDS(df_conc_all, file = here("manuscript_contam/data/contam_conc_water_zoop_2017-2019.rds"))
+saveRDS(df_conc_all, file = here("manuscript_contam/data/processed/contam_conc_water_zoop_2017-2019.rds"))
 

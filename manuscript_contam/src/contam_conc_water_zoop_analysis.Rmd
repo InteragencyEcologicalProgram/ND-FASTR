@@ -48,7 +48,7 @@ conflicts_prefer(dplyr::filter())
 
 ```{r check working dir}
 # Check if we are in the correct working directory
-i_am("manuscript_contam/contam_conc_water_zoop_analysis.Rmd")
+i_am("manuscript_contam/src/contam_conc_water_zoop_analysis.Rmd")
 ```
 
 Display current versions of R and packages used for this analysis:
@@ -120,7 +120,7 @@ plot_model_diag <- function(df_data, param_var, unit_label, model, log_trans = F
 
 ```{r import data}
 # Total Pesticide Concentration data:
-df_conc_all <- read_rds(here("manuscript_contam/data/contam_conc_water_zoop_2017-2019.rds"))
+df_conc_all <- read_rds(here("manuscript_contam/data/processed/contam_conc_water_zoop_2017-2019.rds"))
 
 # Daily average flow data:
 df_davg_flow <- read_rds(here("Water_Quality/Data_Processed/LIS_SR_DailyAvgFlow_2013-2022.rds"))
