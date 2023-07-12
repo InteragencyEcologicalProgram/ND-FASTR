@@ -97,6 +97,12 @@ df_use_all_tot <- df_use_all %>%
     .after = Date
   )
 
+# Export daily totals as csv and rds files
+df_use_all_tot %>% write_csv(here("manuscript_contam/data/processed/pesticide_use_daily_tot_2017-2020.csv"))
+df_use_all_tot %>% saveRDS(here("manuscript_contam/data/processed/pesticide_use_daily_tot_2017-2020.rds"))
+
+
+
 # Temporary plots of pesticide use data
 library(scales)
 
