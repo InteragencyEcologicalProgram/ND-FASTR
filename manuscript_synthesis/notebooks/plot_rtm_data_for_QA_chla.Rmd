@@ -1,6 +1,6 @@
 ---
-title: "Raw Data Plots"
-subtitle: "Chlorophyll: July 1 - Nov 15"
+title: "Raw Data Plots - Chlorophyll"
+subtitle: "July 1 - Nov 15"
 author: "Dave Bosworth"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output: 
