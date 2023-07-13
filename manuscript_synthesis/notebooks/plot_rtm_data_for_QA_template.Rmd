@@ -1,0 +1,22 @@
+---
+output: html_document
+---
+
+## {{station}}
+
+```{r filter plots {{station}}, include = FALSE}
+filt_station <- "{{station}}"
+
+ndf_plots_filt <- filter(ndf_plots, StationCode == filt_station)
+```
+
+```{r print plots {{station}}, echo = FALSE}
+l <- tagList()
+
+for (i in 1:nrow(ndf_plots_filt)) {
+  l[[i]] <- ndf_plots_filt$plt[[i]]
+}
+
+l
+```
+

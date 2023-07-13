@@ -1,0 +1,188 @@
+---
+title: "Raw Data Plots"
+subtitle: "Chlorophyll: July 1 - Nov 15"
+author: "Dave Bosworth"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+Create plots of the raw continuous chlorophyll data. Data for all stations have already been QA/QC'ed for the restricted dates for the period of interest for the NDFS synthesis study; however, we need to expand the data set to July 1 - Nov 15 for each year. This additional data needs to be visually inspected for suspect or unreliable values. Additionally, stations LIB, LIS, RVB, and STTD have already been QA/QC'ed for the expanded time period.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(fs)
+library(plotly)
+library(htmltools)
+library(scales)
+library(knitr)
+library(here)
+library(conflicted)
+
+# Declare package conflict preferences 
+conflicts_prefer(dplyr::filter())
+```
+
+```{r load functions, message = FALSE, warning = FALSE}
+# Source functions
+source(here("global_ndfa_funcs.R"))
+
+# Define root directory for the WQ_Subteam on the NDFA SharePoint
+fp_wq_root <- ndfa_abs_sp_path("2011-2019 Synthesis Study-FASTR/WQ_Subteam")
+```
+
+```{r create functions}
+# Import continuous chlorophyll data from formatted csv files
+import_rtm_chla <- function(fp) {
+  read_csv(
+    file = fp, 
+    col_types = cols_only(
+      StationCode = "c",
+      DateTime = "c",
+      Chla = "d"
+    )
+  )
+}
+
+# Create simple interactive timeseries plotly plot of continuous chlorophyll Data
+create_ts_plotly <- function(df, plt_title) {
+  # create plot
+  p <- df %>% 
+    ggplot(aes(x = DateTime, y = Chla, color = Status)) +
+    geom_point(size = 1) +
+    scale_x_datetime(
+      name = "Date",
+      breaks = breaks_pretty(15),
+      labels = label_date_short()
+    ) +
+    ylab("Chlorophyll") +
+    scale_color_manual(values = c("QA" = "gray40", "Raw" = "brown")) +
+    ggtitle({{ plt_title }})
+  
+  ggplotly(p)
+}
+```
+
+# Import Data
+
+```{r import data}
+# Import QA'ed and cleaned continuous chlorophyll data for the NDFA period of interest
+df_chla_qa <- import_rtm_chla(file.path(fp_wq_root, "Processed_Data/Continuous/RTM_INPUT_all_2021-04-20.csv"))
+
+# Create a vector of all relevant file paths for the processed continuous chlorophyll data
+fp_rtm_wq_proc <- dir_ls(
+  path = file.path(fp_wq_root, "Processed_Data/Continuous/All_Dates"),
+  regexp = "RTM_OUTPUT_(I80|RCS|RD22|RYI)_formatted_all\\.csv$"
+)
+
+# Import processed continuous chlorophyll data into a dataframe
+df_chla_proc <- 
+  map(fp_rtm_wq_proc, import_rtm_chla) %>% 
+  list_rbind()
+```
+
+# Prepare Data
+
+We need to prepare both the processed data and the QA'ed data so that they can be combined only adding the processed data outside of the NDFS period of interest.
+
+```{r prepare processed data, message = FALSE}
+# Prepare processed data
+df_chla_proc_c <- df_chla_proc %>% 
+  # parse date-time variable and define tz as PST; add date and year variables
+  mutate(
+    DateTime = ymd_hms(DateTime, tz = "Etc/GMT+8"),
+    Date = date(DateTime),
+    Year = year(DateTime)
+  ) %>% 
+  # add flow action periods to the data frame but keep all data
+  ndfa_action_periods(na_action_remove = FALSE) %>%
+  # only keep data outside of the NDFS period of interest
+  filter(is.na(FlowActionPeriod)) %>%
+  # remove NA Chla values
+  drop_na(Chla) %>% 
+  # filter data to July 1 - Nov 15 for each year
+  filter(
+    month(Date) %in% 7:11,
+    !(month(Date) == 11 & day(Date) > 15)
+  ) %>% 
+  # Add variable to identify which data set it came from
+  mutate(Status = "Raw") %>% 
+  # remove unnecessary variables
+  select(-c(Date, FlowActionPeriod))
+```
+
+```{r prepare qa data}
+# Prepare QA'ed and cleaned data to be combined to the processed data
+df_chla_qa_c <- df_chla_qa %>% 
+  # parse date-time variable and define tz as PST; add year variable
+  mutate(
+    DateTime = ymd_hms(DateTime, tz = "Etc/GMT+8"),
+    Year = year(DateTime)
+  ) %>% 
+  # remove NA Chla values
+  drop_na(Chla) %>% 
+  # add variable to identify which data set it came from
+  mutate(Status = "QA")
+```
+
+The data is now ready to be combined.
+
+```{r combine data}
+# Combine the raw the QA'ed and cleaned data
+df_chla_all <- bind_rows(df_chla_proc_c, df_chla_qa_c) %>% arrange(StationCode, DateTime)
+```
+
+The entire timeseries of some Station-Year combinations have been QC'ed already, so we'll only include Station-Year combinations that contain some raw data.
+
+```{r filter station yr combinations}
+df_chla_all_c <- df_chla_all %>% 
+  group_by(StationCode, Year) %>% 
+  mutate(Keep = if_else(any(Status == "Raw"), TRUE, FALSE)) %>% 
+  ungroup() %>% 
+  filter(Keep) %>% 
+  select(-Keep)
+```
+
+# Create Plots
+
+```{r create plots}
+# Create interactive plotly plots of individual years for each Station
+ndf_plots <- df_chla_all_c %>% 
+  nest(df_data = c(DateTime, Chla, Status)) %>% 
+  mutate(plt = map2(df_data, Year, create_ts_plotly)) %>% 
+  select(-df_data)
+```
+
+# Plots {.tabset .tabset-pills}
+
+```{r prepare plot templates, include = FALSE}
+# Create a list of plot templates to use for each station
+produce_plots <- 
+  map(
+    unique(ndf_plots$StationCode),
+    ~ knit_expand(
+      file = here("manuscript_synthesis/notebooks/plot_rtm_data_for_QA_template.Rmd"), 
+      station = .x
+    )
+  )
+```
+
+In the plots below, data in the **<span style="color: gray;">gray</span>** color has already been QA'ed and validated and data in **<span style="color: brown;">brown</span>** is still considered raw.
+
+`r knit(text = unlist(produce_plots))`
+
