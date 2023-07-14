@@ -145,7 +145,7 @@ df_chla_qa_c <- df_chla_qa %>%
 The data is now ready to be combined.
 
 ```{r combine data}
-# Combine the raw the QA'ed and cleaned data
+# Combine the raw data and the QA'ed and cleaned data
 df_chla_all <- bind_rows(df_chla_proc_c, df_chla_qa_c) %>% arrange(StationCode, DateTime)
 ```
 
