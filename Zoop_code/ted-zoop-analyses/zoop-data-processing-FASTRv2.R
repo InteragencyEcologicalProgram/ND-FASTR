@@ -317,9 +317,9 @@ adon.results <- adonis2(genw2[c(9:70)] ~ genw2$Region*genw2$SamplePeriod + genw2
                         method = "bray",
                         perm = 999)
 
-dm_zoop_gen <- vegdist(genw[c(9:70)], method = "bray")
+dm_zoop_gen <- vegdist(genw2[c(9:70)], method = "bray")
 
-bd <- betadisper(dm_zoop_gen, genw$Region)
+bd <- betadisper(dm_zoop_gen, genw2$Region)
 
 anova(bd)
 permutest(bd)
@@ -363,3 +363,5 @@ for (year in years) {
   anosim_S$p_value[which(anosim_S$Year == year)] <- testS$signif
   
 }
+
+#end
