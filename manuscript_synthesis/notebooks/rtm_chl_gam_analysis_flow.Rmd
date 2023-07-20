@@ -1,0 +1,345 @@
+---
+title: "NDFS Synthesis Manuscript: Chlorophyll GAM analysis"
+subtitle: "Daily average flow as continuous predictor"
+author: "Dave Bosworth"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = here::here("docs"),
+      envir = globalenv()
+    )
+    })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.kable.NA = "")
+```
+
+# Purpose
+
+Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit a generalized additive model (GAM) to the data set to help account for seasonality in the data. This is an extension of the original analysis which used a categorical predictor for flow action period. In this analysis we will replace this categorical predictor with daily average flow as a continuous predictor.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(knitr)
+library(mgcv)
+library(lme4)
+library(car)
+library(emmeans)
+library(gratia)
+library(visreg)
+library(here)
+library(conflicted)
+
+# Declare package conflict preferences 
+conflicts_prefer(dplyr::filter())
+```
+
+Display current versions of R and packages used for this analysis:
+
+```{r print session info}
+devtools::session_info()
+```
+
+# Import Data
+
+```{r import data}
+# Define file path for processed data
+fp_data <- here("manuscript_synthesis/data/processed")
+
+# Import daily average chlorophyll data
+df_chla <- readRDS(file.path(fp_data, "chla_daily_avg_2013-2019.rds"))
+
+# Import daily average flow data
+df_flow <- readRDS(file.path(fp_data, "flow_daily_avg_2013-2019.rds"))
+```
+
+# Prepare Data
+
+```{r prepare chla data, message = FALSE}
+# Create a vector for the factor order of StationCode
+sta_order <- c(
+  "RCS",
+  "RD22",
+  "I80",
+  "LIS",
+  "STTD",
+  "LIB",
+  "RVB"
+)
+
+# We will use LIS flow data as a proxy for STTD and RD22 flow data as a proxy
+  # for I-80
+df_flow_c <- df_flow %>% 
+  filter(StationCode %in% c("RD22", "LIS")) %>% 
+  mutate(StationCode = case_match(StationCode, "RD22" ~ "I80", "LIS" ~ "STTD")) %>% 
+  bind_rows(df_flow)
+
+# Prepare chlorophyll and flow data for exploration and analysis
+df_chla_c1 <- df_chla %>% 
+  # Remove RYI since its chlorophyll data is so sparse
+  filter(StationCode != "RYI") %>% 
+  # Join flow data to chlorophyll data
+  left_join(df_flow_c, by = join_by(StationCode, Date)) %>% 
+  # Remove all NA flow values
+  drop_na(FlowAvg) %>% 
+  mutate(
+    # Scale and log transform chlorophyll values
+    ChlaAvg_log = log(ChlaAvg * 1000),
+    # Add Year and DOY variables
+    Year = year(Date),
+    DOY = yday(Date),
+    # Apply factor order to StationCode
+    StationCode = factor(StationCode, levels = sta_order),
+    # Add a column for Year as a factor for the model
+    Year_fct = factor(Year)
+  ) %>% 
+  arrange(StationCode, Date)
+```
+
+# Explore sample counts by Station
+
+```{r chla sample counts station}
+df_chla_c1 %>% 
+  summarize(
+    min_date = min(Date),
+    max_date = max(Date),
+    num_samples = n(),
+    .by = c(StationCode, Year)
+  ) %>% 
+  arrange(StationCode, Year) %>% 
+  kable()
+```
+
+Looking at the sample counts and date ranges, we'll only include years 2015-2019 for the analysis.
+
+```{r chla remove under sampled}
+df_chla_c2 <- df_chla_c1 %>% 
+  filter(Year %in% 2015:2019) %>% 
+  mutate(Year_fct = fct_drop(Year_fct))
+```
+
+# Plots
+
+Let's explore the data with some plots. First, lets plot the data in scatterplots of chlorophyll and flow facetted by Station and grouping all years together.
+
+```{r chla scatterplot all yrs, message = FALSE, fig.height = 7, fig.width = 7}
+df_chla_c2 %>% 
+  ggplot(aes(x = FlowAvg, y = ChlaAvg)) +
+  geom_point() +
+  geom_smooth(formula = "y ~ x") +
+  facet_wrap(vars(StationCode), scales = "free") +
+  theme_bw()
+```
+
+At first glance, I'm not sure how well flow is going to be able to predict chlorophyll concentrations. At the furthest upstream stations - RCS, RD22, and I-80 - chlorophyll appears to be highest at the lowest flows, but the variation is at its maximum at the lowest flows. There may be some dilution effect going on here at the higher flows. At LIS and STTD, there does seem to be a modest increase in chlorophyll concentrations at the mid-range flows. This pattern is even more obvious at LIB. There appears to be no effect of flow on chlorophyll at RVB, but the range of chlorophyll concentrations is narrow at this station (between 0  and 4).
+
+Let's break these scatterplots apart by year to see how these patterns vary annually.
+
+```{r chla scatterplot facet yrs, message = FALSE, fig.height = 11, fig.width = 8}
+df_chla_c2 %>% 
+  ggplot(aes(x = FlowAvg, y = ChlaAvg)) +
+  geom_point() +
+  geom_smooth(formula = "y ~ x") +
+  facet_wrap(
+    vars(StationCode, Year), 
+    ncol = 5, 
+    scales = "free", 
+    labeller = labeller(.multi_line = FALSE)
+  ) +
+  theme_bw()
+```
+
+The patterns appear to vary annually at each station, which may justify using a 3-way interaction. We'll stick with the model using 2-way interactions for now.
+
+# GAM Model
+
+We'll try running a GAM including all two-way interactions between Year, Daily Average Flow, and Station, and a smooth term for day of year to account for seasonality. First we'll run the GAM without accounting for serial autocorrelation.
+
+## Initial Model
+
+```{r gam no autocorr, warning = FALSE}
+m_chla_gam <- gam(
+  ChlaAvg_log ~ (Year_fct + FlowAvg + StationCode)^2 + s(DOY), 
+  data = df_chla_c2,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam no autocorr diag, warning = FALSE}
+summary(m_chla_gam)
+appraise(m_chla_gam)
+k.check(m_chla_gam)
+draw(m_chla_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_chla_gam, pages = 1, all.terms = TRUE)
+acf(residuals(m_chla_gam))
+Box.test(residuals(m_chla_gam), lag = 20, type = 'Ljung-Box')
+```
+
+## Model with k = 5
+
+The model definitely has residual autocorrelation as indicated by the ACF plot and the Box-Ljung test. Even though the p-value for the k-check is zero, the smooth term for day of year appears to be overfitted. Let's try a smaller k-value for the smooth first, then lets try to address the residual autocorrelation.
+
+```{r gam no autocorr k5, warning = FALSE}
+m_chla_gam_k5 <- gam(
+  ChlaAvg_log ~ (Year_fct + FlowAvg + StationCode)^2 + s(DOY, k = 5), 
+  data = df_chla_c2,
+  method = "REML"
+)
+
+summary(m_chla_gam_k5)
+appraise(m_chla_gam_k5)
+k.check(m_chla_gam_k5)
+draw(m_chla_gam_k5, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_chla_gam_k5, pages = 1, all.terms = TRUE)
+acf(residuals(m_chla_gam_k5))
+Box.test(residuals(m_chla_gam_k5), lag = 20, type = 'Ljung-Box')
+```
+
+Changing the k-value to 5 seems to help reduce the "wiggliness" of the smooth term for DOY, but the p-value for the k-check is still zero. Despite this, lets proceed with a k-value of 5.
+
+## Model with AR() correlation structure
+
+Now, we'll try to deal with the residual autocorrelation. We'll run AR(1), AR(3), and AR(4) models and compare them using AIC. It wasn't possible running an AR(2) model.
+
+```{r gam with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_chla_gam_k5 <- as.formula("ChlaAvg_log ~ (Year_fct + FlowAvg + StationCode)^2 + s(DOY, k = 5)")
+
+# Fit original model with k = 5 and three successive AR(p) models
+m_chla_gamm_k5 <- gamm(
+  f_chla_gam_k5, 
+  data = df_chla_c2,
+  method = "REML"
+)
+
+m_chla_gamm_k5_ar1 <- gamm(
+  f_chla_gam_k5, 
+  data = df_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 1), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_chla_gamm_k5_ar3 <- gamm(
+  f_chla_gam_k5, 
+  data = df_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 3),
+  method = "REML"
+)
+
+m_chla_gamm_k5_ar4 <- gamm(
+  f_chla_gam_k5, 
+  data = df_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 4),
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_chla_gamm_k5$lme, 
+  m_chla_gamm_k5_ar1$lme, 
+  m_chla_gamm_k5_ar3$lme, 
+  m_chla_gamm_k5_ar4$lme
+)
+```
+
+It looks like the AR(3) model has the best fit according to the AIC values and backed up by the BIC values. Let's take a closer look at that one.
+
+## AR(3) Model
+
+```{r gam ar3 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_ar3 <- residuals(m_chla_gamm_k5_ar3$lme, type = "normalized")
+m_chla_gamm_k5_ar3_gam <- m_chla_gamm_k5_ar3$gam
+
+summary(m_chla_gamm_k5_ar3_gam)
+appraise(m_chla_gamm_k5_ar3_gam)
+k.check(m_chla_gamm_k5_ar3_gam)
+draw(m_chla_gamm_k5_ar3_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_chla_gamm_k5_ar3_gam, pages = 1, all.terms = TRUE)
+acf(resid_ar3)
+Box.test(resid_ar3, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(3) model has much less residual autocorrelation, and the diagnostics plots look pretty good. What does the ANOVA table look like?
+
+### ANOVA table
+
+```{r gam ar3 anova, warning = FALSE}
+# the anova.gam function is similar to a type 3 ANOVA
+anova(m_chla_gamm_k5_ar3_gam)
+```
+
+The main effect of StationCode and the Year:StationCode and Flow:StationCode interactions were significant among the parametric terms of the model. Let's visualize the effect of flow on chlorophyll concentrations for each station.
+
+### Effect of flow for each station
+
+```{r gam ar3 visualize, warning = FALSE}
+# Add the data back to the gam object so it works with visreg
+m_chla_gamm_k5_ar3_gam$data <- df_chla_c2
+
+# Visualize the effect of flow on chlorophyll concentrations for each station
+  # according to the model
+# First facetted by station
+visreg(m_chla_gamm_k5_ar3_gam, xvar = "FlowAvg", by = "StationCode", gg = TRUE) + 
+  facet_wrap(vars(StationCode), scales = "free") +
+  theme_bw() +
+  ylab("log(Chlorophyll x 1000)") +
+  xlab("Daily Average Flow (cfs)")
+
+# All stations overlayed
+visreg(m_chla_gamm_k5_ar3_gam, xvar = "FlowAvg", by = "StationCode", overlay = TRUE, gg = TRUE) +
+  theme_bw() +
+  ylab("log(Chlorophyll x 1000)") +
+  xlab("Daily Average Flow (cfs)")
+```
+
+It looks like the slopes for the chlorophyll vs flow relationships are significantly different than zero for RD22, I-80, and STTD. RD22 and I-80 both have negative slopes while STTD has a positive slope. It's difficult to really see this though due to the x-axis scale on these plots and the significant Flow:StationCode interaction, so it may be interesting to run separate models for each of these stations. In addition, I'm somewhat unsure what results `visreg` is showing in these plots. These are conditional plots but they may be displaying only a subset of the model results.
+
+### Pairwise contrasts
+
+The Year:StationCode interaction was also significant, so let's take a closer look at its pairwise contrasts.
+
+```{r gam ar3 contrasts, warning = FALSE}
+# Contrasts in Station main effect
+emmeans(
+  m_chla_gamm_k5_ar3,
+  data = df_chla_c2,
+  specs = pairwise ~ StationCode
+)
+
+# Contrasts in Station for each Year
+multcomp::cld(
+  emmeans(
+    m_chla_gamm_k5_ar3, 
+    data = df_chla_c2,
+    specs = pairwise ~ StationCode | Year_fct
+  )$emmeans,
+  sort = FALSE,
+  Letters = letters
+)
+```
+
+Comparing Stations in each Year, STTD stood out as being higher than most other stations in 2015-2018, while LIB and RVB where lower than some of the upstream stations during all years. The model using a categorical predictor for flow action period didn't show that STTD was higher than most other stations, but it did show that LIB and RVB were lower than most of the upstream stations. The differences in results between the two models could be because of the continuous predictor of flow and how it controls the chlorophyll concentrations. 
+
+# Conclusion
+
+These results seem mixed to me. It looks like daily average flow has an effect on chlorophyll concentrations at some of the stations, but flow doesn't seem to be a good predictor overall. It may be interesting to run separate models for a few of the stations - RD22, I-80, and STTD - that appeared to have slopes that were significantly different than zero.
+

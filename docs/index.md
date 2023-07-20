@@ -7,6 +7,7 @@ layout: default
 ### Synthesis Manuscript
 
 * [Continuous Chlorophyll GAM Analysis - Categorical Predictors](rtm_chl_gam_analysis_categorical.html)
+* [Continuous Chlorophyll GAM Analysis - Flow as a continuous predictor](rtm_chl_gam_analysis_flow.html)
 
 ### Contaminants Manuscript
 
