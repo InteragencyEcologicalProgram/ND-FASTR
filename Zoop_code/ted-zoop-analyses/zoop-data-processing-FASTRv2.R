@@ -303,6 +303,40 @@ ggsave(path = output,
        width=6.5, 
        dpi="print")
 
+# Create NMDS plots for each year by Sample Period
+p_zoop_NMDS_SamplePeriod <- ggplot(df_zoop_gen_NMDS, aes(x = NMDS1, 
+                                                   y = NMDS2, 
+                                                   color = SamplePeriod)) +
+  geom_point(size = 3) +
+  stat_ellipse() + 
+  labs(title = "Zooplankton Community Composition") +
+  labs(color = "Sample Period") +
+  theme_bw() +
+  scale_color_brewer(palette = "Set1")
+
+p_zoop_NMDS_SamplePeriod +
+  facet_wrap(Year ~ ., ncol = 3, dir = "h") +
+  labs(x = NULL,
+       y = NULL,
+       title = "NDFA - Zooplankton Community Comparison (2014-2019)",
+       color = "Sample Period") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+
+ggsave(path = output,
+       filename = "p_zoop_NMDS_sampleperiod.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=5,
+       width=6.5, 
+       dpi="print")
+
 # Calculate PERMANOVA comparisons for zoop communities by Region and Year with sample period as an interaction
 
 
@@ -364,4 +398,42 @@ for (year in years) {
   
 }
 
+
+####recreating Ted's plots####
+
+# Upstream/Downstream
+fig4 <- ggplot(df_zoop, aes(x = SamplePeriod, 
+                                 y = CPUEZoop, 
+                                 fill = Order)) + 
+  geom_bar(position = "stack",  
+           width = 0.6, 
+           stat = "summary", 
+           fun = "mean") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0)) 
+
+fig4 + 
+  labs(x = NULL, 
+       y = bquote('Average Zooplankton CPUE ' ~ ('organisms *'~L^-1)), 
+       title = paste0("Abundance of Zooplankton Orders During Flow Pulses")) + 
+  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+  scale_fill_manual(values = c("#E41A1C",
+                               "#377EB8",
+                               "#4DAF4A",
+                               "#984EA3",
+                               "#FF7F00",
+                               "#FFFF33",
+                               "#A65628",
+                               "#F781BF")) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.7)) +
+  facet_grid(Region~Year) # dir = v makes order of station go "north to south"
+
+ggsave(path = output,
+       filename = paste0("fig4_zoop_order_by_year.png"), 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=5,
+       width=7.5, 
+       dpi="print")
 #end
