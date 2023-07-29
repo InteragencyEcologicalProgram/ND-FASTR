@@ -1,0 +1,146 @@
+---
+title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
+subtitle: "Explore relationship with daily average percent flow pulse water"
+author: "Dave Bosworth"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = here::here("docs"),
+      envir = globalenv()
+    )
+    })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.kable.NA = "")
+```
+
+# Purpose
+
+Explore the relationship between continuous chlorophyll data and the modelled percent flow pulse water to see if should be included in the NDFS synthesis manuscript.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(scales)
+library(knitr)
+library(here)
+library(conflicted)
+
+# Declare package conflict preferences 
+conflicts_prefer(dplyr::filter())
+```
+
+Display current versions of R and packages used for this analysis:
+
+```{r print session info}
+devtools::session_info()
+```
+
+# Import Data
+
+```{r import data}
+# Define file path for processed data
+fp_data <- here("manuscript_synthesis/data/processed")
+
+# Import daily average chlorophyll data
+df_chla <- readRDS(file.path(fp_data, "chla_daily_avg_2013-2019.rds"))
+
+# Import daily average percent flow pulse water data
+df_pfp <- readRDS(file.path(fp_data, "perc_flow_pulse_daily_avg_2016-2019.rds"))
+```
+
+# Prepare Data
+
+```{r prepare chla data, message = FALSE}
+# Create a vector for the factor order of StationCode
+sta_order <- c(
+  "LIS",
+  "STTD",
+  "LIB",
+  "RYI",
+  "RVB"
+)
+
+# Prepare chlorophyll and percent flow pulse water data for exploration and analysis
+df_chla_c <- df_chla %>% 
+  # Join flow data to chlorophyll data
+  left_join(df_pfp, by = join_by(StationCode, Date)) %>% 
+  # Remove all NA flow values
+  drop_na(PercFlowPulseAvg) %>% 
+  mutate(
+    # Add Year variable
+    Year = year(Date),
+    # Apply factor order to StationCode
+    StationCode = factor(StationCode, levels = sta_order),
+    # Convert percent flow pulse water values to proportions so they scale
+    # correctly with scales::label_percent()
+    PercFlowPulseAvg = PercFlowPulseAvg / 100
+  ) %>% 
+  arrange(StationCode, Date)
+```
+
+# Explore sample counts by Station
+
+```{r chla sample counts station}
+df_chla_c %>% 
+  summarize(
+    min_date = min(Date),
+    max_date = max(Date),
+    num_samples = n(),
+    .by = c(StationCode, Year)
+  ) %>% 
+  arrange(StationCode, Year) %>% 
+  kable()
+```
+
+Except for RYI missing data for 2017 and RVB having limited data for 2017, it looks like we pretty good data coverage.
+
+# Plots
+
+Let's explore the data with some plots. First, lets plot the data in scatterplots of chlorophyll and percent flow pulse water facetted by Station and grouping all years together.
+
+```{r chla scatterplot all yrs, message = FALSE}
+df_chla_c %>% 
+  ggplot(aes(x = PercFlowPulseAvg, y = ChlaAvg)) +
+  geom_point() +
+  geom_smooth(formula = "y ~ x") +
+  facet_wrap(vars(StationCode), scales = "free") +
+  theme_bw() +
+  ylab("Chlorophyll (ug/L)") +
+  scale_x_continuous(name = "Percent Flow Pulse Water", labels = label_percent())
+```
+
+There's some strange patterns in the data. Let's break these scatterplots apart by year to see if they can be explained by annual differences.
+
+```{r chla scatterplot facet yrs, message = FALSE, fig.height = 11, fig.width = 8}
+df_chla_c %>% 
+  ggplot(aes(x = PercFlowPulseAvg, y = ChlaAvg)) +
+  geom_point() +
+  geom_smooth(formula = "y ~ x") +
+  facet_wrap(
+    vars(StationCode, Year),
+    ncol = 4,
+    scales = "free",
+    labeller = labeller(.multi_line = FALSE)
+  ) +
+  theme_bw() +
+  ylab("Chlorophyll (ug/L)") +
+  scale_x_continuous(name = "Percent Flow Pulse Water", labels = label_percent()) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Hmmm, a lot of these relationships look complicated. I'm not sure we'll try using the daily average percent flow pulse water as a continuous predictor to model chlorophyll concentrations. 
+
