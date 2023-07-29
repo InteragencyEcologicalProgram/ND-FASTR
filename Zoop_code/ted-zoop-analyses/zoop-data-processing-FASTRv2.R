@@ -424,8 +424,9 @@ fig4 +
                                "#FF7F00",
                                "#FFFF33",
                                "#A65628",
-                               "#F781BF")) +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.7)) +
+                               "#F781BF"),
+                    labels=c("Calanoida", "Cyclopoida", "Cladocera")) +
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.7)) +
   facet_grid(Region~Year) # dir = v makes order of station go "north to south"
 
 ggsave(path = output,
