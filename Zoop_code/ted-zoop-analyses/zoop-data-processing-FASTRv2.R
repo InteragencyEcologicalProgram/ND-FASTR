@@ -315,7 +315,7 @@ p_zoop_NMDS_SamplePeriod <- ggplot(df_zoop_gen_NMDS, aes(x = NMDS1,
   scale_color_brewer(palette = "Set1")
 
 p_zoop_NMDS_SamplePeriod +
-  facet_wrap(Year ~ ., ncol = 3, dir = "h") +
+  facet_wrap(Year~., ncol = 3, dir = "h") +
   labs(x = NULL,
        y = NULL,
        title = "NDFA - Zooplankton Community Comparison (2014-2019)",
@@ -337,6 +337,29 @@ ggsave(path = output,
        width=6.5, 
        dpi="print")
 
+p_zoop_NMDS_SamplePeriod +
+  facet_wrap(vars(Year, Region), ncol = 4, dir = "h") +
+  labs(x = NULL,
+       y = NULL,
+       title = "NDFA - Zooplankton Community Comparison (2014-2019)",
+       color = "Sample Period") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+
+ggsave(path = output,
+       filename = "p_zoop_NMDS_sampleperiod_Region.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=5,
+       width=6.5, 
+       dpi="print")
+
 # Calculate PERMANOVA comparisons for zoop communities by Region and Year with sample period as an interaction
 
 
@@ -350,6 +373,7 @@ adon.results <- adonis2(genw2[c(9:70)] ~ genw2$Region*genw2$SamplePeriod + genw2
                         strata = genw2$StationCode,
                         method = "bray",
                         perm = 999)
+#write.csv(adon.results, file = "adon.results.csv")
 
 dm_zoop_gen <- vegdist(genw2[c(9:70)], method = "bray")
 

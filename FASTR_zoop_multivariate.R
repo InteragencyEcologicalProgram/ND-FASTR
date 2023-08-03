@@ -110,15 +110,19 @@ summary(modtab)
 
 #####Post-hoc with emmeans Sidak method - THIS IS THE POST HOC USED######
 #use emmeans instead to get p value
-lmer_emm <- emmeans(model4.1, specs = pairwise ~Regions2:Year,adjust="sidak")#post hoc test on region and year 
+lmer_emm <- emmeans(model4.1, specs = pairwise ~Regions2|Year,adjust="sidak")#post hoc test on region and year 
 phoc <- print(test(lmer_emm)$contrasts)
 kable(phoc)
+
+lmer_emm2 <- emmeans(model4.1, specs = pairwise ~SamplePeriod|Year,adjust="sidak")#post hoc test on sampleperiod and year 
+phoc2 <- print(test(lmer_emm2)$contrasts)
+kable(phoc2)
 
 #######MODELS FOR TAXA GROUPS__Two-way interactive model and station code as a random effect--THIS IS THE MODEL we ultimately chose#####
 model4.1_cyclo <- lmer(log(cpue) ~ Regions2*Year+Year*SamplePeriod+SamplePeriod*Regions2+(1|StationCode),data = zoopNDFA5_cyclopoid,REML = TRUE) 
 summary(model4.1_cyclo)
 model4.1_cyclo
-modtab_cyclo <- Anova(model4.1_cyclo, type = 3, test.statistic = "F") #this runs- year, regions:year, year:sampleperiod, regions:sampleperiod are all significant
+modtab_cyclo <- Anova(model4.1_cyclo, type = 3, test.statistic = "F") 
 modtab_cyclo
 
 
@@ -142,67 +146,40 @@ modtab_clad
 #cyclopoids
 
 #interaction: region and year
-lmer_emm_cyclo <- emmeans(model4.1_cyclo, specs = pairwise ~Regions2:Year,adjust="sidak")
+lmer_emm_cyclo <- emmeans(model4.1_cyclo, specs = pairwise ~Year|Regions2,adjust="sidak")
 phoc_cyclo <- print(test(lmer_emm_cyclo)$contrasts)
+kable(phoc_cyclo)
 #write.csv(phoc_cyclo, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_cyclo.csv")
 
 #interaction: sample period and year
-lmer_emm_cyclo_sp <- emmeans(model4.1_cyclo, specs = pairwise ~Year:SamplePeriod,adjust="sidak")
+lmer_emm_cyclo_sp <- emmeans(model4.1_cyclo, specs = pairwise ~SamplePeriod|Year,adjust="sidak")
 phoc_cyclo_sp <- print(test(lmer_emm_cyclo_sp)$contrasts)
+kable(phoc_cyclo_sp)
 #write.csv(phoc_cyclo_sp, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_cyclo_sp.csv")
 
-#main effect: region
-lmer_emm_cycloRg <- emmeans(model4.1_cyclo, specs = pairwise ~Regions2,adjust="sidak")
-phoc_cycloRg <- print(test(lmer_emm_cycloRg)$contrasts)
-#write.csv(phoc_cycloRg, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_cycloRg.csv")
-
-#main effect: sample period
-lmer_emm_cyclofpp <- emmeans(model4.1_cyclo, specs = pairwise ~SamplePeriod,adjust="sidak")
-phoc_cyclofpp <- print(test(lmer_emm_cyclofpp)$contrasts)
-#write.csv(phoc_cyclofpp, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_cyclofpp.csv")
 
 #calanoids
-lmer_emm_cal_ry <- emmeans(model4.1_cal, specs = pairwise ~Regions2:Year,adjust="sidak")
+lmer_emm_cal_ry <- emmeans(model4.1_cal, specs = pairwise ~Year|Regions2,adjust="sidak")
 phoc_cal_ry <- print(test(lmer_emm_cal_ry)$contrasts)
+kable(phoc_cal_ry)
 #write.csv(phoc_cal_ry, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_cal_ry.csv")
 
-lmer_emm_cal_rs <- emmeans(model4.1_cal, specs = pairwise ~Regions2:SamplePeriod,adjust="sidak")
+lmer_emm_cal_rs <- emmeans(model4.1_cal, specs = pairwise ~SamplePeriod|Regions2,adjust="sidak")
 phoc_cal_rs <- print(test(lmer_emm_cal_rs)$contrasts)
+kable(phoc_cal_rs)
 #write.csv(phoc_cal_rs, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_cal_rs.csv")
 
-#Main effect: region
-lmer_emm_cal_r <- emmeans(model4.1_cal, specs = pairwise ~Regions2,adjust="sidak")
-phoc_cal_r <- print(test(lmer_emm_cal_r)$contrasts)
-#write.csv(phoc_cal_r, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_cal_r.csv")
-
-#main effect: Year
-lmer_emm_cal_y <- emmeans(model4.1_cal, specs = pairwise ~Year,adjust="sidak")
-phoc_cal_y <- print(test(lmer_emm_cal_y)$contrasts)
-#write.csv(phoc_cal_y, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_cal_y.csv")
-
-#main effect: sampleperiod
-lmer_emm_cal_fpp <- emmeans(model4.1_cal, specs = pairwise ~SamplePeriod,adjust="sidak")
-phoc_cal_fpp <- print(test(lmer_emm_cal_fpp)$contrasts)
-#write.csv(phoc_cal_fpp, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_cal_fpp.csv")
-
 #cladocerans
-lmer_emm_clad_ry <- emmeans(model4.1_clad, specs = pairwise ~Regions2:Year,adjust="sidak")
+lmer_emm_clad_ry <- emmeans(model4.1_clad, specs = pairwise ~Regions2|Year,adjust="sidak")
 phoc_clad_ry <- print(test(lmer_emm_clad_ry)$contrasts)
-write.csv(phoc_clad_ry, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_clad_ry.csv")
+kable(phoc_clad_ry)
+#write.csv(phoc_clad_ry, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_clad_ry.csv")
 
-lmer_emm_clad_ys <- emmeans(model4.1_clad, specs = pairwise ~Year:SamplePeriod,adjust="sidak")
+lmer_emm_clad_ys <- emmeans(model4.1_clad, specs = pairwise ~SamplePeriod|Year,adjust="sidak")
 phoc_clad_ys <- print(test(lmer_emm_clad_ys)$contrasts)
+kable(phoc_clad_ys)
 #write.csv(phoc_clad_ys, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_clad_ys.csv")
 
-#main effect: region
-lmer_emm_clad_r <- emmeans(model4.1_clad, specs = pairwise ~Regions2,adjust="sidak")
-phoc_clad_r <- print(test(lmer_emm_clad_r)$contrasts)
-#write.csv(phoc_clad_r, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_clad_r.csv")
-
-#main effect: year
-lmer_emm_clad_y <- emmeans(model4.1_clad, specs = pairwise ~Year,adjust="sidak")
-phoc_clad_y <- print(test(lmer_emm_clad_y)$contrasts)
-#write.csv(phoc_clad_y, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/zoop/phoc_clad_y.csv")
 
 ####GAM analysis####
 
@@ -317,7 +294,7 @@ plot(m_cpue_gam, pages=1, residuals=TRUE)
 
 # Plot Upstream and Downstream Total BV by ActionPhase for each year
 fig1 <- ggplot(data=zoopNDFA7, aes(y= log10(cpue), 
-                                   x = Regions2,
+                                   x = factor(Regions2,levels = c("Upstream","Downstream")),
                                    color = SamplePeriod)) +
   geom_boxplot() 
 
