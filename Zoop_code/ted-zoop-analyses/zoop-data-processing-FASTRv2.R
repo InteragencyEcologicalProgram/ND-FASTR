@@ -401,6 +401,7 @@ for (year in years) {
   anosim_r$p_value[which(anosim_r$Year == year)] <- test$signif
   
 }
+anosim_r
 
 # Calculate ANOSIM comparisons for zoop communities by Sample Period
 anosim_S <- data.frame(Year = years, 
@@ -421,7 +422,7 @@ for (year in years) {
   anosim_S$p_value[which(anosim_S$Year == year)] <- testS$signif
   
 }
-
+anosim_S
 
 ####recreating Ted's plots####
 

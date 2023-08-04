@@ -1,0 +1,246 @@
+"","Year","Date","StationCode","Classification","Organism","CPUEZoop"
+"1","2019","8/7/2019","STTD","Cyclopoids","Acanthocyclops vernalis adult",0.90507018
+"2","2019","9/4/2019","STTD","Cyclopoids","Acanthocyclops vernalis adult",12.52001232
+"3","2019","9/18/2019","STTD","Cyclopoids","Acanthocyclops vernalis adult",6.916066259
+"4","2019","10/2/2019","STTD","Cladocera","Alona",6.792626878
+"5","2019","9/18/2019","STTD","Cladocera","Alona",55.32853007
+"6","2019","8/21/2019","STTD","Cladocera","Alona",14.20732599
+"7","2019","10/16/2019","STTD","Cladocera","Alona",3.013441806
+"8","2019","9/4/2019","STTD","Cladocera","Alona",31.30003081
+"9","2019","8/7/2019","STTD","Cladocera","Alona",3.167745629
+"10","2019","9/18/2019","STTD","Cladocera","Bosmina",138.3213252
+"11","2019","10/16/2019","STTD","Cladocera","Bosmina",13.56048813
+"12","2019","8/21/2019","STTD","Cladocera","Bosmina",14.20732599
+"13","2019","9/4/2019","STTD","Cladocera","Bosmina",131.4601294
+"14","2019","8/7/2019","STTD","Cladocera","Bosmina",4.072815809
+"15","2019","8/7/2019","STTD","Calanoids","Calanoid copepodids",57.47195641
+"16","2019","9/18/2019","STTD","Calanoids","Calanoid copepodids",69.16066259
+"17","2019","8/21/2019","STTD","Calanoids","Calanoid copepodids",3892.80732
+"18","2019","10/2/2019","STTD","Calanoids","Calanoid copepodids",326.0460902
+"19","2019","10/16/2019","STTD","Calanoids","Calanoid copepodids",159.7124157
+"20","2019","9/4/2019","STTD","Calanoids","Calanoid copepodids",97.03009552
+"21","2019","8/21/2019","STTD","Cladocera","Camptocercus",42.62197796
+"22","2019","10/16/2019","STTD","Cladocera","Camptocercus",7.533604514
+"23","2019","10/2/2019","STTD","Cladocera","Camptocercus",61.1336419
+"24","2019","9/4/2019","STTD","Cladocera","Camptocercus",3.130003081
+"25","2019","8/7/2019","STTD","Cladocera","Camptocercus",5.430421078
+"26","2019","8/21/2019","STTD","Cladocera","Ceriodaphnia",14.20732599
+"27","2019","10/2/2019","STTD","Cladocera","Ceriodaphnia",9.056835838
+"28","2019","9/4/2019","STTD","Cladocera","Ceriodaphnia",43.82004314
+"29","2019","9/18/2019","STTD","Cladocera","Ceriodaphnia",48.41246382
+"30","2019","10/16/2019","STTD","Cladocera","Ceriodaphnia",3.013441806
+"31","2019","8/7/2019","STTD","Cladocera","Ceriodaphnia",2.262675449
+"32","2019","9/18/2019","STTD","Cladocera","Chydorus",6.916066259
+"33","2019","10/16/2019","STTD","Cladocera","Chydorus",3.013441806
+"34","2019","10/2/2019","STTD","Cladocera","Chydorus",6.792626878
+"35","2019","9/4/2019","STTD","Cladocera","Chydorus",43.82004314
+"36","2019","8/7/2019","STTD","Cladocera","Chydorus",0.90507018
+"37","2019","9/4/2019","STTD","Microzooplankton_Nauplii","Copepod nauplii",554.4017957
+"38","2019","10/16/2019","STTD","Microzooplankton_Nauplii","Copepod nauplii",96.84578492
+"39","2019","8/7/2019","STTD","Microzooplankton_Nauplii","Copepod nauplii",1.35760527
+"40","2019","8/21/2019","STTD","Microzooplankton_Nauplii","Copepod nauplii",210.2684246
+"41","2019","10/2/2019","STTD","Microzooplankton_Nauplii","Copepod nauplii",11.20783435
+"42","2019","9/18/2019","STTD","Microzooplankton_Nauplii","Copepod nauplii",43.38259744
+"43","2019","10/16/2019","STTD","Cyclopoids","Cyclopoid adult",43.69490618
+"44","2019","8/7/2019","STTD","Cyclopoids","Cyclopoid copepodid",12.67098252
+"45","2019","8/21/2019","STTD","Cyclopoids","Cyclopoid copepodid",170.4879118
+"46","2019","9/18/2019","STTD","Cyclopoids","Cyclopoid copepodid",318.1390479
+"47","2019","10/2/2019","STTD","Cyclopoids","Cyclopoid copepodid",13.58525376
+"48","2019","9/4/2019","STTD","Cyclopoids","Cyclopoid copepodid",153.370151
+"49","2019","10/16/2019","STTD","Cladocera","Daphnia",1.506720903
+"50","2019","8/21/2019","STTD","Cladocera","Diaphanosoma",184.6952378
+"51","2019","9/4/2019","STTD","Cladocera","Diaphanosoma",78.25007703
+"52","2019","8/7/2019","STTD","Cladocera","Diaphanosoma",15.83872815
+"53","2019","10/16/2019","STTD","Cladocera","Diaphanosoma",7.533604514
+"54","2019","9/18/2019","STTD","Cladocera","Diaphanosoma",3.45803313
+"55","2019","10/2/2019","STTD","Cladocera","Diaphanosoma",4.528417919
+"56","2019","10/16/2019","STTD","Cyclopoids","Eucyclops elegans",3.013441806
+"57","2019","9/4/2019","STTD","Cyclopoids","Eucyclops elegans",3.130003081
+"58","2019","10/16/2019","STTD","Cyclopoids","Eucyclops pectinifer",1.506720903
+"59","2019","10/16/2019","STTD","Calanoids","Eurytemora affinis adult",1.506720903
+"60","2019","10/16/2019","STTD","Cladocera","Graptoleberis",1.506720903
+"61","2019","8/7/2019","STTD","Cladocera","Graptoleberis",1.810140359
+"62","2019","10/2/2019","STTD","Cladocera","Graptoleberis",2.264208959
+"63","2019","10/2/2019","STTD","Harpacticoids","Harpacticoids",2.264208959
+"64","2019","9/4/2019","STTD","Harpacticoids","Harpacticoids",3.130003081
+"65","2019","9/18/2019","STTD","Cladocera","Ilyocryptus",34.5803313
+"66","2019","10/16/2019","STTD","Cladocera","Ilyocryptus",12.05376722
+"67","2019","9/4/2019","STTD","Cladocera","Ilyocryptus",9.390009243
+"68","2019","10/2/2019","STTD","Cladocera","Ilyocryptus",4.528417919
+"69","2019","10/2/2019","STTD","Cyclopoids","Macrocyclops albidus",9.056835838
+"70","2019","10/16/2019","STTD","Cyclopoids","Macrocyclops albidus",3.013441806
+"71","2019","8/21/2019","STTD","Cladocera","Macrothrix",14.20732599
+"72","2019","9/4/2019","STTD","Cladocera","Macrothrix",9.390009243
+"73","2019","9/18/2019","STTD","Cladocera","Macrothrix",6.916066259
+"74","2019","10/16/2019","STTD","Cladocera","Macrothrix",21.09409264
+"75","2019","10/2/2019","STTD","Cladocera","Macrothrix",4.528417919
+"76","2019","9/18/2019","STTD","Cyclopoids","Mesocyclops edax",3.45803313
+"77","2019","10/2/2019","STTD","Cyclopoids","Microcyclops rubellus",4.528417919
+"78","2019","10/16/2019","STTD","Cyclopoids","Microcyclops rubellus",9.040325417
+"79","2019","8/7/2019","STTD","Cyclopoids","Microcyclops rubellus",2.262675449
+"80","2019","9/18/2019","STTD","Cladocera","Moina",17.29016565
+"81","2019","9/4/2019","STTD","Cladocera","Moina",3.130003081
+"82","2019","8/7/2019","STTD","Cladocera","Monospilus",0.45253509
+"83","2019","10/16/2019","STTD","Microzooplankton_Nauplii","Ostracods",23.6918873
+"84","2019","10/2/2019","STTD","Microzooplankton_Nauplii","Ostracods",9.495526323
+"85","2019","8/7/2019","STTD","Microzooplankton_Nauplii","Ostracods",24.21062731
+"86","2019","9/4/2019","STTD","Microzooplankton_Nauplii","Ostracods",33.06065754
+"87","2019","9/18/2019","STTD","Microzooplankton_Nauplii","Ostracods",44.64006404
+"88","2019","8/21/2019","STTD","Microzooplankton_Nauplii","Ostracods",34.09758237
+"89","2019","9/4/2019","STTD","Cyclopoids","Paracyclops chiltoni",9.390009243
+"90","2019","8/7/2019","STTD","Cyclopoids","Paracyclops chiltoni",0.90507018
+"91","2019","8/21/2019","STTD","Cyclopoids","Paracyclops fimbriatus",14.20732599
+"92","2019","10/16/2019","STTD","Cyclopoids","Paracyclops fimbriatus",3.013441806
+"93","2019","9/18/2019","STTD","Cyclopoids","Paracyclops spp.",3.45803313
+"94","2019","10/2/2019","STTD","Cladocera","Picripleuroxus",2.264208959
+"95","2019","10/16/2019","STTD","Cladocera","Pleuroxus",7.533604514
+"96","2019","8/21/2019","STTD","Calanoids","Pseudodiaptomus forbesi adult",28.41465197
+"97","2019","10/16/2019","STTD","Calanoids","Pseudodiaptomus forbesi adult",7.533604514
+"98","2019","10/2/2019","STTD","Calanoids","Pseudodiaptomus forbesi adult",13.58525376
+"99","2019","9/18/2019","STTD","Calanoids","Pseudodiaptomus forbesi adult",6.916066259
+"100","2019","8/7/2019","STTD","Calanoids","Pseudodiaptomus forbesi adult",3.620280719
+"101","2019","9/4/2019","STTD","Microzooplankton_Nauplii","Rotifers",223.7952203
+"102","2019","10/16/2019","STTD","Microzooplankton_Nauplii","Rotifers",8.728590058
+"103","2019","8/21/2019","STTD","Microzooplankton_Nauplii","Rotifers",1483.244833
+"104","2019","8/7/2019","STTD","Microzooplankton_Nauplii","Rotifers",52.26780288
+"105","2019","9/18/2019","STTD","Microzooplankton_Nauplii","Rotifers",74.19052896
+"106","2019","10/2/2019","STTD","Microzooplankton_Nauplii","Rotifers",7.3162252
+"107","2019","9/18/2019","STTD","Cladocera","Simocephalus",3.45803313
+"108","2019","10/16/2019","STTD","Cladocera","Simocephalus",1.506720903
+"109","2019","9/4/2019","STTD","Cladocera","Simocephalus",3.130003081
+"110","2019","9/18/2019","STTD","Cyclopoids","Tropocyclops prasinus",3.45803313
+"111","2019","8/5/2019","SHR","Calanoids","Arctodiaptomus dorsalis",1.9940061
+"112","2019","8/5/2019","SHR","Calanoids","Calanoid copepodid",9.970030498
+"113","2019","8/5/2019","SHR","Cladocera","Alona",2.991009149
+"114","2019","8/5/2019","SHR","Cladocera","Bosmina",27.9160854
+"115","2019","8/5/2019","SHR","Cladocera","Ceriodaphnia",0.99700305
+"116","2019","8/5/2019","SHR","Cladocera","Chydorus",5.982018299
+"117","2019","8/5/2019","SHR","Cladocera","Diaphanosoma",2.991009149
+"118","2019","8/5/2019","SHR","Cladocera","Disparalona",1.9940061
+"119","2019","8/5/2019","SHR","Cladocera","Graptoleberis",3.988012199
+"120","2019","8/5/2019","SHR","Cladocera","Ilyocryptus",7.976024399
+"121","2019","8/5/2019","SHR","Cladocera","Macrothrix",5.982018299
+"122","2019","8/5/2019","SHR","Cladocera","Monospilus",1.9940061
+"123","2019","8/5/2019","SHR","Cladocera","Sida",1.9940061
+"124","2019","8/5/2019","SHR","Cyclopoids","Acanthocyclops vernalis adult",0.99700305
+"125","2019","8/5/2019","SHR","Cyclopoids","Cyclopoid copepodid",40.87712504
+"126","2019","8/5/2019","SHR","Cyclopoids","Eucyclops",1.9940061
+"127","2019","8/5/2019","SHR","Cyclopoids","Mesocyclops edax",0.99700305
+"128","2019","8/5/2019","SHR","Cyclopoids","Microcyclops rubellus",4.985015249
+"129","2019","8/5/2019","SHR","Harpacticoids","Harpacticoids",0.99700305
+"130","2019","8/5/2019","SHR","Microzooplankton_Nauplii","Copepod nauplii",0.99700305
+"131","2019","8/5/2019","SHR","Microzooplankton_Nauplii","Ostracods",6.979021349
+"132","2019","8/5/2019","SHR","Microzooplankton_Nauplii","Rotifers",65.80220129
+"133","2019","8/19/2019","SHR","Calanoids","Arctodiaptomus dorsalis",1.961183589
+"134","2019","8/19/2019","SHR","Calanoids","Calanoid copepodid",2.353420307
+"135","2019","8/19/2019","SHR","Calanoids","Skistodiaptomus pallidus",0.392236718
+"136","2019","8/19/2019","SHR","Cladocera","Alona",2.353420307
+"137","2019","8/19/2019","SHR","Cladocera","Alonella",0.392236718
+"138","2019","8/19/2019","SHR","Cladocera","Bosmina",21.18078276
+"139","2019","8/19/2019","SHR","Cladocera","Camptocercus",1.568946871
+"140","2019","8/19/2019","SHR","Cladocera","Ceriodaphnia",7.452497639
+"141","2019","8/19/2019","SHR","Cladocera","Chydorus",1.961183589
+"142","2019","8/19/2019","SHR","Cladocera","Diaphanosoma",1.176710153
+"143","2019","8/19/2019","SHR","Cladocera","Disparalona",0.392236718
+"144","2019","8/19/2019","SHR","Cladocera","Eurycercus",1.568946871
+"145","2019","8/19/2019","SHR","Cladocera","Graptoleberis",2.353420307
+"146","2019","8/19/2019","SHR","Cladocera","Ilyocryptus",3.53013046
+"147","2019","8/19/2019","SHR","Cladocera","Kurzia",0.392236718
+"148","2019","8/19/2019","SHR","Cladocera","Leydigia",0.392236718
+"149","2019","8/19/2019","SHR","Cladocera","Moina",0.784473436
+"150","2019","8/19/2019","SHR","Cladocera","Monospilus",3.137893743
+"151","2019","8/19/2019","SHR","Cladocera","Picripleuroxus",2.353420307
+"152","2019","8/19/2019","SHR","Cladocera","Sida",0.784473436
+"153","2019","8/19/2019","SHR","Cladocera","Simocephalus",0.784473436
+"154","2019","8/19/2019","SHR","Cyclopoids","Acanthocyclops vernalis adult",2.353420307
+"155","2019","8/19/2019","SHR","Cyclopoids","Cyclopoid copepodid",21.57301948
+"156","2019","8/19/2019","SHR","Cyclopoids","Eucyclops pectinifer",0.392236718
+"157","2019","8/19/2019","SHR","Cyclopoids","Macrocyclops albidus",0.784473436
+"158","2019","8/19/2019","SHR","Cyclopoids","Paracyclops fimbriatus",0.392236718
+"159","2019","8/19/2019","SHR","Microzooplankton_Nauplii","Copepod nauplii",0.784473436
+"160","2019","8/19/2019","SHR","Microzooplankton_Nauplii","Ostracods",3.53013046
+"161","2019","8/19/2019","SHR","Microzooplankton_Nauplii","Rotifers",3.53013046
+"162","2019","9/5/2019","SHR","Calanoids","Calanoid copepodid",3.105511163
+"163","2019","9/5/2019","SHR","Calanoids","Pseudodiaptomus forbesi adult",0.621102233
+"164","2019","9/5/2019","SHR","Cladocera","Alona",3.726613395
+"165","2019","9/5/2019","SHR","Cladocera","Bosmina",14.28535135
+"166","2019","9/5/2019","SHR","Cladocera","Camptocercus",1.863306698
+"167","2019","9/5/2019","SHR","Cladocera","Ceriodaphnia",14.28535135
+"168","2019","9/5/2019","SHR","Cladocera","Chydorus",2.48440893
+"169","2019","9/5/2019","SHR","Cladocera","Diaphanosoma",1.863306698
+"170","2019","9/5/2019","SHR","Cladocera","Disparalona",1.242204465
+"171","2019","9/5/2019","SHR","Cladocera","Graptoleberis",1.863306698
+"172","2019","9/5/2019","SHR","Cladocera","Ilyocryptus",6.832124558
+"173","2019","9/5/2019","SHR","Cladocera","Macrothrix",0.621102233
+"174","2019","9/5/2019","SHR","Cladocera","Moina",1.242204465
+"175","2019","9/5/2019","SHR","Cladocera","Monospilus",1.863306698
+"176","2019","9/5/2019","SHR","Cladocera","Simocephalus",0.621102233
+"177","2019","9/5/2019","SHR","Cyclopoids","Acanthocyclops vernalis adult",6.211022325
+"178","2019","9/5/2019","SHR","Cyclopoids","Cyclopoid copepodid",31.67621386
+"179","2019","9/5/2019","SHR","Cyclopoids","Eucyclops elegans",0.621102233
+"180","2019","9/5/2019","SHR","Cyclopoids","Eucyclops pectinifer",1.863306698
+"181","2019","9/5/2019","SHR","Cyclopoids","Mesocyclops edax",1.242204465
+"182","2019","9/5/2019","SHR","Cyclopoids","Paracyclops fimbriatus",0.621102233
+"183","2019","9/5/2019","SHR","Cyclopoids","Tropocyclops prasinus",0.621102233
+"184","2019","9/5/2019","SHR","Microzooplankton_Nauplii","Copepod nauplii",4.554749705
+"185","2019","9/5/2019","SHR","Microzooplankton_Nauplii","Ostracods",6.072999607
+"186","2019","9/5/2019","SHR","Microzooplankton_Nauplii","Rotifers",9.109499411
+"187","2019","9/16/2019","SHR","Calanoids","Calanoid copepodid",11.1441417
+"188","2019","9/16/2019","SHR","Cladocera","Alona",5.572070848
+"189","2019","9/16/2019","SHR","Cladocera","Bosmina",56.83512265
+"190","2019","9/16/2019","SHR","Cladocera","Camptocercus",1.11441417
+"191","2019","9/16/2019","SHR","Cladocera","Ceriodaphnia",30.08918258
+"192","2019","9/16/2019","SHR","Cladocera","Chydorus",7.800899188
+"193","2019","9/16/2019","SHR","Cladocera","Diaphanosoma",2.228828339
+"194","2019","9/16/2019","SHR","Cladocera","Graptoleberis",1.11441417
+"195","2019","9/16/2019","SHR","Cladocera","Ilyocryptus",6.686485018
+"196","2019","9/16/2019","SHR","Cladocera","Leydigia",1.11441417
+"197","2019","9/16/2019","SHR","Cladocera","Moina",1.11441417
+"198","2019","9/16/2019","SHR","Cladocera","Monospilus",2.228828339
+"199","2019","9/16/2019","SHR","Cladocera","Scapholeberis",1.11441417
+"200","2019","9/16/2019","SHR","Cyclopoids","Acanthocyclops vernalis adult",1.11441417
+"201","2019","9/16/2019","SHR","Cyclopoids","Cyclopoid copepodid",91.38196191
+"202","2019","9/16/2019","SHR","Cyclopoids","Eucyclops pectinifer",1.11441417
+"203","2019","9/16/2019","SHR","Cyclopoids","Paracyclops fimbriatus",4.457656679
+"204","2019","9/16/2019","SHR","Harpacticoids","Harpacticoids",1.11441417
+"205","2019","9/16/2019","SHR","Microzooplankton_Nauplii","Copepod nauplii",4.803509352
+"206","2019","9/16/2019","SHR","Microzooplankton_Nauplii","Ostracods",4.803509352
+"207","2019","9/16/2019","SHR","Microzooplankton_Nauplii","Rotifers",17.29263367
+"208","2019","9/30/2019","SHR","Calanoids","Calanoid adult",2.778494116
+"209","2019","9/30/2019","SHR","Cladocera","Alona",1.389247058
+"210","2019","9/30/2019","SHR","Cladocera","Bosmina",20.83870587
+"211","2019","9/30/2019","SHR","Cladocera","Chydorus",5.556988232
+"212","2019","9/30/2019","SHR","Cladocera","Diaphanosoma",2.778494116
+"213","2019","9/30/2019","SHR","Cladocera","Ilyocryptus",4.167741174
+"214","2019","9/30/2019","SHR","Cladocera","Leydigia",1.389247058
+"215","2019","9/30/2019","SHR","Cladocera","Moina",4.167741174
+"216","2019","9/30/2019","SHR","Cladocera","Monospilus",9.724729406
+"217","2019","9/30/2019","SHR","Cladocera","Simocephalus",1.389247058
+"218","2019","9/30/2019","SHR","Cyclopoids","Acanthocyclops vernalis adult",1.389247058
+"219","2019","9/30/2019","SHR","Cyclopoids","Cyclopoid copepodid",226.4472704
+"220","2019","9/30/2019","SHR","Cyclopoids","Diacyclops thomasi",1.389247058
+"221","2019","9/30/2019","SHR","Cyclopoids","Eucyclops elegans",1.389247058
+"222","2019","9/30/2019","SHR","Cyclopoids","Paracyclops chiltoni",2.778494116
+"223","2019","9/30/2019","SHR","Microzooplankton_Nauplii","Copepod nauplii",1.041935293
+"224","2019","9/30/2019","SHR","Microzooplankton_Nauplii","Ostracods",2.083870587
+"225","2019","9/30/2019","SHR","Microzooplankton_Nauplii","Rotifers",23.96451175
+"226","2019","10/14/2019","SHR","Calanoids","Calanoid copepodid",6.336839522
+"227","2019","10/14/2019","SHR","Cladocera","Bosmina",19.80262351
+"228","2019","10/14/2019","SHR","Cladocera","Ceriodaphnia",1.58420988
+"229","2019","10/14/2019","SHR","Cladocera","Chydorus",3.960524701
+"230","2019","10/14/2019","SHR","Cladocera","Daphnia",0.79210494
+"231","2019","10/14/2019","SHR","Cladocera","Disparalona",3.168419761
+"232","2019","10/14/2019","SHR","Cladocera","Ilyocryptus",0.79210494
+"233","2019","10/14/2019","SHR","Cladocera","Kurzia",1.58420988
+"234","2019","10/14/2019","SHR","Cladocera","Moina",9.505259283
+"235","2019","10/14/2019","SHR","Cladocera","Monospilus",1.58420988
+"236","2019","10/14/2019","SHR","Cladocera","Pleuroxus",0.79210494
+"237","2019","10/14/2019","SHR","Cyclopoids","Acanthocyclops vernalis adult",0.79210494
+"238","2019","10/14/2019","SHR","Cyclopoids","Cyclopoid copepodid",102.1815373
+"239","2019","10/14/2019","SHR","Cyclopoids","Eucyclops pectinifer",3.960524701
+"240","2019","10/14/2019","SHR","Cyclopoids","Mesocyclops edax",0.79210494
+"241","2019","10/14/2019","SHR","Cyclopoids","Microcyclops rubellus",2.376314821
+"242","2019","10/14/2019","SHR","Cyclopoids","Tropocyclops prasinus mexicanus",3.168419761
+"243","2019","10/14/2019","SHR","Microzooplankton_Nauplii","Copepod nauplii",1.244736335
+"244","2019","10/14/2019","SHR","Microzooplankton_Nauplii","Ostracods",0.622368167
+"245","2019","10/14/2019","SHR","Microzooplankton_Nauplii","Rotifers",6.84604984
