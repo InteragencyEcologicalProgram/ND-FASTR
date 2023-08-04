@@ -214,8 +214,8 @@ df_conc_flow_c %>% filter(Station=="SHR")%>%
 shr2<-df_conc_flow_c%>%filter(Station=="SHR")%>%mutate(DOY = yday(Date))%>%mutate(application_watershed_area=total_application/22526.79948) #standardize application data
 sttd2<-df_conc_flow_c%>%filter(Station=="STTD")%>%mutate(DOY = yday(Date))%>%mutate(application_watershed_area=total_application/4217.503529)
 
-
-#try running gams with a smoother for day of year
+#try pesticide load- multiply flow by concentration in water and convert units to kg/day or g/day and use rainfall and application and smooth for DOY as a predictor
+#try running gams with a smoother for day of year- try with lag of application data and try with rainfall as predictor
 #SHR
 shr_zoop_gam2 <- gam(log10(totalconc) ~ SR_DailyAvgNetFlow+ application_watershed_area +s(DOY, bs="cr"), data = shr2,method = "REML", family="gaussian")
 summary(shr_zoop_gam2)
