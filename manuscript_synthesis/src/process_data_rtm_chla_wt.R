@@ -43,20 +43,26 @@ ndfa_abs_sp_path <- function(fp_rel = NULL) {
 # Define directory for the continuous WQ data on the NDFA SharePoint
 fp_rtm_wq <- ndfa_abs_sp_path("2011-2019 Synthesis Study-FASTR/WQ_Subteam/Processed_Data/Continuous")
 
-# Import QA'ed and cleaned continuous WQ data for the NDFS period of interest
-df_rtm_wq <- read_csv(path(fp_rtm_wq, "RTM_INPUT_all_2021-04-20.csv"))
+# Import QA'ed and cleaned continuous chlorophyll and water temperature data for
+  # the NDFS period of interest
+df_rtm_wq <- read_csv(
+  file = path(fp_rtm_wq, "RTM_INPUT_all_2021-04-20.csv"),
+  col_types = cols_only(
+    StationCode = "c",
+    DateTime = "c",
+    WaterTemp = "d",
+    Chla = "d"
+  )
+)
 
 
 # Calculate Daily Averages ------------------------------------------------
 
 df_wq_daily_avg <- df_rtm_wq %>% 
-  transmute(
-    StationCode,
-    # parse date-time variable and define tz as PST; add date variable
+  # parse date-time variable and define tz as PST; add date variable
+  mutate(
     DateTime = ymd_hms(DateTime, tz = "Etc/GMT+8"),
-    Date = date(DateTime),
-    WaterTemp,
-    Chla
+    Date = date(DateTime)
   ) %>% 
   # calculate daily average chlorophyll and water temperature values
   summarize(across(c(WaterTemp, Chla), ~ mean(.x, na.rm = TRUE)), .by = c(StationCode, Date)) %>% 
