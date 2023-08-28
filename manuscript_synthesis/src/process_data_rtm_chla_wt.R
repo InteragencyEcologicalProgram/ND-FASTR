@@ -16,7 +16,7 @@ library(conflicted)
 conflicts_prefer(dplyr::filter())
 
 # Check if we are in the correct working directory
-i_am("manuscript_synthesis/src/process_data_rtm_chla.R")
+i_am("manuscript_synthesis/src/process_data_rtm_chla_wt.R")
 
 
 # Functions ---------------------------------------------------------------
@@ -71,6 +71,6 @@ df_wq_daily_avg <- df_rtm_wq %>%
 # Save and Export Data ----------------------------------------------------
 
 # Save daily average chlorophyll and water temperature data as csv and rds files
-df_wq_daily_avg %>% write_csv(here("manuscript_synthesis/data/processed/wq_daily_avg_2013-2019.csv"))
-df_wq_daily_avg %>% saveRDS(here("manuscript_synthesis/data/processed/wq_daily_avg_2013-2019.rds"))
+df_wq_daily_avg %>% write_csv(here("manuscript_synthesis/data/processed/chla_wt_daily_avg_2013-2019.csv"))
+df_wq_daily_avg %>% saveRDS(here("manuscript_synthesis/data/processed/chla_wt_daily_avg_2013-2019.rds"))
 
