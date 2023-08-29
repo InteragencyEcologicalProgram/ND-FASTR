@@ -50,12 +50,14 @@ df_wq_daily_avg <- df_rtm_wq %>%
   ) %>% 
   # calculate daily average chlorophyll and water temperature values
   summarize(across(c(WaterTemp, Chla), ~ mean(.x, na.rm = TRUE)), .by = c(StationCode, Date)) %>% 
-  arrange(StationCode, Date) %>% 
+  # remove all NaN values in both chlorophyll and water temperature columns
+  drop_na(WaterTemp, Chla) %>% 
   # filter to years 2013-2019 and only keep core stations with a long-term record
   filter(
     year(Date) %in% 2013:2019,
     StationCode %in% c("I80", "LIB", "LIS", "RCS", "RD22", "RVB", "RYI", "STTD")
-  )
+  ) %>% 
+  arrange(StationCode, Date) 
 
 
 # Save and Export Data ----------------------------------------------------
