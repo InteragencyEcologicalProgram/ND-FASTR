@@ -12,30 +12,14 @@ library(fs)
 library(here)
 library(conflicted)
 
+# Source functions
+source(here("manuscript_synthesis/src/global_functions.R"))
+
 # Declare package conflict preferences 
 conflicts_prefer(dplyr::filter())
 
 # Check if we are in the correct working directory
 i_am("manuscript_synthesis/src/process_data_rtm_chla_wt.R")
-
-
-# Functions ---------------------------------------------------------------
-
-# Define absolute file path for NDFS SharePoint
-# Function creates a file path to the NDFA SharePoint site
-# The optional fp_rel argument allows for more specific file paths beyond the
-  # NDFA SharePoint root directory
-ndfa_abs_sp_path <- function(fp_rel = NULL) {
-  fp_fastr <- "California Department of Water Resources/North Delta Flow Action - Documents"
-  
-  if (is.null(fp_rel)) {
-    fp_abs <- path(Sys.getenv('USERPROFILE'), fp_fastr)
-  } else {
-    fp_abs <- path(Sys.getenv('USERPROFILE'), fp_fastr, fp_rel)
-  }
-  
-  return(fp_abs)
-}
 
 
 # Import Continuous Data --------------------------------------------------
