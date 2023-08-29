@@ -55,7 +55,7 @@ df_wq_daily_avg <- df_rtm_wq %>%
   # filter to years 2013-2019 and only keep core stations with a long-term record
   filter(
     year(Date) %in% 2013:2019,
-    StationCode %in% c("I80", "LIB", "LIS", "RCS", "RD22", "RVB", "RYI", "STTD")
+    StationCode %in% c("I80", "LIB", "LIS", "RCS", "RD22", "RVB", "STTD")
   ) %>% 
   arrange(StationCode, Date) 
 
