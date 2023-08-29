@@ -1,5 +1,6 @@
 ---
-title: "NDFS Synthesis Manuscript: Chlorophyll GAM analysis"
+title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
+subtitle: "GAM model using categorical predictors"
 author: "Dave Bosworth"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output: 
@@ -46,8 +47,7 @@ library(here)
 
 ```{r load functions, message = FALSE, warning = FALSE}
 # Source functions
-source(here("global_ndfa_funcs.R"))
-source(here("Water_Quality/global_wq_funcs.R"))
+source(here("manuscript_synthesis/src/global_functions.R"))
 ```
 
 Display current versions of R and packages used for this analysis:
@@ -58,34 +58,28 @@ devtools::session_info()
 
 # Import Data
 
-```{r define rtm file paths}
-# Define relative file path for file containing all QA'ed and cleaned continuous WQ data
-fp_rel_rtm_data <- 
-  "2011-2019 Synthesis Study-FASTR/WQ_Subteam/Processed_Data/Continuous/RTM_INPUT_all_2021-04-20.csv"
+```{r import data, message = FALSE}
+# Define file path for processed chlorophyll data
+fp_data <- here("manuscript_synthesis/data/processed")
 
-# Define relative file path for file containing region assignments for the continuous stations
-fp_rel_rtm_region <- 
+# Import daily average chlorophyll data
+df_chla <- readRDS(file.path(fp_data, "chla_wt_daily_avg_2013-2019.rds")) %>% select(-WaterTemp)
+
+# Define file path for file containing region assignments for the continuous stations
+fp_rtm_region <- ndfa_abs_sp_path(
   "2011-2019 Synthesis Study-FASTR/WQ_Subteam/Processed_Data/Continuous/NDFA_Cont_WQ_Stations.csv"
-
-# Define relative file path for file containing dates of flow action periods
-fp_rel_fa_dates <- 
-  "2011-2019 Synthesis Study-FASTR/Data Management/FlowDatesDesignations_45days.csv"
-
-# Define absolute file paths
-fp_abs_rtm_data <- ndfa_abs_sp_path(fp_rel_rtm_data)
-fp_abs_rtm_region <- ndfa_abs_sp_path(fp_rel_rtm_region)
-fp_abs_fa_dates <- ndfa_abs_sp_path(fp_rel_fa_dates)
-```
-
-```{r import rtm data, message = FALSE}
-# Import continuous WQ data
-df_rtm_orig <- import_rtm_data(fp_abs_rtm_data, 10)
+)
 
 # Import region assignments for the continuous stations
-df_rtm_region <- read_csv(fp_abs_rtm_region) %>% select(StationCode, Region = BroadRegion)
+df_rtm_region <- read_csv(fp_rtm_region) %>% select(StationCode, Region = BroadRegion)
+
+# Define file path for file containing dates of flow action periods
+fp_fa_dates <- ndfa_abs_sp_path( 
+  "2011-2019 Synthesis Study-FASTR/Data Management/FlowDatesDesignations_45days.csv"
+)
 
 # Import dates of flow action periods
-df_fa_dates_orig <- read_csv(fp_abs_fa_dates)
+df_fa_dates <- read_csv(fp_fa_dates)
 ```
 
 # Prepare Data
@@ -106,21 +100,11 @@ sta_order <- c(
 )
 
 # Prepare continuous chlorophyll for exploration and analysis
-df_rtm_chla <- df_rtm_orig %>% 
-  transmute(
-    StationCode,
-    # Parse DateTime variable and create Date and Year variables
-    DateTime = ymd_hms(DateTime),
-    Date = date(DateTime),
-    Year = year(DateTime),
-    Chla
-  ) %>%
-  # Remove all NA Chlorophyll values
+df_chla_c <- df_chla %>% 
+  # remove all NA Chlorophyll values
   drop_na(Chla) %>% 
-  # Calculate daily average Chlorophyll values
-  group_by(StationCode, Year, Date) %>% 
-  summarize(Chla = mean(Chla)) %>% 
-  ungroup() %>% 
+  # create Year variable
+  mutate(Year = year(Date)) %>%
   # Scale and log transform chlorophyll values
   mutate(Chla_log = log(Chla * 1000)) %>% 
   # Add Flow Action Periods, Region assignments, and DOY
@@ -148,7 +132,7 @@ df_rtm_chla <- df_rtm_orig %>%
 ```{r prepare flow action period data}
 # Prepare dates of flow action periods to highlight the flow action periods for
   # each year in the plots
-df_fa_dates <- df_fa_dates_orig %>% 
+df_fa_dates_c <- df_fa_dates %>% 
   transmute(
     Year,
     across(c(PreFlowEnd, PostFlowStart), mdy),
@@ -157,40 +141,15 @@ df_fa_dates <- df_fa_dates_orig %>%
     PreFlowEnd = PreFlowEnd + days(1),
     # Add DOY for PreFlowEnd and PostFlowStart
     across(where(is.Date), yday, .names = "{.col}_DOY")
-  )
+  ) %>% 
+  # only include years 2013-2019
+  filter(Year > 2012)
 ```
 
 # Explore sample counts by Station
 
 ```{r rtm chla sample counts station}
-df_rtm_chla %>% 
-  count(Year, FlowActionPeriod, StationCode) %>% 
-  arrange(StationCode) %>% 
-  pivot_wider(names_from = StationCode, values_from = n) %>% 
-  arrange(Year, FlowActionPeriod) %>% 
-  kable()
-```
-
-Remove under-sampled years (2011 and 2012) and stations (RMB, TOE)
-
-```{r rtm chla remove under sampled}
-df_rtm_chla_c1 <- df_rtm_chla %>% 
-  filter(
-    Year > 2012,
-    !StationCode %in% c("RMB", "TOE")
-  ) %>% 
-  mutate(
-    StationCode = fct_drop(StationCode),
-    Year_fct = fct_drop(Year_fct)
-  )
-
-df_fa_dates_c1 <- df_fa_dates %>% filter(Year > 2012)
-```
-
-Now, let's look at the sample counts by station after removing under-sampled years and stations.
-
-```{r rtm chla sample counts station 2}
-df_rtm_chla_c1 %>% 
+df_chla_c %>% 
   count(Year, FlowActionPeriod, StationCode) %>% 
   arrange(StationCode) %>% 
   pivot_wider(names_from = StationCode, values_from = n) %>% 
@@ -205,9 +164,9 @@ RCS and RYI have some gaps, but we'll keep them in for now.
 We would like to include interaction terms in the model, so we need to look at sample sizes and visuals of the data.
 
 ```{r rtm chla sample counts region}
-df_rtm_chla_c1 %>% distinct(Region, StationCode) %>% arrange(Region, StationCode)
+df_chla_c %>% distinct(Region, StationCode) %>% arrange(Region, StationCode)
 
-df_rtm_chla_c1 %>% 
+df_chla_c %>% 
   count(Year, FlowActionPeriod, Region) %>% 
   pivot_wider(names_from = Region, values_from = n) %>% 
   kable()
@@ -222,7 +181,7 @@ It looks like there is an adequate number of samples in each group.
 Let's explore the data with some plots. First lets plot the data in boxplots facetted by Year and Region using a log10 scale to see the results better.
 
 ```{r rtm chla boxplot region, fig.height = 9}
-df_rtm_chla_c1 %>% 
+df_chla_c %>% 
   ggplot(aes(x = FlowActionPeriod, y = Chla, fill = FlowActionPeriod)) +
   geom_boxplot() +
   facet_grid(rows = vars(Year), cols = vars(Region)) +
@@ -237,7 +196,7 @@ There may be some interaction between Flow Period, Year, and Region, but it's di
 Now let's look at the same boxplots but grouped by Station. First, the stations in the Upstream region:
 
 ```{r rtm chla boxplot station us, fig.width = 8.5, fig.height = 9}
-df_rtm_chla_c1 %>%
+df_chla_c %>%
   filter(Region == "Upstream") %>% 
   ggplot(aes(x = FlowActionPeriod, y = Chla, fill = FlowActionPeriod)) +
   geom_boxplot() +
@@ -251,7 +210,7 @@ The patterns differ by Station, however we'll keep these all in the same region 
 Next, let's look at the stations in the Downstream region:
 
 ```{r rtm chla boxplot station ds, fig.width = 8, fig.height = 9}
-df_rtm_chla_c1 %>%
+df_chla_c %>%
   filter(Region == "Downstream") %>% 
   ggplot(aes(x = FlowActionPeriod, y = Chla, fill = FlowActionPeriod)) +
   geom_boxplot() +
@@ -267,13 +226,13 @@ The patterns appear to differ by Station, but not as obviously as with the stati
 Let's look at time-series plots based on day of year for each Region facetted by Year. The brown shaded areas represent the flow pulse periods for each year.
 
 ```{r rtm chla time series plot point, fig.width = 8, fig.height = 6}
-df_rtm_chla_c1 %>% 
+df_chla_c %>% 
   ggplot(aes(x = DOY, y = Chla, color = Region)) +
   geom_point(size = 1, alpha = 0.2) +
   scale_color_viridis_d(option = "plasma", end = 0.8) +
   facet_wrap(vars(Year), scales = "free_y") +
   geom_rect(
-    data = df_fa_dates_c1,
+    data = df_fa_dates_c,
     aes( 
       xmin = PreFlowEnd_DOY, 
       xmax = PostFlowStart_DOY, 
@@ -292,14 +251,14 @@ df_rtm_chla_c1 %>%
 Now, let's fit some GAM models to these time-series plots.
 
 ```{r rtm chla time series plot gam, warning = FALSE, fig.width = 8, fig.height = 6}
-df_rtm_chla_c1 %>% 
+df_chla_c %>% 
   ggplot(aes(x = DOY, y = Chla, color = Region)) +
   # using bs = "tp" since this is the default smooth for s terms in mgcv::gam
   geom_smooth(method = "gam", formula = y ~ s(x, bs = "tp")) +
   scale_color_viridis_d(option = "plasma", end = 0.8) +
   facet_wrap(vars(Year), scales = "free_y") +
   geom_rect(
-    data = df_fa_dates_c1,
+    data = df_fa_dates_c,
     aes( 
       xmin = PreFlowEnd_DOY, 
       xmax = PostFlowStart_DOY, 
@@ -318,7 +277,7 @@ These GAMs do a nice job of displaying the general trends for each Region. Overa
 Since the model will fit the smooth to all the data across years, regions and flow action periods, lets take a look at what that looks like using the log-transformed data.
 
 ```{r rtm chla time series plot gam all data, warning = FALSE}
-df_rtm_chla_c1 %>% 
+df_chla_c %>% 
   ggplot(aes(x = DOY, y = Chla_log)) +
   geom_point(size = 1, alpha = 0.2) +
   # using bs = "tp" since this is the default smooth for s terms in mgcv::gam
@@ -329,7 +288,7 @@ df_rtm_chla_c1 %>%
 Finally, let's see how these smooths look if we group by Region.
 
 ```{r rtm chla time series plot gam grp region, warning = FALSE}
-df_rtm_chla_c1 %>% 
+df_chla_c %>% 
   ggplot(aes(x = DOY, y = Chla_log, color = Region)) +
   geom_point(size = 1, alpha = 0.2) +
   # using bs = "tp" since this is the default smooth for s terms in mgcv::gam
@@ -347,7 +306,7 @@ We'll try running a GAM including all two-way interactions between Year, Flow Ac
 ```{r gam no autocorr, warning = FALSE}
 m_chla_gam <- gam(
   Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY) + s(StationCode, bs = "re"), 
-  data = df_rtm_chla_c1,
+  data = df_chla_c,
   method = "REML"
 )
 ```
@@ -371,7 +330,7 @@ The model definitely has residual autocorrelation as indicated by the ACF plot a
 ```{r gam no autocorr k5, warning = FALSE}
 m_chla_gam_k5 <- gam(
   Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY, k = 5) + s(StationCode, bs = "re"), 
-  data = df_rtm_chla_c1,
+  data = df_chla_c,
   method = "REML"
 )
 
@@ -386,7 +345,7 @@ plot(m_chla_gam_k5, pages = 1, all.terms = TRUE)
 Changing the k-value to 5 seems to help reduce the "wiggliness" of the smooth term for DOY. Now, let's add a lag1 term to the model to see if that helps with the residual autocorrelation.
 
 ```{r gam lag1, warning = FALSE}
-df_rtm_chla_lag1 <- df_rtm_chla_c1 %>% 
+df_rtm_chla_lag1 <- df_chla_c %>% 
   # Fill in missing days for each StationCode-Year combination
   group_by(StationCode, Year) %>% 
   complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>% 
@@ -421,14 +380,14 @@ f_chla_gam_k5 <- as.formula("Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2
 # Fit original model with k = 5 and three successive AR(p) models
 m_chla_gamm_k5 <- gamm(
   f_chla_gam_k5, 
-  data = df_rtm_chla_c1, 
+  data = df_chla_c, 
   random = list(StationCode = ~ 1), 
   method = "REML"
 )
 
 m_chla_gamm_k5_ar1 <- gamm(
   f_chla_gam_k5, 
-  data = df_rtm_chla_c1, 
+  data = df_chla_c, 
   random = list(StationCode = ~ 1),
   correlation = corARMA(form = ~ 1|Year_fct, p = 1), # grouped by Year_fct
   method = "REML"
@@ -436,7 +395,7 @@ m_chla_gamm_k5_ar1 <- gamm(
 
 m_chla_gamm_k5_ar3 <- gamm(
   f_chla_gam_k5, 
-  data = df_rtm_chla_c1, 
+  data = df_chla_c, 
   random = list(StationCode = ~ 1),
   correlation = corARMA(form = ~ 1|Year_fct, p = 3),
   method = "REML"
@@ -444,7 +403,7 @@ m_chla_gamm_k5_ar3 <- gamm(
 
 m_chla_gamm_k5_ar4 <- gamm(
   f_chla_gam_k5, 
-  data = df_rtm_chla_c1, 
+  data = df_chla_c, 
   random = list(StationCode = ~ 1),
   correlation = corARMA(form = ~ 1|Year_fct, p = 4),
   method = "REML"
@@ -491,7 +450,7 @@ Only Region and the Year:Region interaction was significant among the parametric
 ```{r gam ar3 less interaction, warning = FALSE}
 m_chla_gamm_k5_ar3b <- gamm(
   Chla_log ~ Year_fct * Region + FlowActionPeriod + s(DOY, k = 5), 
-  data = df_rtm_chla_c1, 
+  data = df_chla_c, 
   random = list(StationCode = ~ 1),
   correlation = corARMA(form = ~ 1|Year_fct, p = 3),
   method = "REML"
@@ -521,14 +480,14 @@ Only the main effect of Region and the Year:Region interaction is significant in
 # Contrasts in Region main effect
 emmeans(
   m_chla_gamm_k5_ar3b,
-  data = df_rtm_chla_c1,
+  data = df_chla_c,
   specs = pairwise ~ Region
 )
 
 # Contrasts in Region for each Year
 emmeans(
   m_chla_gamm_k5_ar3b, 
-  data = df_rtm_chla_c1,
+  data = df_chla_c,
   specs = pairwise ~ Region | Year_fct
 )
 
@@ -536,7 +495,7 @@ emmeans(
 multcomp::cld(
   emmeans(
     m_chla_gamm_k5_ar3b, 
-    data = df_rtm_chla_c1,
+    data = df_chla_c,
     specs = pairwise ~ Year_fct | Region
   )$emmeans,
   sort = FALSE, 
@@ -566,7 +525,7 @@ Box.test(resid_lmer_lag1, lag = 20, type = 'Ljung-Box')
 There is still some residual autocorrelation so lets add a second lag term, lag2.
 
 ```{r lme lag2}
-df_rtm_chla_lag2 <- df_rtm_chla_c1 %>% 
+df_rtm_chla_lag2 <- df_chla_c %>% 
   # Fill in missing days for each StationCode-Year combination
   group_by(StationCode, Year) %>% 
   complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>% 
@@ -654,7 +613,7 @@ It's encouraging that the GAM and LMER models had similar results. Unfortunately
 ```{r gam station no autocorr, warning = FALSE}
 m_chla_gam_st <- gam(
   Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY), 
-  data = df_rtm_chla_c1,
+  data = df_chla_c,
   method = "REML"
 )
 ```
@@ -678,7 +637,7 @@ Not surprisingly, the model definitely has residual autocorrelation as indicated
 ```{r gam station no autocorr k5, warning = FALSE}
 m_chla_gam_st_k5 <- gam(
   Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY, k = 5), 
-  data = df_rtm_chla_c1,
+  data = df_chla_c,
   method = "REML"
 )
 
@@ -697,39 +656,39 @@ Changing the k-value to 5 seems to help reduce the "wiggliness" of the smooth te
 f_chla_gam_st_k5 <- as.formula("Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY, k = 5)")
 
 # Remove RCS and RYI from the data set
-df_rtm_chla_c2 <- df_rtm_chla_c1 %>% filter(!StationCode %in% c("RCS", "RYI"))
+df_chla_c2 <- df_chla_c %>% filter(!StationCode %in% c("RCS", "RYI"))
 
 # Fit original model with k = 5 and four successive AR(p) models
 m_chla_gamm_st_k5 <- gamm(
   f_chla_gam_st_k5, 
-  data = df_rtm_chla_c2, 
+  data = df_chla_c2, 
   method = "REML"
 )
 
 m_chla_gamm_st_k5_ar1 <- gamm(
   f_chla_gam_st_k5, 
-  data = df_rtm_chla_c2, 
+  data = df_chla_c2, 
   correlation = corARMA(form = ~ 1|Year_fct, p = 1), # grouped by Year_fct
   method = "REML"
 )
 
 m_chla_gamm_st_k5_ar2 <- gamm(
   f_chla_gam_st_k5, 
-  data = df_rtm_chla_c2, 
+  data = df_chla_c2, 
   correlation = corARMA(form = ~ 1|Year_fct, p = 2),
   method = "REML"
 )
 
 m_chla_gamm_st_k5_ar3 <- gamm(
   f_chla_gam_st_k5, 
-  data = df_rtm_chla_c2, 
+  data = df_chla_c2, 
   correlation = corARMA(form = ~ 1|Year_fct, p = 3),
   method = "REML"
 )
 
 m_chla_gamm_st_k5_ar4 <- gamm(
   f_chla_gam_st_k5, 
-  data = df_rtm_chla_c2, 
+  data = df_chla_c2, 
   correlation = corARMA(form = ~ 1|Year_fct, p = 4),
   method = "REML"
 )
@@ -779,14 +738,14 @@ All the interaction terms are significant in the AR(2) model. Let's take a close
 # Contrasts in FlowActionPeriod for each Year
 emmeans(
   m_chla_gamm_st_k5_ar2, 
-  data = df_rtm_chla_c2,
+  data = df_chla_c2,
   specs = pairwise ~ FlowActionPeriod | Year_fct 
 )
 
 # Contrasts in FlowActionPeriod for each Station
 emmeans(
   m_chla_gamm_st_k5_ar2, 
-  data = df_rtm_chla_c2,
+  data = df_chla_c2,
   specs = pairwise ~ FlowActionPeriod | StationCode 
 )
 
@@ -794,7 +753,7 @@ emmeans(
 multcomp::cld(
   emmeans(
     m_chla_gamm_st_k5_ar2, 
-    data = df_rtm_chla_c2,
+    data = df_chla_c2,
     specs = pairwise ~ StationCode | Year_fct
   )$emmeans,
   sort = FALSE,
@@ -805,7 +764,7 @@ multcomp::cld(
 multcomp::cld(
   emmeans(
     m_chla_gamm_st_k5_ar2, 
-    data = df_rtm_chla_c2,
+    data = df_chla_c2,
     specs = pairwise ~ Year_fct | StationCode
   )$emmeans,
   sort = FALSE,
