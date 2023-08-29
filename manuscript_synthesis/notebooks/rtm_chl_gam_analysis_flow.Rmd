@@ -1,6 +1,6 @@
 ---
-title: "NDFS Synthesis Manuscript: Chlorophyll GAM analysis"
-subtitle: "Daily average flow as continuous predictor"
+title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
+subtitle: "GAM model using daily average flow as continuous predictor"
 author: "Dave Bosworth"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output: 
@@ -63,7 +63,7 @@ devtools::session_info()
 fp_data <- here("manuscript_synthesis/data/processed")
 
 # Import daily average chlorophyll data
-df_chla <- readRDS(file.path(fp_data, "chla_daily_avg_2013-2019.rds"))
+df_chla <- readRDS(file.path(fp_data, "chla_wt_daily_avg_2013-2019.rds")) %>% select(-WaterTemp)
 
 # Import daily average flow data
 df_flow <- readRDS(file.path(fp_data, "flow_daily_avg_2013-2019.rds"))
@@ -92,15 +92,17 @@ df_flow_c <- df_flow %>%
 
 # Prepare chlorophyll and flow data for exploration and analysis
 df_chla_c1 <- df_chla %>% 
+  # remove all NA Chlorophyll values
+  drop_na(Chla) %>% 
   # Remove RYI since its chlorophyll data is so sparse
   filter(StationCode != "RYI") %>% 
   # Join flow data to chlorophyll data
   left_join(df_flow_c, by = join_by(StationCode, Date)) %>% 
   # Remove all NA flow values
-  drop_na(FlowAvg) %>% 
+  drop_na(Flow) %>% 
   mutate(
     # Scale and log transform chlorophyll values
-    ChlaAvg_log = log(ChlaAvg * 1000),
+    Chla_log = log(Chla * 1000),
     # Add Year and DOY variables
     Year = year(Date),
     DOY = yday(Date),
@@ -140,7 +142,7 @@ Let's explore the data with some plots. First, lets plot the data in scatterplot
 
 ```{r chla scatterplot all yrs, message = FALSE, fig.height = 7, fig.width = 7}
 df_chla_c2 %>% 
-  ggplot(aes(x = FlowAvg, y = ChlaAvg)) +
+  ggplot(aes(x = Flow, y = Chla)) +
   geom_point() +
   geom_smooth(formula = "y ~ x") +
   facet_wrap(vars(StationCode), scales = "free") +
@@ -153,7 +155,7 @@ Let's break these scatterplots apart by year to see how these patterns vary annu
 
 ```{r chla scatterplot facet yrs, message = FALSE, fig.height = 11, fig.width = 8}
 df_chla_c2 %>% 
-  ggplot(aes(x = FlowAvg, y = ChlaAvg)) +
+  ggplot(aes(x = Flow, y = Chla)) +
   geom_point() +
   geom_smooth(formula = "y ~ x") +
   facet_wrap(
@@ -175,7 +177,7 @@ We'll try running a GAM including all two-way interactions between Year, Daily A
 
 ```{r gam no autocorr, warning = FALSE}
 m_chla_gam <- gam(
-  ChlaAvg_log ~ (Year_fct + FlowAvg + StationCode)^2 + s(DOY), 
+  Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(DOY), 
   data = df_chla_c2,
   method = "REML"
 )
@@ -199,7 +201,7 @@ The model definitely has residual autocorrelation as indicated by the ACF plot a
 
 ```{r gam no autocorr k5, warning = FALSE}
 m_chla_gam_k5 <- gam(
-  ChlaAvg_log ~ (Year_fct + FlowAvg + StationCode)^2 + s(DOY, k = 5), 
+  Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(DOY, k = 5), 
   data = df_chla_c2,
   method = "REML"
 )
@@ -221,7 +223,7 @@ Now, we'll try to deal with the residual autocorrelation. We'll run AR(1), AR(3)
 
 ```{r gam with AR comparison, warning = FALSE}
 # Define model formula as an object
-f_chla_gam_k5 <- as.formula("ChlaAvg_log ~ (Year_fct + FlowAvg + StationCode)^2 + s(DOY, k = 5)")
+f_chla_gam_k5 <- as.formula("Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(DOY, k = 5)")
 
 # Fit original model with k = 5 and three successive AR(p) models
 m_chla_gamm_k5 <- gamm(
@@ -298,14 +300,14 @@ m_chla_gamm_k5_ar3_gam$data <- df_chla_c2
 # Visualize the effect of flow on chlorophyll concentrations for each station
   # according to the model
 # First facetted by station
-visreg(m_chla_gamm_k5_ar3_gam, xvar = "FlowAvg", by = "StationCode", gg = TRUE) + 
+visreg(m_chla_gamm_k5_ar3_gam, xvar = "Flow", by = "StationCode", gg = TRUE) + 
   facet_wrap(vars(StationCode), scales = "free") +
   theme_bw() +
   ylab("log(Chlorophyll x 1000)") +
   xlab("Daily Average Flow (cfs)")
 
 # All stations overlayed
-visreg(m_chla_gamm_k5_ar3_gam, xvar = "FlowAvg", by = "StationCode", overlay = TRUE, gg = TRUE) +
+visreg(m_chla_gamm_k5_ar3_gam, xvar = "Flow", by = "StationCode", overlay = TRUE, gg = TRUE) +
   theme_bw() +
   ylab("log(Chlorophyll x 1000)") +
   xlab("Daily Average Flow (cfs)")
