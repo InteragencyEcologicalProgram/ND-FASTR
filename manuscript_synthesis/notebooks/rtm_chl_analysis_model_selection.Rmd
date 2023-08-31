@@ -1,0 +1,937 @@
+---
+title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
+subtitle: "Model selection"
+author: "Dave Bosworth"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = here::here("docs"),
+      envir = globalenv()
+    )
+    })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.kable.NA = "")
+```
+
+# Purpose
+
+Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit multiple models to the data set and use a model selection process to determine the best one.
+
+# Global code and functions
+
+```{r load packages and functions, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(scales)
+library(knitr)
+library(mgcv)
+library(car)
+library(gratia)
+library(here)
+library(conflicted)
+
+# Source functions
+source(here("manuscript_synthesis/src/global_functions.R"))
+
+# Declare package conflict preferences 
+conflicts_prefer(dplyr::filter())
+```
+
+Display current versions of R and packages used for this analysis:
+
+```{r print session info}
+devtools::session_info()
+```
+
+# Import Data
+
+```{r import data}
+# Define file path for processed data
+fp_data <- here("manuscript_synthesis/data/processed")
+
+# Import daily average chlorophyll and water temperature data
+df_chla_wt <- readRDS(file.path(fp_data, "chla_wt_daily_avg_2013-2019.rds"))
+
+# Import daily average flow data
+df_flow <- readRDS(file.path(fp_data, "flow_daily_avg_2013-2019.rds"))
+```
+
+# Prepare Data
+
+```{r prepare chla data, message = FALSE}
+# Create a vector for the factor order of StationCode
+sta_order <- c(
+  "RCS",
+  "RD22",
+  "I80",
+  "LIS",
+  "STTD",
+  "LIB",
+  "RVB"
+)
+
+# We will use LIS flow data as a proxy for STTD and RD22 flow data as a proxy
+  # for I-80
+df_flow_c <- df_flow %>% 
+  filter(StationCode %in% c("RD22", "LIS")) %>% 
+  mutate(StationCode = case_match(StationCode, "RD22" ~ "I80", "LIS" ~ "STTD")) %>% 
+  bind_rows(df_flow)
+
+# Prepare chlorophyll and flow data for exploration and analysis
+df_chla_wt_c1 <- df_chla_wt %>% 
+  # Join flow data to chlorophyll data
+  left_join(df_flow_c, by = join_by(StationCode, Date)) %>% 
+  mutate(
+    # Scale and log transform chlorophyll values
+    Chla_log = log(Chla * 1000),
+    # Add Year and DOY variables
+    Year = year(Date),
+    DOY = yday(Date)
+  ) %>% 
+  # Add Flow Action Periods
+  ndfa_action_periods() %>% 
+  mutate(
+    # Apply factor orders to FlowActionPeriod and StationCode
+    FlowActionPeriod = factor(FlowActionPeriod, levels = c("Before", "During", "After")),
+    StationCode = factor(StationCode, levels = sta_order),
+    # Add a column for Year as a factor for the model
+    Year_fct = factor(Year)
+  ) %>% 
+  arrange(StationCode, Date)
+```
+
+# Explore sample counts by Station
+
+```{r chla sample counts station}
+df_chla_wt_c1 %>% 
+  summarize(
+    min_date = min(Date),
+    max_date = max(Date),
+    num_samples = n(),
+    .by = c(StationCode, Year, FlowActionPeriod)
+  ) %>% 
+  arrange(StationCode, Year, FlowActionPeriod) %>% 
+  kable()
+```
+
+Looking at the sample counts and date ranges, we'll only include years 2015-2019 for the analysis. However, there are still a few Station-Year-FlowPeriod combinations with low sample counts within 2015-2019.
+
+```{r chla rm under sampled}
+df_chla_wt_c2 <- df_chla_wt_c1 %>% 
+  filter(Year %in% 2015:2019) %>% 
+  mutate(Year_fct = fct_drop(Year_fct))
+
+df_chla_wt_c2 %>% 
+  summarize(
+    min_date = min(Date),
+    max_date = max(Date),
+    num_samples = n(),
+    .by = c(StationCode, Year, FlowActionPeriod)
+  ) %>% 
+  arrange(StationCode, Year, FlowActionPeriod) %>% 
+  kable()
+```
+
+Before we run our models, we'll need to remove the `NA` values in the Flow variable. When we remove all records where there are missing daily average flow values, there are even more Station-Year-FlowPeriod combinations with low sample counts within 2015-2019.
+
+```{r chla rm NA flow}
+df_chla_wt_q <- df_chla_wt_c2 %>% drop_na(Flow)
+
+df_chla_wt_q %>% 
+  drop_na(Flow) %>% 
+  summarize(
+    min_date = min(Date),
+    max_date = max(Date),
+    num_samples = n(),
+    .by = c(StationCode, Year, FlowActionPeriod)
+  ) %>% 
+  arrange(StationCode, Year, FlowActionPeriod) %>% 
+  kable()
+```
+
+# Models
+
+## GAM Model 1: Categorical predictors
+
+### Plots
+
+```{r chla boxplot station, fig.width = 8.5, fig.height = 9}
+df_chla_wt_q %>%
+  ggplot(aes(x = FlowActionPeriod, y = Chla, fill = FlowActionPeriod)) +
+  geom_boxplot() +
+  facet_grid(rows = vars(Year), cols = vars(StationCode)) +
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
+  annotation_logticks(sides = "l") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    legend.position = "top"
+  )
+```
+
+### Initial Model
+
+We'll try running a GAM including all two-way interactions of the categorical predictors - Year, Flow Action Period, Station - and a smooth term for day of year to account for seasonality (restricting the k-value to 5 to reduce overfitting). First we'll run the GAM without accounting for serial autocorrelation.
+
+```{r gam cat no autocorr, warning = FALSE}
+m_gam_cat <- gam(
+  Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY, k = 5), 
+  data = df_chla_wt_q,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam cat no autocorr diag, warning = FALSE}
+summary(m_gam_cat)
+appraise(m_gam_cat)
+k.check(m_gam_cat)
+draw(m_gam_cat, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_cat, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_cat))
+Box.test(residuals(m_gam_cat), lag = 20, type = 'Ljung-Box')
+```
+
+### Model with AR() correlation structure
+
+Now, we'll try to deal with the residual autocorrelation. We'll run AR(1), AR(2), and AR(3) models and compare them using AIC.
+
+```{r gamm cat with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_gam_cat <- as.formula("Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY, k = 5)")
+
+# Fit original model with k = 5 and three successive AR(p) models
+m_gamm_cat <- gamm(
+  f_gam_cat, 
+  data = df_chla_wt_q,
+  method = "REML"
+)
+
+m_gamm_cat_ar1 <- gamm(
+  f_gam_cat, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 1), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_cat_ar2 <- gamm(
+  f_gam_cat, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 2), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_cat_ar3 <- gamm(
+  f_gam_cat, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 3), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_gamm_cat$lme, 
+  m_gamm_cat_ar1$lme, 
+  m_gamm_cat_ar2$lme, 
+  m_gamm_cat_ar3$lme
+)
+```
+
+It looks like the AR(2) model has the best fit according to the AIC values and backed up by the BIC values. Let's take a closer look at that one.
+
+### AR(2) Model
+
+```{r gamm cat ar2 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_cat_ar2 <- residuals(m_gamm_cat_ar2$lme, type = "normalized")
+m_gamm_cat_ar2_gam <- m_gamm_cat_ar2$gam
+
+summary(m_gamm_cat_ar2_gam)
+appraise(m_gamm_cat_ar2_gam)
+k.check(m_gamm_cat_ar2_gam)
+draw(m_gamm_cat_ar2_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gamm_cat_ar2_gam, pages = 1, all.terms = TRUE)
+acf(resid_cat_ar2)
+Box.test(resid_cat_ar2, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(2) model has much less residual autocorrelation, and the diagnostics plots look pretty good. We'll take a look at the ANOVA table to see if we need all the interaction terms included in the model.
+
+```{r gamm cat ar2 anova, warning = FALSE}
+# the anova.gam function is similar to a type 3 ANOVA
+anova(m_gamm_cat_ar2_gam)
+```
+
+All the interaction terms are significant in this model, so we'll use this one for the model selection process.
+
+## GAM Model 2: Categorical predictors adding water temperature
+
+### Initial Model
+
+We'll try running the categorical model adding water temperature to see if it improves the predictive power of the model.
+
+```{r gam cat wt no autocorr, warning = FALSE}
+m_gam_cat_wt <- gam(
+  Chla_log ~ (Year_fct + FlowActionPeriod + StationCode + WaterTemp)^2 + s(DOY, k = 5), 
+  data = df_chla_wt_q,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam cat wt no autocorr diag, warning = FALSE}
+summary(m_gam_cat_wt)
+appraise(m_gam_cat_wt)
+k.check(m_gam_cat_wt)
+draw(m_gam_cat_wt, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_cat_wt, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_cat_wt))
+Box.test(residuals(m_gam_cat_wt), lag = 20, type = 'Ljung-Box')
+```
+
+### Model with AR() correlation structure
+
+Now, we'll try to deal with the residual autocorrelation. We'll run AR(1), AR(2), and AR(3) models and compare them using AIC.
+
+```{r gamm cat wt with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_gam_cat_wt <- as.formula("Chla_log ~ (Year_fct + FlowActionPeriod + StationCode + WaterTemp)^2 + s(DOY, k = 5)")
+
+# Fit original model with k = 5 and three successive AR(p) models
+m_gamm_cat_wt <- gamm(
+  f_gam_cat_wt, 
+  data = df_chla_wt_q,
+  method = "REML"
+)
+
+m_gamm_cat_wt_ar1 <- gamm(
+  f_gam_cat_wt, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 1), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_cat_wt_ar2 <- gamm(
+  f_gam_cat_wt, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 2), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_cat_wt_ar3 <- gamm(
+  f_gam_cat_wt, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 3), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_gamm_cat_wt$lme, 
+  m_gamm_cat_wt_ar1$lme, 
+  m_gamm_cat_wt_ar2$lme, 
+  m_gamm_cat_wt_ar3$lme
+)
+```
+
+It looks like the AR(2) model has the best fit according to the AIC values and backed up by the BIC values. Let's take a closer look at that one.
+
+### AR(2) Model
+
+```{r gamm cat wt ar2 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_cat_wt_ar2 <- residuals(m_gamm_cat_wt_ar2$lme, type = "normalized")
+m_gamm_cat_wt_ar2_gam <- m_gamm_cat_wt_ar2$gam
+
+summary(m_gamm_cat_wt_ar2_gam)
+appraise(m_gamm_cat_wt_ar2_gam)
+k.check(m_gamm_cat_wt_ar2_gam)
+draw(m_gamm_cat_wt_ar2_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gamm_cat_wt_ar2_gam, pages = 1, all.terms = TRUE)
+acf(resid_cat_wt_ar2)
+Box.test(resid_cat_wt_ar2, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(2) model has much less residual autocorrelation, and the diagnostics plots look pretty good. We'll take a look at the ANOVA table to see if we need all the interaction terms included in the model.
+
+```{r gamm cat wt ar2 anova, warning = FALSE}
+# the anova.gam function is similar to a type 3 ANOVA
+anova(m_gamm_cat_wt_ar2_gam)
+```
+
+The Year:StationCode, Year:WaterTemp, FlowActionPeriod:StationCode, and StationCode:WaterTemp interactions were significant among the interaction terms of the model. Let's remove the Year:FlowActionPeriod and FlowActionPeriod:WaterTemp interaction terms and check the model summary and diagnostics.
+
+```{r gamm cat wt ar2 less int, warning = FALSE}
+m_gamm_cat_wt_ar2b <- gamm(
+  Chla_log ~ (Year_fct + StationCode + WaterTemp)^2 + StationCode * FlowActionPeriod + s(DOY, k = 5), 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 2), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+# Pull out the residuals and the GAM model
+resid_cat_wt_ar2b <- residuals(m_gamm_cat_wt_ar2b$lme, type = "normalized")
+m_gamm_cat_wt_ar2b_gam <- m_gamm_cat_wt_ar2b$gam
+
+summary(m_gamm_cat_wt_ar2b_gam)
+appraise(m_gamm_cat_wt_ar2b_gam)
+k.check(m_gamm_cat_wt_ar2b_gam)
+draw(m_gamm_cat_wt_ar2b_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gamm_cat_wt_ar2b_gam, pages = 1, all.terms = TRUE)
+acf(resid_cat_wt_ar2b)
+Box.test(resid_cat_wt_ar2b, lag = 20, type = 'Ljung-Box')
+
+anova(m_gamm_cat_wt_ar2b_gam)
+```
+
+This model still looks pretty good. We'll use this one for the model selection process.
+
+## GAM Model 3: Flow as continuous predictor
+
+### Plots
+
+```{r chla flow scatterplot all yrs, message = FALSE, fig.height = 7, fig.width = 7}
+df_chla_wt_q %>% 
+  ggplot(aes(x = Flow, y = Chla)) +
+  geom_point() +
+  geom_smooth(formula = "y ~ x") +
+  facet_wrap(vars(StationCode), scales = "free") +
+  theme_bw()
+```
+
+Let's break these scatterplots apart by year to see how these patterns vary annually.
+
+```{r chla flow scatterplot facet yrs, message = FALSE, fig.height = 11, fig.width = 8}
+df_chla_wt_q %>% 
+  ggplot(aes(x = Flow, y = Chla)) +
+  geom_point() +
+  geom_smooth(formula = "y ~ x") +
+  facet_wrap(
+    vars(StationCode, Year), 
+    ncol = 5, 
+    scales = "free", 
+    labeller = labeller(.multi_line = FALSE)
+  ) +
+  theme_bw()
+```
+
+### Initial Model
+
+We'll try running a GAM including all two-way interactions between Year, Daily Average Flow, and Station, and a smooth term for day of year to account for seasonality (restricting the k-value to 5 to reduce overfitting). First we'll run the GAM without accounting for serial autocorrelation.
+
+```{r gam flow no autocorr, warning = FALSE}
+m_gam_q <- gam(
+  Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(DOY, k = 5), 
+  data = df_chla_wt_q,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam flow no autocorr diag, warning = FALSE}
+summary(m_gam_q)
+appraise(m_gam_q)
+k.check(m_gam_q)
+draw(m_gam_q, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_q, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_q))
+Box.test(residuals(m_gam_q), lag = 20, type = 'Ljung-Box')
+```
+
+### Model with AR() correlation structure
+
+Now, we'll try to deal with the residual autocorrelation. We'll run AR(1), AR(2), and AR(3) models and compare them using AIC.
+
+```{r gamm flow with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_gam_q <- as.formula("Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(DOY, k = 5)")
+
+# Fit original model with k = 5 and three successive AR(p) models
+m_gamm_q <- gamm(
+  f_gam_q, 
+  data = df_chla_wt_q,
+  method = "REML"
+)
+
+m_gamm_q_ar1 <- gamm(
+  f_gam_q, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 1), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_q_ar2 <- gamm(
+  f_gam_q, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 2), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_q_ar3 <- gamm(
+  f_gam_q, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 3), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_gamm_q$lme, 
+  m_gamm_q_ar1$lme, 
+  m_gamm_q_ar2$lme, 
+  m_gamm_q_ar3$lme
+)
+```
+
+It looks like the AR(2) model has the best fit according to the AIC values and backed up by the BIC values. Let's take a closer look at that one.
+
+### AR(2) Model
+
+```{r gamm flow ar2 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_q_ar2 <- residuals(m_gamm_q_ar2$lme, type = "normalized")
+m_gamm_q_ar2_gam <- m_gamm_q_ar2$gam
+
+summary(m_gamm_q_ar2_gam)
+appraise(m_gamm_q_ar2_gam)
+k.check(m_gamm_q_ar2_gam)
+draw(m_gamm_q_ar2_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gamm_q_ar2_gam, pages = 1, all.terms = TRUE)
+acf(resid_q_ar2)
+Box.test(resid_q_ar2, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(2) model has much less residual autocorrelation, and the diagnostics plots look pretty good. We'll take a look at the ANOVA table to see if we need all the interaction terms included in the model.
+
+```{r gamm flow ar2 anova, warning = FALSE}
+# the anova.gam function is similar to a type 3 ANOVA
+anova(m_gamm_q_ar2_gam)
+```
+
+The Year:StationCode and Flow:StationCode interactions were significant among the interaction terms of the model. Let's remove the Year:Flow interaction term and check the model summary and diagnostics.
+
+```{r gamm flow ar2 less int, warning = FALSE}
+m_gamm_q_ar2b <- gamm(
+  Chla_log ~ Year_fct * StationCode + Flow * StationCode + s(DOY, k = 5), 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 2), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+# Pull out the residuals and the GAM model
+resid_q_ar2b <- residuals(m_gamm_q_ar2b$lme, type = "normalized")
+m_gamm_q_ar2b_gam <- m_gamm_q_ar2b$gam
+
+summary(m_gamm_q_ar2b_gam)
+appraise(m_gamm_q_ar2b_gam)
+k.check(m_gamm_q_ar2b_gam)
+draw(m_gamm_q_ar2b_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gamm_q_ar2b_gam, pages = 1, all.terms = TRUE)
+acf(resid_q_ar2b)
+Box.test(resid_q_ar2b, lag = 20, type = 'Ljung-Box')
+
+anova(m_gamm_q_ar2b_gam)
+```
+
+This model still looks pretty good. We'll use this one for the model selection process.
+
+## GAM Model 4: Flow and water temperature as continuous predictors
+
+### Plots
+
+Before we add both flow and water temperature as continuous predictors in the model, let's check if they are correlated with each other.
+
+```{r wt flow scatterplot facet all yrs, message = FALSE, fig.height = 7, fig.width = 7}
+df_chla_wt_q %>% 
+  ggplot(aes(x = Flow, y = WaterTemp)) +
+  geom_point() +
+  geom_smooth(formula = "y ~ x") +
+  facet_wrap(vars(StationCode), scales = "free") +
+  theme_bw()
+```
+
+Flow and water temperature appear to have no correlation.
+
+### Initial Model
+
+We'll try running a GAM using the model structure from the flow model and adding two-way interactions between Year:WaterTemp and Station:WaterTemp. First we'll run the GAM without accounting for serial autocorrelation.
+
+```{r gam flow wt no autocorr, warning = FALSE}
+m_gam_q_wt <- gam(
+  Chla_log ~ Year_fct * StationCode + Flow * StationCode + Year_fct * WaterTemp + StationCode * WaterTemp + s(DOY, k = 5), 
+  data = df_chla_wt_q,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam flow wt no autocorr diag, warning = FALSE}
+summary(m_gam_q_wt)
+appraise(m_gam_q_wt)
+k.check(m_gam_q_wt)
+draw(m_gam_q_wt, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_q_wt, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_q_wt))
+Box.test(residuals(m_gam_q_wt), lag = 20, type = 'Ljung-Box')
+```
+
+### Model with AR() correlation structure
+
+Now, we'll try to deal with the residual autocorrelation. We'll run AR(1), AR(2), and AR(3) models and compare them using AIC.
+
+```{r gamm flow wt with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_gam_q_wt <- as.formula(
+  "Chla_log ~ Year_fct * StationCode + Flow * StationCode + Year_fct * WaterTemp + StationCode * WaterTemp + s(DOY, k = 5)"
+)
+
+# Fit original model with k = 5 and three successive AR(p) models
+m_gamm_q_wt <- gamm(
+  f_gam_q_wt, 
+  data = df_chla_wt_q,
+  method = "REML"
+)
+
+m_gamm_q_wt_ar1 <- gamm(
+  f_gam_q_wt, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 1), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_q_wt_ar2 <- gamm(
+  f_gam_q_wt, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 2), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_q_wt_ar3 <- gamm(
+  f_gam_q_wt, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 3), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_gamm_q_wt$lme, 
+  m_gamm_q_wt_ar1$lme, 
+  m_gamm_q_wt_ar2$lme, 
+  m_gamm_q_wt_ar3$lme
+)
+```
+
+It looks like the AR(2) model has the best fit according to the AIC values and backed up by the BIC values. Let's take a closer look at that one.
+
+### AR(2) Model
+
+```{r gamm flow wt ar2 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_q_wt_ar2 <- residuals(m_gamm_q_wt_ar2$lme, type = "normalized")
+m_gamm_q_wt_ar2_gam <- m_gamm_q_wt_ar2$gam
+
+summary(m_gamm_q_wt_ar2_gam)
+appraise(m_gamm_q_wt_ar2_gam)
+k.check(m_gamm_q_wt_ar2_gam)
+draw(m_gamm_q_wt_ar2_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gamm_q_wt_ar2_gam, pages = 1, all.terms = TRUE)
+acf(resid_q_wt_ar2)
+Box.test(resid_q_wt_ar2, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(2) model has much less residual autocorrelation, and the diagnostics plots look pretty good. We'll take a look at the ANOVA table to see if we need all the interaction terms included in the model.
+
+```{r gamm flow wt ar2 anova, warning = FALSE}
+# the anova.gam function is similar to a type 3 ANOVA
+anova(m_gamm_q_wt_ar2_gam)
+```
+
+All interaction terms are significant in this model, so we'll use this one for the model selection process.
+
+## GAM Model 5: Flow with flow action period
+
+### Plots
+
+Let's look at the relationship between chlorophyll and flow for each station-flow action period combination.
+
+```{r chla flow scatterplot facet fa, message = FALSE, fig.height = 11, fig.width = 8}
+df_chla_wt_q %>% 
+  ggplot(aes(x = Flow, y = Chla)) +
+  geom_point() +
+  geom_smooth(formula = "y ~ x") +
+  facet_wrap(
+    vars(StationCode, FlowActionPeriod), 
+    ncol = 3, 
+    scales = "free", 
+    labeller = labeller(.multi_line = FALSE)
+  ) +
+  theme_bw()
+```
+
+### Initial Model
+
+It's possible that the relationship between chlorophyll and Flow differs between Flow Action Periods at each station. We'll try to account for this by running a GAM including a two-way interaction between Year and Station, a three-way interaction between Flow, Station, and Flow Action Period, and a smooth term for day of year to account for seasonality (restricting the k-value to 5 to reduce overfitting). We won't include the interaction between Year and Flow Action Period since it was barely significant in the categorical model and we're primarily including the Flow Action Period to allow for different slopes for flow at each station. First we'll run the GAM without accounting for serial autocorrelation.
+
+```{r gam flow fa no autocorr, warning = FALSE}
+m_gam_q_fa <- gam(
+  Chla_log ~ Year_fct * StationCode + Flow * StationCode * FlowActionPeriod + s(DOY, k = 5), 
+  data = df_chla_wt_q,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam flow fa no autocorr diag, warning = FALSE}
+summary(m_gam_q_fa)
+appraise(m_gam_q_fa)
+k.check(m_gam_q_fa)
+draw(m_gam_q_fa, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_q_fa, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_q_fa))
+Box.test(residuals(m_gam_q_fa), lag = 20, type = 'Ljung-Box')
+```
+
+### Model with AR() correlation structure
+
+Now, we'll try to deal with the residual autocorrelation. We'll run AR(1), AR(2), and AR(3) models and compare them using AIC.
+
+```{r gamm flow fa with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_gam_q_fa <- as.formula("Chla_log ~ Year_fct * StationCode + Flow * StationCode * FlowActionPeriod + s(DOY, k = 5)")
+
+# Fit original model with k = 5 and three successive AR(p) models
+m_gamm_q_fa <- gamm(
+  f_gam_q_fa, 
+  data = df_chla_wt_q,
+  method = "REML"
+)
+
+m_gamm_q_fa_ar1 <- gamm(
+  f_gam_q_fa, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 1), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_q_fa_ar2 <- gamm(
+  f_gam_q_fa, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 2), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_q_fa_ar3 <- gamm(
+  f_gam_q_fa, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 3), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_gamm_q_fa$lme, 
+  m_gamm_q_fa_ar1$lme, 
+  m_gamm_q_fa_ar2$lme, 
+  m_gamm_q_fa_ar3$lme
+)
+```
+
+Again, it looks like the AR(2) model has the best fit according to the AIC values and backed up by the BIC values. Let's take a closer look at that one.
+
+### AR(2) Model
+
+```{r gamm flow fa ar2 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_q_fa_ar2 <- residuals(m_gamm_q_fa_ar2$lme, type = "normalized")
+m_gamm_q_fa_ar2_gam <- m_gamm_q_fa_ar2$gam
+
+summary(m_gamm_q_fa_ar2_gam)
+appraise(m_gamm_q_fa_ar2_gam)
+k.check(m_gamm_q_fa_ar2_gam)
+draw(m_gamm_q_fa_ar2_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gamm_q_fa_ar2_gam, pages = 1, all.terms = TRUE)
+acf(resid_q_fa_ar2)
+Box.test(resid_q_fa_ar2, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(2) model has much less residual autocorrelation, and the diagnostics plots look pretty good. We'll take a look at the ANOVA table to see if we need all the interaction terms included in the model.
+
+```{r gamm flow fa ar2 anova, warning = FALSE}
+# the anova.gam function is similar to a type 3 ANOVA
+anova(m_gamm_q_fa_ar2_gam)
+```
+
+Despite its complexity, we'll use this model for the model selection process.
+
+## GAM Model 6: Flow with flow action period and water temperature
+
+### Initial Model
+
+Finally, we'll try running a GAM using the model structure from the flow with flow action period model and adding two-way interactions between Year:WaterTemp and Station:WaterTemp. First we'll run the GAM without accounting for serial autocorrelation.
+
+```{r gam flow fa wt no autocorr, warning = FALSE}
+m_gam_q_fa_wt <- gam(
+  Chla_log ~ Year_fct * StationCode + Flow * StationCode * FlowActionPeriod + Year_fct * WaterTemp + StationCode * WaterTemp + s(DOY, k = 5), 
+  data = df_chla_wt_q,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam flow fa wt no autocorr diag, warning = FALSE}
+summary(m_gam_q_fa_wt)
+appraise(m_gam_q_fa_wt)
+k.check(m_gam_q_fa_wt)
+draw(m_gam_q_fa_wt, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_q_fa_wt, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_q_fa_wt))
+Box.test(residuals(m_gam_q_fa_wt), lag = 20, type = 'Ljung-Box')
+```
+
+### Model with AR() correlation structure
+
+Now, we'll try to deal with the residual autocorrelation. We'll run AR(1), AR(2), and AR(3) models and compare them using AIC.
+
+```{r gamm flow fa wt with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_gam_q_fa_wt <- as.formula(
+  "Chla_log ~ Year_fct * StationCode + Flow * StationCode * FlowActionPeriod + Year_fct * WaterTemp + StationCode * WaterTemp + s(DOY, k = 5)"
+)
+
+# Fit original model with k = 5 and three successive AR(p) models
+m_gamm_q_fa_wt <- gamm(
+  f_gam_q_fa_wt, 
+  data = df_chla_wt_q,
+  method = "REML"
+)
+
+m_gamm_q_fa_wt_ar1 <- gamm(
+  f_gam_q_fa_wt, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 1), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_q_fa_wt_ar2 <- gamm(
+  f_gam_q_fa_wt, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 2), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_q_fa_wt_ar3 <- gamm(
+  f_gam_q_fa_wt, 
+  data = df_chla_wt_q, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 3), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_gamm_q_fa_wt$lme, 
+  m_gamm_q_fa_wt_ar1$lme, 
+  m_gamm_q_fa_wt_ar2$lme, 
+  m_gamm_q_fa_wt_ar3$lme
+)
+```
+
+Again, it looks like the AR(2) model has the best fit according to the AIC values and backed up by the BIC values. Let's take a closer look at that one.
+
+### AR(2) Model
+
+```{r gamm flow fa wt ar2 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_q_fa_wt_ar2 <- residuals(m_gamm_q_fa_wt_ar2$lme, type = "normalized")
+m_gamm_q_fa_wt_ar2_gam <- m_gamm_q_fa_wt_ar2$gam
+
+summary(m_gamm_q_fa_wt_ar2_gam)
+appraise(m_gamm_q_fa_wt_ar2_gam)
+k.check(m_gamm_q_fa_wt_ar2_gam)
+draw(m_gamm_q_fa_wt_ar2_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gamm_q_fa_wt_ar2_gam, pages = 1, all.terms = TRUE)
+acf(resid_q_fa_wt_ar2)
+Box.test(resid_q_fa_wt_ar2, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(2) model has much less residual autocorrelation, and the diagnostics plots look pretty good. We'll take a look at the ANOVA table to see if we need all the interaction terms included in the model.
+
+```{r gamm flow fa wt ar2 anova, warning = FALSE}
+# the anova.gam function is similar to a type 3 ANOVA
+anova(m_gamm_q_fa_wt_ar2_gam)
+```
+
+Despite its complexity, we'll use this model for the model selection process.
+
+# Model selection - GAM models
+
+As a summary, here are the 6 GAM models we are comparing:
+
+* Model 1 - `m_gamm_cat_ar2` - Categorical predictors only <br>
+Formula: `r format(m_gamm_cat_ar2_gam$formula) %>% str_c(collapse = "") %>% str_squish()` <br><br>
+* Model 2 - `m_gamm_cat_wt_ar2b` - Categorical predictors adding water temperature <br>
+Formula: `r format(m_gamm_cat_wt_ar2b_gam$formula) %>% str_c(collapse = "") %>% str_squish()` <br><br>
+* Model 3 - `m_gamm_q_ar2b` - Flow as continuous predictor <br>
+Formula: `r format(m_gamm_q_ar2b_gam$formula) %>% str_c(collapse = "") %>% str_squish()` <br><br>
+* Model 4 - `m_gamm_q_wt_ar2` - Flow and water temperature as continuous predictors <br>
+Formula: `r format(m_gamm_q_wt_ar2_gam$formula) %>% str_c(collapse = "") %>% str_squish()` <br><br>
+* Model 5 - `m_gamm_q_fa_ar2` - Flow with flow action period <br>
+Formula: `r format(m_gamm_q_fa_ar2_gam$formula) %>% str_c(collapse = "") %>% str_squish()` <br><br>
+* Model 6 - `m_gamm_q_fa_wt_ar2` - Flow with flow action period and water temperature <br>
+Formula: `r format(m_gamm_q_fa_wt_ar2_gam$formula) %>% str_c(collapse = "") %>% str_squish()` <br>
+
+```{r model sel gam, warning = FALSE}
+# AIC values
+df_gamm_aic <- 
+  AIC(
+    m_gamm_cat_ar2$lme,
+    m_gamm_cat_wt_ar2b$lme,
+    m_gamm_q_ar2b$lme,
+    m_gamm_q_wt_ar2$lme,
+    m_gamm_q_fa_ar2$lme,
+    m_gamm_q_fa_wt_ar2$lme
+  ) %>% 
+  as_tibble(rownames = "gamm_model")
+
+# BIC values
+df_gamm_bic <- 
+  BIC(
+    m_gamm_cat_ar2$lme,
+    m_gamm_cat_wt_ar2b$lme,
+    m_gamm_q_ar2b$lme,
+    m_gamm_q_wt_ar2$lme,
+    m_gamm_q_fa_ar2$lme,
+    m_gamm_q_fa_wt_ar2$lme
+  ) %>% 
+  as_tibble(rownames = "gamm_model")
+
+# Combine AIC and BIC and display results
+left_join(df_gamm_aic, df_gamm_bic, by = join_by(gamm_model, df))
+```
+
+According to AIC, model 2 (categorical predictors adding water temperature) was the best model, while BIC preferred model 3 (flow as continuous predictor). We'll look at these two models more closely.
+
+```{r export models and data}
+m_gamm_cat_wt_ar2b %>% saveRDS(here("manuscript_synthesis/model/interim/chla_cat_wt_gamm_model.rds"))
+m_gamm_q_ar2b %>% saveRDS(here("manuscript_synthesis/model/interim/chla_flow_gamm_model.rds"))
+df_chla_wt_q %>% saveRDS(here("manuscript_synthesis/model/interim/chla_wt_flow_model_data.rds"))
+```
+
