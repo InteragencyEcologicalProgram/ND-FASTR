@@ -1,8 +1,8 @@
 # NDFS Synthesis Manuscript
 # Purpose: Process the 15-minute continuous chlorophyll and water temperature
-  # data collected from the Yolo Bypass and downstream during years 2013-2019.
-  # Calculate daily averages which are used in figures and analysis for the NDFS
-  # synthesis manuscript.
+  # data collected from the Yolo Bypass and downstream at three representative
+  # stations (RD22, STTD, LIB) during years 2013-2019. Calculate daily averages
+  # which are used in figures and analysis for the NDFS synthesis manuscript.
 # Author: Dave Bosworth
 # Contacts: David.Bosworth@water.ca.gov
 
@@ -48,15 +48,18 @@ df_wq_daily_avg <- df_rtm_wq %>%
     DateTime = ymd_hms(DateTime, tz = "Etc/GMT+8"),
     Date = date(DateTime)
   ) %>% 
-  # calculate daily average chlorophyll and water temperature values
-  summarize(across(c(WaterTemp, Chla), ~ mean(.x, na.rm = TRUE)), .by = c(StationCode, Date)) %>% 
-  # remove all NaN values in both chlorophyll and water temperature columns
-  drop_na(WaterTemp, Chla) %>% 
-  # filter to years 2013-2019 and only keep core stations with a long-term record
+  # filter to years 2013-2019 and only keep three representative stations with a
+    # long-term record - RD22, STTD, and LIB
   filter(
     year(Date) %in% 2013:2019,
-    StationCode %in% c("I80", "LIB", "LIS", "RCS", "RD22", "RVB", "STTD")
+    StationCode %in% c("RD22", "STTD", "LIB")
   ) %>% 
+  # calculate daily average chlorophyll and water temperature values
+  summarize(across(c(WaterTemp, Chla), ~ mean(.x, na.rm = TRUE)), .by = c(StationCode, Date)) %>% 
+  # remove all NaN chlorophyll values
+  drop_na(Chla) %>% 
+  # convert NaN water temperature values to NA
+  mutate(WaterTemp = if_else(is.nan(WaterTemp), NA_real_, WaterTemp)) %>% 
   arrange(StationCode, Date) 
 
 
