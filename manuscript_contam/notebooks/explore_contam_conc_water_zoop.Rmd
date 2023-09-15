@@ -28,7 +28,7 @@ options(knitr.kable.NA = "")
 
 # Purpose
 
-Run statistical analyses for the total pesticide concentration data in water and zooplankton collected from the Sacramento River (SHR) and Toe Drain (STTD) in the summer-fall periods in 2017, 2018 and 2019. These analyses are included in the NDFS contaminants manuscript.
+Create exploratory figures and run statistical analyses for the total pesticide concentration data in water and zooplankton collected from the Sacramento River (SHR) and Toe Drain (STTD) in the summer-fall periods in 2017, 2018 and 2019. These analyses are included in the NDFS contaminants manuscript.
 
 # Global code and functions
 
@@ -844,7 +844,7 @@ df_water <- df_conc_all_c2 %>%
     # at STTD
   filter(Year == 2019) %>% 
   drop_na() %>% 
-  # Add log-transformed and sqrt-transformed zooplankton concentrations
+  # Add log-transformed and sqrt-transformed water concentrations
   mutate(
     TotalConc_Water_log = log(TotalConc_Water),
     TotalConc_Water_sqrt = sqrt(TotalConc_Water)
