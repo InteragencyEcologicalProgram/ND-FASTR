@@ -1,7 +1,7 @@
 # NDFS Contaminants Manuscript
 # Purpose: Run statistical analyses for the total pesticide concentration data
   # in water and zooplankton collected in summer-fall periods for the NDFS
-  # contaminants manuscript. Exploratory analyses and figures are in
+  # contaminants manuscript. Exploratory analyses and figures are in:
   # ND-FASTR/manuscript_contam/notebooks/explore_contam_conc_water_zoop.Rmd
 # Author: Dave Bosworth
 # Contacts: David.Bosworth@water.ca.gov
