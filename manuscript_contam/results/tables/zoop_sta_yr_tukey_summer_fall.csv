@@ -1,0 +1,5 @@
+Response,Parameter,Contrast,Estimate,SE,Df,t_ratio,p_value
+log(Zooplankton),Year,Year2017 - Year2018,-0.6700##,0.3044##,37,-2.201##,0.08423##
+log(Zooplankton),Year,Year2017 - Year2019,-0.7474##,0.3088##,37,-2.420##,0.05245##
+log(Zooplankton),Year,Year2018 - Year2019,-0.07740##,0.2738##,37,-0.2827##,0.9570##
+log(Zooplankton),Station,SHR - STTD,0.4238##,0.2381##,37,1.780##,0.08326##
