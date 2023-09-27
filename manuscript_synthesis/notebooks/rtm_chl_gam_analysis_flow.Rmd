@@ -92,8 +92,6 @@ df_flow_c <- df_flow %>%
 
 # Prepare chlorophyll and flow data for exploration and analysis
 df_chla_c1 <- df_chla %>% 
-  # remove all NA Chlorophyll values
-  drop_na(Chla) %>% 
   # Remove RYI since its chlorophyll data is so sparse
   filter(StationCode != "RYI") %>% 
   # Join flow data to chlorophyll data

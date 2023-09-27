@@ -87,12 +87,10 @@ df_fa_dates <- read_csv(fp_fa_dates)
 ```{r prepare rtm chla data, message = FALSE}
 # Create a vector for the factor order of StationCode
 sta_order <- c(
-  "RMB",
   "RCS",
   "RD22",
   "I80",
   "LIS",
-  "TOE",
   "STTD",
   "LIB",
   "RYI",
@@ -101,8 +99,6 @@ sta_order <- c(
 
 # Prepare continuous chlorophyll for exploration and analysis
 df_chla_c <- df_chla %>% 
-  # remove all NA Chlorophyll values
-  drop_na(Chla) %>% 
   # create Year variable
   mutate(Year = year(Date)) %>%
   # Scale and log transform chlorophyll values
@@ -111,13 +107,6 @@ df_chla_c <- df_chla %>%
   ndfa_action_periods() %>% 
   left_join(df_rtm_region) %>% 
   mutate(DOY = yday(Date)) %>% 
-  # Remove stations in Middle Sac River region since we only want to include
-    # stations within the Yolo Bypass when comparing Flow Action Periods
-  # Also remove SDI since it's further downstream in the Sacramento River
-  filter(
-    Region != "Middle Sac River",
-    StationCode != "SDI"
-  ) %>% 
   arrange(StationCode, Date) %>% 
   mutate(
     # Apply factor orders to FlowActionPeriod, Region, and StationCode
