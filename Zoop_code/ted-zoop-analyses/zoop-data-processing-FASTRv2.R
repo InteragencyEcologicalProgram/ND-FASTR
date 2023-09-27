@@ -465,7 +465,8 @@ ggsave(path = output,
 
 #P. forbesi plot
 testdata <- df_zoop_gen %>% filter(TaxonName=="Pseudodiaptomus forbesi")
-testplot <- ggplot(testdata, aes(x = SamplePeriod, y = log(CPUEZoop), fill = Region))+
+testdata$logCPUEzoop <- log(testdata$CPUEZoop+1)
+testplot <- ggplot(testdata, aes(x = SamplePeriod, y = logCPUEzoop, fill = Region))+
   geom_boxplot()
 testplot+
   labs(x = bquote('Flow Pulse Period'), 
@@ -476,4 +477,14 @@ testplot+
   scale_fill_manual(values = c("#E41A1C",
                                "#377EB8")) +
                       theme(axis.text.x = element_text(angle = 0, vjust = 0.7))
+testplot+
+  facet_wrap(vars(Year), ncol = 3, dir = "h") +
+  labs(x = bquote('Flow Pulse Period'), 
+       y = bquote('log CPUE of P. forbesi ' ~ ('organisms *'~L^-1)), 
+       title = paste0("Abundance of P. forbesi by Region and Flow Pulse Period")) + 
+  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+  scale_fill_manual(values = c("#E41A1C",
+                               "#377EB8")) +
+  theme(axis.text.x = element_text(angle = 0, vjust = 0.7))
 #end()
