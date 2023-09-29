@@ -307,6 +307,11 @@ anova(m_gamm_cat3_ar1_gam)
 
 The 3-way interaction term is significant in this model, so we'll use this one for the model selection process. Note that the s(DOY) term is marginally significant (p = 0.0511) in this model.
 
+```{r gamm cat3 clean up}
+rm(m_gam_cat3, m_gamm_cat3, m_gamm_cat3_ar2, m_gamm_cat3_ar3)
+```
+
+
 ## Model 2: LM 3-way interactions with water temperature
 
 ### Initial Model
@@ -412,6 +417,11 @@ Anova(m_lm_cat3_wt_lag1, type = 3, contrasts = list(topic = contr.sum, sys = con
 ```
 
 All the interaction terms are significant, so we can use this model in our model selection process; however, I'm somewhat leery of using this model since the model residuals don't look right and the water temperature term isn't significant.
+
+```{r lm cat3 wt clean up}
+rm(m_lm_cat3_wt, m_lm_cat3_wt_lag2, m_lm_cat3_wt_lag3)
+```
+
 
 ## Model 3: LM 3-way interactions without seasonal term
 
@@ -519,6 +529,11 @@ Anova(m_lm_cat3_lag1, type = 3, contrasts = list(topic = contr.sum, sys = contr.
 
 All the interaction terms are significant, so we can use this model in our model selection process; however, I'm somewhat leery of using this model since the model residuals don't look right.
 
+```{r lm cat3 clean up}
+rm(m_lm_cat3, m_lm_cat3_lag2, m_lm_cat3_lag3)
+```
+
+
 ## Model 4: GAM 2-way interactions with s(DOY)
 
 ### Initial Model
@@ -616,6 +631,11 @@ anova(m_gamm_cat2_ar1_gam)
 ```
 
 All the interaction terms are significant in this model, so we'll use this one for the model selection process. Note that the s(DOY) term is significant in this model, but is effectively a straight line.
+
+```{r gamm cat2 clean up}
+rm(m_gam_cat2, m_gamm_cat2, m_gamm_cat2_ar2, m_gamm_cat2_ar3)
+```
+
 
 ## Model 5: LM 2-way interactions with water temperature
 
@@ -723,6 +743,11 @@ Anova(m_lm_cat2_wt_lag1, type = 3, contrasts = list(topic = contr.sum, sys = con
 
 All the interaction terms are significant, so we can use this model in our model selection process; however, I'm somewhat leery of using this model since the model residuals don't look right and the water temperature term isn't significant.
 
+```{r lm cat2 wt clean up}
+rm(m_lm_cat2_wt, m_lm_cat2_wt_lag2, m_lm_cat2_wt_lag3)
+```
+
+
 ## Model 6: LM 2-way interactions without seasonal term
 
 ### Initial Model
@@ -829,6 +854,10 @@ Anova(m_lm_cat2_lag1, type = 3, contrasts = list(topic = contr.sum, sys = contr.
 
 All the interaction terms are significant, so we can use this model in our model selection process; however, I'm somewhat leery of using this model since the model residuals don't look right.
 
+```{r lm cat2 clean up}
+rm(m_lm_cat2, m_lm_cat2_lag2, m_lm_cat2_lag3)
+```
+
 
 # Model selection - GAM and LM models
 
@@ -837,15 +866,15 @@ As a summary, here are the 6 models we are comparing:
 * Model 1 - `m_gamm_cat3_ar1` - GAM 3-way interactions with s(DOY) <br>
 Formula: `r format(m_gamm_cat3_ar1_gam$formula) %>% str_c(collapse = "") %>% str_squish()` <br><br>
 * Model 2 - `m_lm_cat3_wt_lag1` - LM 3-way interactions with water temperature <br>
-Formula: `r format(m_lm_cat3_wt_lag1$call) %>% str_c(collapse = "") %>% str_squish()` <br><br>
+Formula: `r format(m_lm_cat3_wt_lag1$call) %>% str_c(collapse = "") %>% str_squish() %>% str_sub(start = 14, end = -12)` <br><br>
 * Model 3 - `m_lm_cat3_lag1` - LM 3-way interactions without seasonal term <br>
-Formula: `r format(m_lm_cat3_lag1$call) %>% str_c(collapse = "") %>% str_squish()` <br><br>
+Formula: `r format(m_lm_cat3_lag1$call) %>% str_c(collapse = "") %>% str_squish() %>% str_sub(start = 14, end = -12)` <br><br>
 * Model 4 - `m_gamm_cat2_ar1` - GAM 2-way interactions with s(DOY) <br>
 Formula: `r format(m_gamm_cat2_ar1_gam$formula) %>% str_c(collapse = "") %>% str_squish()` <br><br>
 * Model 5 - `m_lm_cat2_wt_lag1` - LM 2-way interactions with water temperature <br>
-Formula: `r format(m_lm_cat2_wt_lag1$call) %>% str_c(collapse = "") %>% str_squish()` <br><br>
+Formula: `r format(m_lm_cat2_wt_lag1$call) %>% str_c(collapse = "") %>% str_squish() %>% str_sub(start = 14, end = -12)` <br><br>
 * Model 6 - `m_lm_cat2_lag1` - LM 2-way interactions without seasonal term <br>
-Formula: `r format(m_lm_cat2_lag1$call) %>% str_c(collapse = "") %>% str_squish()` <br>
+Formula: `r format(m_lm_cat2_lag1$call) %>% str_c(collapse = "") %>% str_squish() %>% str_sub(start = 14, end = -12)` <br>
 
 ```{r model sel gam, warning = FALSE}
 # AIC values
@@ -872,16 +901,28 @@ df_m_bic <-
   ) %>% 
   as_tibble(rownames = "Model")
 
-# Combine AIC and BIC and display results
-left_join(df_m_aic, df_m_bic, by = join_by(Model, df)) %>% arrange(BIC)
+# Combine AIC and BIC
+df_m_aic_bic <- left_join(df_m_aic, df_m_bic, by = join_by(Model, df))
+
+# Sort by AIC
+df_m_aic_bic %>% arrange(AIC)
+
+# Sort by BIC
+df_m_aic_bic %>% arrange(BIC)
 ```
 
-According to AIC, model 3 (LM 3-way interactions without seasonal term) was the best model, while BIC preferred model 6 (LM 2-way interactions without seasonal term). We'll look at both of these models more closely.
+According to AIC, model 3 (LM 3-way interactions without seasonal term) was the best model, while BIC preferred model 6 (LM 2-way interactions without seasonal term). We'll select model 3 (LM 3-way interactions without seasonal term) because the 3-way interaction between categorical variables was significant in this model indicating that there are possible significant differences between Flow Pulse Periods within each Station-Year grouping. We'll export model 3 and its data to be used for further exploration in other notebooks. 
 
 ```{r export models and data}
-# Export models and data used in the models
-m_lm_cat2_lag1 %>% saveRDS(here("manuscript_synthesis/model/interim/chla_cat2_lm_model.rds"))
-m_lm_cat3_lag1 %>% saveRDS(here("manuscript_synthesis/model/interim/chla_cat3_lm_model.rds"))
-df_chla_wt_lag %>% saveRDS(here("manuscript_synthesis/model/interim/chla_model_data.rds"))
+# Define file path for model and data used in the model
+fp_model <- here("manuscript_synthesis/model/interim")
+
+# Export model and data used in the model
+m_lm_cat3_lag1 %>% saveRDS(file.path(fp_model, "chla_cat3_lm_model.rds"))
+
+df_chla_wt_lag %>% 
+  select(StationCode, Year, Date, Chla, Chla_log, FlowActionPeriod, lag1) %>% 
+  drop_na(Chla_log, lag1) %>% 
+  saveRDS(file.path(fp_model, "chla_model_data.rds"))
 ```
 
