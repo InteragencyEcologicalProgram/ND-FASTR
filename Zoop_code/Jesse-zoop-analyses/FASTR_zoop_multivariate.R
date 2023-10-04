@@ -295,14 +295,19 @@ plot(m_cpue_gam, pages=1, residuals=TRUE)
 # Plot Upstream and Downstream Total BV by ActionPhase for each year
 fig1 <- ggplot(data=zoopNDFA7, aes(y= log10(cpue), 
                                    x = factor(Regions2,levels = c("Upstream","Downstream")),
-                                   color = SamplePeriod)) +
+                                   fill = SamplePeriod)) +
   geom_boxplot() 
 
 fig1 +
   labs(title = "Total Zooplankton Abundance by Year",
        y = bquote(Log[10]~'Zooplankton Abundance'~(indiv.~L^-1)), 
        x = "Sampling Region",
-       color = "Pulse Period") +
+       fill = "Pulse Period") + 
+  theme_bw()+
+  scale_fill_manual(values = c("#4DAF4A",
+                               "#984EA3",
+                               "#A3D0D4"),
+                    labels=c("Before", "During", "After"))+
   facet_wrap(Year ~ ., ncol = 2)  
 
 ggsave(path = output,
