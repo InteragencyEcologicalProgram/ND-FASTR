@@ -296,7 +296,7 @@ plot(m_cpue_gam, pages=1, residuals=TRUE)
 fig1 <- ggplot(data=zoopNDFA7, aes(y= log10(cpue), 
                                    x = factor(Regions2,levels = c("Upstream","Downstream")),
                                    fill = SamplePeriod)) +
-  geom_boxplot() 
+  geom_boxplot(size=.2,outlier.size = .5)
 
 fig1 +
   labs(title = "Total Zooplankton Abundance by Year",
@@ -310,12 +310,12 @@ fig1 +
                     labels=c("Before", "During", "After"))+
   facet_wrap(Year ~ ., ncol = 2)  
 
-ggsave(path = output,
+ggsave(path = "Plots",
        filename = "fig1_log_zoop_cpue_by_year_and_AP.png", 
-       device = "png",
+       device = "tiff",
        scale=1.0, 
        units="in",
        height=4,
        width=6, 
-       dpi="print")
+       dpi= "print")
 
