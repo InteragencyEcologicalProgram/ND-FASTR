@@ -319,7 +319,7 @@ p_zoop_NMDS_SamplePeriod +
   labs(x = NULL,
        y = NULL,
        title = "Zooplankton Community Comparison (2014-2019)",
-       color = "Sample Period") +
+       color = "Flow Pulse Period") +
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
