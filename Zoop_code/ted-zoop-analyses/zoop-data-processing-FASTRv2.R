@@ -284,7 +284,7 @@ p_zoop_NMDS_Region +
   facet_wrap(Year ~ ., ncol = 3, dir = "h") +
   labs(x = NULL,
        y = NULL,
-       title = "NDFA - Zooplankton Community Comparison (2014-2019)",
+       title = "Zooplankton Community Comparison (2014-2019)",
        color = "Region") +
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
@@ -318,7 +318,7 @@ p_zoop_NMDS_SamplePeriod +
   facet_wrap(Year~., ncol = 3, dir = "h") +
   labs(x = NULL,
        y = NULL,
-       title = "NDFA - Zooplankton Community Comparison (2014-2019)",
+       title = "Zooplankton Community Comparison (2014-2019)",
        color = "Sample Period") +
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
