@@ -28,7 +28,7 @@ options(knitr.kable.NA = "")
 
 # Purpose
 
-Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit multiple models to the data set and use a model selection process to determine the best one. At a minimum the model will contain the three categorical variables (Year, Station, and Flow Pulse Period) and optionally a term to account for seasonality (either daily average water temperature or a GAM smooth for DOY). These models will only include representative stations for 3 habitat types - upstream (RD22), lower Yolo Bypass (STTD), and downstream (LIB).
+Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit multiple models to the data set and use a model selection process to determine the best one. At a minimum the model will contain the three categorical variables (Year, Station, and Flow Pulse Period) and optionally a term to account for seasonality (either daily average water temperature or a GAM smooth for DOY). These models will only include representative stations for 4 habitat types - upstream (RD22), lower Yolo Bypass (STTD), Cache Slough complex (LIB), and downstream (RVB).
 
 # Global code and functions
 
@@ -135,7 +135,7 @@ df_chla_wt <- readRDS(file.path(fp_data, "chla_wt_daily_avg_2013-2019.rds"))
 
 ```{r prepare chla data, message = FALSE}
 # Create a vector for the factor order of StationCode
-sta_order <- c("RD22", "STTD", "LIB")
+sta_order <- c("RD22", "STTD", "LIB", "RVB")
 
 # Prepare chlorophyll and water temperature data for exploration and analysis
 df_chla_wt_c <- df_chla_wt %>% 
@@ -193,7 +193,7 @@ Except for a few Station-Year-FlowPeriod combinations with low sample counts, it
 
 # Plots
 
-```{r chla boxplot station, fig.width = 8, fig.height = 6}
+```{r chla boxplot station, fig.width = 8, fig.height = 8}
 df_chla_wt_c %>%
   ggplot(aes(x = FlowActionPeriod, y = Chla, fill = FlowActionPeriod)) +
   geom_boxplot() +
@@ -305,7 +305,7 @@ The AR(1) model has much less residual autocorrelation, and the diagnostics plot
 anova(m_gamm_cat3_ar1_gam)
 ```
 
-The 3-way interaction term is significant in this model, so we'll use this one for the model selection process. Note that the s(DOY) term is marginally significant (p = 0.0511) in this model.
+The 3-way interaction term is significant in this model, so we'll use this one for the model selection process.
 
 ```{r gamm cat3 clean up}
 rm(m_gam_cat3, m_gamm_cat3, m_gamm_cat3_ar2, m_gamm_cat3_ar3)
@@ -343,7 +343,7 @@ acf(residuals(m_lm_cat3_wt))
 Box.test(residuals(m_lm_cat3_wt), lag = 20, type = 'Ljung-Box')
 ```
 
-Hmm, the residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, the residuals are autocorrelated.
+Hmmm, the residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, the residuals are autocorrelated.
 
 ### Model with lag terms
 
@@ -410,7 +410,7 @@ df_chla_wt_lag %>%
 shapiro.test(m_lm_cat3_wt_lag1$residuals)
 ```
 
-Hmm, the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a look at its ANOVA table using type 3 sum of squares.
+Hmmm, the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a look at its ANOVA table using type 3 sum of squares.
 
 ```{r anova cat3 wt lag1}
 Anova(m_lm_cat3_wt_lag1, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
@@ -454,7 +454,7 @@ acf(residuals(m_lm_cat3))
 Box.test(residuals(m_lm_cat3), lag = 20, type = 'Ljung-Box')
 ```
 
-Hmm, the residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, the residuals are autocorrelated.
+Hmmm, the residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, the residuals are autocorrelated.
 
 ### Model with lag terms
 
@@ -521,7 +521,7 @@ df_chla_wt_lag %>%
 shapiro.test(m_lm_cat3_lag1$residuals)
 ```
 
-Hmm, again the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a look at its ANOVA table using type 3 sum of squares.
+Hmmm, again the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a look at its ANOVA table using type 3 sum of squares.
 
 ```{r anova cat3 lag1}
 Anova(m_lm_cat3_lag1, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
@@ -630,7 +630,7 @@ The AR(1) model has much less residual autocorrelation, and the diagnostics plot
 anova(m_gamm_cat2_ar1_gam)
 ```
 
-All the interaction terms are significant in this model, so we'll use this one for the model selection process. Note that the s(DOY) term is significant in this model, but is effectively a straight line.
+All the interaction terms are significant in this model, so we'll use this one for the model selection process.
 
 ```{r gamm cat2 clean up}
 rm(m_gam_cat2, m_gamm_cat2, m_gamm_cat2_ar2, m_gamm_cat2_ar3)
@@ -668,7 +668,7 @@ acf(residuals(m_lm_cat2_wt))
 Box.test(residuals(m_lm_cat2_wt), lag = 20, type = 'Ljung-Box')
 ```
 
-Hmm, the residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, the residuals are autocorrelated.
+Hmmm, the residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, the residuals are autocorrelated.
 
 ### Model with lag terms
 
@@ -735,7 +735,7 @@ df_chla_wt_lag %>%
 shapiro.test(m_lm_cat2_wt_lag1$residuals)
 ```
 
-Hmm, the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a look at its ANOVA table using type 3 sum of squares.
+Hmmm, the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a look at its ANOVA table using type 3 sum of squares.
 
 ```{r anova cat2 wt lag1}
 Anova(m_lm_cat2_wt_lag1, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
@@ -779,7 +779,7 @@ acf(residuals(m_lm_cat2))
 Box.test(residuals(m_lm_cat2), lag = 20, type = 'Ljung-Box')
 ```
 
-Hmm, the residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, the residuals are autocorrelated.
+Hmmm, the residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, the residuals are autocorrelated.
 
 ### Model with lag terms
 
@@ -846,7 +846,7 @@ df_chla_wt_lag %>%
 shapiro.test(m_lm_cat2_lag1$residuals)
 ```
 
-Hmm, again the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a look at its ANOVA table using type 3 sum of squares.
+Hmmm, again the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a look at its ANOVA table using type 3 sum of squares.
 
 ```{r anova cat2 lag1}
 Anova(m_lm_cat2_lag1, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
@@ -915,7 +915,7 @@ According to AIC, model 3 (LM 3-way interactions without seasonal term) was the 
 
 ```{r export models and data}
 # Define file path for model and data used in the model
-fp_model <- here("manuscript_synthesis/model/interim")
+fp_model <- here("manuscript_synthesis/model")
 
 # Export model and data used in the model
 m_lm_cat3_lag1 %>% saveRDS(file.path(fp_model, "chla_cat3_lm_model.rds"))
