@@ -1,0 +1,154 @@
+---
+title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
+subtitle: "Results from Final Model"
+author: "Dave Bosworth"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = here::here("docs"),
+      envir = globalenv()
+    )
+    })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+Look at results of the preferred model during model selection: Linear model with 3-way interactions between categorical variables - Year, Station, and Flow Pulse Period - without seasonal term.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(car)
+library(emmeans)
+library(multcomp)
+library(here)
+library(conflicted)
+
+# Declare package conflict preferences 
+conflicts_prefer(dplyr::filter(), dplyr::select())
+```
+
+Display current versions of R and packages used for this analysis:
+
+```{r print session info}
+devtools::session_info()
+```
+
+# Import Model and Data
+
+```{r import data}
+# Define file path for model and data used in the model
+fp_model <- here("manuscript_synthesis/model")
+
+# Import model and data used in the model
+m_lm_cat3 <- read_rds(file.path(fp_model, "chla_cat3_lm_model.rds"))
+df_chla <- read_rds(file.path(fp_model, "chla_model_data.rds"))
+```
+
+# Model Results
+
+## ANOVA table
+
+```{r anova lm cat3, warning = FALSE}
+Anova(m_lm_cat3, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+```
+
+## Pairwise Contrasts
+
+Tukey pairwise contrasts of Flow Pulse Period for each Station - Year combination:
+
+```{r tukey flow action period, warning = FALSE}
+em_cat3 <- emmeans(m_lm_cat3, ~ FlowActionPeriod | StationCode * Year_fct)
+pairs(em_cat3)
+```
+
+## Summary Figure
+
+```{r summary figure, fig.width = 8.5, fig.height = 7.5}
+# Add significance grouping letters from the Tukey post-hoc results and back
+  # transform log-transformed results
+df_cat3_tuk <- em_cat3 %>% 
+  cld(sort = FALSE, Letters = letters) %>% 
+  as_tibble() %>% 
+  mutate(
+    group = str_remove_all(.group, fixed(" ")),
+    across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000),
+    Year = as.numeric(as.character(Year_fct))
+  ) %>% 
+  select(
+    StationCode,
+    Year,
+    FlowActionPeriod,
+    emmean,
+    lower.CL,
+    upper.CL,
+    group
+  )
+
+# Determine vertical positioning of letters for figure
+# Calculate min and max values of observed data for each Station - Year group
+df_chla_summ <- df_chla %>% 
+  summarize(
+    max_val = max(Chla),
+    min_val = min(Chla),
+    .by = c(StationCode, Year)
+  )
+
+# Add min and max values of observed data to the Tukey post-hoc results and
+  # calculate vertical positioning of letters
+df_cat3_tuk_c <- df_cat3_tuk %>% 
+  left_join(df_chla_summ, by = join_by(StationCode, Year)) %>% 
+  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>% 
+  group_by(StationCode, Year) %>% 
+  mutate(max_val = max(max_val)) %>% 
+  ungroup() %>% 
+  mutate(y_pos = max_val + (max_val - min_val) / 10)
+
+# Create summary figure
+df_cat3_tuk_c %>%
+  ggplot(
+    aes(
+      x = FlowActionPeriod,
+      y = emmean,
+      ymin = lower.CL,
+      ymax = upper.CL,
+      label = group
+    )
+  ) +
+  geom_boxplot(
+    data = df_chla,
+    aes(x = FlowActionPeriod, y = Chla),
+    inherit.aes = FALSE
+  ) +
+  geom_crossbar(color = "grey82", fill = "grey", alpha = 0.7, linewidth = 0.1) +
+  geom_point(color = "red") +
+  geom_text(aes(y = y_pos), size = 3) +
+  facet_wrap(
+    vars(StationCode, Year), 
+    scales = "free_y",
+    nrow = 4,
+    labeller = labeller(.multi_line = FALSE)
+  ) +
+  xlab("Flow Pulse Period") +
+  ylab(expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+Observed daily average chlorophyll fluorescence values (boxplots) and model results (model means as red points ±95% confidence intervals as gray boxes) for the Flow Pulse Period comparisons by Station and Year. Different letters above boxplots identify statistically significant (p < 0.05) differences from a Tukey post-hoc test.
+
