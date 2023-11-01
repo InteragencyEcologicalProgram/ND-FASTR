@@ -62,6 +62,8 @@ df_chla <- read_rds(file.path(fp_model, "chla_model_data.rds"))
 
 # Model Results
 
+Model formula: `r format(m_lm_cat3$call) %>% str_c(collapse = "") %>% str_squish() %>% str_sub(start = 14, end = -12)`
+
 ## ANOVA table
 
 ```{r anova lm cat3, warning = FALSE}

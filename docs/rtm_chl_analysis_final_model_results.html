@@ -11,7 +11,7 @@
 
 <meta name="author" content="Dave Bosworth" />
 
-<meta name="date" content="2023-10-31" />
+<meta name="date" content="2023-11-01" />
 
 <title>NDFS Synthesis Manuscript: Chlorophyll analysis</title>
 
@@ -1583,7 +1583,7 @@ font-size: 0.95em;
 analysis</h1>
 <h3 class="subtitle">Results from Final Model</h3>
 <h4 class="author">Dave Bosworth</h4>
-<h4 class="date">October 31, 2023</h4>
+<h4 class="date">November 01, 2023</h4>
 
 </div>
 
@@ -1619,7 +1619,7 @@ analysis:</p>
 ##  collate  English_United States.utf8
 ##  ctype    English_United States.utf8
 ##  tz       America/Los_Angeles
-##  date     2023-10-31
+##  date     2023-11-01
 ##  pandoc   3.1.1 @ C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools/ (via rmarkdown)
 ## 
 ## ─ Packages ───────────────────────────────────────────────────────────────────
@@ -1731,6 +1731,8 @@ df_chla &lt;- read_rds(file.path(fp_model, &quot;chla_model_data.rds&quot;))</co
 </div>
 <div id="model-results" class="section level1">
 <h1>Model Results</h1>
+<p>Model formula: Chla_log ~ Year_fct * FlowActionPeriod * StationCode +
+lag1</p>
 <div id="anova-table" class="section level2">
 <h2>ANOVA table</h2>
 <pre class="r"><code>Anova(m_lm_cat3, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))</code></pre>
