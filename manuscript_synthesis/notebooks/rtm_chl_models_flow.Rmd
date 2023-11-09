@@ -1,6 +1,6 @@
 ---
 title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
-subtitle: "GAM model using daily average flow as continuous predictor"
+subtitle: "Models using daily average flow as continuous predictor"
 author: "Dave Bosworth"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output: 
@@ -27,7 +27,7 @@ options(knitr.kable.NA = "")
 
 # Purpose
 
-Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit a generalized additive model (GAM) to the data set to help account for seasonality in the data. This is an extension of the original analysis which used a categorical predictor for flow action period. In this analysis we will replace this categorical predictor with daily average flow as a continuous predictor.
+Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit various models to the data set using daily average flow as a continuous predictor which replaces the categorical predictor - flow action period - in the original analysis. These models will only include representative stations for 4 habitat types - upstream (RD22), lower Yolo Bypass (STTD), Cache Slough complex (LIB), and downstream (RVB).
 
 # Global code and functions
 
@@ -165,11 +165,11 @@ df_chla_c2 %>%
   theme_bw()
 ```
 
-The patterns appear to vary annually at each station, which may justify using a 3-way interaction. We'll stick with the model using 2-way interactions for now.
+The patterns appear to vary annually at each station, which may justify using a 3-way interaction.
 
 # GAM Model
 
-We'll try running a GAM including all two-way interactions between Year, Daily Average Flow, and Station, and a smooth term for day of year to account for seasonality. First we'll run the GAM without accounting for serial autocorrelation.
+First, we will attempt to fit a generalized additive model (GAM) to the data set to help account for seasonality in the data. We'll try running a GAM using a three-way interaction between Year, Daily Average Flow, and Station, and a smooth term for day of year to account for seasonality. Initially, we'll run the GAM without accounting for serial autocorrelation.
 
 ## Initial Model
 
