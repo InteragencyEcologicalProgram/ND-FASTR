@@ -7,7 +7,7 @@ layout: default
 ### Exploratory Analyses
 
 * [Models using Categorical Predictors](rtm_chl_gam_analysis_categorical.html)
-* [Models using Flow as a Continuous Predictor](rtm_chl_gam_analysis_flow.html)
+* [Models using Flow as a Continuous Predictor](rtm_chl_models_flow.html)
 * [Explore relationship between continuous chlorophyll and percent flow pulse water](rtm_chl_analysis_perc_flow_pulse.html)
 
 ### Final Analyses
