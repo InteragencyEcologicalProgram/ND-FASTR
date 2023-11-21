@@ -1,6 +1,6 @@
 ---
 title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
-subtitle: "GAM model using categorical predictors"
+subtitle: "GAM model using categorical predictors - Initial"
 author: "Dave Bosworth"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output: 
