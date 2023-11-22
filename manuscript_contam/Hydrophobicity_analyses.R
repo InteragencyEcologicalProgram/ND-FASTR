@@ -10,8 +10,9 @@ library(here)
 library(readxl)
 library(rlang)
 
+
 #2. Read in and manipulate the data summarized by year and site------------------------------------------------------------------------------------------------------------------------------
-hydrophob<-read_csv("hydrophobicity.csv") #data summarized by year and site
+hydrophob<-read_csv("C:/Users/ltwardochleb/Documents/NDFA/Contaminants/Data_analyses/Contaminants_MS/hydrophobicity.csv") #data summarized by year and site
 
 #pivot to long format and create habitat and matrix columns
 hydrophob2<-hydrophob%>%pivot_longer(cols = c(`Sacramento_River_2019-2020_Water_Detection_Frequency`, `Sacramento_River_2019-2020_Zooplankton_Detection_Frequency`, `Toe_Drain_2019-2020_Water_Detection_Frequency`, `Toe_Drain_2019-2020_Zooplankton_Detection_Frequency`),
