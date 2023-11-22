@@ -40,8 +40,6 @@ library(knitr)
 library(mgcv)
 library(car)
 library(gratia)
-library(rlang)
-library(patchwork)
 library(emmeans)
 library(multcomp)
 library(here)
@@ -63,64 +61,7 @@ devtools::session_info()
 Create functions for document:
 
 ```{r global funcs}
-# Create diagnostic plots for linear models to check assumptions
-plot_lm_diag <- function(df_data, param_var, unit_label, model, trans = c("none", "log", "sqrt"), ...) {
-  trans <- match.arg(trans)
-  
-  df_data <- df_data %>%
-    mutate(
-      Residuals = resid(model),
-      Fitted = predict(model)
-    )
-  
-  param_name <- as_name(ensym(param_var))
-  
-  if (trans == "log") {
-    unit_label <- paste0("log[", unit_label, "]")
-  } else if (trans == "sqrt") {
-    unit_label <- paste0("sqrt[", unit_label, "]")
-  }
-  
-  plt_hist <- ggplot(df_data, aes(x = Residuals)) +
-    geom_histogram(...) +
-    labs(
-      title = "Residual Histogram", 
-      x = "Residuals"
-    ) +
-    theme_bw()
-  
-  plt_qq <- ggplot(df_data, aes(sample = Residuals)) + 
-    labs(
-      title = "Residual Probability Plot", 
-      x = "Normal Quantiles", 
-      y = "Residuals"
-    ) + 
-    stat_qq() + 
-    stat_qq_line(linewidth = 1, color = 'red') + 
-    theme_bw()
-  
-  plt_res_fit <- ggplot(df_data, aes(x = Fitted, y = Residuals)) +
-    geom_point() +
-    labs(
-      title = "Residuals vs. Fitted Values", 
-      x = (paste0("Predicted ", param_name, " (", unit_label, ")")),
-      y = paste0("Residuals (", unit_label, ")")
-    ) +
-    theme_bw()
-  
-  plt_obs_fit <- ggplot(df_data, aes(x = Fitted, y = {{ param_var}})) +
-    geom_point() +
-    geom_abline(slope = 1, intercept = 0, color = "red") +
-    labs(
-      title = "Observed vs. Fitted Values", 
-      x = paste0("Predicted ", param_name, " (", unit_label, ")"),
-      y = paste0("Observed ", param_name, " (", unit_label, ")")
-    ) +
-    theme_bw()
-  
-  (plt_hist + plt_qq) / (plt_res_fit + plt_obs_fit)
-}
-
+# Create summary figure for model results and observed data
 plot_model_summary <- function(df_data, em_tuk_obj) {
   # Calculate min and max values of observed data for each Station - Year group to
     # determine vertical positioning of letters for figure
@@ -402,12 +343,7 @@ summary(m_lm_cat3_wt)
 
 df_chla_wt_lag %>% 
   drop_na(Chla_log, WaterTemp) %>% 
-  plot_lm_diag(
-    Chla_log, 
-    "ug/L", 
-    m_lm_cat3_wt, 
-    trans = "log"
-  )
+  plot_lm_diag(Chla_log, m_lm_cat3_wt)
 
 shapiro.test(m_lm_cat3_wt$residuals)
 acf(residuals(m_lm_cat3_wt))
@@ -471,12 +407,7 @@ summary(m_lm_cat3_wt_lag1)
 
 df_chla_wt_lag %>% 
   drop_na(Chla_log, WaterTemp, lag1) %>% 
-  plot_lm_diag(
-    Chla_log, 
-    "ug/L", 
-    m_lm_cat3_wt_lag1, 
-    trans = "log"
-  )
+  plot_lm_diag(Chla_log, m_lm_cat3_wt_lag1)
 
 shapiro.test(m_lm_cat3_wt_lag1$residuals)
 ```
@@ -513,12 +444,7 @@ summary(m_lm_cat3)
 
 df_chla_wt_lag %>% 
   drop_na(Chla_log) %>% 
-  plot_lm_diag(
-    Chla_log, 
-    "ug/L", 
-    m_lm_cat3, 
-    trans = "log"
-  )
+  plot_lm_diag(Chla_log, m_lm_cat3)
 
 shapiro.test(m_lm_cat3$residuals)
 acf(residuals(m_lm_cat3))
@@ -582,12 +508,7 @@ summary(m_lm_cat3_lag1)
 
 df_chla_wt_lag %>% 
   drop_na(Chla_log, lag1) %>% 
-  plot_lm_diag(
-    Chla_log, 
-    "ug/L", 
-    m_lm_cat3_lag1, 
-    trans = "log"
-  )
+  plot_lm_diag(Chla_log, m_lm_cat3_lag1)
 
 shapiro.test(m_lm_cat3_lag1$residuals)
 ```
@@ -727,12 +648,7 @@ summary(m_lm_cat2_wt)
 
 df_chla_wt_lag %>% 
   drop_na(Chla_log, WaterTemp) %>% 
-  plot_lm_diag(
-    Chla_log, 
-    "ug/L", 
-    m_lm_cat2_wt, 
-    trans = "log"
-  )
+  plot_lm_diag(Chla_log, m_lm_cat2_wt)
 
 shapiro.test(m_lm_cat2_wt$residuals)
 acf(residuals(m_lm_cat2_wt))
@@ -796,12 +712,7 @@ summary(m_lm_cat2_wt_lag1)
 
 df_chla_wt_lag %>% 
   drop_na(Chla_log, WaterTemp, lag1) %>% 
-  plot_lm_diag(
-    Chla_log, 
-    "ug/L", 
-    m_lm_cat2_wt_lag1, 
-    trans = "log"
-  )
+  plot_lm_diag(Chla_log, m_lm_cat2_wt_lag1)
 
 shapiro.test(m_lm_cat2_wt_lag1$residuals)
 ```
@@ -838,12 +749,7 @@ summary(m_lm_cat2)
 
 df_chla_wt_lag %>% 
   drop_na(Chla_log) %>% 
-  plot_lm_diag(
-    Chla_log, 
-    "ug/L", 
-    m_lm_cat2, 
-    trans = "log"
-  )
+  plot_lm_diag(Chla_log, m_lm_cat2)
 
 shapiro.test(m_lm_cat2$residuals)
 acf(residuals(m_lm_cat2))
@@ -907,12 +813,7 @@ summary(m_lm_cat2_lag1)
 
 df_chla_wt_lag %>% 
   drop_na(Chla_log, lag1) %>% 
-  plot_lm_diag(
-    Chla_log, 
-    "ug/L", 
-    m_lm_cat2_lag1, 
-    trans = "log"
-  )
+  plot_lm_diag(Chla_log, m_lm_cat2_lag1)
 
 shapiro.test(m_lm_cat2_lag1$residuals)
 ```

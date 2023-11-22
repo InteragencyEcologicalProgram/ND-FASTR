@@ -1,6 +1,6 @@
 ---
 title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
-subtitle: "GAM model using categorical predictors - Initial"
+subtitle: "GAM model using categorical predictors - Initial Analysis"
 author: "Dave Bosworth"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output: 
@@ -31,7 +31,7 @@ Explore and analyze the continuous chlorophyll data to be included in the NDFS s
 
 # Global code and functions
 
-```{r load packages, message = FALSE, warning = FALSE}
+```{r load packages and functions, message = FALSE, warning = FALSE}
 # Load packages
 library(tidyverse)
 library(lubridate)
@@ -41,13 +41,16 @@ library(mgcv)
 library(lme4)
 library(car)
 library(emmeans)
+library(multcomp)
 library(gratia)
 library(here)
-```
+library(conflicted)
 
-```{r load functions, message = FALSE, warning = FALSE}
 # Source functions
 source(here("manuscript_synthesis/src/global_functions.R"))
+
+# Declare package conflict preferences
+conflicts_prefer(dplyr::filter(), dplyr::lag(), dplyr::select())
 ```
 
 Display current versions of R and packages used for this analysis:
@@ -340,12 +343,12 @@ df_rtm_chla_lag1 <- df_chla_c %>%
   complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>% 
   # Create lag1 of scaled log transformed chlorophyll values
   mutate(lag1 = lag(Chla_log)) %>% 
-  ungroup()
+  ungroup() %>% 
+  drop_na(Chla_log, lag1)
 
 m_chla_gam_lag1 <- gam(
   Chla_log ~ (Year_fct + FlowActionPeriod + Region)^2 + s(DOY, k = 5) + s(StationCode, bs = "re") + lag1, 
   data = df_rtm_chla_lag1,
-  na.action = "na.omit",
   method = "REML"
 )
 
@@ -481,7 +484,7 @@ emmeans(
 )
 
 # Contrasts in Year for each Region
-multcomp::cld(
+cld(
   emmeans(
     m_chla_gamm_k5_ar3b, 
     data = df_chla_c,
@@ -523,7 +526,8 @@ df_rtm_chla_lag2 <- df_chla_c %>%
     lag1 = lag(Chla_log),
     lag2 = lag(Chla_log, 2)
   ) %>% 
-  ungroup()
+  ungroup() %>% 
+  drop_na(Chla_log, lag1, lag2)
 
 m_chla_lmer_lag2 <- 
   lmer(
@@ -540,9 +544,7 @@ Box.test(resid_lmer_lag2, lag = 20, type = 'Ljung-Box')
 There is still some residual autocorrelation, but less than with the lag1 model. Let's go with this one for now. Let's look at its diagnostic plots.
 
 ```{r lme lag2 diag}
-plot(resid_lmer_lag2)
-qqnorm(resid_lmer_lag2)
-hist(resid_lmer_lag2)
+df_rtm_chla_lag2 %>% plot_lm_diag(Chla_log, m_chla_lmer_lag2)
 ```
 
 The residuals look a little funky. Let's take a look at the ANOVA table
@@ -566,9 +568,7 @@ m_chla_lmer_lag2b <-
 resid_lmer_lag2b <- residuals(m_chla_lmer_lag2b)
 acf(resid_lmer_lag2b)
 Box.test(resid_lmer_lag2b, lag = 20, type = 'Ljung-Box')
-plot(resid_lmer_lag2b)
-qqnorm(resid_lmer_lag2b)
-hist(resid_lmer_lag2b)
+df_rtm_chla_lag2 %>% plot_lm_diag(Chla_log, m_chla_lmer_lag2b)
 ```
 
 The residuals still look a little strange. Let's look at the ANOVA table.
@@ -588,7 +588,7 @@ emmeans(m_chla_lmer_lag2b, specs = pairwise ~ Region | Year_fct, adjust = "sidak
 
 # Contrasts in Year for each Region
 em_lmer_yr_reg <- emmeans(m_chla_lmer_lag2b, specs = pairwise ~ Year_fct | Region, adjust = "sidak")
-multcomp::cld(em_lmer_yr_reg$emmeans, sort = FALSE, Letters = letters)
+cld(em_lmer_yr_reg$emmeans, sort = FALSE, Letters = letters)
 ```
 
 These results are very similar to the GAM model results. Like with the GAM model, upstream was always higher than downstream in all years, and none of the years differed significantly in the upstream region. In the downstream region, 2018 was lower than 2013-2016, and 2019 was lower than 2016.
@@ -739,7 +739,7 @@ emmeans(
 )
 
 # Contrasts in Station for each Year
-multcomp::cld(
+cld(
   emmeans(
     m_chla_gamm_st_k5_ar2, 
     data = df_chla_c2,
@@ -750,7 +750,7 @@ multcomp::cld(
 )
 
 # Contrasts in Year for each Station
-multcomp::cld(
+cld(
   emmeans(
     m_chla_gamm_st_k5_ar2, 
     data = df_chla_c2,
