@@ -37,14 +37,14 @@ stations<-tibble(Station=c("RCS", "RD22", "I80", "LIS", "STTD", "BL5", "LIB", "R
   st_as_sf(coords=c("Longitude", "Latitude"), crs=4326)%>%
   mutate(Region=factor(Region, levels=c("Upstream", "Downstream")))
 
-locations_points<-tibble(Location=c( "Freeport", "Antioch", "Rio Vista"),
-                         Latitude=c(38.461562, 38.004094, 38.155604),
-                         Longitude=c(-121.499371, -121.805606, -121.691347))%>%
+locations_points<-tibble(Location=c( "Freeport", "Antioch"),
+                         Latitude=c(38.461562, 38.004094),
+                         Longitude=c(-121.499371, -121.805606))%>%
   st_as_sf(coords=c("Longitude", "Latitude"), crs=4326)
 
 locations_text<-tibble(Location=c("Freeport", "Antioch", "Rio Vista", "Cache Slough", "Yolo Bypass", "Sacramento River"),
                        Latitude=c(38.481562, 37.99, 38.155603, 38.36, 38.5, 38.51),
-                       Longitude=c(-121.419371, -121.805606, -121.8, -121.8, -121.75, -121.35))%>%
+                       Longitude=c(-121.419371, -121.805606, -121.77, -121.78, -121.7, -121.38))%>%
   st_as_sf(coords=c("Longitude", "Latitude"), crs=4326)
 
 
