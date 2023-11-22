@@ -1,0 +1,910 @@
+---
+title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
+subtitle: "Models using daily average flow as continuous predictor"
+author: "Dave Bosworth"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = here::here("docs"),
+      envir = globalenv()
+    )
+    })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.kable.NA = "")
+```
+
+# Purpose
+
+Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit various models to the data set using daily average flow as a continuous predictor which replaces the categorical predictor - flow action period - in the original analysis. These models will only include representative stations for 4 habitat types - upstream (RD22), lower Yolo Bypass (STTD), Cache Slough complex (LIB), and downstream (RVB).
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(scales)
+library(knitr)
+library(mgcv)
+library(car)
+library(gratia)
+library(rlang)
+library(patchwork)
+library(here)
+library(conflicted)
+
+# Declare package conflict preferences 
+conflicts_prefer(dplyr::filter(), dplyr::lag())
+```
+
+Display current versions of R and packages used for this analysis:
+
+```{r print session info}
+devtools::session_info()
+```
+
+```{r global funcs}
+# Create model diagnostic plots to check assumptions
+plot_lm_diag <- function(df_data, param_var, model, ...) {
+  
+  df_data <- df_data %>%
+    mutate(
+      Residuals = residuals(model),
+      Fitted = predict(model)
+    )
+  
+  param_name <- as_name(ensym(param_var))
+  
+  plt_hist <- ggplot(df_data, aes(x = Residuals)) +
+    geom_histogram(...) +
+    labs(
+      title = "Residual Histogram", 
+      x = "Residuals"
+    ) +
+    theme_bw()
+  
+  plt_qq <- ggplot(df_data, aes(sample = Residuals)) + 
+    labs(
+      title = "Residual Probability Plot", 
+      x = "Normal Quantiles", 
+      y = "Residuals"
+    ) + 
+    stat_qq() + 
+    stat_qq_line(linewidth = 1, color = 'red') + 
+    theme_bw()
+  
+  plt_res_fit <- ggplot(df_data, aes(x = Fitted, y = Residuals)) +
+    geom_point() +
+    labs(
+      title = "Residuals vs. Fitted Values", 
+      x = (paste0("Predicted ", param_name)),
+      y = "Residuals",
+    ) +
+    theme_bw()
+  
+  plt_obs_fit <- ggplot(df_data, aes(x = Fitted, y = {{ param_var}})) +
+    geom_point() +
+    geom_abline(slope = 1, intercept = 0, color = "red") +
+    labs(
+      title = "Observed vs. Fitted Values", 
+      x = paste0("Predicted ", param_name),
+      y = paste0("Observed ", param_name)
+    ) +
+    theme_bw()
+  
+  (plt_hist + plt_qq) / (plt_res_fit + plt_obs_fit)
+}
+```
+
+# Import Data
+
+```{r import data}
+# Define file path for processed data
+fp_data <- here("manuscript_synthesis/data/processed")
+
+# Import daily average chlorophyll data
+df_chla <- readRDS(file.path(fp_data, "chla_wt_daily_avg_2013-2019.rds")) %>% select(-WaterTemp)
+
+# Import daily average flow data
+df_flow <- readRDS(file.path(fp_data, "flow_daily_avg_2013-2019.rds"))
+```
+
+# Prepare Data
+
+```{r prepare chla data, message = FALSE}
+# Create a vector for the factor order of StationCode
+sta_order <- c("RD22", "STTD", "LIB", "RVB")
+
+# We will use LIS flow data as a proxy for STTD
+df_flow_c <- df_flow %>% mutate(StationCode = if_else(StationCode == "LIS", "STTD", StationCode))
+
+# Prepare chlorophyll and flow data for exploration and analysis
+df_chla_c1 <- df_chla %>% 
+  # Filter to only include representative stations for 4 habitat types - RD22, STTD, LIB, RVB
+  filter(StationCode %in% sta_order) %>% 
+  # Join flow data to chlorophyll data
+  left_join(df_flow_c, by = join_by(StationCode, Date)) %>% 
+  # Remove all NA flow values
+  drop_na(Flow) %>% 
+  mutate(
+    # Scale and log transform chlorophyll values
+    Chla_log = log(Chla * 1000),
+    # Add Year and DOY variables
+    Year = year(Date),
+    DOY = yday(Date),
+    # Apply factor order to StationCode
+    StationCode = factor(StationCode, levels = sta_order),
+    # Add a column for Year as a factor for the model
+    Year_fct = factor(Year)
+  ) %>% 
+  arrange(StationCode, Date)
+```
+
+# Explore sample counts by Station
+
+```{r chla sample counts station}
+df_chla_c1 %>% 
+  summarize(
+    min_date = min(Date),
+    max_date = max(Date),
+    num_samples = n(),
+    .by = c(StationCode, Year)
+  ) %>% 
+  arrange(StationCode, Year) %>% 
+  kable()
+```
+
+Looking at the sample counts and date ranges, we'll only include years 2015-2019 for the analysis.
+
+```{r chla remove under sampled}
+df_chla_c2 <- df_chla_c1 %>% 
+  filter(Year %in% 2015:2019) %>% 
+  mutate(Year_fct = fct_drop(Year_fct))
+
+# Create another dataframe that has up to 3 lag variables for chlorophyll to be
+  # used in the linear models
+df_chla_c2_lag <- df_chla_c2 %>% 
+  # Fill in missing days for each StationCode-Year combination
+  group_by(StationCode, Year) %>% 
+  complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>% 
+  # Create lag variables of scaled log transformed chlorophyll values
+  mutate(
+    lag1 = lag(Chla_log),
+    lag2 = lag(Chla_log, 2),
+    lag3 = lag(Chla_log, 3)
+  ) %>% 
+  ungroup()
+```
+
+# Plots
+
+Let's explore the data with some plots. First, lets plot the data in scatterplots of chlorophyll and flow facetted by Station and grouping all years together.
+
+```{r chla scatterplot all yrs, message = FALSE, fig.height = 6, fig.width = 6}
+df_chla_c2 %>% 
+  ggplot(aes(x = Flow, y = Chla)) +
+  geom_point() +
+  geom_smooth(formula = "y ~ x") +
+  facet_wrap(vars(StationCode), scales = "free") +
+  theme_bw()
+```
+
+At first glance, I'm not sure how well flow is going to be able to predict chlorophyll concentrations. At the furthest upstream station - RD22 - chlorophyll appears to be highest at the lowest flows, but the variation is at its maximum at the lowest flows. There may be some dilution effect going on here at the higher flows. At STTD, there does seem to be a modest increase in chlorophyll concentrations at the mid-range flows. This pattern is even more obvious at LIB. There appears to be no effect of flow on chlorophyll at RVB, but the range of chlorophyll concentrations is narrow at this station (between 0 and 5).
+
+Let's break these scatterplots apart by year to see how these patterns vary annually.
+
+```{r chla scatterplot facet yrs, message = FALSE, fig.height = 8, fig.width = 8}
+df_chla_c2 %>% 
+  ggplot(aes(x = Flow, y = Chla)) +
+  geom_point() +
+  geom_smooth(formula = "y ~ x") +
+  facet_wrap(
+    vars(StationCode, Year), 
+    ncol = 5, 
+    scales = "free", 
+    labeller = labeller(.multi_line = FALSE)
+  ) +
+  theme_bw()
+```
+
+The patterns appear to vary annually at each station, which may justify using a 3-way interaction.
+
+# GAM Model with 3-way interactions
+
+First, we will attempt to fit a generalized additive model (GAM) to the data set to help account for seasonality in the data. We'll try running a GAM using a three-way interaction between Year, Daily Average Flow, and Station, and a smooth term for day of year to account for seasonality. Initially, we'll run the GAM without accounting for serial autocorrelation.
+
+## Initial Model
+
+```{r gam3 no autocorr, warning = FALSE}
+m_gam3 <- gam(
+  Chla_log ~ Year_fct * Flow * StationCode + s(DOY), 
+  data = df_chla_c2,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam3 no autocorr diag, warning = FALSE}
+summary(m_gam3)
+appraise(m_gam3)
+shapiro.test(residuals(m_gam3))
+k.check(m_gam3)
+draw(m_gam3, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam3, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam3))
+Box.test(residuals(m_gam3), lag = 20, type = 'Ljung-Box')
+```
+
+## Model with k = 5
+
+The model definitely has residual autocorrelation as indicated by the ACF plot and the Box-Ljung test. Even though the p-value for the k-check is less than 0.05, the smooth term for day of year appears to be overfitted. Let's try a smaller k-value for the smooth first, then lets try to address the residual autocorrelation.
+
+```{r gam3 no autocorr k5, warning = FALSE}
+m_gam3_k5 <- gam(
+  Chla_log ~ Year_fct * Flow * StationCode + s(DOY, k = 5), 
+  data = df_chla_c2,
+  method = "REML"
+)
+
+summary(m_gam3_k5)
+appraise(m_gam3_k5)
+shapiro.test(residuals(m_gam3_k5))
+k.check(m_gam3_k5)
+draw(m_gam3_k5, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam3_k5, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam3_k5))
+Box.test(residuals(m_gam3_k5), lag = 20, type = 'Ljung-Box')
+```
+
+Changing the k-value to 5 seems to help reduce the "wiggliness" of the smooth term for DOY, but the p-value for the k-check is still less than 0.05. Despite this, lets proceed with a k-value of 5.
+
+## Model with AR() correlation structure
+
+Now, we'll try to deal with the residual autocorrelation. We'll run AR(1), AR(2), AR(3), and AR(4) models and compare them using AIC.
+
+```{r gam3 with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_gam3 <- as.formula("Chla_log ~ Year_fct * Flow * StationCode + s(DOY, k = 5)")
+
+# Fit original model with k = 5 and three successive AR(p) models
+m_gamm3 <- gamm(
+  f_gam3, 
+  data = df_chla_c2,
+  method = "REML"
+)
+
+m_gamm3_ar1 <- gamm(
+  f_gam3, 
+  data = df_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 1), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm3_ar2 <- gamm(
+  f_gam3, 
+  data = df_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 2),
+  method = "REML"
+)
+
+m_gamm3_ar3 <- gamm(
+  f_gam3, 
+  data = df_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 3),
+  method = "REML"
+)
+
+m_gamm3_ar4 <- gamm(
+  f_gam3, 
+  data = df_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 4),
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_gamm3$lme, 
+  m_gamm3_ar1$lme, 
+  m_gamm3_ar2$lme, 
+  m_gamm3_ar3$lme,
+  m_gamm3_ar4$lme
+)
+```
+
+It looks like the AR(3) model has the best fit according to the AIC values. However, BIC prefers the AR(1) model. Let's take a closer look at the AR(1) model.
+
+## AR(1) Model
+
+```{r gam3 ar1 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_gamm3_ar1 <- residuals(m_gamm3_ar1$lme, type = "normalized")
+m_gamm3_ar1_gam <- m_gamm3_ar1$gam
+
+summary(m_gamm3_ar1_gam)
+appraise(m_gamm3_ar1_gam)
+shapiro.test(resid_gamm3_ar1)
+k.check(m_gamm3_ar1_gam)
+draw(m_gamm3_ar1_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gamm3_ar1_gam, pages = 1, all.terms = TRUE)
+acf(resid_gamm3_ar1)
+Box.test(resid_gamm3_ar1, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(1) model has much less residual autocorrelation, and the diagnostics plots look okay. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
+
+```{r gam3 ar1 obs vs fit, warning = FALSE}
+df_gamm3_ar1_fit <- df_chla_c2 %>% 
+  fitted_values(m_gamm3_ar1_gam, data = .) %>% 
+  mutate(fitted_bt = exp(fitted) / 1000)
+
+plt_gamm3_ar1_obs_fit <- df_gamm3_ar1_fit %>% 
+  ggplot(aes(x = fitted_bt, y = Chla)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  theme_bw() +
+  labs(
+    x = "Back-transformed Fitted Values",
+    y = "Observed Values"
+  )
+
+plt_gamm3_ar1_obs_fit
+```
+
+Let's look at each Station-Year combination separately.
+
+```{r gam3 ar1 obs vs fit facet sta yr, fig.height = 8, fig.width = 8}
+plt_gamm3_ar1_obs_fit +
+  facet_wrap(
+    vars(StationCode, Year_fct),
+    ncol = 5,
+    scales = "free",
+    labeller = labeller(.multi_line = FALSE)
+  )
+```
+
+The red lines are the 1:1 ratio between fitted and observed values, and we would expect for most of the points to be near this line if the model has a good fit to the observed data. However, the fitted values from the model don't appear to match the observed values that well, and there are some unusual patterns when we look at each Station-Year combination separately. I don't think this GAM model is a good candidate to use for our analysis.
+
+# Linear Model with 3-way interactions
+
+Since the GAM model didn't seem to fit the observed data that well, let's try a linear model using a three-way interaction between Year, Daily Average Flow, and Station. Initially, we'll run the model without accounting for serial autocorrelation.
+
+## Initial Model
+
+```{r lm3 no autocorr}
+m_lm3 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log) %>% 
+  lm(Chla_log ~ Year_fct * Flow * StationCode, data = .)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r lm3 no autocorr diag}
+summary(m_lm3)
+
+df_chla_c2_lag %>% 
+  drop_na(Chla_log) %>% 
+  plot_lm_diag(Chla_log, m_lm3)
+
+shapiro.test(residuals(m_lm3))
+acf(residuals(m_lm3))
+Box.test(residuals(m_lm3), lag = 20, type = 'Ljung-Box')
+```
+
+The residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, model definitely has residual autocorrelation as indicated by the ACF plot and the Box-Ljung test.
+
+### Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation and the non-normal residuals. We'll run a series of linear models adding 1, 2, and 3 lag terms and compare how well they correct for autocorrelation.
+
+#### Lag 1
+
+```{r lm3 lag1}
+m_lm3_lag1 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1) %>% 
+  lm(Chla_log ~ Year_fct * Flow * StationCode + lag1, data = .)
+
+acf(residuals(m_lm3_lag1))
+Box.test(residuals(m_lm3_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 2
+
+```{r lm3 lag2}
+m_lm3_lag2 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1, lag2) %>% 
+  lm(Chla_log ~ Year_fct * Flow * StationCode + lag1 + lag2, data = .)
+
+acf(residuals(m_lm3_lag2))
+Box.test(residuals(m_lm3_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 3
+
+```{r lm3 lag3}
+m_lm3_lag3 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1, lag2, lag3) %>% 
+  lm(Chla_log ~ Year_fct * Flow * StationCode + lag1 + lag2 + lag3, data = .)
+
+acf(residuals(m_lm3_lag3))
+Box.test(residuals(m_lm3_lag3), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 3 lag terms looks to have slightly better ACF and Box-Ljung test results than the other models. Let's compare the 3 models using AIC and BIC to see which model those prefer.
+
+#### Compare models
+
+```{r lm3 lag comparison, warning = FALSE}
+AIC(m_lm3_lag1, m_lm3_lag2, m_lm3_lag3)
+BIC(m_lm3_lag1, m_lm3_lag2, m_lm3_lag3)
+```
+
+Both AIC and BIC prefer the model with 1 lag term. Let's take a closer look at that one.
+
+### Lag 1 model summary
+
+```{r lm3 lag1 summary and diag}
+summary(m_lm3_lag1)
+
+df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1) %>% 
+  plot_lm_diag(Chla_log, m_lm3_lag1)
+
+shapiro.test(residuals(m_lm3_lag1))
+```
+
+The residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
+
+```{r lm3 lag1 obs vs fit}
+df_lm3_lag1_fit <- df_chla_c2_lag %>% 
+  drop_na(Chla, lag1) %>% 
+  mutate(Fitted = as_tibble(predict(m_lm3_lag1, interval = "confidence"))) %>% 
+  unnest_wider(Fitted) %>% 
+  mutate(across(c("fit", "lwr", "upr"), ~ exp(.x) / 1000))
+
+plt_lm3_lag1_obs_fit <- df_lm3_lag1_fit %>% 
+  ggplot(aes(x = fit, y = Chla)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  theme_bw() +
+  labs(
+    x = "Back-transformed Fitted Values",
+    y = "Observed Values"
+  )
+
+plt_lm3_lag1_obs_fit
+```
+
+Let's look at each Station-Year combination separately.
+
+```{r lm3 lag1 obs vs fit facet sta yr, fig.height = 8, fig.width = 8}
+plt_lm3_lag1_obs_fit +
+  facet_wrap(
+    vars(StationCode, Year_fct),
+    ncol = 5,
+    scales = "free",
+    labeller = labeller(.multi_line = FALSE)
+  )
+```
+
+The red lines are the 1:1 ratio between fitted and observed values, and we would expect for most of the points to be near this line if the model has a good fit to the observed data. The fitted and observed values appear to match pretty well at the lower end of the range of values, but this deteriorates at the mid and higher range values. This pattern holds for some of the separate Station-Year combinations. I'm not sure this linear model is a good candidate to use for our analysis.
+
+### Lag 3 model summary
+
+Let's take a closer look at the model with 3 lag terms since that had the least autocorrelation.
+
+```{r lm3 lag3 summary and diag}
+summary(m_lm3_lag3)
+
+df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1, lag2, lag3) %>% 
+  plot_lm_diag(Chla_log, m_lm3_lag3)
+
+shapiro.test(residuals(m_lm3_lag3))
+```
+
+The diagnostic plots show that the lag 3 model has similar problems as the lag 1 model, so this doesn't look like a good candidate for our analysis as well.
+
+# GAM Model with 2-way interactions
+
+Because the models using 3-way interactions don't seem to fit the data well, we will attempt to fit a generalized additive model (GAM) to the data set using all two-way interactions between Year, Daily Average Flow, and Station, with a smooth term for day of year to account for seasonality. Initially, we'll run the GAM without accounting for serial autocorrelation.
+
+## Initial Model
+
+```{r gam2 no autocorr, warning = FALSE}
+m_gam2 <- gam(
+  Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(DOY, k = 5), 
+  data = df_chla_c2,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam2 no autocorr diag, warning = FALSE}
+summary(m_gam2)
+appraise(m_gam2)
+shapiro.test(residuals(m_gam2))
+k.check(m_gam2)
+draw(m_gam2, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam2, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam2))
+Box.test(residuals(m_gam2), lag = 20, type = 'Ljung-Box')
+```
+
+## Model with AR() correlation structure
+
+Now, we'll try to deal with the residual autocorrelation. We'll run AR(1), AR(2), AR(3), and AR(4) models and compare them using AIC.
+
+```{r gam2 with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_gam2 <- as.formula("Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(DOY, k = 5)")
+
+# Fit original model with k = 5 and three successive AR(p) models
+m_gamm2 <- gamm(
+  f_gam2, 
+  data = df_chla_c2,
+  method = "REML"
+)
+
+m_gamm2_ar1 <- gamm(
+  f_gam2, 
+  data = df_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 1), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm2_ar2 <- gamm(
+  f_gam2, 
+  data = df_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 2),
+  method = "REML"
+)
+
+m_gamm2_ar3 <- gamm(
+  f_gam2, 
+  data = df_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 3),
+  method = "REML"
+)
+
+m_gamm2_ar4 <- gamm(
+  f_gam2, 
+  data = df_chla_c2, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 4),
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_gamm2$lme, 
+  m_gamm2_ar1$lme, 
+  m_gamm2_ar2$lme, 
+  m_gamm2_ar3$lme,
+  m_gamm2_ar4$lme
+)
+```
+
+It looks like the AR(1) model has the best fit according to the AIC and BIC values. Let's take a closer look at the AR(1) model.
+
+## AR(1) Model
+
+```{r gam2 ar1 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_gamm2_ar1 <- residuals(m_gamm2_ar1$lme, type = "normalized")
+m_gamm2_ar1_gam <- m_gamm2_ar1$gam
+
+summary(m_gamm2_ar1_gam)
+appraise(m_gamm2_ar1_gam)
+shapiro.test(resid_gamm2_ar1)
+k.check(m_gamm2_ar1_gam)
+draw(m_gamm2_ar1_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gamm2_ar1_gam, pages = 1, all.terms = TRUE)
+acf(resid_gamm2_ar1)
+Box.test(resid_gamm2_ar1, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(1) model has much less residual autocorrelation, and the diagnostics plots look okay. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
+
+```{r gam2 ar1 obs vs fit, warning = FALSE}
+df_gamm2_ar1_fit <- df_chla_c2 %>% 
+  fitted_values(m_gamm2_ar1_gam, data = .) %>% 
+  mutate(fitted_bt = exp(fitted) / 1000)
+
+plt_gamm2_ar1_obs_fit <- df_gamm2_ar1_fit %>% 
+  ggplot(aes(x = fitted_bt, y = Chla)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  theme_bw() +
+  labs(
+    x = "Back-transformed Fitted Values",
+    y = "Observed Values"
+  )
+
+plt_gamm2_ar1_obs_fit
+```
+
+Let's look at each Station and Year separately.
+
+```{r gam2 ar1 obs vs fit facet sta yr}
+plt_gamm2_ar1_obs_fit + facet_wrap(vars(StationCode), scales = "free")
+
+plt_gamm2_ar1_obs_fit + facet_wrap(vars(Year_fct), scales = "free")
+```
+
+The red lines are the 1:1 ratio between fitted and observed values, and we would expect for most of the points to be near this line if the model has a good fit to the observed data. However, the fitted values from the model don't appear to match the observed values that well. Again, I don't think this GAM model is a good candidate to use for our analysis.
+
+# Linear Model with 2-way interactions
+
+Since the models using 3-way interactions don't seem to fit the observed data that well, let's try a linear model using all two-way interactions between Year, Daily Average Flow, and Station. Initially, we'll run the model without accounting for serial autocorrelation.
+
+## Initial Model
+
+```{r lm2 no autocorr}
+m_lm2 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log) %>% 
+  lm(Chla_log ~ (Year_fct + Flow + StationCode)^2, data = .)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r lm2 no autocorr diag}
+summary(m_lm2)
+
+df_chla_c2_lag %>% 
+  drop_na(Chla_log) %>% 
+  plot_lm_diag(Chla_log, m_lm2)
+
+shapiro.test(residuals(m_lm2))
+acf(residuals(m_lm2))
+Box.test(residuals(m_lm2), lag = 20, type = 'Ljung-Box')
+```
+
+The residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, model definitely has residual autocorrelation as indicated by the ACF plot and the Box-Ljung test.
+
+### Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation and the non-normal residuals. We'll run a series of linear models adding 1, 2, and 3 lag terms and compare how well they correct for autocorrelation.
+
+#### Lag 1
+
+```{r lm2 lag1}
+m_lm2_lag1 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1) %>% 
+  lm(Chla_log ~ (Year_fct + Flow + StationCode)^2 + lag1, data = .)
+
+acf(residuals(m_lm2_lag1))
+Box.test(residuals(m_lm2_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 2
+
+```{r lm2 lag2}
+m_lm2_lag2 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1, lag2) %>% 
+  lm(Chla_log ~ (Year_fct + Flow + StationCode)^2 + lag1 + lag2, data = .)
+
+acf(residuals(m_lm2_lag2))
+Box.test(residuals(m_lm2_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 3
+
+```{r lm2 lag3}
+m_lm2_lag3 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1, lag2, lag3) %>% 
+  lm(Chla_log ~ (Year_fct + Flow + StationCode)^2 + lag1 + lag2 + lag3, data = .)
+
+acf(residuals(m_lm2_lag3))
+Box.test(residuals(m_lm2_lag3), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 3 lag terms looks to have slightly better ACF and Box-Ljung test results than the other models. Let's compare the 3 models using AIC and BIC to see which model those prefer.
+
+#### Compare models
+
+```{r lm2 lag comparison, warning = FALSE}
+AIC(m_lm2_lag1, m_lm2_lag2, m_lm2_lag3)
+BIC(m_lm2_lag1, m_lm2_lag2, m_lm2_lag3)
+```
+
+Both AIC and BIC prefer the model with 1 lag term. Let's take a closer look at that one.
+
+### Lag 1 model summary
+
+```{r lm2 lag1 summary and diag}
+summary(m_lm2_lag1)
+
+df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1) %>% 
+  plot_lm_diag(Chla_log, m_lm2_lag1)
+
+shapiro.test(residuals(m_lm2_lag1))
+```
+
+As with the model with 3-way interactions, the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
+
+```{r lm2 lag1 obs vs fit}
+df_lm2_lag1_fit <- df_chla_c2_lag %>% 
+  drop_na(Chla, lag1) %>% 
+  mutate(Fitted = as_tibble(predict(m_lm2_lag1, interval = "confidence"))) %>% 
+  unnest_wider(Fitted) %>% 
+  mutate(across(c("fit", "lwr", "upr"), ~ exp(.x) / 1000))
+
+plt_lm2_lag1_obs_fit <- df_lm2_lag1_fit %>% 
+  ggplot(aes(x = fit, y = Chla)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  theme_bw() +
+  labs(
+    x = "Back-transformed Fitted Values",
+    y = "Observed Values"
+  )
+
+plt_lm2_lag1_obs_fit
+```
+
+Let's look at each Station and Year separately.
+
+```{r lm2 lag1 obs vs fit facet sta yr}
+plt_lm2_lag1_obs_fit + facet_wrap(vars(StationCode), scales = "free")
+
+plt_lm2_lag1_obs_fit + facet_wrap(vars(Year_fct), scales = "free")
+```
+
+The red lines are the 1:1 ratio between fitted and observed values, and we would expect for most of the points to be near this line if the model has a good fit to the observed data. The fitted and observed values appear to match pretty well at the lower end of the range of values, but this deteriorates at the mid and higher range values. This pattern holds for some of the individual Stations and Years. I'm not sure this linear model is a good candidate to use for our analysis.
+
+### Lag 3 model summary
+
+Let's take a closer look at the model with 3 lag terms since that had the least autocorrelation.
+
+```{r lm2 lag3 summary and diag}
+summary(m_lm2_lag3)
+
+df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1, lag2, lag3) %>% 
+  plot_lm_diag(Chla_log, m_lm2_lag3)
+
+shapiro.test(residuals(m_lm2_lag3))
+```
+
+The diagnostic plots show that the lag 3 model has similar problems as the lag 1 model, so this doesn't look like a good candidate for our analysis as well.
+
+# Linear Model with single station - STTD
+
+Since none of the models we tried so far seemed to fit the observed data very well, it may be interesting to run separate models for each of the four stations - RD22, STTD, LIB, RVB - to see if that helps improve model fit. We'll try STTD as a test case.
+
+## Initial Model
+
+Let's try a linear model using a two-way interaction between Year and Daily Average Flow. Initially, we'll run the model without accounting for serial autocorrelation.
+
+```{r lm2 sttd no autocorr}
+df_sttd <- df_chla_c2_lag %>% filter(StationCode == "STTD")
+
+m_lm2_sttd <- df_sttd %>% 
+  drop_na(Chla_log) %>% 
+  lm(Chla_log ~ Year_fct * Flow, data = .)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r lm2 sttd no autocorr diag}
+summary(m_lm2_sttd)
+
+df_sttd %>% 
+  drop_na(Chla_log) %>% 
+  plot_lm_diag(Chla_log, m_lm2_sttd)
+
+shapiro.test(residuals(m_lm2_sttd))
+acf(residuals(m_lm2_sttd))
+Box.test(residuals(m_lm2_sttd), lag = 20, type = 'Ljung-Box')
+```
+
+The residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, model definitely has residual autocorrelation as indicated by the ACF plot and the Box-Ljung test.
+
+### Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation and the non-normal residuals. We'll run a series of linear models adding 1, 2, and 3 lag terms and compare how well they correct for autocorrelation.
+
+#### Lag 1
+
+```{r lm2 sttd lag1}
+m_lm2_sttd_lag1 <- df_sttd %>% 
+  drop_na(Chla_log, lag1) %>% 
+  lm(Chla_log ~ Year_fct * Flow + lag1, data = .)
+
+acf(residuals(m_lm2_sttd_lag1))
+Box.test(residuals(m_lm2_sttd_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 2
+
+```{r lm2 sttd lag2}
+m_lm2_sttd_lag2 <- df_sttd %>% 
+  drop_na(Chla_log, lag1, lag2) %>% 
+  lm(Chla_log ~ Year_fct * Flow + lag1 + lag2, data = .)
+
+acf(residuals(m_lm2_sttd_lag2))
+Box.test(residuals(m_lm2_sttd_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 3
+
+```{r lm2 sttd lag3}
+m_lm2_sttd_lag3 <- df_sttd %>% 
+  drop_na(Chla_log, lag1, lag2, lag3) %>% 
+  lm(Chla_log ~ Year_fct * Flow + lag1 + lag2 + lag3, data = .)
+
+acf(residuals(m_lm2_sttd_lag3))
+Box.test(residuals(m_lm2_sttd_lag3), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 2 lag terms seems to take care of the autocorrelation. Let's compare the 3 models using AIC and BIC to see which model those prefer.
+
+#### Compare models
+
+```{r lm2 sttd lag comparison, warning = FALSE}
+AIC(m_lm2_sttd_lag1, m_lm2_sttd_lag2, m_lm2_sttd_lag3)
+BIC(m_lm2_sttd_lag1, m_lm2_sttd_lag2, m_lm2_sttd_lag3)
+```
+
+Both AIC and BIC prefer the model with 2 lag terms. Let's take a closer look at that one.
+
+### Lag 2 model summary
+
+```{r lm2 sttd lag2 summary and diag}
+summary(m_lm2_sttd_lag2)
+
+df_sttd %>% 
+  drop_na(Chla_log, lag1, lag2) %>% 
+  plot_lm_diag(Chla_log, m_lm2_sttd_lag2)
+
+shapiro.test(residuals(m_lm2_sttd_lag2))
+```
+
+As with all the other linear models, the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
+
+```{r lm2 sttd lag2 obs vs fit}
+df_lm2_sttd_lag2_fit <- df_sttd %>% 
+  drop_na(Chla, lag1, lag2) %>% 
+  mutate(Fitted = as_tibble(predict(m_lm2_sttd_lag2, interval = "confidence"))) %>% 
+  unnest_wider(Fitted) %>% 
+  mutate(across(c("fit", "lwr", "upr"), ~ exp(.x) / 1000))
+
+plt_lm2_sttd_lag2_obs_fit <- df_lm2_sttd_lag2_fit %>% 
+  ggplot(aes(x = fit, y = Chla)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  theme_bw() +
+  labs(
+    x = "Back-transformed Fitted Values",
+    y = "Observed Values"
+  )
+
+plt_lm2_sttd_lag2_obs_fit
+```
+
+Let's look at each Year separately.
+
+```{r lm2 sttd lag2 obs vs fit facet yr}
+plt_lm2_sttd_lag2_obs_fit + facet_wrap(vars(Year_fct), scales = "free")
+```
+
+The red lines are the 1:1 ratio between fitted and observed values, and we would expect for most of the points to be near this line if the model has a good fit to the observed data. The fitted and observed values appear to match pretty well at the lower end of the range of values, but this deteriorates at the higher values. This pattern holds for some of the individual Years. I'm not sure this linear model is a good candidate to use for our analysis.
+
+# Conclusion
+
+None of the models we tried in this analysis seemed to fit the observed data very well. It looks like daily average flow has an effect on chlorophyll concentrations at some of the stations, but flow doesn't seem to be a good predictor overall. Unfortunately, I don't think we should use any of these models in our analysis.
+

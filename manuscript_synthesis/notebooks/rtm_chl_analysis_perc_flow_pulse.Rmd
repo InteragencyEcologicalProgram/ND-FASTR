@@ -56,7 +56,7 @@ devtools::session_info()
 fp_data <- here("manuscript_synthesis/data/processed")
 
 # Import daily average chlorophyll data
-df_chla <- readRDS(file.path(fp_data, "chla_daily_avg_2013-2019.rds"))
+df_chla <- readRDS(file.path(fp_data, "chla_wt_daily_avg_2013-2019.rds")) %>% select(-WaterTemp)
 
 # Import daily average percent flow pulse water data
 df_pfp <- readRDS(file.path(fp_data, "perc_flow_pulse_daily_avg_2016-2019.rds"))
@@ -114,7 +114,7 @@ Let's explore the data with some plots. First, lets plot the data in scatterplot
 
 ```{r chla scatterplot all yrs, message = FALSE}
 df_chla_c %>% 
-  ggplot(aes(x = PercFlowPulseAvg, y = ChlaAvg)) +
+  ggplot(aes(x = PercFlowPulseAvg, y = Chla)) +
   geom_point() +
   geom_smooth(formula = "y ~ x") +
   facet_wrap(vars(StationCode), scales = "free") +
@@ -125,9 +125,9 @@ df_chla_c %>%
 
 There's some strange patterns in the data. Let's break these scatterplots apart by year to see if they can be explained by annual differences.
 
-```{r chla scatterplot facet yrs, message = FALSE, fig.height = 11, fig.width = 8}
+```{r chla scatterplot facet yrs, message = FALSE, warning = FALSE, fig.height = 11, fig.width = 8}
 df_chla_c %>% 
-  ggplot(aes(x = PercFlowPulseAvg, y = ChlaAvg)) +
+  ggplot(aes(x = PercFlowPulseAvg, y = Chla)) +
   geom_point() +
   geom_smooth(formula = "y ~ x") +
   facet_wrap(

@@ -1,0 +1,1048 @@
+---
+title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
+subtitle: "Models using categorical predictors - Revised Analysis"
+author: "Dave Bosworth"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_depth: 4
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = here::here("docs"),
+      envir = globalenv()
+    )
+    })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.kable.NA = "")
+```
+
+# Purpose
+
+Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit multiple models to the data set and use a model selection process to determine the best one. At a minimum the model will contain the three categorical variables (Year, Station, and Flow Pulse Period) and optionally a term to account for seasonality (either daily average water temperature or a GAM smooth for DOY). These models will only include representative stations for 4 habitat types - upstream (RD22), lower Yolo Bypass (STTD), Cache Slough complex (LIB), and downstream (RVB).
+
+# Global code and functions
+
+```{r load packages and functions, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(scales)
+library(knitr)
+library(mgcv)
+library(car)
+library(gratia)
+library(rlang)
+library(patchwork)
+library(emmeans)
+library(multcomp)
+library(here)
+library(conflicted)
+
+# Source functions
+source(here("manuscript_synthesis/src/global_functions.R"))
+
+# Declare package conflict preferences 
+conflicts_prefer(dplyr::filter(), dplyr::lag(), dplyr::select())
+```
+
+Display current versions of R and packages used for this analysis:
+
+```{r print session info}
+devtools::session_info()
+```
+
+Create functions for document:
+
+```{r global funcs}
+# Create diagnostic plots for linear models to check assumptions
+plot_lm_diag <- function(df_data, param_var, unit_label, model, trans = c("none", "log", "sqrt"), ...) {
+  trans <- match.arg(trans)
+  
+  df_data <- df_data %>%
+    mutate(
+      Residuals = resid(model),
+      Fitted = predict(model)
+    )
+  
+  param_name <- as_name(ensym(param_var))
+  
+  if (trans == "log") {
+    unit_label <- paste0("log[", unit_label, "]")
+  } else if (trans == "sqrt") {
+    unit_label <- paste0("sqrt[", unit_label, "]")
+  }
+  
+  plt_hist <- ggplot(df_data, aes(x = Residuals)) +
+    geom_histogram(...) +
+    labs(
+      title = "Residual Histogram", 
+      x = "Residuals"
+    ) +
+    theme_bw()
+  
+  plt_qq <- ggplot(df_data, aes(sample = Residuals)) + 
+    labs(
+      title = "Residual Probability Plot", 
+      x = "Normal Quantiles", 
+      y = "Residuals"
+    ) + 
+    stat_qq() + 
+    stat_qq_line(linewidth = 1, color = 'red') + 
+    theme_bw()
+  
+  plt_res_fit <- ggplot(df_data, aes(x = Fitted, y = Residuals)) +
+    geom_point() +
+    labs(
+      title = "Residuals vs. Fitted Values", 
+      x = (paste0("Predicted ", param_name, " (", unit_label, ")")),
+      y = paste0("Residuals (", unit_label, ")")
+    ) +
+    theme_bw()
+  
+  plt_obs_fit <- ggplot(df_data, aes(x = Fitted, y = {{ param_var}})) +
+    geom_point() +
+    geom_abline(slope = 1, intercept = 0, color = "red") +
+    labs(
+      title = "Observed vs. Fitted Values", 
+      x = paste0("Predicted ", param_name, " (", unit_label, ")"),
+      y = paste0("Observed ", param_name, " (", unit_label, ")")
+    ) +
+    theme_bw()
+  
+  (plt_hist + plt_qq) / (plt_res_fit + plt_obs_fit)
+}
+
+plot_model_summary <- function(df_data, em_tuk_obj) {
+  # Calculate min and max values of observed data for each Station - Year group to
+    # determine vertical positioning of letters for figure
+  df_data_summ <- df_data %>% 
+    summarize(
+      max_val = max(Chla),
+      min_val = min(Chla),
+      .by = c(StationCode, Year)
+    )
+
+  # Add significance grouping letters to the Tukey post-hoc results
+  df_tuk <- em_tuk_obj %>% 
+    cld(sort = FALSE, Letters = letters) %>% 
+    as_tibble() %>% 
+    mutate(
+      group = str_remove_all(.group, fixed(" ")),
+      # back transform log-transformed results
+      across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000),
+      Year = as.numeric(as.character(Year_fct))
+    ) %>% 
+    # Add min and max values of observed data to the Tukey post-hoc results and
+      # calculate vertical positioning of letters
+    left_join(df_data_summ, by = join_by(StationCode, Year)) %>% 
+    mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>% 
+    group_by(StationCode, Year) %>% 
+    mutate(max_val = max(max_val)) %>% 
+    ungroup() %>% 
+    mutate(y_pos = max_val + (max_val - min_val) / 10) %>% 
+    select(
+      StationCode,
+      Year,
+      FlowActionPeriod,
+      emmean,
+      lower.CL,
+      upper.CL,
+      group,
+      y_pos
+    )
+  
+  # Create summary figure
+  df_tuk %>%
+    ggplot(
+      aes(
+        x = FlowActionPeriod,
+        y = emmean,
+        ymin = lower.CL,
+        ymax = upper.CL
+      )
+    ) +
+    geom_boxplot(
+      data = df_data,
+      aes(x = FlowActionPeriod, y = Chla),
+      inherit.aes = FALSE
+    ) +
+    geom_crossbar(color = "grey82", fill = "grey", alpha = 0.7, linewidth = 0.1) +
+    geom_point(color = "red") +
+    geom_text(aes(y = y_pos, label = group), size = 3) +
+    facet_wrap(
+      vars(StationCode, Year), 
+      scales = "free_y",
+      nrow = 4,
+      labeller = labeller(.multi_line = FALSE)
+    ) +
+    xlab("Flow Pulse Period") +
+    ylab(expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+}
+```
+
+
+# Import Data
+
+```{r import data}
+# Define file path for processed data
+fp_data <- here("manuscript_synthesis/data/processed")
+
+# Import daily average chlorophyll and water temperature data
+df_chla_wt <- readRDS(file.path(fp_data, "chla_wt_daily_avg_2013-2019.rds"))
+```
+
+# Prepare Data
+
+```{r prepare chla data, message = FALSE}
+# Create a vector for the factor order of StationCode
+sta_order <- c("RD22", "STTD", "LIB", "RVB")
+
+# Prepare chlorophyll and water temperature data for exploration and analysis
+df_chla_wt_c <- df_chla_wt %>% 
+  # Filter to only include representative stations for 3 habitat types - RD22, STTD, LIB
+  filter(StationCode %in% sta_order) %>% 
+  mutate(
+    # Scale and log transform chlorophyll values
+    Chla_log = log(Chla * 1000),
+    # Add Year and DOY variables
+    Year = year(Date),
+    DOY = yday(Date)
+  ) %>% 
+  # Add Flow Action Periods
+  ndfa_action_periods() %>% 
+  mutate(
+    # Apply factor orders to FlowActionPeriod and StationCode
+    FlowActionPeriod = factor(FlowActionPeriod, levels = c("Before", "During", "After")),
+    StationCode = factor(StationCode, levels = sta_order),
+    # Add a column for Year as a factor for the model
+    Year_fct = factor(Year)
+  ) %>% 
+  arrange(StationCode, Date)
+  
+# Create another dataframe that has up to 3 lag variables for chlorophyll to be
+  # used in the linear models
+df_chla_wt_lag <- df_chla_wt_c %>% 
+  # Fill in missing days for each StationCode-Year combination
+  group_by(StationCode, Year) %>% 
+  complete(Date = seq.Date(min(Date), max(Date), by = "1 day")) %>% 
+  # Create lag variables of scaled log transformed chlorophyll values
+  mutate(
+    lag1 = lag(Chla_log),
+    lag2 = lag(Chla_log, 2),
+    lag3 = lag(Chla_log, 3)
+  ) %>% 
+  ungroup()
+```
+
+# Explore sample counts by Station
+
+```{r chla sample counts station}
+df_chla_wt_c %>% 
+  summarize(
+    min_date = min(Date),
+    max_date = max(Date),
+    num_samples = n(),
+    .by = c(StationCode, Year, FlowActionPeriod)
+  ) %>% 
+  complete(StationCode, Year, FlowActionPeriod) %>% 
+  arrange(StationCode, Year, FlowActionPeriod) %>% 
+  kable()
+```
+
+Except for a few Station-Year-FlowPeriod combinations with low sample counts, it appears we have adequate data.
+
+# Plots
+
+```{r chla boxplot station, fig.width = 8, fig.height = 8}
+df_chla_wt_c %>%
+  ggplot(aes(x = FlowActionPeriod, y = Chla, fill = FlowActionPeriod)) +
+  geom_boxplot() +
+  facet_grid(cols = vars(Year), rows = vars(StationCode)) +
+  scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
+  annotation_logticks(sides = "l") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    legend.position = "top"
+  )
+```
+
+# Models
+
+## Model 1: GAM 3-way interactions with s(DOY)
+
+### Initial Model
+
+We'll try running a GAM using a three-way interaction between Year, Flow Action Period, and Station, and a smooth term for day of year to account for seasonality (restricting the k-value to 5 to reduce overfitting). First we'll run the GAM without accounting for serial autocorrelation.
+
+```{r gam cat3 no autocorr, warning = FALSE}
+m_gam_cat3 <- gam(
+  Chla_log ~ Year_fct * FlowActionPeriod * StationCode + s(DOY, k = 5), 
+  data = df_chla_wt_c,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam cat3 no autocorr diag, warning = FALSE}
+summary(m_gam_cat3)
+appraise(m_gam_cat3)
+k.check(m_gam_cat3)
+draw(m_gam_cat3, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_cat3, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_cat3))
+Box.test(residuals(m_gam_cat3), lag = 20, type = 'Ljung-Box')
+```
+
+### Model with AR() correlation structure
+
+Now, we'll try to deal with the residual autocorrelation. We'll run AR(1), AR(2), and AR(3) models and compare them using AIC.
+
+```{r gamm cat3 with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_gam_cat3 <- as.formula("Chla_log ~ Year_fct * FlowActionPeriod * StationCode + s(DOY, k = 5)")
+
+# Fit original model with k = 5 and three successive AR(p) models
+m_gamm_cat3 <- gamm(
+  f_gam_cat3, 
+  data = df_chla_wt_c,
+  method = "REML"
+)
+
+m_gamm_cat3_ar1 <- gamm(
+  f_gam_cat3, 
+  data = df_chla_wt_c, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 1), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_cat3_ar2 <- gamm(
+  f_gam_cat3, 
+  data = df_chla_wt_c, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 2), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_cat3_ar3 <- gamm(
+  f_gam_cat3, 
+  data = df_chla_wt_c, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 3), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_gamm_cat3$lme, 
+  m_gamm_cat3_ar1$lme, 
+  m_gamm_cat3_ar2$lme, 
+  m_gamm_cat3_ar3$lme
+)
+```
+
+It looks like the AR(1) model has the best fit according to the AIC values and backed up by the BIC values. Let's take a closer look at that one.
+
+### AR(1) Model
+
+```{r gamm cat3 ar1 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_cat3_ar1 <- residuals(m_gamm_cat3_ar1$lme, type = "normalized")
+m_gamm_cat3_ar1_gam <- m_gamm_cat3_ar1$gam
+
+summary(m_gamm_cat3_ar1_gam)
+appraise(m_gamm_cat3_ar1_gam)
+k.check(m_gamm_cat3_ar1_gam)
+draw(m_gamm_cat3_ar1_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gamm_cat3_ar1_gam, pages = 1, all.terms = TRUE)
+acf(resid_cat3_ar1)
+Box.test(resid_cat3_ar1, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(1) model has much less residual autocorrelation, and the diagnostics plots look pretty good. We'll take a look at the ANOVA table to see if we need all the interaction terms included in the model.
+
+```{r gamm cat3 ar1 anova, warning = FALSE}
+# the anova.gam function is similar to a type 3 ANOVA
+anova(m_gamm_cat3_ar1_gam)
+```
+
+The 3-way interaction term is significant in this model, so we'll use this one for the model selection process.
+
+```{r gamm cat3 clean up}
+rm(m_gam_cat3, m_gamm_cat3, m_gamm_cat3_ar2, m_gamm_cat3_ar3)
+```
+
+
+## Model 2: LM 3-way interactions with water temperature
+
+### Initial Model
+
+We'll try running a linear model using a three-way interaction between Year, Flow Action Period, and Station, and a covariate of water temperature to account for seasonality and its effect of primary production. First we'll run the linear model without accounting for serial autocorrelation.
+
+```{r lm cat3 wt no autocorr}
+m_lm_cat3_wt <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, WaterTemp) %>% 
+  lm(Chla_log ~ Year_fct * FlowActionPeriod * StationCode + WaterTemp, data = .)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r lm cat3 wt no autocorr diag}
+summary(m_lm_cat3_wt)
+
+df_chla_wt_lag %>% 
+  drop_na(Chla_log, WaterTemp) %>% 
+  plot_lm_diag(
+    Chla_log, 
+    "ug/L", 
+    m_lm_cat3_wt, 
+    trans = "log"
+  )
+
+shapiro.test(m_lm_cat3_wt$residuals)
+acf(residuals(m_lm_cat3_wt))
+Box.test(residuals(m_lm_cat3_wt), lag = 20, type = 'Ljung-Box')
+```
+
+Hmmm, the residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, the residuals are autocorrelated.
+
+### Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation and the non-normal residuals. We'll run a series of linear models adding 1, 2, and 3 lag terms and compare how well they correct for autocorrelation.
+
+#### Lag 1
+
+```{r lm cat3 wt lag1}
+m_lm_cat3_wt_lag1 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, WaterTemp, lag1) %>% 
+  lm(Chla_log ~ Year_fct * FlowActionPeriod * StationCode + WaterTemp + lag1, data = .)
+
+acf(residuals(m_lm_cat3_wt_lag1))
+Box.test(residuals(m_lm_cat3_wt_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 2
+
+```{r lm cat3 wt lag2}
+m_lm_cat3_wt_lag2 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, WaterTemp, lag1, lag2) %>% 
+  lm(Chla_log ~ Year_fct * FlowActionPeriod * StationCode + WaterTemp + lag1 + lag2, data = .)
+
+acf(residuals(m_lm_cat3_wt_lag2))
+Box.test(residuals(m_lm_cat3_wt_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 3
+
+```{r lm cat3 wt lag3}
+m_lm_cat3_wt_lag3 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, WaterTemp, lag1, lag2, lag3) %>% 
+  lm(Chla_log ~ Year_fct * FlowActionPeriod * StationCode + WaterTemp + lag1 + lag2 + lag3, data = .)
+
+acf(residuals(m_lm_cat3_wt_lag3))
+Box.test(residuals(m_lm_cat3_wt_lag3), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 3 lag terms looks to have slightly better ACF and Box-Ljung test results than the model with 1 lag term. Let's compare the 3 models using AIC and BIC to see which model those prefer.
+
+#### Compare models
+
+```{r lm cat3 wt lag comparison, warning = FALSE}
+AIC(m_lm_cat3_wt_lag1, m_lm_cat3_wt_lag2, m_lm_cat3_wt_lag3)
+BIC(m_lm_cat3_wt_lag1, m_lm_cat3_wt_lag2, m_lm_cat3_wt_lag3)
+```
+
+Both AIC and BIC prefer the model with 1 lag term. Let's take a closer look at that one.
+
+### Lag 1 model summary
+
+```{r lm cat3 wt lag1 summary and diag}
+summary(m_lm_cat3_wt_lag1)
+
+df_chla_wt_lag %>% 
+  drop_na(Chla_log, WaterTemp, lag1) %>% 
+  plot_lm_diag(
+    Chla_log, 
+    "ug/L", 
+    m_lm_cat3_wt_lag1, 
+    trans = "log"
+  )
+
+shapiro.test(m_lm_cat3_wt_lag1$residuals)
+```
+
+Hmmm, the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a look at its ANOVA table using type 3 sum of squares.
+
+```{r anova cat3 wt lag1}
+Anova(m_lm_cat3_wt_lag1, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+```
+
+All the interaction terms are significant, so we can use this model in our model selection process; however, I'm somewhat leery of using this model since the model residuals don't look right and the water temperature term isn't significant.
+
+```{r lm cat3 wt clean up}
+rm(m_lm_cat3_wt, m_lm_cat3_wt_lag2, m_lm_cat3_wt_lag3)
+```
+
+
+## Model 3: LM 3-way interactions without seasonal term
+
+### Initial Model
+
+We'll try running a linear model using a three-way interaction between Year, Flow Action Period, and Station without including a term to account for seasonality. First we'll run the linear model without accounting for serial autocorrelation.
+
+```{r lm cat3 no autocorr}
+m_lm_cat3 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log) %>% 
+  lm(Chla_log ~ Year_fct * FlowActionPeriod * StationCode, data = .)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r lm cat3 no autocorr diag}
+summary(m_lm_cat3)
+
+df_chla_wt_lag %>% 
+  drop_na(Chla_log) %>% 
+  plot_lm_diag(
+    Chla_log, 
+    "ug/L", 
+    m_lm_cat3, 
+    trans = "log"
+  )
+
+shapiro.test(m_lm_cat3$residuals)
+acf(residuals(m_lm_cat3))
+Box.test(residuals(m_lm_cat3), lag = 20, type = 'Ljung-Box')
+```
+
+Hmmm, the residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, the residuals are autocorrelated.
+
+### Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation and the non-normal residuals. We'll run a series of linear models adding 1, 2, and 3 lag terms and compare how well they correct for autocorrelation.
+
+#### Lag 1
+
+```{r lm cat3 lag1}
+m_lm_cat3_lag1 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, lag1) %>% 
+  lm(Chla_log ~ Year_fct * FlowActionPeriod * StationCode + lag1, data = .)
+
+acf(residuals(m_lm_cat3_lag1))
+Box.test(residuals(m_lm_cat3_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 2
+
+```{r lm cat3 lag2}
+m_lm_cat3_lag2 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, lag1, lag2) %>% 
+  lm(Chla_log ~ Year_fct * FlowActionPeriod * StationCode + lag1 + lag2, data = .)
+
+acf(residuals(m_lm_cat3_lag2))
+Box.test(residuals(m_lm_cat3_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 3
+
+```{r lm cat3 lag3}
+m_lm_cat3_lag3 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, lag1, lag2, lag3) %>% 
+  lm(Chla_log ~ Year_fct * FlowActionPeriod * StationCode + lag1 + lag2 + lag3, data = .)
+
+acf(residuals(m_lm_cat3_lag3))
+Box.test(residuals(m_lm_cat3_lag3), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 3 lag terms looks to have slightly better ACF and Box-Ljung test results than the model with 1 lag term. Let's compare the 3 models using AIC and BIC to see which model those prefer.
+
+#### Compare models
+
+```{r lm cat3 lag comparison, warning = FALSE}
+AIC(m_lm_cat3_lag1, m_lm_cat3_lag2, m_lm_cat3_lag3)
+BIC(m_lm_cat3_lag1, m_lm_cat3_lag2, m_lm_cat3_lag3)
+```
+
+Both AIC and BIC prefer the model with 1 lag term. Let's take a closer look at that one.
+
+### Lag 1 model summary
+
+```{r lm cat3 lag1 summary and diag}
+summary(m_lm_cat3_lag1)
+
+df_chla_wt_lag %>% 
+  drop_na(Chla_log, lag1) %>% 
+  plot_lm_diag(
+    Chla_log, 
+    "ug/L", 
+    m_lm_cat3_lag1, 
+    trans = "log"
+  )
+
+shapiro.test(m_lm_cat3_lag1$residuals)
+```
+
+Hmmm, again the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a look at its ANOVA table using type 3 sum of squares.
+
+```{r anova cat3 lag1}
+Anova(m_lm_cat3_lag1, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+```
+
+All the interaction terms are significant, so we can use this model in our model selection process; however, I'm somewhat leery of using this model since the model residuals don't look right.
+
+```{r lm cat3 clean up}
+rm(m_lm_cat3, m_lm_cat3_lag2, m_lm_cat3_lag3)
+```
+
+
+## Model 4: GAM 2-way interactions with s(DOY)
+
+### Initial Model
+
+We'll try running a GAM using all two-way interactions between Year, Flow Action Period, and Station, and a smooth term for day of year to account for seasonality (restricting the k-value to 5 to reduce overfitting). First we'll run the GAM without accounting for serial autocorrelation.
+
+```{r gam cat2 no autocorr, warning = FALSE}
+m_gam_cat2 <- gam(
+  Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY, k = 5), 
+  data = df_chla_wt_c,
+  method = "REML"
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam cat2 no autocorr diag, warning = FALSE}
+summary(m_gam_cat2)
+appraise(m_gam_cat2)
+k.check(m_gam_cat2)
+draw(m_gam_cat2, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_cat2, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_cat2))
+Box.test(residuals(m_gam_cat2), lag = 20, type = 'Ljung-Box')
+```
+
+### Model with AR() correlation structure
+
+Now, we'll try to deal with the residual autocorrelation. We'll run AR(1), AR(2), and AR(3) models and compare them using AIC.
+
+```{r gamm cat2 with AR comparison, warning = FALSE}
+# Define model formula as an object
+f_gam_cat2 <- as.formula("Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + s(DOY, k = 5)")
+
+# Fit original model with k = 5 and three successive AR(p) models
+m_gamm_cat2 <- gamm(
+  f_gam_cat2, 
+  data = df_chla_wt_c,
+  method = "REML"
+)
+
+m_gamm_cat2_ar1 <- gamm(
+  f_gam_cat2, 
+  data = df_chla_wt_c, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 1), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_cat2_ar2 <- gamm(
+  f_gam_cat2, 
+  data = df_chla_wt_c, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 2), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+m_gamm_cat2_ar3 <- gamm(
+  f_gam_cat2, 
+  data = df_chla_wt_c, 
+  correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 3), # grouped by Year_fct and StationCode
+  method = "REML"
+)
+
+# Compare models
+anova(
+  m_gamm_cat2$lme, 
+  m_gamm_cat2_ar1$lme, 
+  m_gamm_cat2_ar2$lme, 
+  m_gamm_cat2_ar3$lme
+)
+```
+
+It looks like the AR(1) model has the best fit according to the AIC values and backed up by the BIC values. Let's take a closer look at that one.
+
+### AR(1) Model
+
+```{r gamm cat2 ar1 diag, warning = FALSE}
+# Pull out the residuals and the GAM model
+resid_cat2_ar1 <- residuals(m_gamm_cat2_ar1$lme, type = "normalized")
+m_gamm_cat2_ar1_gam <- m_gamm_cat2_ar1$gam
+
+summary(m_gamm_cat2_ar1_gam)
+appraise(m_gamm_cat2_ar1_gam)
+k.check(m_gamm_cat2_ar1_gam)
+draw(m_gamm_cat2_ar1_gam, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gamm_cat2_ar1_gam, pages = 1, all.terms = TRUE)
+acf(resid_cat2_ar1)
+Box.test(resid_cat2_ar1, lag = 20, type = 'Ljung-Box')
+```
+
+The AR(1) model has much less residual autocorrelation, and the diagnostics plots look pretty good. We'll take a look at the ANOVA table to see if we need all the interaction terms included in the model.
+
+```{r gamm cat2 ar1 anova, warning = FALSE}
+# the anova.gam function is similar to a type 3 ANOVA
+anova(m_gamm_cat2_ar1_gam)
+```
+
+All the interaction terms are significant in this model, so we'll use this one for the model selection process.
+
+```{r gamm cat2 clean up}
+rm(m_gam_cat2, m_gamm_cat2, m_gamm_cat2_ar2, m_gamm_cat2_ar3)
+```
+
+
+## Model 5: LM 2-way interactions with water temperature
+
+### Initial Model
+
+We'll try running a linear model using all two-way interactions between Year, Flow Action Period, and Station, and a covariate of water temperature to account for seasonality and its effect of primary production. First we'll run the linear model without accounting for serial autocorrelation.
+
+```{r lm cat2 wt no autocorr}
+m_lm_cat2_wt <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, WaterTemp) %>% 
+  lm(Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + WaterTemp, data = .)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r lm cat2 wt no autocorr diag}
+summary(m_lm_cat2_wt)
+
+df_chla_wt_lag %>% 
+  drop_na(Chla_log, WaterTemp) %>% 
+  plot_lm_diag(
+    Chla_log, 
+    "ug/L", 
+    m_lm_cat2_wt, 
+    trans = "log"
+  )
+
+shapiro.test(m_lm_cat2_wt$residuals)
+acf(residuals(m_lm_cat2_wt))
+Box.test(residuals(m_lm_cat2_wt), lag = 20, type = 'Ljung-Box')
+```
+
+Hmmm, the residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, the residuals are autocorrelated.
+
+### Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation and the non-normal residuals. We'll run a series of linear models adding 1, 2, and 3 lag terms and compare how well they correct for autocorrelation.
+
+#### Lag 1
+
+```{r lm cat2 wt lag1}
+m_lm_cat2_wt_lag1 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, WaterTemp, lag1) %>% 
+  lm(Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + WaterTemp + lag1, data = .)
+
+acf(residuals(m_lm_cat2_wt_lag1))
+Box.test(residuals(m_lm_cat2_wt_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 2
+
+```{r lm cat2 wt lag2}
+m_lm_cat2_wt_lag2 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, WaterTemp, lag1, lag2) %>% 
+  lm(Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + WaterTemp + lag1 + lag2, data = .)
+
+acf(residuals(m_lm_cat2_wt_lag2))
+Box.test(residuals(m_lm_cat2_wt_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 3
+
+```{r lm cat2 wt lag3}
+m_lm_cat2_wt_lag3 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, WaterTemp, lag1, lag2, lag3) %>% 
+  lm(Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + WaterTemp + lag1 + lag2 + lag3, data = .)
+
+acf(residuals(m_lm_cat2_wt_lag3))
+Box.test(residuals(m_lm_cat2_wt_lag3), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 3 lag terms looks to have slightly better ACF and Box-Ljung test results than the model with 1 lag term. Let's compare the 3 models using AIC and BIC to see which model those prefer.
+
+#### Compare models
+
+```{r lm cat2 wt lag comparison, warning = FALSE}
+AIC(m_lm_cat2_wt_lag1, m_lm_cat2_wt_lag2, m_lm_cat2_wt_lag3)
+BIC(m_lm_cat2_wt_lag1, m_lm_cat2_wt_lag2, m_lm_cat2_wt_lag3)
+```
+
+Both AIC and BIC prefer the model with 1 lag term. Let's take a closer look at that one.
+
+### Lag 1 model summary
+
+```{r lm cat2 wt lag1 summary and diag}
+summary(m_lm_cat2_wt_lag1)
+
+df_chla_wt_lag %>% 
+  drop_na(Chla_log, WaterTemp, lag1) %>% 
+  plot_lm_diag(
+    Chla_log, 
+    "ug/L", 
+    m_lm_cat2_wt_lag1, 
+    trans = "log"
+  )
+
+shapiro.test(m_lm_cat2_wt_lag1$residuals)
+```
+
+Hmmm, the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a look at its ANOVA table using type 3 sum of squares.
+
+```{r anova cat2 wt lag1}
+Anova(m_lm_cat2_wt_lag1, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+```
+
+All the interaction terms are significant, so we can use this model in our model selection process; however, I'm somewhat leery of using this model since the model residuals don't look right and the water temperature term isn't significant.
+
+```{r lm cat2 wt clean up}
+rm(m_lm_cat2_wt, m_lm_cat2_wt_lag2, m_lm_cat2_wt_lag3)
+```
+
+
+## Model 6: LM 2-way interactions without seasonal term
+
+### Initial Model
+
+We'll try running a linear model using all two-way interactions between Year, Flow Action Period, and Station without including a term to account for seasonality. First we'll run the linear model without accounting for serial autocorrelation.
+
+```{r lm cat2 no autocorr}
+m_lm_cat2 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log) %>% 
+  lm(Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2, data = .)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r lm cat2 no autocorr diag}
+summary(m_lm_cat2)
+
+df_chla_wt_lag %>% 
+  drop_na(Chla_log) %>% 
+  plot_lm_diag(
+    Chla_log, 
+    "ug/L", 
+    m_lm_cat2, 
+    trans = "log"
+  )
+
+shapiro.test(m_lm_cat2$residuals)
+acf(residuals(m_lm_cat2))
+Box.test(residuals(m_lm_cat2), lag = 20, type = 'Ljung-Box')
+```
+
+Hmmm, the residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, the residuals are autocorrelated.
+
+### Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation and the non-normal residuals. We'll run a series of linear models adding 1, 2, and 3 lag terms and compare how well they correct for autocorrelation.
+
+#### Lag 1
+
+```{r lm cat2 lag1}
+m_lm_cat2_lag1 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, lag1) %>% 
+  lm(Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + lag1, data = .)
+
+acf(residuals(m_lm_cat2_lag1))
+Box.test(residuals(m_lm_cat2_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 2
+
+```{r lm cat2 lag2}
+m_lm_cat2_lag2 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, lag1, lag2) %>% 
+  lm(Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + lag1 + lag2, data = .)
+
+acf(residuals(m_lm_cat2_lag2))
+Box.test(residuals(m_lm_cat2_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+#### Lag 3
+
+```{r lm cat2 lag3}
+m_lm_cat2_lag3 <- df_chla_wt_lag %>% 
+  drop_na(Chla_log, lag1, lag2, lag3) %>% 
+  lm(Chla_log ~ (Year_fct + FlowActionPeriod + StationCode)^2 + lag1 + lag2 + lag3, data = .)
+
+acf(residuals(m_lm_cat2_lag3))
+Box.test(residuals(m_lm_cat2_lag3), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 3 lag terms looks to have slightly better ACF and Box-Ljung test results than the model with 1 lag term. Let's compare the 3 models using AIC and BIC to see which model those prefer.
+
+#### Compare models
+
+```{r lm cat2 lag comparison, warning = FALSE}
+AIC(m_lm_cat2_lag1, m_lm_cat2_lag2, m_lm_cat2_lag3)
+BIC(m_lm_cat2_lag1, m_lm_cat2_lag2, m_lm_cat2_lag3)
+```
+
+Both AIC and BIC prefer the model with 1 lag term. Let's take a closer look at that one.
+
+### Lag 1 model summary
+
+```{r lm cat2 lag1 summary and diag}
+summary(m_lm_cat2_lag1)
+
+df_chla_wt_lag %>% 
+  drop_na(Chla_log, lag1) %>% 
+  plot_lm_diag(
+    Chla_log, 
+    "ug/L", 
+    m_lm_cat2_lag1, 
+    trans = "log"
+  )
+
+shapiro.test(m_lm_cat2_lag1$residuals)
+```
+
+Hmmm, again the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a look at its ANOVA table using type 3 sum of squares.
+
+```{r anova cat2 lag1}
+Anova(m_lm_cat2_lag1, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+```
+
+All the interaction terms are significant, so we can use this model in our model selection process; however, I'm somewhat leery of using this model since the model residuals don't look right.
+
+```{r lm cat2 clean up}
+rm(m_lm_cat2, m_lm_cat2_lag2, m_lm_cat2_lag3)
+```
+
+
+# Model selection - GAM and LM models
+
+As a summary, here are the 6 models we are comparing:
+
+* Model 1 - `m_gamm_cat3_ar1` - GAM 3-way interactions with s(DOY) <br>
+Formula: `r format(m_gamm_cat3_ar1_gam$formula) %>% str_c(collapse = "") %>% str_squish()` <br><br>
+* Model 2 - `m_lm_cat3_wt_lag1` - LM 3-way interactions with water temperature <br>
+Formula: `r format(m_lm_cat3_wt_lag1$call) %>% str_c(collapse = "") %>% str_squish() %>% str_sub(start = 14, end = -12)` <br><br>
+* Model 3 - `m_lm_cat3_lag1` - LM 3-way interactions without seasonal term <br>
+Formula: `r format(m_lm_cat3_lag1$call) %>% str_c(collapse = "") %>% str_squish() %>% str_sub(start = 14, end = -12)` <br><br>
+* Model 4 - `m_gamm_cat2_ar1` - GAM 2-way interactions with s(DOY) <br>
+Formula: `r format(m_gamm_cat2_ar1_gam$formula) %>% str_c(collapse = "") %>% str_squish()` <br><br>
+* Model 5 - `m_lm_cat2_wt_lag1` - LM 2-way interactions with water temperature <br>
+Formula: `r format(m_lm_cat2_wt_lag1$call) %>% str_c(collapse = "") %>% str_squish() %>% str_sub(start = 14, end = -12)` <br><br>
+* Model 6 - `m_lm_cat2_lag1` - LM 2-way interactions without seasonal term <br>
+Formula: `r format(m_lm_cat2_lag1$call) %>% str_c(collapse = "") %>% str_squish() %>% str_sub(start = 14, end = -12)` <br>
+
+```{r model sel gam, warning = FALSE}
+# AIC values
+df_m_aic <- 
+  AIC(
+    m_gamm_cat3_ar1$lme,
+    m_lm_cat3_wt_lag1,
+    m_lm_cat3_lag1,
+    m_gamm_cat2_ar1$lme,
+    m_lm_cat2_wt_lag1,
+    m_lm_cat2_lag1
+  ) %>% 
+  as_tibble(rownames = "Model")
+
+# BIC values
+df_m_bic <- 
+  BIC(
+    m_gamm_cat3_ar1$lme,
+    m_lm_cat3_wt_lag1,
+    m_lm_cat3_lag1,
+    m_gamm_cat2_ar1$lme,
+    m_lm_cat2_wt_lag1,
+    m_lm_cat2_lag1
+  ) %>% 
+  as_tibble(rownames = "Model")
+
+# Combine AIC and BIC
+df_m_aic_bic <- left_join(df_m_aic, df_m_bic, by = join_by(Model, df))
+
+# Sort by AIC
+df_m_aic_bic %>% arrange(AIC)
+
+# Sort by BIC
+df_m_aic_bic %>% arrange(BIC)
+```
+
+According to AIC, model 3 (LM 3-way interactions without seasonal term) was the best model, while BIC preferred model 6 (LM 2-way interactions without seasonal term). We'll select model 3 (LM 3-way interactions without seasonal term) because the 3-way interaction between categorical variables was significant in this model indicating that there are possible significant differences between Flow Pulse Periods within each Station-Year grouping. 
+
+# Model Results
+
+## Model 3
+
+Lets take a closer look at model 3: LM 3-way interactions without seasonal term <br>
+Formula: `r format(m_lm_cat3_lag1$call) %>% str_c(collapse = "") %>% str_squish() %>% str_sub(start = 14, end = -12)`
+
+### Pairwise Contrasts
+
+Tukey pairwise contrasts of Flow Pulse Period for each Station - Year combination:
+
+```{r lm cat3 lag1 tukey flow action period, warning = FALSE}
+em_lm_cat3_lag1 <- emmeans(m_lm_cat3_lag1, ~ FlowActionPeriod | StationCode * Year_fct)
+pairs(em_lm_cat3_lag1)
+```
+
+### Summary Figure
+
+```{r lm cat3 lag 1 summary figure, fig.width = 8.5, fig.height = 7.5}
+df_chla_wt_lag %>% 
+  drop_na(Chla, lag1) %>% 
+  plot_model_summary(em_lm_cat3_lag1)
+```
+
+Observed daily average chlorophyll fluorescence values (boxplots) and model results (model means as red points ±95% confidence intervals as gray boxes) for the Flow Pulse Period comparisons by Station and Year. Different letters above boxplots identify statistically significant (p < 0.05) differences from a Tukey post-hoc test.
+
+The model results don't match the observed values well at all. Unfortunately, this linear model is not a good candidate to use for our analysis.
+
+## Model 1
+
+Since the linear model using 3-way interactions doesn't fit the observed data that well, let's take a closer look at the GAM version of this model, model 1: GAM 3-way interactions with s(DOY) <br>
+Formula: `r format(m_gamm_cat3_ar1_gam$formula) %>% str_c(collapse = "") %>% str_squish()`
+
+### Pairwise Contrasts
+
+Tukey pairwise contrasts of Flow Pulse Period for each Station - Year combination:
+
+```{r gam cat3 ar1 tukey flow action period, warning = FALSE}
+# Add the model call back to the gam object so it works with emmeans
+m_gamm_cat3_ar1_gam$call <- quote(
+  gamm(
+    f_gam_cat3, 
+    data = df_chla_wt_c, 
+    correlation = corARMA(form = ~ 1|Year_fct/StationCode, p = 1),
+    method = "REML"
+  )
+)
+
+em_gamm_cat3_ar1 <- emmeans(m_gamm_cat3_ar1_gam, ~ FlowActionPeriod | StationCode * Year_fct)
+pairs(em_gamm_cat3_ar1)
+```
+
+### Summary Figure
+
+```{r gam cat3 ar1 summary figure, fig.width = 8.5, fig.height = 7.5}
+plot_model_summary(df_chla_wt_c, em_gamm_cat3_ar1)
+```
+
+Observed daily average chlorophyll fluorescence values (boxplots) and model results (model means as red points ±95% confidence intervals as gray boxes) for the Flow Pulse Period comparisons by Station and Year. Different letters above boxplots identify statistically significant (p < 0.05) differences from a Tukey post-hoc test.
+
+The model means seem to match the observed values better than Model 3, but there is a large amount of uncertainty around the means resulting in the model not seeing any significant differences among the pairwise comparisons. Unfortunately, this linear model does not seem like a good candidate to use for our analysis as well.
+

@@ -1,0 +1,1349 @@
+---
+title: "NDFS Contaminants Manuscript"
+subtitle: "Analyses of Total Concentrations in Water and Zooplankton"
+author: "Dave Bosworth"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_depth: 5
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = here::here("docs"),
+      envir = globalenv()
+    )
+    })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.kable.NA = "")
+```
+
+# Purpose
+
+Create exploratory figures and run statistical analyses for the total pesticide concentration data in water and zooplankton collected from the Sacramento River (SHR) and Toe Drain (STTD) in the summer-fall periods in 2017, 2018 and 2019. These analyses are included in the NDFS contaminants manuscript.
+
+# Global code and functions
+
+```{r load packages, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(rlang)
+library(knitr)
+library(patchwork)
+library(car)
+library(emmeans)
+library(visreg)
+library(here)
+library(conflicted)
+
+# Declare package conflict preferences 
+conflicts_prefer(dplyr::filter(), dplyr::lag())
+```
+
+```{r check working dir}
+# Check if we are in the correct working directory
+i_am("manuscript_contam/notebooks/explore_contam_conc_water_zoop.Rmd")
+```
+
+Display current versions of R and packages used for this analysis:
+
+```{r print session info}
+devtools::session_info()
+```
+
+Create function to plot model diagnostics:
+
+```{r global funcs}
+# Create model diagnostic plots to check assumptions
+plot_model_diag <- function(df_data, param_var, unit_label, model, trans = c("none", "log", "sqrt"), ...) {
+  trans <- match.arg(trans)
+  
+  df_data <- df_data %>%
+    mutate(
+      Residuals = resid(model),
+      Fitted = predict(model)
+    )
+  
+  param_name <- as_name(ensym(param_var))
+  
+  if (trans == "log") {
+    unit_label <- paste0("log[", unit_label, "]")
+  } else if (trans == "sqrt") {
+    unit_label <- paste0("sqrt[", unit_label, "]")
+  }
+  
+  plt_hist <- ggplot(df_data, aes(x = Residuals)) +
+    geom_histogram(...) +
+    labs(
+      title = "Residual Histogram", 
+      x = "Residuals"
+    ) +
+    theme_bw()
+  
+  plt_qq <- ggplot(df_data, aes(sample = Residuals)) + 
+    labs(
+      title = "Residual Probability Plot", 
+      x = "Normal Quantiles", 
+      y = "Residuals"
+    ) + 
+    stat_qq() + 
+    stat_qq_line(linewidth = 1, color = 'red') + 
+    theme_bw()
+  
+  plt_res_fit <- ggplot(df_data, aes(x = Fitted, y = Residuals)) +
+    geom_point() +
+    labs(
+      title = "Residuals vs. Fitted Values", 
+      x = (paste0("Predicted ", param_name, " (", unit_label, ")")),
+      y = paste0("Residuals (", unit_label, ")")
+    ) +
+    theme_bw()
+  
+  plt_obs_fit <- ggplot(df_data, aes(x = Fitted, y = {{ param_var}})) +
+    geom_point() +
+    geom_abline(slope = 1, intercept = 0, color = "red") +
+    labs(
+      title = "Observed vs. Fitted Values", 
+      x = paste0("Predicted ", param_name, " (", unit_label, ")"),
+      y = paste0("Observed ", param_name, " (", unit_label, ")")
+    ) +
+    theme_bw()
+  
+  (plt_hist + plt_qq) / (plt_res_fit + plt_obs_fit)
+}
+```
+
+
+# Import and Prepare Data
+
+```{r import data}
+# Define root directory for pesticide data:
+fp_pest <- here("manuscript_contam/data/processed")
+
+# Total Pesticide Concentration data:
+df_conc_all <- read_rds(file.path(fp_pest, "contam_conc_water_zoop_2017-2019.rds"))
+
+# Pesticide application data:
+df_appl <- read_rds(file.path(fp_pest, "pesticide_use_daily_tot_2017-2020.rds"))
+
+# Daily average flow data:
+df_davg_flow <- read_rds(here("Water_Quality/Data_Processed/LIS_SR_DailyAvgFlow_2013-2022.rds"))
+```
+
+Prepare the pesticide application data to be joined to the concentration data by calculating monthly totals and standardizing to area of the watershed.
+
+```{r prepare application data}
+df_appl_c <- df_appl %>% 
+  # Calculate monthly totals by region
+  summarize(TotalAppl = sum(TotalApplication), .by = c(Region, Year, Month)) %>% 
+  mutate(
+    # Standardize total application to area (in square miles) of the watershed 
+    TotalApplStd = if_else(
+      Region == "Sacramento River", 
+      TotalAppl/22526.79948,
+      TotalAppl/4217.503529
+    ),
+    # Define station that each region is assigned to
+    Station = case_match(
+      Region,
+      "Toe Drain" ~ "STTD", 
+      "Sacramento River" ~ "SHR"
+    )
+  ) %>% 
+  # Lag standardized total application data by one month
+  arrange(Region, Year, Month) %>% 
+  group_by(Region) %>% 
+  mutate(TotalApplStd_lag1 = lag(TotalApplStd, n = 1)) %>% 
+  ungroup() %>% 
+  # Clean up dataframe
+  select(Station, Year, Month, TotalApplStd, TotalApplStd_lag1)
+```
+
+Prepare the flow data to be joined to the concentration data using SR at Freeport flow data for SHR and LIS flow data for STTD. Use Daily Average Net flows for both.
+
+```{r prepare flow data}
+df_davg_flow_c <- df_davg_flow %>% 
+  select(-LIS_DailyAvgInstFlow) %>% 
+  pivot_longer(
+    cols = ends_with("NetFlow"),
+    names_to = "Station",
+    values_to = "DailyAvgNetFlow"
+  ) %>% 
+  mutate(
+    Station = case_match(
+      Station,
+      "SR_DailyAvgNetFlow" ~ "SHR",
+      "LIS_DailyAvgNetFlow" ~ "STTD"
+    )
+  )
+```
+
+Join pesticide concentration, application, and flow data together.
+
+```{r join all data}
+df_conc_all_c1 <- df_conc_all %>% 
+  mutate(
+    Year = year(Date),
+    Month = month(Date, label = TRUE)
+  ) %>% 
+  left_join(df_appl_c, by = join_by(Station, Year, Month)) %>% 
+  left_join(df_davg_flow_c, by = join_by(Date, Station))
+
+# Look at all data
+df_conc_all_c1 %>% 
+  select(
+    Station,
+    Date,
+    Year,
+    starts_with("TotalConc"),
+    DailyAvgNetFlow,
+    starts_with("TotalAppl")
+  ) %>% 
+  kable()
+```
+
+It looks like all of the flow data was available for SHR, but STTD is missing a few flow values in July 2019. We'll restrict the date ranges to July 1 - Oct 31 for each year since some of the data extends outside of the summer-fall period.
+
+```{r restrict time period}
+df_conc_all_c2 <- df_conc_all_c1 %>% 
+  mutate(Month = as.numeric(Month)) %>%
+  filter(Month %in% 7:10)
+
+# Look at filtered data
+df_conc_all_c2 %>% 
+  select(
+    Station,
+    Date,
+    Year,
+    starts_with("TotalConc"),
+    DailyAvgNetFlow,
+    starts_with("TotalAppl")
+  ) %>% 
+  kable()
+```
+
+# Zooplankton
+
+```{r prepare data zoop}
+# Prepare zooplankton concentration data for analysis
+df_zoop <- df_conc_all_c2 %>% 
+  select(-TotalConc_Water) %>% 
+  drop_na() %>% 
+  # Remove two samples with total concentrations equal to zero
+  filter(TotalConc_Zoop > 0) %>% 
+  mutate(
+    # Add log-transformed and sqrt-transformed zooplankton concentrations
+    TotalConc_Zoop_log = log(TotalConc_Zoop),
+    TotalConc_Zoop_sqrt = sqrt(TotalConc_Zoop),
+    # Convert year to character for categorical models
+    Year = as.character(Year)
+  )
+```
+
+## Exploratory Plots
+
+Before running the analyses, lets visualize the data. 
+
+### Boxplots
+
+First, we'll look at a boxplot comparing total pesticide concentrations in zooplankton between stations.
+
+```{r boxplot station zoop}
+df_zoop %>% 
+  ggplot(aes(x = Station, y = TotalConc_Zoop)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(aes(color = Year), width = 0.3) +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  ylab("Total pesticide concentration in zooplankton (ng/g)")
+```
+
+SHR has a higher median concentration than STTD, but STTD has some higher values than SHR particularly in 2018. Let's break apart the boxplot by station and year.
+
+```{r boxplot station year zoop}
+df_zoop %>% 
+  ggplot(aes(x = Year, y = TotalConc_Zoop, fill = Year)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0.2) +
+  facet_wrap(vars(Station)) +
+  scale_fill_viridis_d(option = "plasma", end = 0.8) +
+  ylab("Total pesticide concentration in zooplankton (ng/g)")
+```
+
+Overall, STTD in 2018 had the highest variation in concentrations. Let's look at a boxplot grouped only by year.
+
+```{r boxplot yr zoop}
+df_zoop %>% 
+  ggplot(aes(x = Year, y = TotalConc_Zoop)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0.3) +
+  ylab("Total pesticide concentration in zooplankton (ng/g)")
+```
+
+The median of total concentrations was slightly higher in 2019 than other years when both stations are grouped together.
+
+### Seasonal time-series
+
+Now, let's see how total concentrations varied seasonally using day of year for each station and year.
+
+```{r plt conc ts zoop}
+df_zoop %>% 
+  ggplot(aes(x = yday(Date), y = TotalConc_Zoop, color = Station)) +
+  geom_point() +
+  facet_grid(rows = vars(Year)) +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  labs(x = "DOY", y = "Total pesticide concentration in zooplankton (ng/g)")
+```
+
+It almost looks like SHR and STTD have opposite seasonal trends.
+
+### Concentration vs Flow
+
+Now, let's take a look at how the total pesticide concentrations in zooplankton vary with daily average net flow for each station.
+
+```{r plot conc vs flow zoop}
+df_zoop %>% 
+  ggplot(aes(x = DailyAvgNetFlow, y = TotalConc_Zoop, color = Station)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  labs(
+    x = "Daily average net flow (cfs)",
+    y = "Total pesticide concentration in zooplankton (ng/g)"
+  ) +
+  theme_bw()
+
+df_zoop %>% 
+  ggplot(aes(x = DailyAvgNetFlow, y = TotalConc_Zoop, color = Year)) +
+  geom_point() +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  facet_wrap(vars(Station), scales = "free") +
+  labs(
+    x = "Daily average net flow (cfs)",
+    y = "Total pesticide concentration in zooplankton (ng/g)"
+  ) +
+  theme_bw()
+```
+
+SHR seems to have a negative relationship between concentration and flow, while concentrations at STTD seem to have a positive relationship with flow. 
+
+### Concentration vs Application
+
+Next, let's look at the total pesticide concentrations in zooplankton as a function of standardized monthly total application data for each station.
+
+```{r plot conc vs appl zoop}
+df_zoop %>% 
+  ggplot(aes(x = TotalApplStd, y = TotalConc_Zoop, color = Station)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  labs(
+    x = "Monthly Total Application (lbs/sq mile)",
+    y = "Total pesticide concentration in zooplankton (ng/g)"
+  ) +
+  theme_bw()
+
+df_zoop %>% 
+  ggplot(aes(x = TotalApplStd, y = TotalConc_Zoop, color = Year)) +
+  geom_point() +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  facet_wrap(vars(Station), scales = "free") +
+  labs(
+    x = "Monthly Total Application (lbs/sq mile)",
+    y = "Total pesticide concentration in zooplankton (ng/g)"
+  ) +
+  theme_bw()
+```
+
+There appears to be a weak negative relationship between pesticide concentrations in zooplankton and monthly application amounts at both stations. I'm not sure that monthly application will be a good predictor. Let's take a look at whether using the prior month's application amount makes a difference.
+
+```{r plot conc vs appl prior month zoop}
+df_zoop %>% 
+  ggplot(aes(x = TotalApplStd_lag1, y = TotalConc_Zoop, color = Station)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  labs(
+    x = "Monthly Total Application in prior month (lbs/sq mile)",
+    y = "Total pesticide concentration in zooplankton (ng/g)"
+  ) +
+  theme_bw()
+
+df_zoop %>% 
+  ggplot(aes(x = TotalApplStd_lag1, y = TotalConc_Zoop, color = Year)) +
+  geom_point() +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  facet_wrap(vars(Station), scales = "free") +
+  labs(
+    x = "Monthly Total Application in prior month (lbs/sq mile)",
+    y = "Total pesticide concentration in zooplankton (ng/g)"
+  ) +
+  theme_bw()
+```
+
+Hmm, not really...
+
+### Histograms
+
+Lastly, let's take a look at histograms of total pesticide concentrations in zooplankton to look at its distribution. We'll look at each station separately and then all data grouped together.
+
+```{r plot hist zoop, message = FALSE}
+df_zoop %>% 
+  ggplot(aes(x = TotalConc_Zoop)) +
+  geom_histogram(bins = 10) +
+  facet_wrap(vars(Station), scales = "free") +
+  xlab("Total pesticide concentration in zooplankton (ng/g)")
+
+df_zoop %>% 
+  ggplot(aes(x = TotalConc_Zoop)) +
+  geom_histogram() +
+  xlab("Total pesticide concentration in zooplankton (ng/g)")
+```
+
+We'll probably need to use transformed zooplankton concentration data for the analyses.
+
+## Analyses
+
+### Models with Flow and Application
+
+We'll create linear models of the zooplankton concentrations as a function of daily average net flow and monthly pesticide application amounts for each station separately. We'll start with the original concentration values, but we may need to transform them. These models will allow us to examine:
+
+1) Do total pesticide concentrations in zooplankton significantly respond to flow at either or both SHR and STTD?
+2) Do total pesticide concentrations in zooplankton significantly respond to pesticide application at either or both SHR and STTD?
+
+#### SHR
+
+We'll start with SHR
+
+##### Current month application
+
+```{r lm flow appl zoop shr}
+df_zoop_shr <- df_zoop %>% filter(Station == "SHR")
+
+m_zoop_q_appl_shr <- df_zoop_shr %>% 
+  lm(TotalConc_Zoop ~ DailyAvgNetFlow + TotalApplStd, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl zoop shr diag, message = FALSE}
+df_zoop_shr %>% plot_model_diag(
+  TotalConc_Zoop, 
+  "ng/g", 
+  m_zoop_q_appl_shr, 
+  bins = 10
+)
+
+shapiro.test(m_zoop_q_appl_shr$residuals)
+```
+
+The residuals deviate from a normal distribution according to visual inspection. We'll re-run the model using the natural log transformation.
+
+```{r lm flow appl zoop log shr}
+m_zoop_q_appl_shr_log <- df_zoop_shr %>% 
+  lm(TotalConc_Zoop_log ~ DailyAvgNetFlow + TotalApplStd, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl zoop log shr diag, message = FALSE}
+df_zoop_shr %>% plot_model_diag(
+  TotalConc_Zoop_log, 
+  "ng/g", 
+  m_zoop_q_appl_shr_log, 
+  trans = "log", 
+  bins = 10
+)
+
+shapiro.test(m_zoop_q_appl_shr_log$residuals)
+```
+
+The model diagnostics look pretty good with the log-transformed values, so we'll take a closer look at this model.
+
+```{r lm flow appl zoop log shr summ, warning = FALSE, fig.width = 8}
+summary(m_zoop_q_appl_shr_log)
+
+plt_m_zoop_q_shr <- visreg(m_zoop_q_appl_shr_log, xvar = "DailyAvgNetFlow", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_zoop_appl_shr <- visreg(m_zoop_q_appl_shr_log, xvar = "TotalApplStd", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_zoop_shr <- plt_m_zoop_q_shr + plt_m_zoop_appl_shr
+plt_m_zoop_shr
+```
+
+Total pesticide concentrations decrease significantly with flow and monthly pesticide application at the SHR station; however, the relationship with monthly pesticide application is driven by four values with the highest application.
+
+##### Prior month application
+
+Let's see if the model is a better fit when we use the prior month's application amount.
+
+```{r lm flow appl prior zoop shr}
+m_zoop_q_appl_pr_shr <- df_zoop_shr %>% 
+  lm(TotalConc_Zoop ~ DailyAvgNetFlow + TotalApplStd_lag1, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl prior zoop shr diag, message = FALSE}
+df_zoop_shr %>% plot_model_diag(
+  TotalConc_Zoop, 
+  "ng/g", 
+  m_zoop_q_appl_pr_shr, 
+  bins = 10
+)
+
+shapiro.test(m_zoop_q_appl_pr_shr$residuals)
+```
+
+The residuals deviate from a normal distribution according to visual inspection. We'll re-run the model using the natural log transformation.
+
+```{r lm flow appl prior zoop log shr}
+m_zoop_q_appl_pr_shr_log <- df_zoop_shr %>% 
+  lm(TotalConc_Zoop_log ~ DailyAvgNetFlow + TotalApplStd_lag1, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl prior zoop log shr diag, message = FALSE}
+df_zoop_shr %>% plot_model_diag(
+  TotalConc_Zoop_log, 
+  "ng/g", 
+  m_zoop_q_appl_pr_shr_log, 
+  trans = "log", 
+  bins = 10
+)
+
+shapiro.test(m_zoop_q_appl_pr_shr_log$residuals)
+```
+
+The model diagnostics look pretty good with the log-transformed values, so we'll take a closer look at this model.
+
+```{r lm flow appl prior zoop log shr summ, warning = FALSE, fig.width = 8}
+summary(m_zoop_q_appl_pr_shr_log)
+
+plt_m_zoop_q_pr_shr <- visreg(m_zoop_q_appl_pr_shr_log, xvar = "DailyAvgNetFlow", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_zoop_appl_pr_shr <- visreg(m_zoop_q_appl_pr_shr_log, xvar = "TotalApplStd_lag1", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_zoop_pr_shr <- plt_m_zoop_q_pr_shr + plt_m_zoop_appl_pr_shr
+plt_m_zoop_pr_shr
+```
+
+Again, total pesticide concentrations decrease significantly with flow and monthly pesticide application at the SHR station using the prior month's application. The relationship with monthly pesticide application isn't as susceptible to leverage by values with the highest application.
+
+##### Model selection
+
+Let's take a look at AIC and BIC values to see which model is better.
+
+```{r lm selection flow appl zoop shr}
+AIC(m_zoop_q_appl_shr_log, m_zoop_q_appl_pr_shr_log)
+BIC(m_zoop_q_appl_shr_log, m_zoop_q_appl_pr_shr_log)
+```
+
+Both AIC and BIC prefer the model with the current month's pesticide application.
+
+#### STTD
+
+Next, we'll look at STTD
+
+##### Current month application
+
+```{r lm flow appl zoop sttd}
+df_zoop_sttd <- df_zoop %>% filter(Station == "STTD")
+
+m_zoop_q_appl_sttd <- df_zoop_sttd %>% 
+  lm(TotalConc_Zoop ~ DailyAvgNetFlow + TotalApplStd, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl zoop sttd diag, message = FALSE}
+df_zoop_sttd %>% plot_model_diag(
+  TotalConc_Zoop, 
+  "ng/g", 
+  m_zoop_q_appl_sttd, 
+  bins = 10
+)
+
+shapiro.test(m_zoop_q_appl_sttd$residuals)
+```
+
+The residuals deviate from a normal distribution according to visual inspection. We'll re-run the model using the natural log transformation.
+
+```{r lm flow appl zoop log sttd}
+m_zoop_q_appl_sttd_log <- df_zoop_sttd %>% 
+  lm(TotalConc_Zoop_log ~ DailyAvgNetFlow + TotalApplStd, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl zoop log sttd diag, message = FALSE}
+df_zoop_sttd %>% plot_model_diag(
+  TotalConc_Zoop_log, 
+  "ng/g", 
+  m_zoop_q_appl_sttd_log, 
+  trans = "log", 
+  bins = 10
+)
+
+shapiro.test(m_zoop_q_appl_sttd_log$residuals)
+```
+
+The natural log transformation may be too strong. We'll re-run the model using the square root-transformation.
+
+```{r lm flow appl zoop sqrt sttd}
+m_zoop_q_appl_sttd_sqrt <- df_zoop_sttd %>% 
+  lm(TotalConc_Zoop_sqrt ~ DailyAvgNetFlow + TotalApplStd, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl zoop sqrt sttd diag, message = FALSE}
+df_zoop_sttd %>% plot_model_diag(
+  TotalConc_Zoop_sqrt, 
+  "ng/g", 
+  m_zoop_q_appl_sttd_sqrt, 
+  trans = "sqrt", 
+  bins = 10
+)
+
+shapiro.test(m_zoop_q_appl_sttd_sqrt$residuals)
+```
+
+The model diagnostics look best with this model, so we'll take a closer look at this one.
+
+```{r lm flow appl zoop sqrt sttd summ, warning = FALSE, fig.width = 8}
+summary(m_zoop_q_appl_sttd_sqrt)
+
+plt_m_zoop_q_sttd <- visreg(m_zoop_q_appl_sttd_sqrt, xvar = "DailyAvgNetFlow", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_zoop_appl_sttd <- visreg(m_zoop_q_appl_sttd_sqrt, xvar = "TotalApplStd", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_zoop_sttd <- plt_m_zoop_q_sttd + plt_m_zoop_appl_sttd
+plt_m_zoop_sttd
+```
+
+Total pesticide concentrations increase significantly with flow at the STTD station, but there is no relationship between concentration and monthly pesticide application. 
+
+##### Prior month application
+
+Let's see if the model is a better fit when we use the prior month's application amount.
+
+```{r lm flow appl prior zoop sttd}
+m_zoop_q_appl_pr_sttd <- df_zoop_sttd %>% 
+  lm(TotalConc_Zoop ~ DailyAvgNetFlow + TotalApplStd_lag1, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl prior zoop sttd diag, message = FALSE}
+df_zoop_sttd %>% plot_model_diag(
+  TotalConc_Zoop, 
+  "ng/g",
+  m_zoop_q_appl_pr_sttd, 
+  bins = 10
+)
+
+shapiro.test(m_zoop_q_appl_pr_sttd$residuals)
+```
+
+The residuals deviate from a normal distribution according to visual inspection. We'll re-run the model using the natural log transformation.
+
+```{r lm flow appl prior zoop log sttd}
+m_zoop_q_appl_pr_sttd_log <- df_zoop_sttd %>% 
+  lm(TotalConc_Zoop_log ~ DailyAvgNetFlow + TotalApplStd_lag1, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl prior zoop log sttd diag, message = FALSE}
+df_zoop_sttd %>% plot_model_diag(
+  TotalConc_Zoop_log, 
+  "ng/g", 
+  m_zoop_q_appl_pr_sttd_log, 
+  trans = "log", 
+  bins = 10
+)
+
+shapiro.test(m_zoop_q_appl_pr_sttd_log$residuals)
+```
+
+Again, the natural log transformation may be too strong. We'll re-run the model using the square root-transformation.
+
+```{r lm flow appl prior zoop sqrt sttd}
+m_zoop_q_appl_pr_sttd_sqrt <- df_zoop_sttd %>% 
+  lm(TotalConc_Zoop_sqrt ~ DailyAvgNetFlow + TotalApplStd_lag1, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl prior zoop sqrt sttd diag, message = FALSE}
+df_zoop_sttd %>% plot_model_diag(
+  TotalConc_Zoop_sqrt, 
+  "ng/g", 
+  m_zoop_q_appl_pr_sttd_sqrt, 
+  trans = "sqrt",
+  bins = 10
+)
+
+shapiro.test(m_zoop_q_appl_pr_sttd_sqrt$residuals)
+```
+
+The model diagnostics look best with this model, so we'll take a closer look at this one.
+
+```{r lm flow appl prior zoop sqrt sttd summ, warning = FALSE, fig.width = 8}
+summary(m_zoop_q_appl_pr_sttd_sqrt)
+
+plt_m_zoop_q_pr_sttd <- visreg(m_zoop_q_appl_pr_sttd_sqrt, xvar = "DailyAvgNetFlow", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_zoop_appl_pr_sttd <- visreg(m_zoop_q_appl_pr_sttd_sqrt, xvar = "TotalApplStd_lag1", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_zoop_pr_sttd <- plt_m_zoop_q_pr_sttd + plt_m_zoop_appl_pr_sttd
+plt_m_zoop_pr_sttd
+```
+
+The results are the same with this model. 
+
+##### Model selection
+
+Let's take a look at AIC and BIC values to see which model is better.
+
+```{r lm selection flow appl zoop sttd}
+AIC(m_zoop_q_appl_sttd_sqrt, m_zoop_q_appl_pr_sttd_sqrt)
+BIC(m_zoop_q_appl_sttd_sqrt, m_zoop_q_appl_pr_sttd_sqrt)
+```
+
+The AIC and BIC values are nearly identical between models with both metrics giving a slight edge to the model with the current month's pesticide application.
+
+### Model with Station and Year
+
+Next, we'll create a linear model of the zooplankton concentrations as a function of the interaction between station and year. We'll start with the original concentration values, but we may need to transform them. This model will allow us to examine:
+
+1) If the interaction between station and year isn't significant, whether total pesticide concentrations in zooplankton are significantly different among stations or years (main effects).
+2) If the interaction is significant, whether total pesticide concentrations in zooplankton are significantly different among stations for each year or among years for each station.
+
+#### With interaction
+
+```{r lm sta yr zoop}
+m_zoop_sta_yr <- df_zoop %>% 
+  lm(TotalConc_Zoop ~ Station * Year, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm sta yr zoop diag, message = FALSE}
+df_zoop %>% plot_model_diag(
+  TotalConc_Zoop, 
+  "ng/g", 
+  m_zoop_sta_yr
+)
+
+shapiro.test(m_zoop_sta_yr$residuals)
+```
+
+The residuals deviate from a normal distribution according to the Shapiro-Wilk normality test and visual inspection. Also, the variance among groups isn't consistent. We'll re-run the model using the natural log of the concentration values.
+
+```{r lm sta yr zoop log}
+m_zoop_sta_yr_log <- df_zoop %>% 
+  lm(TotalConc_Zoop_log ~ Station * Year, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm sta yr zoop log diag, message = FALSE}
+df_zoop %>% plot_model_diag(
+  TotalConc_Zoop_log, 
+  "ng/g", 
+  m_zoop_sta_yr_log, 
+  trans = "log"
+)
+
+shapiro.test(m_zoop_sta_yr_log$residuals)
+```
+
+This is much better than the model with original values. Let's take a look at the Anova table using type 3 sum of squares for the model using natural log transformation.
+
+##### ANOVA table
+
+```{r anova sta yr zoop}
+Anova(m_zoop_sta_yr_log, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+```
+
+Well, the interaction term is not significant which means we can take a look at the main effects. Before we do this, we'll remove the interaction from the model since it's not necessary. We'll stick with the model using natural log transformation.
+
+#### Without interaction
+
+```{r lm sta yr zoop log no int, message = FALSE}
+m_zoop_sta_yr_log2 <- df_zoop %>% 
+  lm(TotalConc_Zoop_log ~ Station + Year, data = .)
+
+df_zoop %>% plot_model_diag(
+  TotalConc_Zoop_log, 
+  "ng/g", 
+  m_zoop_sta_yr_log2, 
+  trans = "log"
+)
+
+shapiro.test(m_zoop_sta_yr_log2$residuals)
+```
+
+The diagnostics still look good with this model. Let's take a look at the Anova table using type 2 sum of squares because of the unbalanced design.
+
+##### ANOVA table
+
+```{r anova sta yr zoop no int, warning = FALSE}
+Anova(m_zoop_sta_yr_log2, type = 2)
+```
+
+The main effect of station is not significant (p = 0.083) meaning that total pesticide concentrations in zooplankton don't differ between SHR and STTD. However, the main effect of Year is significant, so we can take a look at the pairwise contrasts to see how concentrations differ among the years. We'll also take a look at the pairwise contrasts for station since it is close to significant.
+
+##### Contrasts
+
+```{r contrast sta yr zoop no int, warning = FALSE}
+# Contrasts for Year main effect
+em_zoop_yr <- emmeans(m_zoop_sta_yr_log2, specs = "Year")
+pairs(em_zoop_yr)
+visreg(m_zoop_sta_yr_log2, xvar = "Year")
+
+# Contrasts for Station main effect
+em_zoop_sta <- emmeans(m_zoop_sta_yr_log2, specs = "Station")
+pairs(em_zoop_sta)
+visreg(m_zoop_sta_yr_log2, xvar = "Station")
+```
+
+Pairwise tests indicate that total pesticide concentration in zooplankton in 2019 is marginally significantly higher than 2017, but the p-value is 0.053. Also, the p-value isn't significant, but SHR is slightly higher than STTD.
+
+
+# Water Analysis
+
+```{r prepare data water}
+# Prepare water concentration data for analysis
+df_water <- df_conc_all_c2 %>% 
+  select(-TotalConc_Zoop) %>% 
+  # only include 2019 since that was the only year water samples were collected
+    # at STTD
+  filter(Year == 2019) %>% 
+  drop_na() %>% 
+  # Add log-transformed and sqrt-transformed water concentrations
+  mutate(
+    TotalConc_Water_log = log(TotalConc_Water),
+    TotalConc_Water_sqrt = sqrt(TotalConc_Water)
+  )
+```
+
+## Exploratory Plots
+
+Before running the analyses, lets visualize the data. 
+
+### Boxplots
+
+First, let's look at a boxplot comparing total pesticide concentrations in water between stations.
+
+```{r boxplot station water}
+df_water %>% 
+  ggplot(aes(x = Station, y = TotalConc_Water)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0.3) +
+  ylab("Total pesticide concentration in water (ng/L)")
+```
+
+STTD seems to have higher concentrations with much more variation than SHR.
+
+### Seasonal time-series
+
+Now, let's see how total concentrations varied seasonally in 2019 for each station.
+
+```{r plt conc ts water}
+df_water %>% 
+  ggplot(aes(x = Date, y = TotalConc_Water, color = Station)) +
+  geom_point() +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  labs(x = "Date", y = "Total pesticide concentration in water (ng/L)")
+```
+
+### Concentration vs Flow
+
+Now, let's take a look at how the total pesticide concentrations in water vary with daily average net flow for each station.
+
+```{r plot conc vs flow water}
+df_water %>% 
+  ggplot(aes(x = DailyAvgNetFlow, y = TotalConc_Water, color = Station)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  labs(
+    x = "Daily average net flow (cfs)",
+    y = "Total pesticide concentration in water (ng/L)"
+  ) +
+  theme_bw()
+
+df_water %>% 
+  ggplot(aes(x = DailyAvgNetFlow, y = TotalConc_Water)) +
+  geom_point() +
+  facet_wrap(vars(Station), scales = "free") +
+  labs(
+    x = "Daily average net flow (cfs)",
+    y = "Total pesticide concentration in water (ng/L)"
+  ) +
+  theme_bw()
+```
+
+Both SHR and STTD seem to have positive relationships between concentration and flow, but STTD looks weak and strongly affected by values with the highest flows.
+
+### Concentration vs Application
+
+Next, let's look at the total pesticide concentrations in water as a function of standardized monthly total application data for each station.
+
+```{r plot conc vs appl water}
+df_water %>% 
+  ggplot(aes(x = TotalApplStd, y = TotalConc_Water, color = Station)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  labs(
+    x = "Monthly Total Application (lbs/sq mile)",
+    y = "Total pesticide concentration in water (ng/L)"
+  ) +
+  theme_bw()
+
+df_water %>% 
+  ggplot(aes(x = TotalApplStd, y = TotalConc_Water)) +
+  geom_point() +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  facet_wrap(vars(Station), scales = "free") +
+  labs(
+    x = "Monthly Total Application (lbs/sq mile)",
+    y = "Total pesticide concentration in water (ng/L)"
+  ) +
+  theme_bw()
+```
+
+There appears to be a weak negative relationship between pesticide concentrations in water and monthly application amounts at STTD and a slightly stronger positive relationship at SHR. I'm not sure that monthly application will be a good predictor. Let's take a look at whether using the prior month's application amount makes a difference.
+
+```{r plot conc vs appl prior month water}
+df_water %>% 
+  ggplot(aes(x = TotalApplStd_lag1, y = TotalConc_Water, color = Station)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x) +
+  labs(
+    x = "Monthly Total Application in prior month (lbs/sq mile)",
+    y = "Total pesticide concentration in water (ng/L)"
+  ) +
+  theme_bw()
+
+df_water %>% 
+  ggplot(aes(x = TotalApplStd_lag1, y = TotalConc_Water)) +
+  geom_point() +
+  scale_color_viridis_d(option = "plasma", end = 0.8) +
+  facet_wrap(vars(Station), scales = "free") +
+  labs(
+    x = "Monthly Total Application in prior month (lbs/sq mile)",
+    y = "Total pesticide concentration in water (ng/L)"
+  ) +
+  theme_bw()
+```
+
+Hmm, not really. The relationship may be slightly better at SHR using the prior month's application amounts.
+
+### Histograms
+
+Lastly, let's take a look at histograms of total pesticide concentrations in water to look at its distribution. We'll look at each station separately and then all data grouped together.
+
+```{r plot hist water, message = FALSE}
+df_water %>% 
+  ggplot(aes(x = TotalConc_Water)) +
+  geom_histogram(bins = 10) +
+  facet_wrap(vars(Station), scales = "free") +
+  xlab("Total pesticide concentration in water (ng/L)")
+
+df_water %>% 
+  ggplot(aes(x = TotalConc_Water)) +
+  geom_histogram() +
+  xlab("Total pesticide concentration in water (ng/L)")
+```
+
+We'll probably need to use transformed water concentration data for the analyses.
+
+## Analyses
+
+### Models with Flow and Application
+
+We'll create linear models of the water concentrations as a function of daily average net flow and monthly pesticide application amounts for each station separately. We'll start with the original concentration values, but we may need to transform them. These models will allow us to examine:
+
+1) Do total pesticide concentrations in water significantly respond to flow at either or both SHR and STTD?
+2) Do total pesticide concentrations in water significantly respond to pesticide application at either or both SHR and STTD?
+
+#### SHR
+
+We'll start with SHR
+
+```{r lm flow appl water shr}
+df_water_shr <- df_water %>% filter(Station == "SHR")
+
+m_water_q_appl_shr <- df_water_shr %>% 
+  lm(TotalConc_Water ~ DailyAvgNetFlow + TotalApplStd, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl water shr diag}
+df_water_shr %>% plot_model_diag(
+  TotalConc_Water, 
+  "ng/L",
+  m_water_q_appl_shr, 
+  bins = 8
+)
+
+shapiro.test(m_water_q_appl_shr$residuals)
+```
+
+The diagnostics look pretty good with this model, but let's see if they look better with log transformed values.
+
+```{r lm flow appl water log shr}
+m_water_q_appl_shr_log <- df_water_shr %>% 
+  lm(TotalConc_Water_log ~ DailyAvgNetFlow + TotalApplStd, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl water log shr diag}
+df_water_shr %>% plot_model_diag(
+  TotalConc_Water_log, 
+  "ng/L", 
+  m_water_q_appl_shr_log, 
+  trans = "log", 
+  bins = 8
+)
+
+shapiro.test(m_water_q_appl_shr_log$residuals)
+```
+
+The diagnostics look better with this model, so we'll take a closer look at it.
+
+```{r lm flow appl water log shr summ, warning = FALSE, fig.width = 8}
+summary(m_water_q_appl_shr_log)
+
+plt_m_water_q_shr <- visreg(m_water_q_appl_shr_log, xvar = "DailyAvgNetFlow", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_water_appl_shr <- visreg(m_water_q_appl_shr_log, xvar = "TotalApplStd", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_water_shr <- plt_m_water_q_shr + plt_m_water_appl_shr
+plt_m_water_shr
+```
+
+Total pesticide concentrations increase significantly with both flow and monthly pesticide application at the SHR station; however, the relationship with monthly pesticide application is driven by two values with the highest application.
+
+##### Prior month application
+
+Let's see if the model is a better fit when we use the prior month's application amount.
+
+```{r lm flow appl prior water shr}
+m_water_q_appl_pr_shr <- df_water_shr %>%
+  lm(TotalConc_Water ~ DailyAvgNetFlow + TotalApplStd_lag1, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl prior water shr diag, message = FALSE}
+df_water_shr %>% plot_model_diag(
+  TotalConc_Water, 
+  "ng/L", 
+  m_water_q_appl_pr_shr, 
+  bins = 8
+)
+
+shapiro.test(m_water_q_appl_pr_shr$residuals)
+```
+
+The model diagnostics look really good with the original values, so we'll take a closer look at this model.
+
+```{r lm flow appl prior water shr summ, warning = FALSE, fig.width = 8}
+summary(m_water_q_appl_pr_shr)
+
+plt_m_water_q_pr_shr <- visreg(m_water_q_appl_pr_shr, xvar = "DailyAvgNetFlow", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_water_appl_pr_shr <- visreg(m_water_q_appl_pr_shr, xvar = "TotalApplStd_lag1", gg = TRUE) +
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_water_pr_shr <- plt_m_water_q_pr_shr + plt_m_water_appl_pr_shr
+plt_m_water_pr_shr
+```
+
+Again, total pesticide concentrations increase significantly with flow and monthly pesticide application at the SHR station using the prior month's application. The relationship with monthly pesticide application isn't as susceptible to leverage by values with the highest application.
+
+##### Model selection
+
+Let's take a look at AIC and BIC values to see which model is better.
+
+```{r lm selection flow appl water shr}
+AIC(m_water_q_appl_shr_log, m_water_q_appl_pr_shr)
+BIC(m_water_q_appl_shr_log, m_water_q_appl_pr_shr)
+```
+
+Both AIC and BIC strongly prefer the model with the current month's pesticide application. However, both models aren't using the same transformation for the response variable. I wonder if this changes if we use log-transformed values for the model with prior month's application.
+
+```{r lm flow appl prior water log shr}
+m_water_q_appl_pr_shr_log <- df_water_shr %>% 
+  lm(TotalConc_Water_log ~ DailyAvgNetFlow + TotalApplStd_lag1, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl prior water log shr diag, message = FALSE}
+df_water_shr %>% plot_model_diag(
+  TotalConc_Water_log, 
+  "ng/L",
+  m_water_q_appl_pr_shr_log, 
+  trans = "log", 
+  bins = 8
+)
+
+shapiro.test(m_water_q_appl_pr_shr_log$residuals)
+```
+
+The model diagnostics aren't as good with the log-transformed values. We'll take a closer look at this model to see how it compares.
+
+```{r lm flow appl prior water log shr summ, warning = FALSE, fig.width = 8}
+summary(m_water_q_appl_pr_shr_log)
+
+plt_m_water_q_pr_shr2 <- visreg(m_water_q_appl_pr_shr_log, xvar = "DailyAvgNetFlow", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_water_appl_pr_shr2 <- visreg(m_water_q_appl_pr_shr_log, xvar = "TotalApplStd_lag1", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_water_pr_shr2 <- plt_m_water_q_pr_shr2 + plt_m_water_appl_pr_shr2
+```
+
+The results are generally the same. Let's take a look at AIC and BIC values using both models with log-transformed values.
+
+```{r lm selection2 flow appl water shr}
+AIC(m_water_q_appl_shr_log, m_water_q_appl_pr_shr_log)
+BIC(m_water_q_appl_shr_log, m_water_q_appl_pr_shr_log)
+```
+
+Both AIC and BIC now prefer the model with the prior month's pesticide application, but the difference isn't as large. Since the diagnostics looked better for the model with the prior month's pesticide application using the original values, let's use the prior month model with original values for the model selection procedure. In this case, the best model is the one with the current month's pesticide application.
+
+#### STTD
+
+Next, we'll look at STTD
+
+```{r lm flow appl water sttd}
+df_water_sttd <- df_water %>% filter(Station == "STTD")
+
+m_water_q_appl_sttd <- df_water_sttd %>% 
+  lm(TotalConc_Water ~ DailyAvgNetFlow + TotalApplStd, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl water sttd diag}
+df_water_sttd %>% plot_model_diag(
+  TotalConc_Water, 
+  "ng/L", 
+  m_water_q_appl_sttd, 
+  bins = 8
+)
+
+shapiro.test(m_water_q_appl_sttd$residuals)
+```
+
+The diagnostics look pretty good with the original values, so let's take a closer look at this model.
+
+```{r lm flow appl water sttd summ, warning = FALSE, fig.width = 8}
+summary(m_water_q_appl_sttd)
+
+plt_m_water_q_sttd <- visreg(m_water_q_appl_sttd, xvar = "DailyAvgNetFlow", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_water_appl_sttd <- visreg(m_water_q_appl_sttd, xvar = "TotalApplStd", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_water_sttd <- plt_m_water_q_sttd + plt_m_water_appl_sttd
+plt_m_water_sttd
+```
+
+Total pesticide concentrations increase significantly with flow at the STTD station, but there are two values with flows of about 600 cfs that have a lot leverage on the model. The relationship between total pesticide concentration and monthly pesticide application wasn't significant at STTD.
+
+#### Prior month application
+
+Let's see if the model is a better fit when we use the prior month's application amount.
+
+```{r lm flow appl prior water sttd}
+m_water_q_appl_pr_sttd <- df_water_sttd %>% 
+  lm(TotalConc_Water ~ DailyAvgNetFlow + TotalApplStd_lag1, data = .)
+```
+
+Plot the diagnostics
+
+```{r lm flow appl prior water sttd diag, message = FALSE}
+df_water_sttd %>% plot_model_diag(
+  TotalConc_Water, 
+  "ng/L", 
+  m_water_q_appl_pr_sttd, 
+  bins = 8
+)
+
+shapiro.test(m_water_q_appl_pr_sttd$residuals)
+```
+
+The model diagnostics look really good with the original values, so we'll take a closer look at this model.
+
+```{r lm flow appl prior water sttd summ, warning = FALSE, fig.width = 8}
+summary(m_water_q_appl_pr_sttd)
+
+plt_m_water_q_pr_sttd <- visreg(m_water_q_appl_pr_sttd, xvar = "DailyAvgNetFlow", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_water_appl_pr_sttd <- visreg(m_water_q_appl_pr_sttd, xvar = "TotalApplStd_lag1", gg = TRUE) + 
+  theme_bw() + 
+  geom_point(size = 1)
+
+plt_m_water_pr_sttd <- plt_m_water_q_pr_sttd + plt_m_water_appl_pr_sttd
+plt_m_water_pr_sttd
+```
+
+The results are the same with this model.
+
+##### Model selection
+
+Let's take a look at AIC and BIC values to see which model is better.
+
+```{r lm selection flow appl water sttd}
+AIC(m_water_q_appl_sttd, m_water_q_appl_pr_sttd)
+BIC(m_water_q_appl_sttd, m_water_q_appl_pr_sttd)
+```
+
+The AIC and BIC values are nearly identical between models with both metrics giving a slight edge to the model with the prior month's pesticide application. However, monthly pesticide application isn't significant in either model.
+
+### Station comparison
+
+Next, let's compare total pesticide concentrations in water between the two stations, SHR and STTD. Since samples were only collected at both stations in 2019, we can run a simple t-test to compare them. The histogram of all water concentrations above showed that they are not normally-distributed. Let's take a look at the natural log transformed values to see if we can use these for the t-test.
+
+```{r sta water diag}
+df_water %>% 
+  ggplot(aes(x = TotalConc_Water_log)) +
+  geom_histogram(bins = 8) +
+  xlab("Total pesticide concentration in water log(ng/L)")
+
+df_water %>% 
+  ggplot(aes(x = Station, y = TotalConc_Water_log)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0.3) +
+  ylab("Total pesticide concentration in water log(ng/L)")
+
+df_water %>% 
+  ggplot(aes(sample = TotalConc_Water_log)) + 
+  labs(
+    x = "Normal Quantiles", 
+    y = "Total pesticide concentration in water log(ng/L)"
+  ) + 
+  stat_qq() + 
+  stat_qq_line(linewidth = 1, color = 'red') + 
+  theme_bw()
+
+shapiro.test(df_water$TotalConc_Water_log)
+```
+
+The natural log transformed values seem to be more normally distributed and have relatively equal variances between SHR and STTD. Let's run Welch's two-sample t-test to compare the means of total pesticide concentration in water between SHR and STTD.
+
+```{r sta water ttest}
+df_water %>% t.test(TotalConc_Water_log ~ Station, data = .)
+```
+
+The mean total pesticide concentration in water was marginally significantly higher (p = 0.052) at STTD than SHR during 2019.
+
+# Overall Conclusions
+
+## Zooplankton
+
+Total pesticide concentrations in Zooplankton:
+
+* Total pesticide concentrations decreased significantly with flow (p = 0.00013) and monthly pesticide application (p = 0.00020) at the SHR station; however, the relationship with monthly pesticide application was driven by four values with the highest application.
+
+```{r lm flow appl zoop log shr final, echo = FALSE, fig.width = 8}
+summary(m_zoop_q_appl_shr_log)
+plt_m_zoop_shr
+```
+
+* Total pesticide concentrations increased significantly with flow at the STTD station (p = 0.00047), but there was no relationship between concentration and monthly pesticide application (p = 0.78).
+
+```{r lm flow appl zoop sqrt sttd final, echo = FALSE, fig.width = 8}
+summary(m_zoop_q_appl_sttd_sqrt)
+plt_m_zoop_sttd
+```
+
+* Model selection using AIC and BIC preferred the models using the current month's pesticide application amounts for both SHR and STTD.
+* Total pesticide concentrations didn't differ significantly between SHR and STTD when controlling for the year when the samples were collected; however, SHR had a higher median concentration than STTD, and the p-value for their pairwise difference was 0.083.
+
+```{r sta zoop final, warning = FALSE, echo = FALSE}
+Anova(m_zoop_sta_yr_log2, type = 2)
+
+# Contrasts for Station main effect
+pairs(em_zoop_sta)
+visreg(m_zoop_sta_yr_log2, xvar = "Station")
+```
+
+* Zooplankton concentrations were marginally significantly higher (p = 0.053) in 2019 than 2017 across both stations.
+
+```{r yr zoop final, warning = FALSE, echo = FALSE}
+# Contrasts for Year main effect
+pairs(em_zoop_yr)
+visreg(m_zoop_sta_yr_log2, xvar = "Year")
+```
+
+## Water
+
+Total pesticide concentrations in Water:
+
+* Total pesticide concentrations increased significantly with both flow (p = 0.0012) and monthly pesticide application (p = 0.028) at the SHR station; however, the relationship with monthly pesticide application is driven by two values with the highest application.
+
+```{r lm flow appl water log shr final, echo = FALSE, fig.width = 8}
+summary(m_water_q_appl_shr_log)
+plt_m_water_shr
+```
+
+* Total pesticide concentrations also increased significantly with flow (p = 0.00042) at the STTD station, but there were two values with flows of about 600 cfs that had a lot leverage on the model. The relationship between total pesticide concentration and monthly pesticide application wasn't significant at STTD (p = 0.52).
+
+```{r lm flow appl water sttd final, echo = FALSE, fig.width = 8}
+summary(m_water_q_appl_sttd)
+plt_m_water_sttd
+```
+
+* Both models had a fairly low sample size to work with at 9 and 7 for SHR and STTD, respectively.
+* The mean total pesticide concentration in water was marginally significantly higher (p = 0.052) at STTD than SHR during 2019.
+
+```{r sta water ttest final, echo = FALSE}
+df_water %>% t.test(TotalConc_Water_log ~ Station, data = .)
+```
+

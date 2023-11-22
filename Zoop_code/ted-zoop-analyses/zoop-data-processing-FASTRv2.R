@@ -284,7 +284,7 @@ p_zoop_NMDS_Region +
   facet_wrap(Year ~ ., ncol = 3, dir = "h") +
   labs(x = NULL,
        y = NULL,
-       title = "NDFA - Zooplankton Community Comparison (2014-2019)",
+       title = "Zooplankton Community Comparison (2014-2019)",
        color = "Region") +
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
@@ -318,8 +318,8 @@ p_zoop_NMDS_SamplePeriod +
   facet_wrap(Year~., ncol = 3, dir = "h") +
   labs(x = NULL,
        y = NULL,
-       title = "NDFA - Zooplankton Community Comparison (2014-2019)",
-       color = "Sample Period") +
+       title = "Zooplankton Community Comparison (2014-2019)",
+       color = "Flow Pulse Period") +
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
@@ -401,6 +401,7 @@ for (year in years) {
   anosim_r$p_value[which(anosim_r$Year == year)] <- test$signif
   
 }
+anosim_r
 
 # Calculate ANOSIM comparisons for zoop communities by Sample Period
 anosim_S <- data.frame(Year = years, 
@@ -421,7 +422,7 @@ for (year in years) {
   anosim_S$p_value[which(anosim_S$Year == year)] <- testS$signif
   
 }
-
+anosim_S
 
 ####recreating Ted's plots####
 
@@ -462,5 +463,51 @@ ggsave(path = output,
        width=7.5, 
        dpi="print")
 
+#P. forbesi plot
+testdata <- df_zoop_gen %>% filter(TaxonName=="Pseudodiaptomus forbesi")
+testdata$logCPUEzoop <- log(testdata$CPUEZoop+1)
+testplot <- ggplot(testdata, aes(x = SamplePeriod, y = logCPUEzoop, fill = Region))+
+  geom_boxplot()
+testplot+
+  labs(x = bquote('Flow Pulse Period'), 
+       y = bquote('log CPUE of P. forbesi ' ~ ('organisms *'~L^-1)), 
+       title = paste0("Abundance of P. forbesi by Region and Flow Pulse Period")) + 
+  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+  scale_fill_manual(values = c("#E41A1C",
+                               "#377EB8")) +
+                      theme(axis.text.x = element_text(angle = 0, vjust = 0.7))
+testplot+
+  facet_wrap(vars(Year), ncol = 3, dir = "h") +
+  labs(x = bquote('Flow Pulse Period'), 
+       y = bquote('log CPUE of P. forbesi ' ~ ('organisms *'~L^-1)), 
+       title = paste0("Abundance of P. forbesi by Region and Flow Pulse Period")) + 
+  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+  scale_fill_manual(values = c("#E41A1C",
+                               "#377EB8")) +
+  theme(axis.text.x = element_text(angle = 0, vjust = 0.7))
 
-#end
+#trying geom_jitter (i don't think it's better)
+testplot2 <- ggplot(testdata, aes(x = SamplePeriod, y = logCPUEzoop, fill = Region))+
+  geom_jitter(aes(colour=Region))
+testplot2+
+  labs(x = bquote('Flow Pulse Period'), 
+       y = bquote('log CPUE of P. forbesi ' ~ ('organisms *'~L^-1)), 
+       title = paste0("Abundance of P. forbesi by Region and Flow Pulse Period")) + 
+  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+  scale_color_manual(values = c("#E41A1C",
+                                "#377EB8")) +
+    theme(axis.text.x = element_text(angle = 0, vjust = 0.7))
+testplot2+
+  facet_wrap(vars(Year), ncol = 3, dir = "h") +
+  labs(x = bquote('Flow Pulse Period'), 
+       y = bquote('log CPUE of P. forbesi ' ~ ('organisms *'~L^-1)), 
+       title = paste0("Abundance of P. forbesi by Region and Flow Pulse Period")) + 
+  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+  scale_color_manual(values = c("#E41A1C",
+                               "#377EB8")) +
+  theme(axis.text.x = element_text(angle = 0, vjust = 0.7))
+#end()
