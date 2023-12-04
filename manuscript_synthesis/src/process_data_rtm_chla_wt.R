@@ -1,8 +1,8 @@
 # NDFS Synthesis Manuscript
 # Purpose: Process the 15-minute continuous chlorophyll and water temperature
   # data collected from the Yolo Bypass and downstream during years 2013-2019.
-  # Calculate daily averages which are used in figures and analysis for the NDFS
-  # synthesis manuscript.
+  # Calculate daily and weekly averages which are used in figures and analysis for
+  # the NDFS synthesis manuscript.
 # Author: Dave Bosworth
 # Contacts: David.Bosworth@water.ca.gov
 
@@ -40,31 +40,54 @@ df_rtm_wq <- read_csv(
 )
 
 
-# Calculate Daily Averages ------------------------------------------------
+# Prepare Continuous Data -------------------------------------------------
 
-df_wq_daily_avg <- df_rtm_wq %>% 
-  # parse date-time variable and define tz as PST; add date variable
+df_rtm_wq_c <- df_rtm_wq %>% 
+  # parse date-time variable and define tz as PST; add date, year, and week variables
   mutate(
     DateTime = ymd_hms(DateTime, tz = "Etc/GMT+8"),
-    Date = date(DateTime)
+    Date = date(DateTime),
+    Year = year(Date),
+    Week = week(Date)
   ) %>% 
+  # filter to years 2013-2019 and only keep core stations with a long-term record
+  filter(
+    Year %in% 2013:2019,
+    StationCode %in% c("I80", "LIB", "LIS", "RCS", "RD22", "RVB", "RYI", "STTD")
+  )
+
+
+# Calculate Daily Averages ------------------------------------------------
+
+df_wq_daily_avg <- df_rtm_wq_c %>% 
   # calculate daily average chlorophyll and water temperature values
   summarize(across(c(WaterTemp, Chla), ~ mean(.x, na.rm = TRUE)), .by = c(StationCode, Date)) %>% 
   # convert NaN values to NA values
   mutate(across(c(WaterTemp, Chla), ~ if_else(is.nan(.x), NA_real_, .x))) %>% 
   # remove records where chlorophyll values are NA
   drop_na(Chla) %>% 
-  arrange(StationCode, Date) %>% 
-  # filter to years 2013-2019 and only keep core stations with a long-term record
-  filter(
-    year(Date) %in% 2013:2019,
-    StationCode %in% c("I80", "LIB", "LIS", "RCS", "RD22", "RVB", "RYI", "STTD")
-  )
+  arrange(StationCode, Date)
+
+
+# Calculate Weekly Averages -----------------------------------------------
+
+df_wq_week_avg <- df_rtm_wq_c %>% 
+  # calculate weekly average chlorophyll and water temperature values
+  summarize(across(c(WaterTemp, Chla), ~ mean(.x, na.rm = TRUE)), .by = c(StationCode, Year, Week)) %>% 
+  # convert NaN values to NA values
+  mutate(across(c(WaterTemp, Chla), ~ if_else(is.nan(.x), NA_real_, .x))) %>% 
+  # remove records where chlorophyll values are NA
+  drop_na(Chla) %>% 
+  arrange(StationCode, Year, Week)
 
 
 # Save and Export Data ----------------------------------------------------
 
-# Save daily average chlorophyll and water temperature data as csv and rds files
+# Save daily and weekly average chlorophyll and water temperature data as csv
+  # and rds files
 df_wq_daily_avg %>% write_csv(here("manuscript_synthesis/data/processed/chla_wt_daily_avg_2013-2019.csv"))
 df_wq_daily_avg %>% saveRDS(here("manuscript_synthesis/data/processed/chla_wt_daily_avg_2013-2019.rds"))
+
+df_wq_week_avg %>% write_csv(here("manuscript_synthesis/data/processed/chla_wt_week_avg_2013-2019.csv"))
+df_wq_week_avg %>% saveRDS(here("manuscript_synthesis/data/processed/chla_wt_week_avg_2013-2019.rds"))
 
