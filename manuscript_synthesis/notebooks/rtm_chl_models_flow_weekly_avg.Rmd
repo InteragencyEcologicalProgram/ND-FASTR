@@ -95,7 +95,7 @@ df_chla_c1 <- df_chla %>%
     # Apply factor order to StationCode
     StationCode = factor(StationCode, levels = sta_order),
     # Add a column for Year as a factor for the model
-    Year_fct = factor(Year)
+    Year_fct = factor(Year, levels=c("2014", "2015", "2016", "2017", "2018", "2019"))
   ) %>% 
   arrange(StationCode, Year, Week)
 ```
@@ -118,8 +118,7 @@ Looking at the sample counts and date ranges, we'll only include years 2015-2019
 
 ```{r chla remove under sampled}
 df_chla_c2 <- df_chla_c1 %>% 
-  filter(Year %in% 2015:2019) %>% 
-  mutate(Year_fct = fct_drop(Year_fct))
+  filter(Year %in% 2015:2019) 
 
 # Create another dataframe that has up to 3 lag variables for chlorophyll to be
   # used in the linear models
@@ -138,7 +137,7 @@ df_chla_c2_lag <- df_chla_c2 %>%
 
 # Plots
 
-Let's explore the data with some plots. First, lets plot the data in scatterplots of chlorophyll and flow facetted by Station and grouping all years together.
+Let's explore the data with some plots. First, lets plot the data in scatter plots of chlorophyll and flow faceted by Station and grouping all years together.
 
 ```{r chla scatterplot all yrs, message = FALSE, fig.height = 6, fig.width = 6}
 df_chla_c2 %>% 
@@ -197,7 +196,7 @@ Box.test(residuals(m_gam3), lag = 20, type = 'Ljung-Box')
 ```
 
 
-## Model with first, second, and third order lag terms
+## Model with first and second order lag terms
 
 Now, we'll try to deal with the residual autocorrelation. 
 
@@ -206,9 +205,9 @@ Now, we'll try to deal with the residual autocorrelation.
 # Fit original model with k = 9 and three successive lagged models
 #lag1
 m_gam3_lag1 <- gam(
-  Chla_log ~ lag1 + Year_fct * Flow * StationCode + s(Week), 
+  Chla_log ~ lag1 + Year_fct * Flow * StationCode + s(Week, bs="cc"), 
   data = df_chla_c2_lag,
-  method = "REML"
+  method = "REML", knots=list(week=c(0,52))
 )
 
 summary(m_gam3_lag1)
@@ -222,9 +221,9 @@ Box.test(residuals(m_gam3_lag1), lag = 20, type = 'Ljung-Box')
 
 #lag2
 m_gam3_lag2 <- gam(
-  Chla_log ~ lag1 + lag2 + Year_fct * Flow * StationCode + s(Week), 
+  Chla_log ~ lag1 + lag2 + Year_fct * Flow * StationCode + s(Week, bs="cc"), 
   data = df_chla_c2_lag,
-  method = "REML"
+  method = "REML", knots=list(week=c(0,52))
 )
 
 summary(m_gam3_lag2)
@@ -274,3 +273,100 @@ plt_m_gam3_lag2_fit +
     labeller = labeller(.multi_line = FALSE)
   )
 ```
+
+Everything looks pretty decent from lag 2 model. Not perfect, but pretty good given the number of data points. Let's compare to a two-way interaction model.
+
+
+```{r gam2 with and without lag terms}
+
+# Fit two-way interaction model with k = 9 and three successive lagged models
+#lag1
+m_gam2 <- gam(
+  Chla_log ~ Year_fct * Flow + StationCode * Flow + Year_fct * StationCode + s(Week, bs="cc"), 
+  data = df_chla_c2_lag,
+  method = "REML", knots=list(week=c(0,52))
+)
+
+summary(m_gam2)
+appraise(m_gam2)
+shapiro.test(residuals(m_gam2))
+k.check(m_gam2)
+draw(m_gam2, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam2, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam2))
+Box.test(residuals(m_gam2), lag = 20, type = 'Ljung-Box')
+
+#lag1
+m_gam2_lag1 <- gam(
+  Chla_log ~ lag1 + Year_fct * Flow + StationCode * Flow + Year_fct * StationCode + s(Week, bs="cc"), 
+  data = df_chla_c2_lag,
+  method = "REML", knots=list(week=c(0,52))
+)
+
+summary(m_gam2_lag1)
+appraise(m_gam2_lag1)
+shapiro.test(residuals(m_gam2_lag1))
+k.check(m_gam2_lag1)
+draw(m_gam2_lag1, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam2_lag1, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam2_lag1))
+Box.test(residuals(m_gam2_lag1), lag = 20, type = 'Ljung-Box')
+
+#lag2
+m_gam2_lag2 <- gam(
+  Chla_log ~ lag1 + lag2 + Year_fct * Flow + StationCode * Flow + Year_fct * StationCode + s(Week, bs="cc"), 
+  data = df_chla_c2_lag,
+  method = "REML", knots=list(week=c(0,52))
+)
+
+summary(m_gam2_lag2)
+appraise(m_gam2_lag2)
+shapiro.test(residuals(m_gam2_lag2))
+k.check(m_gam2_lag2)
+draw(m_gam2_lag2, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam2_lag2, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam2_lag2))
+
+Box.test(residuals(m_gam2_lag2), lag = 20, type = 'Ljung-Box')
+
+#compare fit of lag1 and lag2 models from two and three-way interaction models
+AIC(m_gam2_lag1, m_gam2_lag2, m_gam3_lag1, m_gam3_lag2)
+
+```
+
+It looks like lag2 model with a two-way interaction has the best fit according to the AIC values. 
+
+Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
+
+```{r gam2 lag2 obs vs fit, warning = FALSE}
+df_m_gam2_lag2_fit <- df_chla_c2_lag %>% 
+  fitted_values(m_gam2_lag2, data = .) %>% 
+  mutate(fitted_bt = exp(fitted) / 1000)
+
+plt_m_gam2_lag2_fit <- df_m_gam2_lag2_fit %>% 
+  ggplot(aes(x = fitted_bt, y = Chla)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  theme_bw() +
+  labs(
+    x = "Back-transformed Fitted Values",
+    y = "Observed Values"
+  )
+
+plt_m_gam2_lag2_fit
+```
+
+Let's look at each Station-Year combination separately.
+
+```{r gam2 lag2 obs vs fit facet sta yr, fig.height = 8, fig.width = 8}
+plt_m_gam2_lag2_fit +
+  facet_wrap(
+    vars(StationCode, Year_fct),
+    ncol = 5,
+    scales = "free",
+    labeller = labeller(.multi_line = FALSE)
+  )
+```
+
+
+Everything looks pretty decent from lag 2 two-way interaction model. Not perfect, but pretty good given the number of data points. Let's compare to a two-way interaction model with a smooth term for flow.
