@@ -8,7 +8,8 @@ layout: default
 
 * [GAM Model using Categorical Predictors - Initial analysis](rtm_chl_gam_categorical_initial.html)
 * [Models using Categorical Predictors - Revised analysis](rtm_chl_models_categorical_revised.html)
-* [Models using Flow as a Continuous Predictor](rtm_chl_models_flow.html)
+* [Models using Flow as a Continuous Predictor - Daily Averages](rtm_chl_models_flow.html)
+* [Models using Flow as a Continuous Predictor - Weekly Averages](rtm_chl_models_flow_weekly_avg.html)
 * [Explore relationship between continuous chlorophyll and percent flow pulse water](rtm_chl_analysis_perc_flow_pulse.html)
 
 ### Final Analyses

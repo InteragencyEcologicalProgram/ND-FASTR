@@ -1,13 +1,12 @@
 ---
 title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
-subtitle: "Models using daily average flow as continuous predictor"
+subtitle: "Models using weekly average flow as continuous predictor"
 author: "Dave Bosworth"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output: 
   html_document: 
     code_folding: show
     toc: true
-    toc_depth: 4
     toc_float:
       collapsed: false
 editor_options: 
@@ -28,7 +27,7 @@ options(knitr.kable.NA = "")
 
 # Purpose
 
-Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit various models to the data set using daily average flow as a continuous predictor which replaces the categorical predictor - flow action period - in the original analysis. These models will only include representative stations for 4 habitat types - upstream (RD22), lower Yolo Bypass (STTD), Cache Slough complex (LIB), and downstream (RVB).
+Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit various models to the data set using weekly average flow as a continuous predictor which replaces the categorical predictor - flow action period - in the original analysis. These models will only include representative stations for 4 habitat types - upstream (RD22), lower Yolo Bypass (STTD), Cache Slough complex (LIB), and downstream (RVB).
 
 # Global code and functions
 
@@ -89,13 +88,10 @@ df_chla_c1 <- df_chla %>%
   mutate(
     # Scale and log transform chlorophyll values
     Chla_log = log(Chla * 1000),
-    # Add Year and DOY variables
-    #Year = year(Date),
-    #DOY = yday(Date),
     # Apply factor order to StationCode
     StationCode = factor(StationCode, levels = sta_order),
     # Add a column for Year as a factor for the model
-    Year_fct = factor(Year, levels=c("2014", "2015", "2016", "2017", "2018", "2019"))
+    Year_fct = factor(Year)
   ) %>% 
   arrange(StationCode, Year, Week)
 ```
@@ -118,14 +114,15 @@ Looking at the sample counts and date ranges, we'll only include years 2015-2019
 
 ```{r chla remove under sampled}
 df_chla_c2 <- df_chla_c1 %>% 
-  filter(Year %in% 2015:2019) 
+  filter(Year %in% 2015:2019) %>% 
+  mutate(Year_fct = fct_drop(Year_fct))
 
 # Create another dataframe that has up to 3 lag variables for chlorophyll to be
   # used in the linear models
 df_chla_c2_lag <- df_chla_c2 %>% 
-  # Fill in missing days for each StationCode-Year combination
+  # Fill in missing weeks for each StationCode-Year combination
   group_by(StationCode, Year) %>% 
-  #complete(Date = seq.Date(min(Week), max(Week), by = "1 week")) %>% 
+  # complete(Week = seq.int(min(Week), max(Week), by = 1)) %>% 
   # Create lag variables of scaled log transformed chlorophyll values
   mutate(
     lag1 = lag(Chla_log),
@@ -139,7 +136,7 @@ df_chla_c2_lag <- df_chla_c2 %>%
 
 Let's explore the data with some plots. First, lets plot the data in scatter plots of chlorophyll and flow faceted by Station and grouping all years together.
 
-```{r chla scatterplot all yrs, message = FALSE, fig.height = 6, fig.width = 6}
+```{r chla scatterplot all yrs, message = FALSE, fig.height = 6}
 df_chla_c2 %>% 
   ggplot(aes(x = Flow, y = Chla)) +
   geom_point() +
@@ -152,7 +149,7 @@ At first glance, I'm not sure how well flow is going to be able to predict chlor
 
 Let's break these scatterplots apart by year to see how these patterns vary annually.
 
-```{r chla scatterplot facet yrs, message = FALSE, fig.height = 8, fig.width = 8}
+```{r chla scatterplot facet yrs, message = FALSE, fig.height = 8, fig.width = 8.5}
 df_chla_c2 %>% 
   ggplot(aes(x = Flow, y = Chla)) +
   geom_point() +
@@ -170,7 +167,7 @@ The patterns appear to vary annually at each station, which may justify using a 
 
 # GAM Model with 3-way interactions
 
-First, we will attempt to fit a generalized additive model (GAM) to the data set to help account for seasonality in the data. We'll try running a GAM using a three-way interaction between Year, Daily Average Flow, and Station, and a smooth term for day of year to account for seasonality. Initially, we'll run the GAM without accounting for serial autocorrelation.
+First, we will attempt to fit a generalized additive model (GAM) to the data set to help account for seasonality in the data. We'll try running a GAM using a three-way interaction between Year, Weekly Average Flow, and Station, and a smooth term for day of year to account for seasonality. Initially, we'll run the GAM without accounting for serial autocorrelation.
 
 ## Initial Model
 
@@ -195,19 +192,17 @@ acf(residuals(m_gam3))
 Box.test(residuals(m_gam3), lag = 20, type = 'Ljung-Box')
 ```
 
-
 ## Model with first and second order lag terms
 
 Now, we'll try to deal with the residual autocorrelation. 
 
-```{r gam3 with lag terms}
-
-# Fit original model with k = 9 and three successive lagged models
-#lag1
+```{r gam3 with lag terms, warning = FALSE}
+# Fit two successive lagged models
+# lag1
 m_gam3_lag1 <- gam(
-  Chla_log ~ lag1 + Year_fct * Flow * StationCode + s(Week, bs="cc"), 
+  Chla_log ~ lag1 + Year_fct * Flow * StationCode + s(Week, bs = "cc"), 
   data = df_chla_c2_lag,
-  method = "REML", knots=list(week=c(0,52))
+  method = "REML", knots = list(week = c(0, 52))
 )
 
 summary(m_gam3_lag1)
@@ -219,11 +214,11 @@ plot(m_gam3_lag1, pages = 1, all.terms = TRUE)
 acf(residuals(m_gam3_lag1))
 Box.test(residuals(m_gam3_lag1), lag = 20, type = 'Ljung-Box')
 
-#lag2
+# lag2
 m_gam3_lag2 <- gam(
-  Chla_log ~ lag1 + lag2 + Year_fct * Flow * StationCode + s(Week, bs="cc"), 
+  Chla_log ~ lag1 + lag2 + Year_fct * Flow * StationCode + s(Week, bs = "cc"), 
   data = df_chla_c2_lag,
-  method = "REML", knots=list(week=c(0,52))
+  method = "REML", knots = list(week = c(0, 52))
 )
 
 summary(m_gam3_lag2)
@@ -235,9 +230,8 @@ plot(m_gam3_lag2, pages = 1, all.terms = TRUE)
 acf(residuals(m_gam3_lag2))
 Box.test(residuals(m_gam3_lag2), lag = 20, type = 'Ljung-Box')
 
-#compare fit of lag1 and lag2 models
+# compare fit of lag1 and lag2 models
 AIC(m_gam3_lag1, m_gam3_lag2)
-
 ```
 
 It looks like lag2 model has the best fit according to the AIC values. 
@@ -246,6 +240,7 @@ Let's take a closer look at how the back-transformed fitted values from the mode
 
 ```{r gam3 ar1 obs vs fit, warning = FALSE}
 df_m_gam3_lag2_fit <- df_chla_c2_lag %>% 
+  drop_na(lag1, lag2) %>% 
   fitted_values(m_gam3_lag2, data = .) %>% 
   mutate(fitted_bt = exp(fitted) / 1000)
 
@@ -264,7 +259,7 @@ plt_m_gam3_lag2_fit
 
 Let's look at each Station-Year combination separately.
 
-```{r gam3 ar1 obs vs fit facet sta yr, fig.height = 8, fig.width = 8}
+```{r gam3 ar1 obs vs fit facet sta yr, fig.height = 8, fig.width = 8.5}
 plt_m_gam3_lag2_fit +
   facet_wrap(
     vars(StationCode, Year_fct),
@@ -276,15 +271,15 @@ plt_m_gam3_lag2_fit +
 
 Everything looks pretty decent from lag 2 model. Not perfect, but pretty good given the number of data points. Let's compare to a two-way interaction model.
 
+# GAM Model with 2-way interactions
 
-```{r gam2 with and without lag terms}
-
-# Fit two-way interaction model with k = 9 and three successive lagged models
-#lag1
+```{r gam2 with and without lag terms, warning = FALSE}
+# Fit two-way interaction model and two successive lagged models
+# no lag terms
 m_gam2 <- gam(
-  Chla_log ~ Year_fct * Flow + StationCode * Flow + Year_fct * StationCode + s(Week, bs="cc"), 
-  data = df_chla_c2_lag,
-  method = "REML", knots=list(week=c(0,52))
+  Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(Week, bs = "cc"), 
+  data = df_chla_c2,
+  method = "REML", knots = list(week = c(0, 52))
 )
 
 summary(m_gam2)
@@ -296,11 +291,11 @@ plot(m_gam2, pages = 1, all.terms = TRUE)
 acf(residuals(m_gam2))
 Box.test(residuals(m_gam2), lag = 20, type = 'Ljung-Box')
 
-#lag1
+# lag1
 m_gam2_lag1 <- gam(
-  Chla_log ~ lag1 + Year_fct * Flow + StationCode * Flow + Year_fct * StationCode + s(Week, bs="cc"), 
+  Chla_log ~ (Year_fct + Flow + StationCode)^2 + lag1 + s(Week, bs = "cc"), 
   data = df_chla_c2_lag,
-  method = "REML", knots=list(week=c(0,52))
+  method = "REML", knots = list(week = c(0, 52))
 )
 
 summary(m_gam2_lag1)
@@ -312,11 +307,11 @@ plot(m_gam2_lag1, pages = 1, all.terms = TRUE)
 acf(residuals(m_gam2_lag1))
 Box.test(residuals(m_gam2_lag1), lag = 20, type = 'Ljung-Box')
 
-#lag2
+# lag2
 m_gam2_lag2 <- gam(
-  Chla_log ~ lag1 + lag2 + Year_fct * Flow + StationCode * Flow + Year_fct * StationCode + s(Week, bs="cc"), 
+  Chla_log ~ (Year_fct + Flow + StationCode)^2 + lag1 + lag2 + s(Week, bs = "cc"), 
   data = df_chla_c2_lag,
-  method = "REML", knots=list(week=c(0,52))
+  method = "REML", knots = list(week = c(0, 52))
 )
 
 summary(m_gam2_lag2)
@@ -329,9 +324,8 @@ acf(residuals(m_gam2_lag2))
 
 Box.test(residuals(m_gam2_lag2), lag = 20, type = 'Ljung-Box')
 
-#compare fit of lag1 and lag2 models from two and three-way interaction models
+# compare fit of lag1 and lag2 models from two and three-way interaction models
 AIC(m_gam2_lag1, m_gam2_lag2, m_gam3_lag1, m_gam3_lag2)
-
 ```
 
 It looks like lag2 model with a two-way interaction has the best fit according to the AIC values. 
@@ -340,6 +334,7 @@ Let's take a closer look at how the back-transformed fitted values from the mode
 
 ```{r gam2 lag2 obs vs fit, warning = FALSE}
 df_m_gam2_lag2_fit <- df_chla_c2_lag %>% 
+  drop_na(lag1, lag2) %>% 
   fitted_values(m_gam2_lag2, data = .) %>% 
   mutate(fitted_bt = exp(fitted) / 1000)
 
@@ -358,7 +353,7 @@ plt_m_gam2_lag2_fit
 
 Let's look at each Station-Year combination separately.
 
-```{r gam2 lag2 obs vs fit facet sta yr, fig.height = 8, fig.width = 8}
+```{r gam2 lag2 obs vs fit facet sta yr, fig.height = 8, fig.width = 8.5}
 plt_m_gam2_lag2_fit +
   facet_wrap(
     vars(StationCode, Year_fct),
@@ -367,6 +362,5 @@ plt_m_gam2_lag2_fit +
     labeller = labeller(.multi_line = FALSE)
   )
 ```
-
 
 Everything looks pretty decent from lag 2 two-way interaction model. Not perfect, but pretty good given the number of data points. Let's compare to a two-way interaction model with a smooth term for flow.
