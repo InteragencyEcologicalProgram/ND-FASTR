@@ -138,9 +138,9 @@ df_chla_c2_lag <- df_chla_c2 %>%
 
 # Plots
 
-Let's explore the data with some plots. First, lets plot the data in scatterplots of chlorophyll and flow facetted by Station and grouping all years together.
+Let's explore the data with some plots. First, lets plot the data in scatter plots of chlorophyll and flow faceted by Station and grouping all years together.
 
-```{r chla scatterplot all yrs, message = FALSE, fig.height = 6, fig.width = 6}
+```{r chla scatterplot all yrs, message = FALSE, fig.height = 6}
 df_chla_c2 %>% 
   ggplot(aes(x = Flow, y = Chla)) +
   geom_point() +
@@ -153,7 +153,7 @@ At first glance, I'm not sure how well flow is going to be able to predict chlor
 
 Let's break these scatterplots apart by year to see how these patterns vary annually.
 
-```{r chla scatterplot facet yrs, message = FALSE, fig.height = 8, fig.width = 8}
+```{r chla scatterplot facet yrs, message = FALSE, fig.height = 8, fig.width = 8.5}
 df_chla_c2 %>% 
   ggplot(aes(x = Flow, y = Chla)) +
   geom_point() +
@@ -272,7 +272,7 @@ anova(
 )
 ```
 
-It looks like the AR(3) model has the best fit according to the AIC values. However, BIC prefers the AR(1) model. Let's take a closer look at the AR(1) model.
+It looks like both AIC and BIC prefer the AR(1) model. Let's take a closer look at the AR(1) model.
 
 ## AR(1) Model
 
@@ -313,7 +313,7 @@ plt_gamm3_ar1_obs_fit
 
 Let's look at each Station-Year combination separately.
 
-```{r gam3 ar1 obs vs fit facet sta yr, fig.height = 8, fig.width = 8}
+```{r gam3 ar1 obs vs fit facet sta yr, fig.height = 8, fig.width = 8.5}
 plt_gamm3_ar1_obs_fit +
   facet_wrap(
     vars(StationCode, Year_fct),
@@ -390,7 +390,7 @@ acf(residuals(m_lm3_lag3))
 Box.test(residuals(m_lm3_lag3), lag = 20, type = 'Ljung-Box')
 ```
 
-The model with 3 lag terms looks to have slightly better ACF and Box-Ljung test results than the other models. Let's compare the 3 models using AIC and BIC to see which model those prefer.
+The model with 3 lag terms looks like it has better ACF and Box-Ljung test results than the other models. Let's compare the 3 models using AIC and BIC to see which model those prefer.
 
 #### Compare models
 
@@ -399,59 +399,9 @@ AIC(m_lm3_lag1, m_lm3_lag2, m_lm3_lag3)
 BIC(m_lm3_lag1, m_lm3_lag2, m_lm3_lag3)
 ```
 
-Both AIC and BIC prefer the model with 1 lag term. Let's take a closer look at that one.
-
-### Lag 1 model summary
-
-```{r lm3 lag1 summary and diag}
-summary(m_lm3_lag1)
-
-df_chla_c2_lag %>% 
-  drop_na(Chla_log, lag1) %>% 
-  plot_lm_diag(Chla_log, m_lm3_lag1)
-
-shapiro.test(residuals(m_lm3_lag1))
-```
-
-The residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
-
-```{r lm3 lag1 obs vs fit}
-df_lm3_lag1_fit <- df_chla_c2_lag %>% 
-  drop_na(Chla, lag1) %>% 
-  mutate(Fitted = as_tibble(predict(m_lm3_lag1, interval = "confidence"))) %>% 
-  unnest_wider(Fitted) %>% 
-  mutate(across(c("fit", "lwr", "upr"), ~ exp(.x) / 1000))
-
-plt_lm3_lag1_obs_fit <- df_lm3_lag1_fit %>% 
-  ggplot(aes(x = fit, y = Chla)) +
-  geom_point() +
-  geom_abline(slope = 1, intercept = 0, color = "red") +
-  theme_bw() +
-  labs(
-    x = "Back-transformed Fitted Values",
-    y = "Observed Values"
-  )
-
-plt_lm3_lag1_obs_fit
-```
-
-Let's look at each Station-Year combination separately.
-
-```{r lm3 lag1 obs vs fit facet sta yr, fig.height = 8, fig.width = 8}
-plt_lm3_lag1_obs_fit +
-  facet_wrap(
-    vars(StationCode, Year_fct),
-    ncol = 5,
-    scales = "free",
-    labeller = labeller(.multi_line = FALSE)
-  )
-```
-
-The red lines are the 1:1 ratio between fitted and observed values, and we would expect for most of the points to be near this line if the model has a good fit to the observed data. The fitted and observed values appear to match pretty well at the lower end of the range of values, but this deteriorates at the mid and higher range values. This pattern holds for some of the separate Station-Year combinations. I'm not sure this linear model is a good candidate to use for our analysis.
+Both AIC and BIC prefer the model with 3 lag terms. Let's take a closer look at that one.
 
 ### Lag 3 model summary
-
-Let's take a closer look at the model with 3 lag terms since that had the least autocorrelation.
 
 ```{r lm3 lag3 summary and diag}
 summary(m_lm3_lag3)
@@ -463,7 +413,41 @@ df_chla_c2_lag %>%
 shapiro.test(residuals(m_lm3_lag3))
 ```
 
-The diagnostic plots show that the lag 3 model has similar problems as the lag 1 model, so this doesn't look like a good candidate for our analysis as well.
+The residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
+
+```{r lm3 lag3 obs vs fit}
+df_lm3_lag3_fit <- df_chla_c2_lag %>% 
+  drop_na(Chla, lag1, lag2, lag3) %>% 
+  mutate(Fitted = as_tibble(predict(m_lm3_lag3, interval = "confidence"))) %>% 
+  unnest_wider(Fitted) %>% 
+  mutate(across(c("fit", "lwr", "upr"), ~ exp(.x) / 1000))
+
+plt_lm3_lag3_obs_fit <- df_lm3_lag3_fit %>% 
+  ggplot(aes(x = fit, y = Chla)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  theme_bw() +
+  labs(
+    x = "Back-transformed Fitted Values",
+    y = "Observed Values"
+  )
+
+plt_lm3_lag3_obs_fit
+```
+
+Let's look at each Station-Year combination separately.
+
+```{r lm3 lag1 obs vs fit facet sta yr, fig.height = 8, fig.width = 8.5}
+plt_lm3_lag3_obs_fit +
+  facet_wrap(
+    vars(StationCode, Year_fct),
+    ncol = 5,
+    scales = "free",
+    labeller = labeller(.multi_line = FALSE)
+  )
+```
+
+The red lines are the 1:1 ratio between fitted and observed values, and we would expect for most of the points to be near this line if the model has a good fit to the observed data. The fitted and observed values appear to match pretty well at the lower end of the range of values, but this deteriorates at the mid and higher range values. This pattern holds for some of the separate Station-Year combinations. I'm not sure this linear model is a good candidate to use for our analysis.
 
 # GAM Model with 2-way interactions
 
@@ -659,7 +643,7 @@ acf(residuals(m_lm2_lag3))
 Box.test(residuals(m_lm2_lag3), lag = 20, type = 'Ljung-Box')
 ```
 
-The model with 3 lag terms looks to have slightly better ACF and Box-Ljung test results than the other models. Let's compare the 3 models using AIC and BIC to see which model those prefer.
+The model with 3 lag terms looks like it has better ACF and Box-Ljung test results than the other models. Let's compare the 3 models using AIC and BIC to see which model those prefer.
 
 #### Compare models
 
@@ -668,55 +652,9 @@ AIC(m_lm2_lag1, m_lm2_lag2, m_lm2_lag3)
 BIC(m_lm2_lag1, m_lm2_lag2, m_lm2_lag3)
 ```
 
-Both AIC and BIC prefer the model with 1 lag term. Let's take a closer look at that one.
-
-### Lag 1 model summary
-
-```{r lm2 lag1 summary and diag}
-summary(m_lm2_lag1)
-
-df_chla_c2_lag %>% 
-  drop_na(Chla_log, lag1) %>% 
-  plot_lm_diag(Chla_log, m_lm2_lag1)
-
-shapiro.test(residuals(m_lm2_lag1))
-```
-
-As with the model with 3-way interactions, the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
-
-```{r lm2 lag1 obs vs fit}
-df_lm2_lag1_fit <- df_chla_c2_lag %>% 
-  drop_na(Chla, lag1) %>% 
-  mutate(Fitted = as_tibble(predict(m_lm2_lag1, interval = "confidence"))) %>% 
-  unnest_wider(Fitted) %>% 
-  mutate(across(c("fit", "lwr", "upr"), ~ exp(.x) / 1000))
-
-plt_lm2_lag1_obs_fit <- df_lm2_lag1_fit %>% 
-  ggplot(aes(x = fit, y = Chla)) +
-  geom_point() +
-  geom_abline(slope = 1, intercept = 0, color = "red") +
-  theme_bw() +
-  labs(
-    x = "Back-transformed Fitted Values",
-    y = "Observed Values"
-  )
-
-plt_lm2_lag1_obs_fit
-```
-
-Let's look at each Station and Year separately.
-
-```{r lm2 lag1 obs vs fit facet sta yr}
-plt_lm2_lag1_obs_fit + facet_wrap(vars(StationCode), scales = "free")
-
-plt_lm2_lag1_obs_fit + facet_wrap(vars(Year_fct), scales = "free")
-```
-
-The red lines are the 1:1 ratio between fitted and observed values, and we would expect for most of the points to be near this line if the model has a good fit to the observed data. The fitted and observed values appear to match pretty well at the lower end of the range of values, but this deteriorates at the mid and higher range values. This pattern holds for some of the individual Stations and Years. I'm not sure this linear model is a good candidate to use for our analysis.
+AIC prefers the model with 3 lag terms while BIC slightly prefers the model with 1 lag term. Let's take a closer look at the model with 3 lag terms since it had better ACF and Box-Ljung test results.
 
 ### Lag 3 model summary
-
-Let's take a closer look at the model with 3 lag terms since that had the least autocorrelation.
 
 ```{r lm2 lag3 summary and diag}
 summary(m_lm2_lag3)
@@ -728,7 +666,37 @@ df_chla_c2_lag %>%
 shapiro.test(residuals(m_lm2_lag3))
 ```
 
-The diagnostic plots show that the lag 3 model has similar problems as the lag 1 model, so this doesn't look like a good candidate for our analysis as well.
+As with the model with 3-way interactions, the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
+
+```{r lm2 lag3 obs vs fit}
+df_lm2_lag3_fit <- df_chla_c2_lag %>% 
+  drop_na(Chla, lag1, lag2, lag3) %>% 
+  mutate(Fitted = as_tibble(predict(m_lm2_lag3, interval = "confidence"))) %>% 
+  unnest_wider(Fitted) %>% 
+  mutate(across(c("fit", "lwr", "upr"), ~ exp(.x) / 1000))
+
+plt_lm2_lag3_obs_fit <- df_lm2_lag3_fit %>% 
+  ggplot(aes(x = fit, y = Chla)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  theme_bw() +
+  labs(
+    x = "Back-transformed Fitted Values",
+    y = "Observed Values"
+  )
+
+plt_lm2_lag3_obs_fit
+```
+
+Let's look at each Station and Year separately.
+
+```{r lm2 lag3 obs vs fit facet sta yr}
+plt_lm2_lag3_obs_fit + facet_wrap(vars(StationCode), scales = "free")
+
+plt_lm2_lag3_obs_fit + facet_wrap(vars(Year_fct), scales = "free")
+```
+
+The red lines are the 1:1 ratio between fitted and observed values, and we would expect for most of the points to be near this line if the model has a good fit to the observed data. The fitted and observed values appear to match pretty well at the lower end of the range of values, but this deteriorates at the mid and higher range values. This pattern holds for some of the individual Stations and Years. I'm not sure this linear model is a good candidate to use for our analysis.
 
 # Linear Model with single station - STTD
 
@@ -799,7 +767,7 @@ acf(residuals(m_lm2_sttd_lag3))
 Box.test(residuals(m_lm2_sttd_lag3), lag = 20, type = 'Ljung-Box')
 ```
 
-The model with 2 lag terms seems to take care of the autocorrelation. Let's compare the 3 models using AIC and BIC to see which model those prefer.
+The models with 2 and 3 lag terms seem to take care of the autocorrelation. Let's compare the 3 models using AIC and BIC to see which model those prefer.
 
 #### Compare models
 
