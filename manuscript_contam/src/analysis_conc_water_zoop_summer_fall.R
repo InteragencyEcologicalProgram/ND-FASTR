@@ -8,8 +8,6 @@
 
 # Load packages
 library(tidyverse)
-library(car)
-library(emmeans)
 library(broom)
 library(here)
 library(conflicted)
@@ -103,9 +101,7 @@ df_zoop <- df_conc_all_c %>%
     Year = as.character(Year)
   )
 
-
-# 2.1 Linear models with flow and application -----------------------------
-
+# Linear models with flow and application
 # Run linear models separately for each station
 
 # SHR: 
@@ -121,7 +117,7 @@ df_m_zoop_q_appl_shr <-
   tidy(summary(m_zoop_q_appl_shr_log)) %>% 
   mutate(
     Response = "log(Zooplankton)", 
-    Station = "SHR", 
+    Station = "Sacramento River", 
     .before = term
   )
 
@@ -138,59 +134,9 @@ df_m_zoop_q_appl_sttd <-
   tidy(summary(m_zoop_q_appl_sttd_sqrt)) %>% 
   mutate(
     Response = "sqrt(Zooplankton)", 
-    Station = "STTD", 
+    Station = "Yolo Bypass", 
     .before = term
   )
-
-
-# 2.2 Linear model with station and year ----------------------------------
-
-# Run model using log transformed zooplankton concentrations since the model
-  # diagnostics looked best with these. Also run model without interaction between
-  # Station and Year since it wasn't significant.
-m_zoop_sta_yr_log <- df_zoop %>% lm(TotalConc_Zoop_log ~ Station + Year, data = .)
-
-# Create ANOVA table for model and convert it to a tibble for export
-# use type 2 sum of squares because of the unbalanced design
-df_an_zoop_sta_yr <- 
-  tidy(Anova(m_zoop_sta_yr_log, type = 2)) %>% 
-  transmute(
-    Response = "log(Zooplankton)",
-    Parameter = term,
-    Sum_Sq = sumsq,
-    Df = df,
-    F_value = statistic,
-    p_value = p.value
-  )
-
-# The main effect of station is not significant meaning that total pesticide
-  # concentrations in zooplankton don't differ between SHR and STTD. However, the
-  # main effect of Year is significant, so we'll export the pairwise contrasts to
-  # show how concentrations differ among the years. We'll also export the pairwise
-  # contrasts for station since it is close to significant.
-
-# Estimated marginal means for Year main effect
-em_zoop_yr <- emmeans(m_zoop_sta_yr_log, specs = "Year")
-
-# Estimated marginal means for Station main effect
-em_zoop_sta <- emmeans(m_zoop_sta_yr_log, specs = "Station")
-
-# Create table of contrasts and convert it to a tibble for export
-df_em_zoop_sta_yr <- 
-  bind_rows(
-    tidy(pairs(em_zoop_yr)) %>% rename(p.value = adj.p.value), 
-    tidy(pairs(em_zoop_sta))
-  ) %>% 
-  transmute(
-    Response = "log(Zooplankton)", 
-    Parameter = term,
-    Contrast = contrast,
-    Estimate = estimate,
-    SE = std.error,
-    Df = df,
-    t_ratio = statistic,
-    p_value = p.value
-  ) 
 
 
 # 3. Water Analyses -------------------------------------------------------
@@ -205,8 +151,7 @@ df_water <- df_conc_all_c %>%
   # Add log-transformed water concentrations
   mutate(TotalConc_Water_log = log(TotalConc_Water))
 
-# 3.1 Linear models with flow and application -----------------------------
-
+# Linear models with flow and application 
 # Run linear models separately for each station
 
 # SHR: 
@@ -222,7 +167,7 @@ df_m_water_q_appl_shr <-
   tidy(summary(m_water_q_appl_shr_log)) %>% 
   mutate(
     Response = "log(Water)", 
-    Station = "SHR", 
+    Station = "Sacramento River", 
     .before = term
   )
 
@@ -239,32 +184,8 @@ df_m_water_q_appl_sttd <-
   tidy(summary(m_water_q_appl_sttd)) %>% 
   mutate(
     Response = "Water", 
-    Station = "STTD", 
+    Station = "Yolo Bypass", 
     .before = term
-  )
-
-
-# 3.2 Station comparison - t-test -----------------------------------------
-
-# Compare total pesticide concentrations in water between the two stations, SHR
-  # and STTD. Since samples were only collected at both stations in 2019, we'll
-  # run a Welch's two-sample t-test to compare their means in 2019. We'll run the
-  # test using natural log transformed values since they seem to be more normally
-  # distributed and have relatively equal variances between SHR and STTD.
-ttest_water_sta <- df_water %>% t.test(TotalConc_Water_log ~ Station, data = .)
-
-# Convert results of t-test to a tibble for export
-df_ttest_water_sta <- 
-  tidy(ttest_water_sta) %>% 
-  transmute(
-    Response = "log(Water)",
-    Parameter = "Station",
-    Contrast = "SHR - STTD",
-    Estimate = estimate,
-    SE = ttest_water_sta$stderr,
-    Df = parameter,
-    t_statistic = statistic,
-    p_value = p.value
   )
 
 
@@ -274,11 +195,22 @@ df_ttest_water_sta <-
 fp_tables <- here("manuscript_contam/results/tables")
 
 # Combine and export summary tables of flow-application models
-bind_rows(df_m_zoop_q_appl_shr, df_m_zoop_q_appl_sttd, df_m_water_q_appl_shr, df_m_water_q_appl_sttd) %>% 
+df_m_q_appl_summ <- 
+  bind_rows(
+    df_m_zoop_q_appl_shr, 
+    df_m_zoop_q_appl_sttd, 
+    df_m_water_q_appl_shr, 
+    df_m_water_q_appl_sttd
+  ) %>% 
   transmute(
     Response,
     Station,
-    Parameter = if_else(term == "(Intercept)", "Intercept", term),
+    Parameter = case_match(
+      term,
+      "(Intercept)" ~ "Intercept",
+      "DailyAvgNetFlow" ~ "Net Discharge",
+      "TotalApplStd" ~ "Pesticide Application"
+    ),
     Estimate = estimate,
     SE = std.error,
     t_value = statistic,
@@ -288,42 +220,17 @@ bind_rows(df_m_zoop_q_appl_shr, df_m_zoop_q_appl_sttd, df_m_water_q_appl_shr, df
       as.character(signif(p.value, digits = 4))
     )
   ) %>% 
-  mutate(across(where(is.numeric), ~ formatC(signif(.x, 4), digits = 4, format = "fg", flag = "#"))) %>% 
-  mutate(across(c("Estimate", "SE", "t_value", "p_value"), ~ paste0(.x, "##"))) %>% 
-  write_csv(file.path(fp_tables, "flow_appl_model_summ_summer_fall.csv"))
-
-# Export ANOVA results for the station-year analysis of the zooplankton concentrations
-df_an_zoop_sta_yr %>% 
   mutate(
     across(
-      c("Sum_Sq", "F_value", "p_value"), 
+      where(is.numeric), 
       ~ if_else(
-        is.na(.x), 
-        NA_character_, 
-        paste0(formatC(signif(.x, 4), digits = 4, format = "fg", flag = "#"), "##")
+        abs(.x) < 0.001,
+        formatC(signif(.x, 4), digits = 3, format = "e"),
+        formatC(signif(.x, 4), digits = 4, format = "fg", flag = "#")
       )
     )
   ) %>% 
-  write_csv(file.path(fp_tables, "zoop_sta_yr_anova_summer_fall.csv"), na = "")
+  mutate(across(c("Estimate", "SE", "t_value", "p_value"), ~ paste0(.x, "##")))
 
-# Export table of Tukey pairwise contrasts for the station-year analysis of the
-  # zooplankton concentrations
-df_em_zoop_sta_yr %>% 
-  mutate(
-    across(
-      c("Estimate", "SE", "t_ratio", "p_value"),
-      ~ paste0(formatC(signif(.x, 4), digits = 4, format = "fg", flag = "#"), "##")
-    )
-  ) %>% 
-  write_csv(file.path(fp_tables, "zoop_sta_yr_tukey_summer_fall.csv"))
-
-# Export results of t-test comparing water concentrations between stations 
-df_ttest_water_sta %>% 
-  mutate(
-    across(
-      where(is.numeric),
-      ~ paste0(formatC(signif(.x, 4), digits = 4, format = "fg", flag = "#"), "##")
-    )
-  ) %>% 
-  write_csv(file.path(fp_tables, "water_sta_ttest_summer_fall.csv"))
+df_m_q_appl_summ %>% write_csv(file.path(fp_tables, "flow_appl_model_summ_summer_fall.csv"))
 
