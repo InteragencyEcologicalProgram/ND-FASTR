@@ -411,6 +411,8 @@ df_chla_c2_lag %>%
   plot_lm_diag(Chla_log, m_lm3_lag3)
 
 shapiro.test(residuals(m_lm3_lag3))
+
+Anova(m_lm3_lag3, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
 ```
 
 The residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
@@ -437,7 +439,7 @@ plt_lm3_lag3_obs_fit
 
 Let's look at each Station-Year combination separately.
 
-```{r lm3 lag1 obs vs fit facet sta yr, fig.height = 8, fig.width = 8.5}
+```{r lm3 lag3 obs vs fit facet sta yr, fig.height = 8, fig.width = 8.5}
 plt_lm3_lag3_obs_fit +
   facet_wrap(
     vars(StationCode, Year_fct),
@@ -664,6 +666,8 @@ df_chla_c2_lag %>%
   plot_lm_diag(Chla_log, m_lm2_lag3)
 
 shapiro.test(residuals(m_lm2_lag3))
+
+Anova(m_lm2_lag3, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
 ```
 
 As with the model with 3-way interactions, the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
