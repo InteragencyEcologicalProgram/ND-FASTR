@@ -275,7 +275,7 @@ p_zoop_NMDS_Region <- ggplot(df_zoop_gen_NMDS, aes(x = NMDS1,
                                                    color = Region)) +
   geom_point(size = 3) +
   stat_ellipse() + 
-  labs(title = "Zooplankton Community Composition") +
+  labs(title = NULL) +
   labs(color = "Region") +
   theme_bw() +
   scale_color_brewer(palette = "Set1")
@@ -284,7 +284,7 @@ p_zoop_NMDS_Region +
   facet_wrap(Year ~ ., ncol = 3, dir = "h") +
   labs(x = NULL,
        y = NULL,
-       title = "Zooplankton Community Comparison (2014-2019)",
+       title = NULL,
        color = "Region") +
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
@@ -309,7 +309,7 @@ p_zoop_NMDS_SamplePeriod <- ggplot(df_zoop_gen_NMDS, aes(x = NMDS1,
                                                    color = SamplePeriod)) +
   geom_point(size = 3) +
   stat_ellipse() + 
-  labs(title = "Zooplankton Community Composition") +
+  labs(title = NULL) +
   labs(color = "Sample Period") +
   theme_bw() +
   scale_color_brewer(palette = "Set1")
@@ -318,7 +318,7 @@ p_zoop_NMDS_SamplePeriod +
   facet_wrap(Year~., ncol = 3, dir = "h") +
   labs(x = NULL,
        y = NULL,
-       title = "Zooplankton Community Comparison (2014-2019)",
+       title = NULL,
        color = "Flow Pulse Period") +
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
@@ -341,7 +341,7 @@ p_zoop_NMDS_SamplePeriod +
   facet_wrap(vars(Year, Region), ncol = 4, dir = "h") +
   labs(x = NULL,
        y = NULL,
-       title = "NDFA - Zooplankton Community Comparison (2014-2019)",
+       title = NULL,
        color = "Sample Period") +
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
@@ -439,7 +439,7 @@ fig4 <- ggplot(df_zoop, aes(x = SamplePeriod,
 fig4 + 
   labs(x = NULL, 
        y = bquote('Average Zooplankton CPUE ' ~ ('organisms *'~L^-1)), 
-       title = paste0("Abundance of Zooplankton Orders During Flow Pulses")) + 
+       title = paste0(NULL)) + 
   theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
   theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
   scale_fill_manual(values = c("#E41A1C",
@@ -469,25 +469,42 @@ testdata$logCPUEzoop <- log(testdata$CPUEZoop+1)
 testplot <- ggplot(testdata, aes(x = SamplePeriod, y = logCPUEzoop, fill = Region))+
   geom_boxplot()
 testplot+
-  labs(x = bquote('Flow Pulse Period'), 
-       y = bquote('log CPUE of P. forbesi ' ~ ('organisms *'~L^-1)), 
-       title = paste0("Abundance of P. forbesi by Region and Flow Pulse Period")) + 
+  labs(x = bquote(NULL), 
+       y = expression(paste("Log CPUE of " ,italic(" P. forbesi "), ~ ("organisms *"~L^-1))), 
+       title = paste0(NULL)) + 
   theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
   theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
   scale_fill_manual(values = c("#E41A1C",
                                "#377EB8")) +
                       theme(axis.text.x = element_text(angle = 0, vjust = 0.7))
+
+ggsave(path = output,
+       filename = paste0("Pforbesi_regfpp.png"), 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=5,
+       width=7.5, 
+       dpi="print")
 testplot+
   facet_wrap(vars(Year), ncol = 3, dir = "h") +
-  labs(x = bquote('Flow Pulse Period'), 
-       y = bquote('log CPUE of P. forbesi ' ~ ('organisms *'~L^-1)), 
-       title = paste0("Abundance of P. forbesi by Region and Flow Pulse Period")) + 
+  labs(x = bquote(NULL), 
+       y = expression(paste("Log CPUE of " ,italic(" P. forbesi "), ~ ("organisms *"~L^-1))), 
+       title = paste0(NULL)) + 
   theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
   theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
   scale_fill_manual(values = c("#E41A1C",
                                "#377EB8")) +
   theme(axis.text.x = element_text(angle = 0, vjust = 0.7))
 
+ggsave(path = output,
+       filename = paste0("Pforbesi_regfpp_facet.png"), 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=5,
+       width=7.5, 
+       dpi="print")
 #trying geom_jitter (i don't think it's better)
 testplot2 <- ggplot(testdata, aes(x = SamplePeriod, y = logCPUEzoop, fill = Region))+
   geom_jitter(aes(colour=Region))

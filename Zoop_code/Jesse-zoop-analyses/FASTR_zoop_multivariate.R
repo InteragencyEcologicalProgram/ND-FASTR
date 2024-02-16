@@ -16,7 +16,7 @@ source(here("global_ndfa_funcs.R"))
 source(here("Water_Quality/global_wq_funcs.R"))
 
 #zooplankton data from Mallory and Nicole (biomass)
-zoopNDFAv2<-read.csv("Zoop_code/zoop_NDFA_v2.csv", stringsAsFactors = FALSE)
+zoopNDFAv2<-read.csv("zoop_NDFA_v2.csv", stringsAsFactors = FALSE)
 #data organization and cleanup
 #change to factors and organize sample period levels
 zoopNDFAv2$SamplePeriod <- factor(zoopNDFAv2$SamplePeriod,levels = c("Before","During","After"))
@@ -299,9 +299,9 @@ fig1 <- ggplot(data=zoopNDFA7, aes(y= log10(cpue),
   geom_boxplot(size=.2,outlier.size = .5)
 
 fig1 +
-  labs(title = "Total Zooplankton Abundance by Year",
-       y = bquote(Log[10]~'Zooplankton Abundance'~(indiv.~L^-1)), 
-       x = "Sampling Region",
+  labs(title = NULL,
+       y = bquote(Log[10]~'Zooplankton CPUE'~(indiv.~L^-1)), 
+       x = NULL,
        fill = "Pulse Period") + 
   theme_bw()+
   scale_fill_manual(values = c("#4DAF4A",
