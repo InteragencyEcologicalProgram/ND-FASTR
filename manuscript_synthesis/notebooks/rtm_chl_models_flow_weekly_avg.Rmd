@@ -878,6 +878,7 @@ Everything looks pretty decent with this model. Not perfect, but pretty good giv
 ```{r export aic table}
 df_m_aic_bic %>% 
   arrange(AIC) %>% 
+  mutate(across(where(is.numeric), ~ paste0(formatC(.x, digits = 1, format = "f"), "##"))) %>% 
   write_csv(here("manuscript_synthesis/results/tables/chl_aic_weekly_models.csv"))
 ```
 
