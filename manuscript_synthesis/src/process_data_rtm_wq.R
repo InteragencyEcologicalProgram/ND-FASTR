@@ -19,7 +19,7 @@ source(here("manuscript_synthesis/src/global_functions.R"))
 conflicts_prefer(dplyr::filter())
 
 # Check if we are in the correct working directory
-i_am("manuscript_synthesis/src/process_data_rtm_chla_wt.R")
+i_am("manuscript_synthesis/src/process_data_rtm_wq.R")
 
 # Create vector of parameter names to be manipulated in later functions
 wq_params <- c("WaterTemp", "Chla", "SpCnd")
@@ -96,9 +96,9 @@ df_wq_week_avg <- df_rtm_wq_c %>%
 
 # Save daily and weekly average chlorophyll, water temperature, and specific
   # conductance data as csv and rds files
-df_wq_daily_avg %>% write_csv(here("manuscript_synthesis/data/processed/chla_wt_daily_avg_2013-2019.csv"))
-df_wq_daily_avg %>% saveRDS(here("manuscript_synthesis/data/processed/chla_wt_daily_avg_2013-2019.rds"))
+df_wq_daily_avg %>% write_csv(here("manuscript_synthesis/data/processed/wq_daily_avg_2013-2019.csv"))
+df_wq_daily_avg %>% saveRDS(here("manuscript_synthesis/data/processed/wq_daily_avg_2013-2019.rds"))
 
-df_wq_week_avg %>% write_csv(here("manuscript_synthesis/data/processed/chla_wt_week_avg_2013-2019.csv"))
-df_wq_week_avg %>% saveRDS(here("manuscript_synthesis/data/processed/chla_wt_week_avg_2013-2019.rds"))
+df_wq_week_avg %>% write_csv(here("manuscript_synthesis/data/processed/wq_week_avg_2013-2019.csv"))
+df_wq_week_avg %>% saveRDS(here("manuscript_synthesis/data/processed/wq_week_avg_2013-2019.rds"))
 
