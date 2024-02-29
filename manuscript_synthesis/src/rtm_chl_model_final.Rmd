@@ -58,8 +58,8 @@ devtools::session_info()
 # Define file path for processed data
 fp_data <- here("manuscript_synthesis/data/processed")
 
-# Import weekly average chlorophyll data
-df_chla <- readRDS(file.path(fp_data, "chla_wt_week_avg_2013-2019.rds")) %>% select(-WaterTemp)
+# Import weekly average water quality data
+df_wq <- readRDS(file.path(fp_data, "wq_week_avg_2013-2019.rds"))
 
 # Import weekly average flow data
 df_flow <- readRDS(file.path(fp_data, "flow_week_avg_2013-2019.rds"))
@@ -75,7 +75,9 @@ sta_order <- c("RD22", "STTD", "LIB", "RVB")
 df_flow_c <- df_flow %>% mutate(StationCode = if_else(StationCode == "LIS", "STTD", StationCode))
 
 # Prepare chlorophyll and flow data for analysis
-df_chla_c <- df_chla %>% 
+df_chla_c <- df_wq %>% 
+  select(StationCode, Year, Week, Chla) %>% 
+  drop_na(Chla) %>% 
   # Filter to only include representative stations for 4 habitat types (RD22,
     # STTD, LIB, RVB) and only include years 2015-2019
   filter(

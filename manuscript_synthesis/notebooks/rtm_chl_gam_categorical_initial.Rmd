@@ -62,11 +62,11 @@ devtools::session_info()
 # Import Data
 
 ```{r import data, message = FALSE}
-# Define file path for processed chlorophyll data
-fp_data <- here("manuscript_synthesis/data/processed")
+# Define root file path for data
+fp_data <- here("manuscript_synthesis/data")
 
-# Import daily average chlorophyll data
-df_chla <- readRDS(file.path(fp_data, "chla_wt_daily_avg_2013-2019.rds")) %>% select(-WaterTemp)
+# Import daily average water quality data
+df_wq <- readRDS(file.path(fp_data, "processed/wq_daily_avg_2013-2019.rds"))
 
 # Define file path for file containing region assignments for the continuous stations
 fp_rtm_region <- ndfa_abs_sp_path(
@@ -76,13 +76,8 @@ fp_rtm_region <- ndfa_abs_sp_path(
 # Import region assignments for the continuous stations
 df_rtm_region <- read_csv(fp_rtm_region) %>% select(StationCode, Region = BroadRegion)
 
-# Define file path for file containing dates of flow action periods
-fp_fa_dates <- ndfa_abs_sp_path( 
-  "2011-2019 Synthesis Study-FASTR/Data Management/FlowDatesDesignations_45days.csv"
-)
-
 # Import dates of flow action periods
-df_fa_dates <- read_csv(fp_fa_dates)
+df_fa_dates <- read_csv(file.path(fp_data, "raw/FlowDatesDesignations_45days.csv"))
 ```
 
 # Prepare Data
@@ -101,7 +96,9 @@ sta_order <- c(
 )
 
 # Prepare continuous chlorophyll for exploration and analysis
-df_chla_c <- df_chla %>% 
+df_chla_c <- df_wq %>% 
+  select(StationCode, Date, Chla) %>% 
+  drop_na(Chla) %>% 
   # create Year variable
   mutate(Year = year(Date)) %>%
   # Scale and log transform chlorophyll values

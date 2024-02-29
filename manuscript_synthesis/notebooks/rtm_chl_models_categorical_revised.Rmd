@@ -139,8 +139,8 @@ plot_model_summary <- function(df_data, em_tuk_obj) {
 # Define file path for processed data
 fp_data <- here("manuscript_synthesis/data/processed")
 
-# Import daily average chlorophyll and water temperature data
-df_chla_wt <- readRDS(file.path(fp_data, "chla_wt_daily_avg_2013-2019.rds"))
+# Import daily average water quality data
+df_wq <- readRDS(file.path(fp_data, "wq_daily_avg_2013-2019.rds"))
 ```
 
 # Prepare Data
@@ -150,7 +150,9 @@ df_chla_wt <- readRDS(file.path(fp_data, "chla_wt_daily_avg_2013-2019.rds"))
 sta_order <- c("RD22", "STTD", "LIB", "RVB")
 
 # Prepare chlorophyll and water temperature data for exploration and analysis
-df_chla_wt_c <- df_chla_wt %>% 
+df_chla_wt_c <- df_wq %>% 
+  select(StationCode, Date, Chla, WaterTemp) %>% 
+  drop_na(Chla) %>% 
   # Filter to only include representative stations for 3 habitat types - RD22, STTD, LIB
   filter(StationCode %in% sta_order) %>% 
   mutate(
