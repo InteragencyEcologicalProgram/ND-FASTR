@@ -146,7 +146,7 @@ df_an_gam_sflow_lag2 <-
     across(
       c("df", "F"),
       ~ if_else(
-        abs(.x) < 0.001,
+        abs(.x) < 0.1,
         formatC(signif(.x, 4), digits = 3, format = "e"),
         formatC(signif(.x, 4), digits = 4, format = "fg", flag = "#")
       )
@@ -154,7 +154,7 @@ df_an_gam_sflow_lag2 <-
     p_value = if_else(
       `p-value` < 0.001, 
       "< 0.001", 
-      as.character(signif(`p-value`, digits = 4))
+      formatC(`p-value`, digits = 3, format = "f")
     )
   ) %>% 
   mutate(across(c("df", "F", "p_value"), ~ paste0(.x, "##")))
@@ -418,7 +418,7 @@ plt_gam_yr_sta
 
 # Export Results
 
-```{r export results, eval = FALSE}
+```{r export results}
 # Define file path for figures for the manuscript
 fp_figures <- here("manuscript_synthesis/results/figures")
 
