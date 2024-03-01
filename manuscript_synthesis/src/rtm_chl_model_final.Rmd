@@ -39,6 +39,7 @@ library(broom)
 library(ggeffects)
 library(emmeans)
 library(multcomp)
+library(gratia)
 library(here)
 library(conflicted)
 
@@ -416,6 +417,17 @@ plt_gam_yr_sta <- df_gam_yr_sta %>%
 plt_gam_yr_sta
 ```
 
+# s(Week) Figure
+
+```{r gam sflow sWeek figure, warning = FALSE}
+plt_gam_s_week <- m_gam_sflow_lag2 %>% 
+  draw(select = 10, residuals = TRUE, rug = FALSE) +
+  theme_bw() +
+  ggtitle(NULL)
+
+plt_gam_s_week
+```
+
 # Export Results
 
 ```{r export results}
@@ -455,6 +467,15 @@ ggsave(
   plot = plt_gam_yr_sta,
   width = 6.5,
   height = 5,
+  units = "in"
+)
+
+# Export effects plot of smooth of Week
+ggsave(
+  file.path(fp_figures, "chl_smooth_week.jpg"),
+  plot = plt_gam_s_week,
+  width = 4.5,
+  height = 3.5,
   units = "in"
 )
 
