@@ -1,13 +1,13 @@
 Response,Station,Parameter,Estimate,SE,t_value,p_value
 log(Zooplankton),Sacramento River,Intercept,7.364##,0.3196##,23.04##,< 0.001##
 log(Zooplankton),Sacramento River,Net Discharge,-8.287e-05##,1.712e-05##,-4.841##,< 0.001##
-log(Zooplankton),Sacramento River,Pesticide Application,-0.04318##,0.009271##,-4.657##,< 0.001##
+log(Zooplankton),Sacramento River,Pesticide Application,-4.318e-02##,9.271e-03##,-4.657##,< 0.001##
 sqrt(Zooplankton),Yolo Bypass,Intercept,13.76##,1.921##,7.165##,< 0.001##
-sqrt(Zooplankton),Yolo Bypass,Net Discharge,0.02510##,0.005822##,4.311##,< 0.001##
-sqrt(Zooplankton),Yolo Bypass,Pesticide Application,-0.02126##,0.07423##,-0.2864##,0.778##
-log(Water),Sacramento River,Intercept,2.334##,0.5277##,4.423##,0.004455##
-log(Water),Sacramento River,Net Discharge,1.632e-04##,2.827e-05##,5.772##,0.001181##
-log(Water),Sacramento River,Pesticide Application,0.04076##,0.01416##,2.878##,0.02815##
-Water,Yolo Bypass,Intercept,613.1##,121.5##,5.048##,0.007243##
+sqrt(Zooplankton),Yolo Bypass,Net Discharge,2.510e-02##,5.822e-03##,4.311##,< 0.001##
+sqrt(Zooplankton),Yolo Bypass,Pesticide Application,-2.126e-02##,7.423e-02##,-0.2864##,0.778##
+log(Water),Sacramento River,Intercept,2.334##,0.5277##,4.423##,0.004##
+log(Water),Sacramento River,Net Discharge,1.632e-04##,2.827e-05##,5.772##,0.001##
+log(Water),Sacramento River,Pesticide Application,4.076e-02##,1.416e-02##,2.878##,0.028##
+Water,Yolo Bypass,Intercept,613.1##,121.5##,5.048##,0.007##
 Water,Yolo Bypass,Net Discharge,2.624##,0.2426##,10.82##,< 0.001##
-Water,Yolo Bypass,Pesticide Application,-4.915##,6.903##,-0.7121##,0.5157##
+Water,Yolo Bypass,Pesticide Application,-4.915##,6.903##,-0.7121##,0.516##

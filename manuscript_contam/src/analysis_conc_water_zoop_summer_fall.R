@@ -217,14 +217,14 @@ df_m_q_appl_summ <-
     p_value = if_else(
       p.value < 0.001, 
       "< 0.001", 
-      as.character(signif(p.value, digits = 4))
+      formatC(p.value, digits = 3, format = "f")
     )
   ) %>% 
   mutate(
     across(
       where(is.numeric), 
       ~ if_else(
-        abs(.x) < 0.001,
+        abs(.x) < 0.1,
         formatC(signif(.x, 4), digits = 3, format = "e"),
         formatC(signif(.x, 4), digits = 4, format = "fg", flag = "#")
       )
