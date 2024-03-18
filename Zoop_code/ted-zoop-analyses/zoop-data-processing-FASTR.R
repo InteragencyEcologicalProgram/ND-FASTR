@@ -95,6 +95,11 @@ df_zoop <- df_zoop %>%
   relocate(NetFlowDays, .after = FlowPulseType) %>% 
   relocate(Taxlife, .after = TaxonName)
 
+# Export list of taxonomic classifications for each genus
+df_taxa <- df_zoop %>% 
+  select(Classification,Genus) %>% 
+  unique()
+
 # Order the new ActionPhase so that it plots in the order Pre < During < Post
 phase.order <- c("Before","During","After")
 df_zoop$SamplePeriod <- factor(as.character(df_zoop$SamplePeriod), 
@@ -125,7 +130,7 @@ df_zoop <- df_zoop %>% filter(Year >= 2014)
 # Summarize data ---------------------------------------------------------------
 
 # Examine all samples for high-level diversity
-table(df_zoop$Phylum)
+table(df_zoop$Phylum) # 2 (Arthropoda, Rotifera)
 table(df_zoop$Class) # 4 (Branchiopoda, Hexanauplia, Insecta, Ostracoda)
 table(df_zoop$Order) # 3 (Calanoida, Cyclopoida, Diplostraca)
 
@@ -157,23 +162,34 @@ sort(table(df_zoop$TaxonName), decreasing = TRUE)
 
 # Summarize by taxon for NMDS plots
 df_zoop_gen <- df_zoop %>%
-  group_by(Year, Month, Date, Region, WYType, FlowPulseType, StationCode, Family, Genus, TaxonName) %>%
+  group_by(Year, Month, Date, Region, WYType, FlowPulseType, SamplePeriod,StationCode, Family, Genus) %>%
   summarize(across(CPUEZoop:BPUE, ~sum(.x, na.rm = TRUE))) %>%
   ungroup
 
 # Add zeros to genus data frame
-temp <- df_zoop_gen %>% select(Year:StationCode,TaxonName:CPUEZoop)
+temp <- df_zoop_gen %>% select(Year:StationCode,Genus:CPUEZoop)
 
 temp <- pivot_wider(temp, 
-                    names_from = "TaxonName", 
+                    names_from = "Genus", 
                     values_from = "CPUEZoop",
                     values_fill = 0)
 
 df_zoop_gen <- pivot_longer(temp,
-                            cols = `Sinocalanus doerrii`:last_col(),
-                            names_to = "TaxonName",
+                            cols = `Sinocalanus`:last_col(),
+                            names_to = "Genus",
                             values_to = "CPUEZoop")
 
+df_zoop_gen_export <- left_join(df_zoop_gen,df_taxa)
+
+df_zoop_gen_export <- df_zoop_gen_export %>% 
+  filter(Genus != "NA") %>%
+  filter(!is.na(Classification)) %>% 
+  relocate(Classification, .before = Genus)
+
+# Check if any microzoop, macrozoop, or harpacticoids are still there
+sort(unique(df_zoop_gen_export$Classification)) # no
+  
+write_csv(df_zoop_gen_export, file = "df_zoop_gen_export.csv")
 
 # Calculate relative abundance of CPUE by taxon
 df_zoop_RA <- df_zoop_gen %>%
@@ -194,12 +210,20 @@ df_zoop_RA_tot <- df_zoop_RA %>%
   summarize(MeanRelAbund = sum(MeanRelAbund)) %>%
   ungroup()
 
-## Create cross-walk table for what taxa are lumped into the Other category
+# Create cross-walk table for what taxa are lumped into the Other category
 df_zoop_types <- df_zoop_RA_tot %>% select(Type)
+
+# Create taxonomy table of all organisms present
+df_tax_table <- df_zoop %>% 
+  select(Phylum:TaxonName) %>% 
+  unique() %>% 
+  ungroup()
+
+write_csv(df_tax_table, file = "df_tax_table.csv")
 
 # Calculate NMDS axes ----------------------------------------------------------
 
-## Generate NMDS data with metaMDS by each year separately
+# Generate NMDS data with metaMDS by each year separately
 
 years <- unique(df_zoop_gen$Year) 
 years <- sort(years, decreasing = F, na.last = T)
@@ -223,7 +247,7 @@ for (i in 1:length(years)) {
   # A good rule of thumb: stress < 0.05 provides an excellent representation in reduced dimensions,
   # < 0.1 is great, < 0.2 is good/ok, and stress < 0.3 provides a poor representation.
   zoop_NMDS <- metaMDS(
-    comm = genw[c(8:76)],
+    comm = genw[c(9:56)],
     distance = "bray",
     k = 3,
     trymax = 150

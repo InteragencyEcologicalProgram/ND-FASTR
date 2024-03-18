@@ -28,8 +28,7 @@ rm(list=ls())
 load("RData/phyto_raw.RData")
 
 # Clean up column names
-phyto <- phyto.all %>%
-  clean_names(case = "big_camel")
+phyto <- phyto.all %>% clean_names(case = "big_camel")
 
 ## Remove GALD measurements
 phyto <- phyto %>% select(MethodCode:Biovolume10)
@@ -517,6 +516,28 @@ for (i in 1:length(years)) {
 
 phyto.gen.NMDS <- do.call(rbind, ls_dfs)
 
+# Calculate PERMANOVA comparisons for phytoplankton communities by Region and Year
+genw <- pivot_wider(phyto.gen.BV, 
+                    names_from = "Genus", 
+                    values_from = "BV.um3.per.L",
+                    values_fill = 0)
+
+adon.results <- adonis2(genw[c(10:142)] ~ genw$Region + genw$Year, 
+                        strata = genw$StationCode,
+                        method = "bray",
+                        perm = 999)
+
+adon.results <- adonis2(genw[c(10:142)] ~ genw$Region*genw$ActionPhase + genw$Year*genw$ActionPhase + genw$Region*genw$Year, 
+                        strata = genw$StationCode,
+                        method = "bray",
+                        perm = 999)
+
+dm_phyto_gen <- vegdist(genw[c(10:142)], method = "bray")
+
+bd <- betadisper(dm_phyto_gen, genw$Region)
+
+anova(bd)
+permutest(bd)
 
 ## Save data files
 save(phyto.sum, file = "RData/phyto.sum.RData")

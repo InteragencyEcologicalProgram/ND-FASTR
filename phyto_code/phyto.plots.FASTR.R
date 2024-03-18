@@ -142,15 +142,19 @@ for (group in groups) {
 # Plot Upstream and Downstream Total BV by ActionPhase for each year
 fig1 <- ggplot(data=phyto.sum, aes(y= log10(Total.BV.per.L), 
                                        x = Region,
-                                       color = ActionPhase)) +
+                                       fill = ActionPhase)) +
   geom_boxplot() 
 
 fig1 +
   labs(title = "Total Phytoplankton Abundance by Year",
        y = bquote(Log[10]~'Biovolume Density'~(um^3~L^-1)), 
        x = "Sampling Region",
-       color = "Pulse Period") +
-  facet_wrap(Year ~ ., ncol = 2)  
+       fill = "Pulse Period") +
+  facet_wrap(Year ~ ., ncol = 2) +
+  scale_fill_manual(values = c("#4DAF4A",
+                               "#984EA3",
+                               "#A3D0D4"),
+                    labels=c("Before", "During", "After"))
 
 ggsave(path = output,
        filename = "fig1_log_phyto_biovolume_by_year_and_AP.png", 
@@ -499,22 +503,31 @@ ggsave(path = output,
 # NMDS Plots -------------------------------------------------------------------
 
 # Create NMDS plots for each year by Region
-NMDS.Region.plot <- ggplot(phyto.gen.NMDS, aes(x = NMDS1, y = NMDS2, color = Region)) +
+NMDS.Region.plot <- ggplot(phyto.gen.NMDS, aes(x = NMDS1, y = NMDS2, color = ActionPhase)) +
   geom_point(size = 3) +
-  stat_ellipse() + 
-  labs(title = "Phytoplankton Community Composition") +
-  labs(color = "Region") +
+  stat_ellipse() +
   theme_bw()
 
 NMDS.Region.plot +
-  facet_wrap(Year ~ ., ncol = 3, dir = "h")
+  facet_wrap(Year ~ ., ncol = 3, dir = "h") +
+  labs(x = NULL,
+       y = NULL,
+       color = "Region") +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  scale_color_brewer(palette = "Set1") 
 
 ggsave(path = output,
-       filename = paste0("phyto_NMDS_biovolume_by_region.png"), 
+       filename = paste0("phyto_NMDS_biovolume_by_AP.png"), 
        device = "png",
        scale=1.0, 
        units="in",
-       height=3,
+       height=5,
        width=6.5, 
        dpi="print")
 
@@ -530,7 +543,9 @@ NMDS.AP.plot <- ggplot(phyto.gen.NMDS, aes(x = NMDS1, y = NMDS2, color = ActionP
   theme_bw()
 
 NMDS.AP.plot +
-  facet_wrap(Year ~ ., ncol = 3, dir = "h")
+  facet_wrap(Year ~ ., ncol = 3, dir = "h") +
+  scale_color_brewer(palette = "Set1")
+
 
 ggsave(path = output,
        filename = paste0("phyto_NMDS_biovolume_by_AP.png"), 
