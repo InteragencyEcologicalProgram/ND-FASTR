@@ -1,0 +1,485 @@
+---
+title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
+subtitle: "Final results from selected model"
+author: "Dave Bosworth"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output: 
+  html_document: 
+    code_folding: show
+    toc: true
+    toc_float:
+      collapsed: false
+editor_options: 
+  chunk_output_type: console
+knit: (function(input, ...) {
+    rmarkdown::render(
+      input,
+      output_dir = here::here("docs"),
+      envir = globalenv()
+    )
+    })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Purpose
+
+Look at results of the preferred model during model selection: GAM using smooths for weekly average flow by Station and Year with a cyclic penalized cubic regression spline smooth term for week number to account for seasonality. Create summary figures and tables for the manuscript. The model selection process and diagnostics can be found in the [manuscript_synthesis/notebooks/rtm_chl_models_flow_weekly_avg.Rmd](https://interagencyecologicalprogram.github.io/ND-FASTR/rtm_chl_models_flow_weekly_avg.html) document.
+
+# Global code and functions
+
+```{r load packages and functions, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(scales)
+library(mgcv)
+library(broom)
+library(ggeffects)
+library(emmeans)
+library(multcomp)
+library(gratia)
+library(here)
+library(conflicted)
+
+# Declare package conflict preferences 
+conflicts_prefer(dplyr::filter(), dplyr::lag(), dplyr::select())
+```
+
+Display current versions of R and packages used for this analysis:
+
+```{r print session info}
+devtools::session_info()
+```
+
+# Import Data
+
+```{r import data}
+# Define file path for processed data
+fp_data <- here("manuscript_synthesis/data/processed")
+
+# Import weekly average water quality data
+df_wq <- readRDS(file.path(fp_data, "wq_week_avg_2013-2019.rds"))
+
+# Import weekly average flow data
+df_flow <- readRDS(file.path(fp_data, "flow_week_avg_2013-2019.rds"))
+```
+
+# Prepare Data
+
+```{r prepare chla data, message = FALSE}
+# Create a vector for the factor order of StationCode
+sta_order <- c("RD22", "STTD", "LIB", "RVB")
+
+# We will use LIS flow data as a proxy for STTD
+df_flow_c <- df_flow %>% mutate(StationCode = if_else(StationCode == "LIS", "STTD", StationCode))
+
+# Prepare chlorophyll and flow data for analysis
+df_chla_c <- df_wq %>% 
+  select(StationCode, Year, Week, Chla) %>% 
+  drop_na(Chla) %>% 
+  # Filter to only include representative stations for 4 habitat types (RD22,
+    # STTD, LIB, RVB) and only include years 2015-2019
+  filter(
+    StationCode %in% sta_order,
+    Year %in% 2015:2019
+  ) %>% 
+  # Join flow data to chlorophyll data
+  left_join(df_flow_c, by = join_by(StationCode, Year, Week)) %>% 
+  # Remove all NA flow values
+  drop_na(Flow) %>% 
+  mutate(
+    # Scale and log transform chlorophyll values
+    Chla_log = log(Chla * 1000),
+    # Apply factor order to StationCode
+    StationCode = factor(StationCode, levels = sta_order),
+    # Add a column for Year as a factor for the model
+    Year_fct = factor(Year)
+  ) %>% 
+  arrange(StationCode, Year, Week) %>% 
+  # Add 2 lag variables for chlorophyll to be used in the model to help with
+    # serial autocorrelation
+  group_by(StationCode, Year) %>% 
+  mutate(
+    lag1 = lag(Chla_log),
+    lag2 = lag(Chla_log, 2)
+  ) %>% 
+  ungroup() %>% 
+  drop_na(lag1, lag2)
+```
+
+# Create GAM model
+
+```{r gam sflow lag2, warning = FALSE}
+m_gam_sflow_lag2 <- gam(
+  Chla_log ~ s(Flow, by = StationCode) + s(Flow, by = Year_fct) + Year_fct * StationCode + s(Week, bs = "cc", k = 5) + lag1 + lag2, 
+  data = df_chla_c,
+  method = "REML", 
+  knots = list(week = c(0, 52))
+)
+```
+
+# Model Results
+
+## ANOVA table
+
+```{r anova gam sflow lag2, warning = FALSE}
+# Create ANOVA table for GAM
+an_gam_sflow_lag2 <- anova(m_gam_sflow_lag2)
+an_gam_sflow_lag2
+
+# Extract elements from ANOVA table for export
+# Parametric terms
+df_an_gam_ptable <- an_gam_sflow_lag2$pTerms.table %>% as_tibble(rownames = "Term")
+
+# Smooth terms
+df_an_gam_stable <- an_gam_sflow_lag2$s.table %>% 
+  as_tibble(rownames = "Term") %>% 
+  rename(df = edf) %>% 
+  select(-Ref.df)
+
+# Combine and format for export
+df_an_gam_sflow_lag2 <- 
+  bind_rows(df_an_gam_ptable, df_an_gam_stable) %>% 
+  transmute(
+    Term,
+    across(
+      c("df", "F"),
+      ~ if_else(
+        abs(.x) < 0.1,
+        formatC(signif(.x, 4), digits = 3, format = "e"),
+        formatC(signif(.x, 4), digits = 4, format = "fg", flag = "#")
+      )
+    ),
+    p_value = if_else(
+      `p-value` < 0.001, 
+      "< 0.001", 
+      formatC(`p-value`, digits = 3, format = "f")
+    )
+  ) %>% 
+  mutate(across(c("df", "F", "p_value"), ~ paste0(.x, "##")))
+```
+
+## Effect of Flow by Station
+
+```{r gam sflow lag2 flow station effects plot}
+# Calculate min and max flows for each station to narrow down x-axis in the plot
+df_chla_flow_sta_summ <- df_chla_c %>% 
+  summarize(
+    Flow_min = min(Flow),
+    Flow_max = max(Flow),
+    .by = c(StationCode)
+  ) %>% 
+  mutate(
+    Flow_buffer = (Flow_max - Flow_min) * 0.05,
+    Flow_min = Flow_min - Flow_buffer,
+    Flow_max = Flow_max + Flow_buffer
+  )
+
+# Calculate effects of flow on chlorophyll for each station holding the
+  # non-focal variables constant - marginal effects/adjusted predictions
+df_gam_flow_sta_eff <- 
+  as.data.frame(
+    ggemmeans(m_gam_sflow_lag2, terms = c("Flow", "StationCode")),
+    terms_to_colnames = TRUE
+  ) %>% 
+  as_tibble() %>% 
+  # Narrow down range of flow values for each station
+  left_join(df_chla_flow_sta_summ, by = join_by(StationCode)) %>% 
+  filter(Flow >= Flow_min & Flow <= Flow_max) %>% 
+  transmute(
+    StationCode,
+    Flow,
+    # Back calculate model fits and confidence levels
+    across(c("predicted", "conf.low", "conf.high"), ~ exp(.x) / 1000)
+  )
+
+# Create effects plot
+plt_gam_flow_sta_eff <- df_gam_flow_sta_eff %>% 
+  ggplot(aes(x = Flow, y = predicted)) +
+  geom_point(
+    data = df_chla_c,
+    aes(y = Chla, color = Year_fct),
+    alpha = 0.6
+  ) +
+  geom_line(linewidth = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.25) +
+  facet_wrap(vars(StationCode), scales = "free") +
+  theme_bw() +
+  labs(
+    x = "Flow (cfs)",
+    y = expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))
+  ) +
+  scale_x_continuous(breaks = breaks_extended(6)) +
+  scale_color_viridis_d(name = "Year", option = "C")
+
+plt_gam_flow_sta_eff
+```
+
+## Effect of Flow by Year
+
+```{r gam sflow lag2 flow year effects plot, warning = FALSE}
+# Calculate min and max flows for each station to narrow down x-axis in the plot
+df_chla_flow_yr_summ <- df_chla_c %>% 
+  summarize(
+    Flow_min = min(Flow),
+    Flow_max = max(Flow),
+    .by = c(Year_fct)
+  ) %>% 
+  mutate(
+    Flow_buffer = (Flow_max - Flow_min) * 0.05,
+    Flow_min = Flow_min - Flow_buffer,
+    Flow_max = Flow_max + Flow_buffer
+  )
+
+# Calculate effects of flow on chlorophyll for each year holding the
+  # non-focal variables constant - marginal effects/adjusted predictions
+df_gam_flow_yr_eff <- 
+  as.data.frame(
+    ggemmeans(m_gam_sflow_lag2, terms = c("Flow", "Year_fct")),
+    terms_to_colnames = TRUE
+  ) %>% 
+  as_tibble() %>% 
+  # Narrow down range of flow values for each station
+  left_join(df_chla_flow_yr_summ, by = join_by(Year_fct)) %>% 
+  filter(Flow >= Flow_min & Flow <= Flow_max) %>% 
+  transmute(
+    Year_fct,
+    Flow,
+    # Back calculate model fits and confidence levels
+    across(c("predicted", "conf.low", "conf.high"), ~ exp(.x) / 1000)
+  )
+
+# Create effects plot
+plt_gam_flow_yr_eff <- df_gam_flow_yr_eff %>% 
+  ggplot(aes(x = Flow, y = predicted)) +
+  geom_point(
+    data = df_chla_c,
+    aes(y = Chla, color = StationCode),
+    alpha = 0.6
+  ) +
+  geom_line(linewidth = 1) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.25) +
+  facet_wrap(vars(Year_fct), scales = "free") +
+  theme_bw() +
+  labs(
+    x = "Flow (cfs)",
+    y = expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))
+  ) +
+  scale_x_continuous(breaks = breaks_extended(6)) +
+  scale_color_viridis_d(name = "Station", option = "C") +
+  theme(
+    legend.margin = margin(0, 0, 0, 0),
+    legend.position = c(0.8, 0.3)
+  )
+
+plt_gam_flow_yr_eff
+```
+
+## Station by Year Contrasts
+
+```{r gam sflow lag2 contrasts station by year, warning = FALSE}
+# Estimated marginal means for station by year
+em_gam_sta_yr <- emmeans(m_gam_sflow_lag2, ~ StationCode | Year_fct)
+
+# Tukey post-hoc contrasts
+pairs(em_gam_sta_yr)
+
+# Create table of contrasts and convert it to a tibble for plot
+df_gam_sta_yr <- em_gam_sta_yr %>% 
+  cld(sort = FALSE, Letters = letters) %>% 
+  as_tibble() %>% 
+  mutate(
+    group = str_remove_all(.group, fixed(" ")),
+    # back transform log-transformed results
+    across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000)
+  ) %>% 
+  # Add min and max values of observed data to the Tukey post-hoc results and
+    # calculate vertical positioning of letters
+  left_join(
+    df_chla_c %>% 
+      summarize(
+        max_val = max(Chla),
+        min_val = min(Chla),
+        .by = Year_fct
+    ), 
+    by = join_by(Year_fct)
+  ) %>% 
+  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>% 
+  group_by(Year_fct) %>% 
+  mutate(max_val = max(max_val)) %>% 
+  ungroup() %>% 
+  mutate(y_pos = max_val + (max_val - min_val) / 10) %>% 
+  select(
+    StationCode,
+    Year_fct,
+    emmean,
+    lower.CL,
+    upper.CL,
+    group,
+    y_pos
+  )
+
+# Create boxplot showing Tukey post-hoc results
+plt_gam_sta_yr <- df_gam_sta_yr %>% 
+  ggplot(
+    aes(
+      x = StationCode,
+      y = emmean,
+      ymin = lower.CL,
+      ymax = upper.CL
+    )
+  ) +
+  geom_boxplot(
+    data = df_chla_c,
+    aes(x = StationCode, y = Chla),
+    inherit.aes = FALSE
+  ) +
+  geom_crossbar(color = "grey82", fill = "grey", alpha = 0.7, linewidth = 0.1) +
+  geom_point(color = "red") +
+  geom_text(aes(y = y_pos, label = group), size = 3.5) +
+  facet_wrap(vars(Year_fct), scales = "free_y") +
+  xlab("Station") +
+  ylab(expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))) +
+  theme_bw()
+
+plt_gam_sta_yr
+```
+
+## Year by Station Contrasts
+
+```{r gam sflow lag2 contrasts year by station, warning = FALSE}
+# Estimated marginal means for year by station
+em_gam_yr_sta <- emmeans(m_gam_sflow_lag2, ~ Year_fct | StationCode)
+
+# Tukey post-hoc contrasts
+pairs(em_gam_yr_sta)
+
+# Create table of contrasts and convert it to a tibble for plot
+df_gam_yr_sta <- em_gam_yr_sta %>% 
+  cld(sort = FALSE, Letters = letters) %>% 
+  as_tibble() %>% 
+  mutate(
+    group = str_remove_all(.group, fixed(" ")),
+    # back transform log-transformed results
+    across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000)
+  ) %>% 
+  # Add min and max values of observed data to the Tukey post-hoc results and
+    # calculate vertical positioning of letters
+  left_join(
+    df_chla_c %>% 
+      summarize(
+        max_val = max(Chla),
+        min_val = min(Chla),
+        .by = StationCode
+    ), 
+    by = join_by(StationCode)
+  ) %>% 
+  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>% 
+  group_by(StationCode) %>% 
+  mutate(max_val = max(max_val)) %>% 
+  ungroup() %>% 
+  mutate(y_pos = max_val + (max_val - min_val) / 10) %>% 
+  select(
+    StationCode,
+    Year_fct,
+    emmean,
+    lower.CL,
+    upper.CL,
+    group,
+    y_pos
+  )
+
+# Create boxplot showing Tukey post-hoc results
+plt_gam_yr_sta <- df_gam_yr_sta %>% 
+  ggplot(
+    aes(
+      x = Year_fct,
+      y = emmean,
+      ymin = lower.CL,
+      ymax = upper.CL
+    )
+  ) +
+  geom_boxplot(
+    data = df_chla_c,
+    aes(x = Year_fct, y = Chla),
+    inherit.aes = FALSE
+  ) +
+  geom_crossbar(color = "grey82", fill = "grey", alpha = 0.7, linewidth = 0.1) +
+  geom_point(color = "red") +
+  geom_text(aes(y = y_pos, label = group), size = 3.5) +
+  facet_wrap(vars(StationCode), scales = "free_y") +
+  xlab("Year") +
+  ylab(expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))) +
+  theme_bw()
+
+plt_gam_yr_sta
+```
+
+# s(Week) Figure
+
+```{r gam sflow sWeek figure, warning = FALSE}
+plt_gam_s_week <- m_gam_sflow_lag2 %>% 
+  draw(select = 10, residuals = TRUE, rug = FALSE) +
+  theme_bw() +
+  ggtitle(NULL)
+
+plt_gam_s_week
+```
+
+# Export Results
+
+```{r export results}
+# Define file path for figures for the manuscript
+fp_figures <- here("manuscript_synthesis/results/figures")
+
+# Export effects plot of flow by station
+ggsave(
+  file.path(fp_figures, "chl_flow_effects_plot_by_station.jpg"),
+  plot = plt_gam_flow_sta_eff,
+  width = 6.5,
+  height = 5,
+  units = "in"
+)
+
+# Export effects plot of flow by year
+ggsave(
+  file.path(fp_figures, "chl_flow_effects_plot_by_year.jpg"),
+  plot = plt_gam_flow_yr_eff,
+  width = 7,
+  height = 5,
+  units = "in"
+)
+
+# Export boxplot of station contrasts by year
+ggsave(
+  file.path(fp_figures, "chl_station_contrasts_by_year.jpg"),
+  plot = plt_gam_sta_yr,
+  width = 7,
+  height = 5,
+  units = "in"
+)
+
+# Export boxplot of station contrasts by year
+ggsave(
+  file.path(fp_figures, "chl_year_contrasts_by_station.jpg"),
+  plot = plt_gam_yr_sta,
+  width = 6.5,
+  height = 5,
+  units = "in"
+)
+
+# Export effects plot of smooth of Week
+ggsave(
+  file.path(fp_figures, "chl_smooth_week.jpg"),
+  plot = plt_gam_s_week,
+  width = 4.5,
+  height = 3.5,
+  units = "in"
+)
+
+# Export ANOVA table for GAM
+df_an_gam_sflow_lag2 %>% write_csv(here("manuscript_synthesis/results/tables/chl_GAM_anova.csv"))
+```
+

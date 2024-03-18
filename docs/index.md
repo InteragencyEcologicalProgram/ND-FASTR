@@ -14,7 +14,9 @@ layout: default
 
 ### Final Analyses
 
-Placeholder for final analyses
+* [Results from selected Weekly Average Model](rtm_chl_model_final.html)
+
+After looking at the results more closely from this selected model, we decided to use time series plots and descriptive text in the manuscript for the continuous chlorophyll. None of the models we tried seemed to fit the observed data that well.
 
 ## Contaminants Manuscript
 

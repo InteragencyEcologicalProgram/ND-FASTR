@@ -6,6 +6,7 @@
 
 # Load packages
 library(tidyverse)
+library(here)
 library(fs)
 library(rlang)
 library(patchwork)
@@ -29,8 +30,10 @@ ndfa_abs_sp_path <- function(fp_rel = NULL) {
 # Add Flow Action Periods - Before, During, After flow action
 ndfa_action_periods <- function(df) {
   # Import dates for flow action periods
-  fp_act_dates <- ndfa_abs_sp_path("2011-2019 Synthesis Study-FASTR/Data Management/FlowDatesDesignations_45days.csv")
-  df_act_dates_orig <- read_csv(fp_act_dates)
+  df_act_dates_orig <- read_csv(
+    here("manuscript_synthesis/data/raw/FlowDatesDesignations_45days.csv"), 
+    show_col_types = FALSE
+  )
   
   # Convert date columns in df_act_dates_orig to date type
   df_act_dates_clean <- df_act_dates_orig %>% mutate(across(starts_with(c("Pre", "Post")), mdy))

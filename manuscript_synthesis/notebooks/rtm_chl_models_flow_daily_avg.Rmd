@@ -62,8 +62,8 @@ devtools::session_info()
 # Define file path for processed data
 fp_data <- here("manuscript_synthesis/data/processed")
 
-# Import daily average chlorophyll data
-df_chla <- readRDS(file.path(fp_data, "chla_wt_daily_avg_2013-2019.rds")) %>% select(-WaterTemp)
+# Import daily average water quality data
+df_wq <- readRDS(file.path(fp_data, "wq_daily_avg_2013-2019.rds"))
 
 # Import daily average flow data
 df_flow <- readRDS(file.path(fp_data, "flow_daily_avg_2013-2019.rds"))
@@ -79,7 +79,9 @@ sta_order <- c("RD22", "STTD", "LIB", "RVB")
 df_flow_c <- df_flow %>% mutate(StationCode = if_else(StationCode == "LIS", "STTD", StationCode))
 
 # Prepare chlorophyll and flow data for exploration and analysis
-df_chla_c1 <- df_chla %>% 
+df_chla_c1 <- df_wq %>% 
+  select(StationCode, Date, Chla) %>% 
+  drop_na(Chla) %>% 
   # Filter to only include representative stations for 4 habitat types - RD22, STTD, LIB, RVB
   filter(StationCode %in% sta_order) %>% 
   # Join flow data to chlorophyll data
@@ -411,6 +413,8 @@ df_chla_c2_lag %>%
   plot_lm_diag(Chla_log, m_lm3_lag3)
 
 shapiro.test(residuals(m_lm3_lag3))
+
+Anova(m_lm3_lag3, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
 ```
 
 The residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
@@ -437,7 +441,7 @@ plt_lm3_lag3_obs_fit
 
 Let's look at each Station-Year combination separately.
 
-```{r lm3 lag1 obs vs fit facet sta yr, fig.height = 8, fig.width = 8.5}
+```{r lm3 lag3 obs vs fit facet sta yr, fig.height = 8, fig.width = 8.5}
 plt_lm3_lag3_obs_fit +
   facet_wrap(
     vars(StationCode, Year_fct),
@@ -664,6 +668,8 @@ df_chla_c2_lag %>%
   plot_lm_diag(Chla_log, m_lm2_lag3)
 
 shapiro.test(residuals(m_lm2_lag3))
+
+Anova(m_lm2_lag3, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
 ```
 
 As with the model with 3-way interactions, the residuals deviate from a normal distribution particularly at the both tails of the distribution. I'm not so sure about using this model. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.

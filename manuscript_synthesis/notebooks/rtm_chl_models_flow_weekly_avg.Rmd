@@ -27,7 +27,7 @@ options(knitr.kable.NA = "")
 
 # Purpose
 
-Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit various models to the data set using weekly average flow as a continuous predictor which replaces the categorical predictor - flow action period - in the original analysis. These models will only include representative stations for 4 habitat types - upstream (RD22), lower Yolo Bypass (STTD), Cache Slough complex (LIB), and downstream (RVB).
+Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit multiple models to predict weekly average chlorophyll fluorescence values.  All models will only include representative stations for 4 habitat types - upstream (RD22), lower Yolo Bypass (STTD), Cache Slough complex (LIB), and downstream (RVB). At a minimum, the models will contain the two categorical variables - Year and Station - as predictor variables. In some of the models, we will add weekly average flow as a continuous predictor which replaces the categorical predictor - flow action period - in the original analysis. Additionally, we'll add a GAM smooth for Week number term to account for seasonality in some of the models. After fitting multiple models, we'll use a model selection process to determine the best one.
 
 # Global code and functions
 
@@ -61,8 +61,8 @@ devtools::session_info()
 # Define file path for processed data
 fp_data <- here("manuscript_synthesis/data/processed")
 
-# Import weekly average chlorophyll data
-df_chla <- readRDS(file.path(fp_data, "chla_wt_week_avg_2013-2019.rds")) %>% select(-WaterTemp)
+# Import weekly average water quality data
+df_wq <- readRDS(file.path(fp_data, "wq_week_avg_2013-2019.rds"))
 
 # Import weekly average flow data
 df_flow <- readRDS(file.path(fp_data, "flow_week_avg_2013-2019.rds"))
@@ -78,13 +78,15 @@ sta_order <- c("RD22", "STTD", "LIB", "RVB")
 df_flow_c <- df_flow %>% mutate(StationCode = if_else(StationCode == "LIS", "STTD", StationCode))
 
 # Prepare chlorophyll and flow data for exploration and analysis
-df_chla_c1 <- df_chla %>% 
+df_chla_c1 <- df_wq %>% 
+  select(StationCode, Year, Week, Chla) %>% 
+  drop_na(Chla) %>% 
   # Filter to only include representative stations for 4 habitat types - RD22, STTD, LIB, RVB
   filter(StationCode %in% sta_order) %>% 
   # Join flow data to chlorophyll data
   left_join(df_flow_c, by = join_by(StationCode, Year, Week)) %>% 
   # Remove all NA flow values
-  drop_na(Flow) %>% 
+  drop_na(Flow) %>%
   mutate(
     # Scale and log transform chlorophyll values
     Chla_log = log(Chla * 1000),
@@ -101,8 +103,8 @@ df_chla_c1 <- df_chla %>%
 ```{r chla sample counts station}
 df_chla_c1 %>% 
   summarize(
-    min_date = min(Week),
-    max_date = max(Week),
+    min_week = min(Week),
+    max_week = max(Week),
     num_samples = n(),
     .by = c(StationCode, Year)
   ) %>% 
@@ -116,18 +118,18 @@ Looking at the sample counts and date ranges, we'll only include years 2015-2019
 df_chla_c2 <- df_chla_c1 %>% 
   filter(Year %in% 2015:2019) %>% 
   mutate(Year_fct = fct_drop(Year_fct))
+```
 
-# Create another dataframe that has up to 3 lag variables for chlorophyll to be
-  # used in the linear models
+We'll create another dataframe that has up to 2 lag variables for chlorophyll to be used in the models to help with serial autocorrelation.
+
+```{r chla lag}
 df_chla_c2_lag <- df_chla_c2 %>% 
   # Fill in missing weeks for each StationCode-Year combination
   group_by(StationCode, Year) %>% 
-  # complete(Week = seq.int(min(Week), max(Week), by = 1)) %>% 
   # Create lag variables of scaled log transformed chlorophyll values
   mutate(
     lag1 = lag(Chla_log),
-    lag2 = lag(Chla_log, 2),
-    lag3 = lag(Chla_log, 3)
+    lag2 = lag(Chla_log, 2)
   ) %>% 
   ungroup()
 ```
@@ -165,180 +167,688 @@ df_chla_c2 %>%
 
 The patterns appear to vary annually at each station, which may justify using a 3-way interaction.
 
-# GAM Model with 3-way interactions
+# Model 1: GAM Model with Flow and 3-way interactions
 
-First, we will attempt to fit a generalized additive model (GAM) to the data set to help account for seasonality in the data. We'll try running a GAM using a three-way interaction between Year, Weekly Average Flow, and Station, and a smooth term for day of year to account for seasonality. Initially, we'll run the GAM without accounting for serial autocorrelation.
+First, we will attempt to fit a generalized additive model (GAM) to the data set to help account for seasonality in the data. We'll try running a GAM using a three-way interaction between Year, Weekly Average Flow, and Station, and a cyclic penalized cubic regression spline smooth term for week number to account for seasonality (restricting the k-value to 5 to reduce overfitting). Initially, we'll run the GAM without accounting for serial autocorrelation.
 
 ## Initial Model
 
-```{r gam3 no autocorr, warning = FALSE}
-m_gam3 <- gam(
-  Chla_log ~ Year_fct * Flow * StationCode + s(Week), 
+```{r gam flow3 no autocorr, warning = FALSE}
+m_gam_flow3 <- gam(
+  Chla_log ~ Year_fct * Flow * StationCode + s(Week,  bs = "cc", k = 5), 
   data = df_chla_c2,
-  method = "REML"
+  method = "REML",
+  knots = list(week = c(0, 52))
 )
 ```
 
 Lets look at the model summary and diagnostics:
 
-```{r gam3 no autocorr diag, warning = FALSE}
-summary(m_gam3)
-appraise(m_gam3)
-shapiro.test(residuals(m_gam3))
-k.check(m_gam3)
-draw(m_gam3, select = 1, residuals = TRUE, rug = FALSE)
-plot(m_gam3, pages = 1, all.terms = TRUE)
-acf(residuals(m_gam3))
-Box.test(residuals(m_gam3), lag = 20, type = 'Ljung-Box')
+```{r gam flow3 no autocorr diag, warning = FALSE}
+summary(m_gam_flow3)
+appraise(m_gam_flow3)
+shapiro.test(residuals(m_gam_flow3))
+k.check(m_gam_flow3)
+draw(m_gam_flow3, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_flow3, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_flow3))
+Box.test(residuals(m_gam_flow3), lag = 20, type = 'Ljung-Box')
 ```
 
-## Model with first and second order lag terms
+Besides the Shapiro-Wilk normality test showing that the residuals aren't normal, the diagnostic plots look pretty good. However, the residuals are autocorrelated.
 
-Now, we'll try to deal with the residual autocorrelation. 
+## Model with lag terms
 
-```{r gam3 with lag terms, warning = FALSE}
-# Fit two successive lagged models
-# lag1
-m_gam3_lag1 <- gam(
-  Chla_log ~ lag1 + Year_fct * Flow * StationCode + s(Week, bs = "cc"), 
+Now, we'll try to deal with the residual autocorrelation. We'll run a series of models adding 1 and 2 lag terms and compare how well they correct for autocorrelation.
+
+### Lag 1
+
+```{r gam flow3 lag1, warning = FALSE}
+m_gam_flow3_lag1 <- gam(
+  Chla_log ~ Year_fct * Flow * StationCode + s(Week, bs = "cc", k = 5) + lag1, 
   data = df_chla_c2_lag,
-  method = "REML", knots = list(week = c(0, 52))
+  method = "REML", 
+  knots = list(week = c(0, 52))
 )
 
-summary(m_gam3_lag1)
-appraise(m_gam3_lag1)
-shapiro.test(residuals(m_gam3_lag1))
-k.check(m_gam3_lag1)
-draw(m_gam3_lag1, select = 1, residuals = TRUE, rug = FALSE)
-plot(m_gam3_lag1, pages = 1, all.terms = TRUE)
-acf(residuals(m_gam3_lag1))
-Box.test(residuals(m_gam3_lag1), lag = 20, type = 'Ljung-Box')
+acf(residuals(m_gam_flow3_lag1))
+Box.test(residuals(m_gam_flow3_lag1), lag = 20, type = 'Ljung-Box')
+```
 
-# lag2
-m_gam3_lag2 <- gam(
-  Chla_log ~ lag1 + lag2 + Year_fct * Flow * StationCode + s(Week, bs = "cc"), 
+### Lag 2
+
+```{r gam flow3 lag2, warning = FALSE}
+m_gam_flow3_lag2 <- gam(
+  Chla_log ~ Year_fct * Flow * StationCode + s(Week, bs = "cc", k = 5) + lag1 + lag2, 
   data = df_chla_c2_lag,
-  method = "REML", knots = list(week = c(0, 52))
+  method = "REML", 
+  knots = list(week = c(0, 52))
 )
 
-summary(m_gam3_lag2)
-appraise(m_gam3_lag2)
-shapiro.test(residuals(m_gam3_lag2))
-k.check(m_gam3_lag2)
-draw(m_gam3_lag2, select = 1, residuals = TRUE, rug = FALSE)
-plot(m_gam3_lag2, pages = 1, all.terms = TRUE)
-acf(residuals(m_gam3_lag2))
-Box.test(residuals(m_gam3_lag2), lag = 20, type = 'Ljung-Box')
-
-# compare fit of lag1 and lag2 models
-AIC(m_gam3_lag1, m_gam3_lag2)
+acf(residuals(m_gam_flow3_lag2))
+Box.test(residuals(m_gam_flow3_lag2), lag = 20, type = 'Ljung-Box')
 ```
 
-It looks like lag2 model has the best fit according to the AIC values. 
+The model with 1 lag term already seems to address the serial autocorrelation. Let's use AIC to see how they compare.
 
-Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
+### Compare Models
 
-```{r gam3 ar1 obs vs fit, warning = FALSE}
-df_m_gam3_lag2_fit <- df_chla_c2_lag %>% 
-  drop_na(lag1, lag2) %>% 
-  fitted_values(m_gam3_lag2, data = .) %>% 
-  mutate(fitted_bt = exp(fitted) / 1000)
-
-plt_m_gam3_lag2_fit <- df_m_gam3_lag2_fit %>% 
-  ggplot(aes(x = fitted_bt, y = Chla)) +
-  geom_point() +
-  geom_abline(slope = 1, intercept = 0, color = "red") +
-  theme_bw() +
-  labs(
-    x = "Back-transformed Fitted Values",
-    y = "Observed Values"
-  )
-
-plt_m_gam3_lag2_fit
+```{r gam flow3 compare}
+AIC(m_gam_flow3, m_gam_flow3_lag1, m_gam_flow3_lag2)
 ```
 
-Let's look at each Station-Year combination separately.
+It looks like the lag2 model has the best fit according to the AIC values. Let's take a closer look at that one.
 
-```{r gam3 ar1 obs vs fit facet sta yr, fig.height = 8, fig.width = 8.5}
-plt_m_gam3_lag2_fit +
-  facet_wrap(
-    vars(StationCode, Year_fct),
-    ncol = 5,
-    scales = "free",
-    labeller = labeller(.multi_line = FALSE)
-  )
+### Lag 2 model summary
+
+```{r gam flow3 lag2 summary and diag, warning = FALSE}
+summary(m_gam_flow3_lag2)
+appraise(m_gam_flow3_lag2)
+shapiro.test(residuals(m_gam_flow3_lag2))
+k.check(m_gam_flow3_lag2)
+draw(m_gam_flow3_lag2, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_flow3_lag2, pages = 1, all.terms = TRUE)
+anova(m_gam_flow3_lag2)
 ```
 
-Everything looks pretty decent from lag 2 model. Not perfect, but pretty good given the number of data points. Let's compare to a two-way interaction model.
+The model diagnostics look pretty good. Note that the 3-way interaction between Year, Station, and Flow isn't significant. We'll use `m_gam_flow3_lag2` in the model selection process.
 
-# GAM Model with 2-way interactions
+```{r gam flow3 clean up}
+rm(m_gam_flow3, m_gam_flow3_lag1)
+```
 
-```{r gam2 with and without lag terms, warning = FALSE}
-# Fit two-way interaction model and two successive lagged models
-# no lag terms
-m_gam2 <- gam(
-  Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(Week, bs = "cc"), 
+# Model 2: GAM Model with Flow and 2-way interactions
+
+Now we'll try running a GAM using all two-way interactions between Year, Flow, and Station.
+
+## Initial Model
+
+```{r gam flow2 no autocorr, warning = FALSE}
+m_gam_flow2 <- gam(
+  Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(Week, bs = "cc", k = 5), 
   data = df_chla_c2,
-  method = "REML", knots = list(week = c(0, 52))
+  method = "REML", 
+  knots = list(week = c(0, 52))
 )
-
-summary(m_gam2)
-appraise(m_gam2)
-shapiro.test(residuals(m_gam2))
-k.check(m_gam2)
-draw(m_gam2, select = 1, residuals = TRUE, rug = FALSE)
-plot(m_gam2, pages = 1, all.terms = TRUE)
-acf(residuals(m_gam2))
-Box.test(residuals(m_gam2), lag = 20, type = 'Ljung-Box')
-
-# lag1
-m_gam2_lag1 <- gam(
-  Chla_log ~ (Year_fct + Flow + StationCode)^2 + lag1 + s(Week, bs = "cc"), 
-  data = df_chla_c2_lag,
-  method = "REML", knots = list(week = c(0, 52))
-)
-
-summary(m_gam2_lag1)
-appraise(m_gam2_lag1)
-shapiro.test(residuals(m_gam2_lag1))
-k.check(m_gam2_lag1)
-draw(m_gam2_lag1, select = 1, residuals = TRUE, rug = FALSE)
-plot(m_gam2_lag1, pages = 1, all.terms = TRUE)
-acf(residuals(m_gam2_lag1))
-Box.test(residuals(m_gam2_lag1), lag = 20, type = 'Ljung-Box')
-
-# lag2
-m_gam2_lag2 <- gam(
-  Chla_log ~ (Year_fct + Flow + StationCode)^2 + lag1 + lag2 + s(Week, bs = "cc"), 
-  data = df_chla_c2_lag,
-  method = "REML", knots = list(week = c(0, 52))
-)
-
-summary(m_gam2_lag2)
-appraise(m_gam2_lag2)
-shapiro.test(residuals(m_gam2_lag2))
-k.check(m_gam2_lag2)
-draw(m_gam2_lag2, select = 1, residuals = TRUE, rug = FALSE)
-plot(m_gam2_lag2, pages = 1, all.terms = TRUE)
-acf(residuals(m_gam2_lag2))
-
-Box.test(residuals(m_gam2_lag2), lag = 20, type = 'Ljung-Box')
-
-# compare fit of lag1 and lag2 models from two and three-way interaction models
-AIC(m_gam2_lag1, m_gam2_lag2, m_gam3_lag1, m_gam3_lag2)
 ```
 
-It looks like lag2 model with a two-way interaction has the best fit according to the AIC values. 
+Lets look at the model summary and diagnostics:
 
-Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
+```{r gam flow2 no autocorr diag, warning = FALSE}
+summary(m_gam_flow2)
+appraise(m_gam_flow2)
+shapiro.test(residuals(m_gam_flow2))
+k.check(m_gam_flow2)
+draw(m_gam_flow2, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_flow2, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_flow2))
+Box.test(residuals(m_gam_flow2), lag = 20, type = 'Ljung-Box')
+```
 
-```{r gam2 lag2 obs vs fit, warning = FALSE}
-df_m_gam2_lag2_fit <- df_chla_c2_lag %>% 
+Besides the Shapiro-Wilk normality test showing that the residuals aren't normal, the diagnostic plots look really good. However, the residuals are autocorrelated.
+
+## Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation. We'll run a series of models adding 1 and 2 lag terms and compare how well they correct for autocorrelation.
+
+### Lag 1
+
+```{r gam flow2 lag1, warning = FALSE}
+m_gam_flow2_lag1 <- gam(
+  Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(Week, bs = "cc", k = 5) + lag1, 
+  data = df_chla_c2_lag,
+  method = "REML", 
+  knots = list(week = c(0, 52))
+)
+
+acf(residuals(m_gam_flow2_lag1))
+Box.test(residuals(m_gam_flow2_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+### Lag 2
+
+```{r gam flow2 lag2, warning = FALSE}
+m_gam_flow2_lag2 <- gam(
+  Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(Week, bs = "cc", k = 5) + lag1 + lag2, 
+  data = df_chla_c2_lag,
+  method = "REML", 
+  knots = list(week = c(0, 52))
+)
+
+acf(residuals(m_gam_flow2_lag2))
+Box.test(residuals(m_gam_flow2_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 1 lag term already seems to address the serial autocorrelation, but the lag2 model is even better. Let's use AIC to see how they compare.
+
+### Compare Models
+
+```{r gam flow2 compare}
+AIC(m_gam_flow2, m_gam_flow2_lag1, m_gam_flow2_lag2)
+```
+
+Again, it looks like the lag2 model has the best fit according to the AIC values. Let's take a closer look at that one.
+
+### Lag 2 model summary
+
+```{r gam flow2 lag2 summary and diag, warning = FALSE}
+summary(m_gam_flow2_lag2)
+appraise(m_gam_flow2_lag2)
+shapiro.test(residuals(m_gam_flow2_lag2))
+k.check(m_gam_flow2_lag2)
+draw(m_gam_flow2_lag2, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_flow2_lag2, pages = 1, all.terms = TRUE)
+anova(m_gam_flow2_lag2)
+```
+
+The model diagnostics look pretty good. Note that the 2-way interaction between Year and Flow isn't significant. We'll use `m_gam_flow2_lag2` in the model selection process.
+
+```{r gam flow2 clean up}
+rm(m_gam_flow2, m_gam_flow2_lag1)
+```
+
+# Model 3: GAM Model with 2-way interaction between Station and Year but without Flow
+
+Next we'll try running a GAM using a two-way interaction between Year and Station but not including flow as a predictor.
+
+## Initial Model
+
+```{r gam cat2 no autocorr, warning = FALSE}
+m_gam_cat2 <- gam(
+  Chla_log ~ Year_fct * StationCode + s(Week, bs = "cc", k = 5), 
+  data = df_chla_c2,
+  method = "REML", 
+  knots = list(week = c(0, 52))
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam cat2 no autocorr diag, warning = FALSE}
+summary(m_gam_cat2)
+appraise(m_gam_cat2)
+shapiro.test(residuals(m_gam_cat2))
+k.check(m_gam_cat2)
+draw(m_gam_cat2, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_cat2, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_cat2))
+Box.test(residuals(m_gam_cat2), lag = 20, type = 'Ljung-Box')
+```
+
+Besides the Shapiro-Wilk normality test showing that the residuals aren't normal, the diagnostic plots look really good. However, the residuals are autocorrelated.
+
+## Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation. We'll run a series of models adding 1 and 2 lag terms and compare how well they correct for autocorrelation.
+
+### Lag 1
+
+```{r gam cat2 lag1, warning = FALSE}
+m_gam_cat2_lag1 <- gam(
+  Chla_log ~ Year_fct * StationCode + s(Week, bs = "cc", k = 5) + lag1, 
+  data = df_chla_c2_lag,
+  method = "REML", 
+  knots = list(week = c(0, 52))
+)
+
+acf(residuals(m_gam_cat2_lag1))
+Box.test(residuals(m_gam_cat2_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+### Lag 2
+
+```{r gam cat2 lag2, warning = FALSE}
+m_gam_cat2_lag2 <- gam(
+  Chla_log ~ Year_fct * StationCode + s(Week, bs = "cc", k = 5) + lag1 + lag2, 
+  data = df_chla_c2_lag,
+  method = "REML", 
+  knots = list(week = c(0, 52))
+)
+
+acf(residuals(m_gam_cat2_lag2))
+Box.test(residuals(m_gam_cat2_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 1 lag term already seems to address the serial autocorrelation, but the lag2 model is even better. Let's use AIC to see how they compare.
+
+### Compare Models
+
+```{r gam cat2 compare}
+AIC(m_gam_cat2, m_gam_cat2_lag1, m_gam_cat2_lag2)
+```
+
+Again, it looks like the lag2 model has the best fit according to the AIC values. Let's take a closer look at that one.
+
+### Lag 2 model summary
+
+```{r gam cat2 lag2 summary and diag, warning = FALSE}
+summary(m_gam_cat2_lag2)
+appraise(m_gam_cat2_lag2)
+shapiro.test(residuals(m_gam_cat2_lag2))
+k.check(m_gam_cat2_lag2)
+draw(m_gam_cat2_lag2, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_cat2_lag2, pages = 1, all.terms = TRUE)
+anova(m_gam_cat2_lag2)
+```
+
+The model diagnostics look pretty good but not quite as good as with the initial model. We'll use `m_gam_cat2_lag2` in the model selection process.
+
+```{r gam cat2 clean up}
+rm(m_gam_cat2, m_gam_cat2_lag1)
+```
+
+# Model 4: Linear Model with Flow and 3-way interactions
+
+Let's try the weekly average model as a linear model with a three-way interaction between Year, Weekly Average Flow, and Station but without the smooth term for week number. Initially, we'll run the model without accounting for serial autocorrelation.
+
+## Initial Model
+
+```{r lm flow3 no autocorr}
+m_lm_flow3 <- lm(Chla_log ~ Year_fct * Flow * StationCode, data = df_chla_c2)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r lm flow3 no autocorr diag}
+summary(m_lm_flow3)
+
+df_chla_c2 %>% plot_lm_diag(Chla_log, m_lm_flow3)
+
+shapiro.test(residuals(m_lm_flow3))
+acf(residuals(m_lm_flow3))
+Box.test(residuals(m_lm_flow3), lag = 20, type = 'Ljung-Box')
+```
+
+The residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, model definitely has residual autocorrelation as indicated by the ACF plot and the Box-Ljung test.
+
+## Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation and the non-normal residuals. We'll run a series of linear models adding 1 and 2 lag terms and compare how well they correct for autocorrelation.
+
+### Lag 1
+
+```{r lm flow3 lag1}
+m_lm_flow3_lag1 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1) %>% 
+  lm(Chla_log ~ Year_fct * Flow * StationCode + lag1, data = .)
+
+acf(residuals(m_lm_flow3_lag1))
+Box.test(residuals(m_lm_flow3_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+### Lag 2
+
+```{r lm flow3 lag2}
+m_lm_flow3_lag2 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1, lag2) %>% 
+  lm(Chla_log ~ Year_fct * Flow * StationCode + lag1 + lag2, data = .)
+
+acf(residuals(m_lm_flow3_lag2))
+Box.test(residuals(m_lm_flow3_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 1 lag term already has better ACF and Box-Ljung test results than the initial model. Let's use AIC to see how they compare.
+
+### Compare Models
+
+```{r lm flow3 compare, warning = FALSE}
+AIC(m_lm_flow3, m_lm_flow3_lag1, m_lm_flow3_lag2)
+```
+
+Again, it looks like the lag2 model has the best fit according to the AIC values. Let's take a closer look at that one.
+
+### Lag 2 model summary
+
+```{r lm flow3 lag2 summary and diag}
+summary(m_lm_flow3_lag2)
+
+df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1, lag2) %>% 
+  plot_lm_diag(Chla_log, m_lm_flow3_lag2)
+
+shapiro.test(residuals(m_lm_flow3_lag2))
+
+Anova(m_lm_flow3_lag2, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+```
+
+The model diagnostics look okay, but not as good as with the GAM models. Note that the 3-way interaction between Year, Station, and Flow isn't significant in the ANOVA table. We'll use `m_lm_flow3_lag2` in the model selection process.
+
+```{r lm flow3 clean up}
+rm(m_lm_flow3, m_lm_flow3_lag1)
+```
+
+# Model 5: Linear Model with Flow and 2-way interactions
+
+Let's try a linear model using all two-way interactions between Year, Weekly Average Flow, and Station. Initially, we'll run the model without accounting for serial autocorrelation.
+
+## Initial Model
+
+```{r lm flow2 no autocorr}
+m_lm_flow2 <- lm(Chla_log ~ (Year_fct + Flow + StationCode)^2, data = df_chla_c2)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r lm flow2 no autocorr diag}
+summary(m_lm_flow2)
+
+df_chla_c2 %>% plot_lm_diag(Chla_log, m_lm_flow2)
+
+shapiro.test(residuals(m_lm_flow2))
+acf(residuals(m_lm_flow2))
+Box.test(residuals(m_lm_flow2), lag = 20, type = 'Ljung-Box')
+```
+
+The residuals deviate from a normal distribution according to visual inspection and the Shapiro-Wilk normality test. Also, model definitely has residual autocorrelation as indicated by the ACF plot and the Box-Ljung test.
+
+## Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation and the non-normal residuals. We'll run a series of linear models adding 1 and 2 lag terms and compare how well they correct for autocorrelation.
+
+### Lag 1
+
+```{r lm flow2 lag1}
+m_lm_flow2_lag1 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1) %>% 
+  lm(Chla_log ~ (Year_fct + Flow + StationCode)^2 + lag1, data = .)
+
+acf(residuals(m_lm_flow2_lag1))
+Box.test(residuals(m_lm_flow2_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+### Lag 2
+
+```{r lm flow2 lag2}
+m_lm_flow2_lag2 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1, lag2) %>% 
+  lm(Chla_log ~ (Year_fct + Flow + StationCode)^2 + lag1 + lag2, data = .)
+
+acf(residuals(m_lm_flow2_lag2))
+Box.test(residuals(m_lm_flow2_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 2 lag terms seems to be okay in terms of serial autocorrelation. Let's use AIC to see how they compare.
+
+### Compare Models
+
+```{r lm flow2 compare, warning = FALSE}
+AIC(m_lm_flow2, m_lm_flow2_lag1, m_lm_flow2_lag2)
+```
+
+Again, it looks like the lag2 model has the best fit according to the AIC values. Let's take a closer look at that one.
+
+### Lag 2 model summary
+
+```{r lm flow2 lag2 summary and diag}
+summary(m_lm_flow2_lag2)
+
+df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1, lag2) %>% 
+  plot_lm_diag(Chla_log, m_lm_flow2_lag2)
+
+shapiro.test(residuals(m_lm_flow2_lag2))
+
+Anova(m_lm_flow2_lag2, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+```
+
+The model diagnostics look somewhat worse than those for the 3-way interaction model. Note that the 2-way interaction between Year and Flow isn't significant. We'll use `m_lm_flow2_lag2` in the model selection process.
+
+```{r lm flow2 clean up}
+rm(m_lm_flow2, m_lm_flow2_lag1)
+```
+
+# Model 6: Linear Model with 2-way interaction between Station and Year but without Flow
+
+We'll try running a linear model using a two-way interaction between Year and Station but not including flow as a predictor. Initially, we'll run the model without accounting for serial autocorrelation.
+
+## Initial Model
+
+```{r lm cat2 no autocorr}
+m_lm_cat2 <- lm(Chla_log ~ Year_fct * StationCode, data = df_chla_c2)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r lm cat2 no autocorr diag}
+summary(m_lm_cat2)
+
+df_chla_c2 %>% plot_lm_diag(Chla_log, m_lm_cat2)
+
+shapiro.test(residuals(m_lm_cat2))
+acf(residuals(m_lm_cat2))
+Box.test(residuals(m_lm_cat2), lag = 20, type = 'Ljung-Box')
+```
+
+Besides the Shapiro-Wilk normality test showing that the residuals aren't normal, the diagnostic plots look pretty good. However, the residuals are autocorrelated.
+
+## Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation and the non-normal residuals. We'll run a series of linear models adding 1 and 2 lag terms and compare how well they correct for autocorrelation.
+
+### Lag 1
+
+```{r lm cat2 lag1}
+m_lm_cat2_lag1 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1) %>% 
+  lm(Chla_log ~ Year_fct * StationCode + lag1, data = .)
+
+acf(residuals(m_lm_cat2_lag1))
+Box.test(residuals(m_lm_cat2_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+### Lag 2
+
+```{r lm cat2 lag2}
+m_lm_cat2_lag2 <- df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1, lag2) %>% 
+  lm(Chla_log ~ Year_fct * StationCode + lag1 + lag2, data = .)
+
+acf(residuals(m_lm_cat2_lag2))
+Box.test(residuals(m_lm_cat2_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 2 lag terms seems to be okay in terms of serial autocorrelation. Let's use AIC to see how they compare.
+
+### Compare Models
+
+```{r lm cat2 compare, warning = FALSE}
+AIC(m_lm_cat2, m_lm_cat2_lag1, m_lm_cat2_lag2)
+```
+
+Again, it looks like the lag2 model has the best fit according to the AIC values. Let's take a closer look at that one.
+
+### Lag 2 model summary
+
+```{r lm cat2 lag2 summary and diag}
+summary(m_lm_cat2_lag2)
+
+df_chla_c2_lag %>% 
+  drop_na(Chla_log, lag1, lag2) %>% 
+  plot_lm_diag(Chla_log, m_lm_cat2_lag2)
+
+shapiro.test(residuals(m_lm_cat2_lag2))
+
+Anova(m_lm_cat2_lag2, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+```
+
+The model diagnostics don't look that great. However, we'll use `m_lm_cat2_lag2` in the model selection process.
+
+```{r lm cat2 clean up}
+rm(m_lm_cat2, m_lm_cat2_lag1)
+```
+
+# Model 7: GAM model using smooths for Flow
+
+Finally, we'll try running a GAM model using smooths for weekly average flow by Station and Year and a smooth term for week number to account for seasonality. Initially, we'll run the model without accounting for serial autocorrelation.
+
+## Initial Model
+
+```{r gam sflow no autocorr, warning = FALSE}
+m_gam_sflow <- gam(
+  Chla_log ~ s(Flow, by = StationCode) + s(Flow, by = Year_fct) + Year_fct * StationCode + s(Week, bs = "cc", k = 5),
+  data = df_chla_c2,
+  method = "REML",
+  knots = list(week = c(0, 52))
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam sflow no autocorr diag, warning = FALSE}
+summary(m_gam_sflow)
+appraise(m_gam_sflow)
+shapiro.test(residuals(m_gam_sflow))
+k.check(m_gam_sflow)
+concurvity(m_gam_sflow, full = FALSE)$worst
+draw(m_gam_sflow, select = 10, residuals = TRUE, rug = FALSE)
+plot(m_gam_sflow, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_sflow))
+Box.test(residuals(m_gam_sflow), lag = 20, type = 'Ljung-Box')
+```
+
+The diagnostic plots look really good. However, the residuals are autocorrelated.
+
+## Model with lag terms
+
+Now, we'll try to deal with the residual autocorrelation. We'll run a series of models adding 1 and 2 lag terms and compare how well they correct for autocorrelation.
+
+### Lag 1
+
+```{r gam sflow lag1, warning = FALSE}
+m_gam_sflow_lag1 <- gam(
+  Chla_log ~ s(Flow, by = StationCode) + s(Flow, by = Year_fct) + Year_fct * StationCode + s(Week, bs = "cc", k = 5) + lag1, 
+  data = df_chla_c2_lag,
+  method = "REML", 
+  knots = list(week = c(0, 52))
+)
+
+acf(residuals(m_gam_sflow_lag1))
+Box.test(residuals(m_gam_sflow_lag1), lag = 20, type = 'Ljung-Box')
+```
+
+### Lag 2
+
+```{r gam sflow lag2, warning = FALSE}
+m_gam_sflow_lag2 <- gam(
+  Chla_log ~ s(Flow, by = StationCode) + s(Flow, by = Year_fct) + Year_fct * StationCode + s(Week, bs = "cc", k = 5) + lag1 + lag2, 
+  data = df_chla_c2_lag,
+  method = "REML", 
+  knots = list(week = c(0, 52))
+)
+
+acf(residuals(m_gam_sflow_lag2))
+Box.test(residuals(m_gam_sflow_lag2), lag = 20, type = 'Ljung-Box')
+```
+
+The model with 2 lag terms seems to be okay in terms of serial autocorrelation. Let's use AIC to see how they compare.
+
+### Compare Models
+
+```{r gam sflow compare}
+AIC(m_gam_sflow, m_gam_sflow_lag1, m_gam_sflow_lag2)
+```
+
+It looks like the lag2 model has the best fit according to the AIC values. Let's take a closer look at that one.
+
+### Lag 2 model summary
+
+```{r gam sflow lag2 summary and diag, warning = FALSE}
+summary(m_gam_sflow_lag2)
+appraise(m_gam_sflow_lag2)
+shapiro.test(residuals(m_gam_sflow_lag2))
+k.check(m_gam_sflow_lag2)
+concurvity(m_gam_sflow_lag2, full = FALSE)$worst
+draw(m_gam_sflow_lag2, select = 1:4, residuals = TRUE, rug = FALSE)
+draw(m_gam_sflow_lag2, select = 5:9, residuals = TRUE, rug = FALSE)
+draw(m_gam_sflow_lag2, select = 10, residuals = TRUE, rug = FALSE)
+anova(m_gam_sflow_lag2)
+```
+
+The model diagnostics look a little worse than with the initial model but they still look pretty good. Note that the approximate significance of all smooth terms are greater than 0.05 except for the s(Week) term. We'll use `m_gam_sflow_lag2` in the model selection process.
+
+```{r gam sflow clean up}
+rm(m_gam_sflow, m_gam_sflow_lag1)
+```
+
+# Model selection
+
+Now we'll compare the seven candidate models with AIC to select the one with the best fit. As a summary, here are the 7 models we are comparing:
+
+* Model 1 - `m_gam_flow3_lag2` - GAM 3-way interactions with s(Week) <br>
+Formula: `r deparse1(m_gam_flow3_lag2$formula)` <br><br>
+* Model 2 - `m_gam_flow2_lag2` - GAM 2-way interactions with s(Week) <br>
+Formula: `r deparse1(m_gam_flow2_lag2$formula)` <br><br>
+* Model 3 - `m_gam_cat2_lag2` - GAM 2-way interaction between Station and Year with s(Week) but without Flow <br>
+Formula: `r deparse1(m_gam_cat2_lag2$formula)` <br><br>
+* Model 4 - `m_lm_flow3_lag2` - LM 3-way interactions without seasonal term <br>
+Formula: `r deparse1(m_lm_flow3_lag2$call) %>% str_sub(start = 14, end = -12)` <br><br>
+* Model 5 - `m_lm_flow2_lag2` - LM 2-way interactions without seasonal term <br>
+Formula: `r deparse1(m_lm_flow2_lag2$call) %>% str_sub(start = 14, end = -12)` <br><br>
+* Model 6 - `m_lm_cat2_lag2` - LM 2-way interaction between Station and Year but without Flow and seasonal term <br>
+Formula: `r deparse1(m_lm_cat2_lag2$call) %>% str_sub(start = 14, end = -12)` <br><br>
+* Model 7 - `m_gam_sflow_lag2` - GAM using smooths for Flow with s(Week) <br>
+Formula: `r deparse1(m_gam_sflow_lag2$formula)` <br>
+
+```{r model selection}
+# AIC values
+df_m_aic <- 
+  AIC(
+    m_gam_flow3_lag2,
+    m_gam_flow2_lag2,
+    m_gam_cat2_lag2,
+    m_lm_flow3_lag2,
+    m_lm_flow2_lag2,
+    m_lm_cat2_lag2,
+    m_gam_sflow_lag2
+  ) %>% 
+  as_tibble(rownames = "Model")
+
+# BIC values
+df_m_bic <- 
+  BIC(
+    m_gam_flow3_lag2,
+    m_gam_flow2_lag2,
+    m_gam_cat2_lag2,
+    m_lm_flow3_lag2,
+    m_lm_flow2_lag2,
+    m_lm_cat2_lag2,
+    m_gam_sflow_lag2
+  ) %>% 
+  as_tibble(rownames = "Model")
+
+# Combine AIC and BIC and calculate differences from lowest value
+df_m_aic_bic <- 
+  left_join(df_m_aic, df_m_bic, by = join_by(Model, df)) %>% 
+  mutate(across(c(AIC, BIC), ~ .x - min(.x), .names = "{.col}_delta")) %>% 
+  select(Model, df, starts_with("AIC"), starts_with("BIC"))
+
+# Sort by AIC
+df_m_aic_bic %>% arrange(AIC)
+```
+
+According to AIC, model 7 (GAM using smooths for Flow with s(Week)) was the model with the best fit. BIC preferred model 3 (GAM 2-way interaction between Station and Year with s(Week) but without Flow) with model 7 coming in close second place. Before we proceed with model 7, let's revisit the model diagnostics and take a closer look at how the back-transformed fitted values from the model match the observed values.
+
+## Model 7 diagnostics
+
+```{r gam sflow lag2 diag revist, warning = FALSE}
+appraise(m_gam_sflow_lag2)
+shapiro.test(residuals(m_gam_sflow_lag2))
+k.check(m_gam_sflow_lag2)
+draw(m_gam_sflow_lag2, select = 1:4, residuals = TRUE, rug = FALSE)
+draw(m_gam_sflow_lag2, select = 5:9, residuals = TRUE, rug = FALSE)
+draw(m_gam_sflow_lag2, select = 10, residuals = TRUE, rug = FALSE)
+anova(m_gam_sflow_lag2)
+```
+
+## Model 7 observed vs fitted values
+
+```{r gam sflow lag2 obs vs fit, warning = FALSE}
+df_m_gam_sflow_lag2_fit <- df_chla_c2_lag %>% 
   drop_na(lag1, lag2) %>% 
-  fitted_values(m_gam2_lag2, data = .) %>% 
+  fitted_values(m_gam_sflow_lag2, data = .) %>% 
   mutate(fitted_bt = exp(fitted) / 1000)
 
-plt_m_gam2_lag2_fit <- df_m_gam2_lag2_fit %>% 
+plt_m_gam_sflow_lag2_fit <- df_m_gam_sflow_lag2_fit %>% 
   ggplot(aes(x = fitted_bt, y = Chla)) +
   geom_point() +
   geom_abline(slope = 1, intercept = 0, color = "red") +
@@ -348,19 +858,29 @@ plt_m_gam2_lag2_fit <- df_m_gam2_lag2_fit %>%
     y = "Observed Values"
   )
 
-plt_m_gam2_lag2_fit
+plt_m_gam_sflow_lag2_fit
 ```
 
-Let's look at each Station-Year combination separately.
+Let's group by station.
 
-```{r gam2 lag2 obs vs fit facet sta yr, fig.height = 8, fig.width = 8.5}
-plt_m_gam2_lag2_fit +
-  facet_wrap(
-    vars(StationCode, Year_fct),
-    ncol = 5,
-    scales = "free",
-    labeller = labeller(.multi_line = FALSE)
-  )
+```{r gam sflow lag2 obs vs fit facet sta}
+plt_m_gam_sflow_lag2_fit + facet_wrap(vars(StationCode), scales = "free")
 ```
 
-Everything looks pretty decent from lag 2 two-way interaction model. Not perfect, but pretty good given the number of data points. Let's compare to a two-way interaction model with a smooth term for flow.
+Now, group by year.
+
+```{r gam sflow lag2 obs vs fit facet yr}
+plt_m_gam_sflow_lag2_fit + facet_wrap(vars(Year_fct), scales = "free")
+```
+
+Everything looks pretty decent with this model. Not perfect, but pretty good given the number of data points. Note that variability does increase as the chlorophyll values increase. We'll select model 7 as our final model for our analysis.
+
+## Export AIC table
+
+```{r export aic table}
+df_m_aic_bic %>% 
+  arrange(AIC) %>% 
+  mutate(across(where(is.numeric), ~ paste0(formatC(.x, digits = 1, format = "f"), "##"))) %>% 
+  write_csv(here("manuscript_synthesis/results/tables/chl_aic_weekly_models.csv"))
+```
+
