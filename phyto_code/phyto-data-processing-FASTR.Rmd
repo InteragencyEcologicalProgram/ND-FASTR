@@ -15,14 +15,8 @@ suppressWarnings(suppressMessages(library(vegan)))
 suppressWarnings(suppressMessages(library(janitor)))
 suppressWarnings(suppressMessages(library(here)))
 
-# Set plot output directory 
-plots <- here("phyto-final","plots")
-
 # Set visual theme in ggplot
 theme_set(theme_bw())
-
-# Clean workspace
-rm(list=ls()) 
 
 ```
 
@@ -242,7 +236,12 @@ df_phyto <- df_phyto %>% rename("TotalCells" = "NumberOfCellsPerUnit")
 # Calculate Unit Density & Biovolume Density
 df_phyto <- df_phyto %>%
   mutate(Units.per.mL = UnitAbundance * Factor) %>%
-  mutate(BV.um3.per.mL= TotalCells * BV.Avg * Factor)
+  mutate(BV.um3.per.mL= TotalCells * BV.Avg * Factor) %>% 
+  mutate(Cells.per.mL = TotalCells * Factor) 
+
+# Remove columns used for density calcs
+# Remove Biovolume Columns
+df_phyto <- df_phyto %>% select(!(c(Factor,UnitAbundance:TotalCells)))
 
 # Add column for year and month for highlighting data
 df_phyto <- df_phyto %>% 
@@ -260,9 +259,11 @@ df_phyto <- df_phyto %>%
 # Convert years to factors for plotting
 df_phyto$Year <- as.factor(df_phyto$Year)
 
+# 
+
 ```
 
-## Clean Data
+## Clean Combined Data
 
 ```{r data cleaning, echo = FALSE}
 # Fix EMP site names
@@ -320,7 +321,8 @@ df_phyto$Genus <- gsub("cf Chlorella","Chlorella",df_phyto$Genus)
 # Add Taxonomy Data-------------------------------------------------------------
 
 # Read in CSV with manually-added WoRMS classification
-df_taxa <- read_csv(here("phyto-final","CSVs","phyto_group_classification.csv"))
+df_taxa <- read_csv(here("phyto-final","CSVs","phyto_group_classification.csv"),
+                    show_col_types = FALSE)
 
 df_phyto <- left_join(df_phyto, df_taxa)
 
@@ -328,8 +330,628 @@ df_phyto <- left_join(df_phyto, df_taxa)
 sum(is.na(df_phyto$Group)) # none missing 
 rm(df_taxa)
 
+# Reorder Group classification column
+df_phyto <- df_phyto %>% 
+  relocate(Group, .before = Taxon)
+
+
+
+```
+
+## Analyze FASTR Biovolume Data for Outliers
+
+```{r outlier analysis}
+
+# Subset combined dataset to FASTR-only
+df_phyto_FASTR <- df_phyto %>% 
+  filter(Study == "FASTR")
+
+# Identify if outliers are present
+boxplot(df_phyto_FASTR$BV.um3.per.mL)
+
+# Identify 0.1% and 99.9% percentiles of the data
+quartiles <- quantile(df_phyto_FASTR$BV.um3.per.mL, 
+                      probs=c(0.001, 0.999), 
+                      na.rm = TRUE)
+
+# List upper cutoff (99.9%)
+cutoff <- quartiles[2]
+
+# Filter FASTR dataset to show all taxa above this 99.9% cutoff
+df_outliers <- df_phyto_FASTR %>% 
+  filter(BV.um3.per.mL > cutoff)
+
+list(df_outliers) ## 4 of top 6 are Spirogyra. 
+
+df_phyto_FASTR %>% filter(Genus == "Spirogyra")# Only 5 total samples w/ Spirogyra
+
+# Decision: Remove Spirogyra from datasets
+# 4/5 are above 99.9% cutoff, 5th is also highly abundant
+# These are benthic algae that clump, more likely to be "bullseye" samples
+# that got a big blob or clump
+
+# Remove Spirogyra from FASTR and combined dataset
+df_phyto_FASTR <- df_phyto_FASTR %>% 
+  filter(Genus != "Spirogyra")
+
+df_phyto <- df_phyto %>% 
+  filter(Genus != "Spirogyra")
+
+## Remove 2013 data from FASTR dataset (very limited)
+df_phyto_FASTR <- df_phyto_FASTR %>% filter(Year != 2013)
+
+```
+
+## Estimate Phytoplankton Biomass
+
+```{r biomass calcs}
+
+# Convert biovolume to biomass using relationships from Menden-Deuer and Lussard
+# (2000) doi: 10.4319/lo.2000.45.3.0569
+# Only relevant to group-level data
+# Units of BV.Density are um^3 per mL
+
+# Calculate Biomass (pg-C per cell) from Biovolume (um^3 per cell)
+df_phyto_FASTR <- df_phyto_FASTR %>% 
+  mutate(Biomass.pg.C = case_when(Group == "Diatoms" ~ 0.288 * (BV.Avg^0.811), 
+                                  Group != "Diatoms" ~ 0.216 * (BV.Avg^0.939)))
+
+# Convert pg to ug (ug-C per L)
+df_phyto_FASTR <- df_phyto_FASTR %>% 
+  mutate(Biomass.ug.C = Biomass.pg.C / 10^6, .keep = "unused")
+
+# Calculate Biomass Density (pg-C per mL)
+df_phyto_FASTR <- df_phyto_FASTR %>% 
+  mutate(BM.ug.per.mL = Biomass.ug.C * Cells.per.mL)
+
+
+
+```
+
+## Add FASTR-Specific Metadata
+
+```{r FASTR metadata}
+
+# Import Stations listed as Upstream and Downstream
+df_region <- read_csv(here("phyto-final","CSVs","upstream_downstream_stations.csv"),
+                      show_col_types = FALSE)
+
+df_region <- df_region %>% 
+  rename("Region" = "UpDown") %>%
+  rename("StationCode" = "Site")
+
+df_region$Region <- factor(df_region$Region, 
+                           levels = c("Upstream","Downstream"))
+
+## Add Region to data frames
+df_phyto_FASTR <- left_join(df_phyto_FASTR, df_region)
+
+df_phyto_FASTR <- df_phyto_FASTR %>% 
+  relocate(Region, .after = StationCode)
+
+# Cat Pien's Code for Merging Flow Designations #####
+# 
+# FlowDesignation <- read_csv("FlowDatesDesignations.csv")
+# Update with 45 days limit on either end
+# Update 5/27/22 TF added >= to two of the mutate commands to avoid removing 
+# samples falling on the PreFlowEnd and PostFlowStart dates. 
+
+# Upload flow dates and categories
+df_flow_designation <- read_csv(here("phyto-final","CSVs","FlowDatesDesignations_45days.csv"),
+                                show_col_types = FALSE)
+
+df_flow_designation$Year <- as.factor(df_flow_designation$Year)
+
+# Format dates as dates
+df_flow_designation$PreFlowStart <- mdy(df_flow_designation$PreFlowStart)
+df_flow_designation$PreFlowEnd <- mdy(df_flow_designation$PreFlowEnd)
+df_flow_designation$PostFlowStart <- mdy(df_flow_designation$PostFlowStart)
+df_flow_designation$PostFlowEnd <- mdy(df_flow_designation$PostFlowEnd)
+
+# Remove column with net flow days
+df_flow_designation <- df_flow_designation %>% 
+  select(!(NetFlowDays))
+
+# Save file for use in making plots
+# save(FlowDesignation, file = "RData/FlowDesignation.RData")
+
+# Merge data from FlowDesignation Table (Water Year Type, Flow days and type)
+df_phyto_FASTR <- inner_join(df_phyto_FASTR, df_flow_designation, 
+                             by = "Year")   
+
+# Filter only Pre-During-Post Flow Action Data. 
+df_phyto_FASTR <- df_phyto_FASTR %>%
+  mutate(ActionPhase = ifelse(DateTime > PreFlowStart & DateTime < PreFlowEnd, "Before", NA)) %>%
+  mutate(ActionPhase = replace(ActionPhase, DateTime >= PreFlowEnd & DateTime < PostFlowStart, "During")) %>% 
+  mutate(ActionPhase = replace(ActionPhase, DateTime >= PostFlowStart & DateTime < PostFlowEnd, "After")) %>% 
+  filter(!is.na(ActionPhase)) %>%
+  select(-c(PreFlowStart:PostFlowEnd))
+
+# Order the new ActionPhase so that it plots in the order Pre < During < Post
+phase.order <- c("Before","During","After")
+df_phyto_FASTR$ActionPhase <- factor(as.character(df_phyto_FASTR$ActionPhase), 
+                                     levels = phase.order)
+
+## Add in Flow Pulse Category Data
+df_pulse_category <- read_csv(here("phyto-final","CSVs","FlowPulseType.csv"),
+                              show_col_types = FALSE)
+
+df_pulse_category <- df_pulse_category %>% 
+  rename("FlowPulseCategory" = "FlowPulseType")
+
+df_pulse_category$Year <- as.factor(df_pulse_category$Year)
+
+# Add Flow Pulse Category to data frames to be exported
+df_phyto_FASTR <- left_join(df_phyto_FASTR, df_pulse_category,
+                       by = "Year")
+
+# List of stations used for FASTR
+stations <- c("RMB","RCS","RD22","I80","LIS","STTD","BL5","LIB","RYI","RVB")
+
+# Re-order stations from North to South
+df_phyto_FASTR$StationCode <- factor(as.character(df_phyto_FASTR$StationCode),
+                                     levels = stations)
+
+## Relocate metadata columns
+df_phyto_FASTR <- df_phyto_FASTR %>%
+  relocate(FlowPulseCategory, .before = ActionPhase) %>%
+  relocate(WYType:ActionPhase, .before = GALD)
+
 # Save df to use for making plots
 # save(df_phyto, file = "RData/df_phyto.RData")
+
+```
+
+## Create New Data Frames summarizing by Genus and Algal Group
+
+```{r summarize phyto data}
+# Summarize by algal group
+df_phyto_FASTR_grp <- df_phyto_FASTR %>%
+  group_by(Year, Month, Region, ActionPhase, DateTime, StationCode, Group) %>%
+  summarize(across(Units.per.mL:BM.ug.per.mL, ~sum(.x, na.rm = TRUE))) %>%
+  ungroup
+
+## Summarize by genus
+df_phyto_FASTR_gen <- df_phyto_FASTR %>%
+  group_by(Year, Month, Region, ActionPhase, DateTime, StationCode, Genus) %>%
+  summarize(across(Units.per.mL:BM.ug.per.mL, ~sum(.x, na.rm = TRUE))) %>%
+  ungroup
+
+## Set group display order
+group.order <- c("Diatoms",
+                 "Cyanobacteria",
+                 "Green Algae",
+                 "Cryptophytes",
+                 "Ciliates",
+                 "Dinoflagellates",
+                 "Golden Algae",
+                 "Other")
+
+df_phyto_FASTR_grp$Group <- factor(as.character(df_phyto_FASTR_grp$Group),
+                                   levels =  group.order)
+
+## Summarize totals
+df_phyto_FASTR_sum <- df_phyto_FASTR %>%
+  group_by(Year, Month, DateTime, StationCode, Region, WYType, FlowPulseType, FlowPulseCategory, ActionPhase) %>%
+  summarize(across(Units.per.mL:BM.ug.per.mL, ~sum(.x, na.rm = TRUE))) %>%
+  rename("Total.Units.per.mL" = "Units.per.mL") %>%
+  rename("Total.Cells.per.mL" = "Cells.per.mL") %>%
+  rename("Total.BV.per.mL" = "BV.um3.per.mL") %>%
+  rename("Total.BM.per.mL" = "BM.ug.per.mL") %>%
+  ungroup
+
+# Separate out data frames by density type and add zeros
+# Biovolume Density + Group
+df_phyto_FASTR_grp_BV <- df_phyto_FASTR_grp %>% 
+  select(Year:Group,BV.um3.per.mL)
+
+# Add zeros for taxa that weren't detected
+temp <- pivot_wider(df_phyto_FASTR_grp_BV, 
+                    names_from = Group,
+                    values_from = BV.um3.per.mL,
+                    values_fill = 0)
+
+df_phyto_FASTR_grp_BV <- pivot_longer(temp,
+                             cols = Cyanobacteria:last_col(),
+                             names_to = "Group",
+                             values_to = "BV.um3.per.mL")
+
+
+
+
+```
+
+## Calculate LCEFA Abundance in FASTR Data
+
+```{r LCEFA calcs}
+## Calculate LCEFA composition based on method in Galloway & Winder (2015) 
+## doi: 10.1371/journal.pone.0130053
+
+df_phyto_FASTR_grp <- df_phyto_FASTR_grp %>% 
+  mutate(LCEFA.per.mL = case_when(Group == 'Diatoms' ~ BM.ug.per.mL*2.77/100,
+                                  Group == 'Cyanobacteria' ~ BM.ug.per.mL*0.02/100,
+                                  Group == 'Green Algae' ~ BM.ug.per.mL*0.52/100,
+                                  Group == 'Cryptophytes' ~ BM.ug.per.mL*2.13/100,
+                                  Group == 'Dinoflagellates' ~ BM.ug.per.mL*3.82/100,
+                                  TRUE ~ 0))
+
+
+```
+
+## Create Plots for Paper
+```{r Total Biovolume Plots}
+
+# Set plot output directory 
+plots <- here("phyto-final","plots")
+
+# Plot Upstream and Downstream Total BV by ActionPhase for each year
+fig1 <- ggplot(data = df_phyto_FASTR_sum, 
+               aes(y = log10(Total.BV.per.mL),
+                   x = Region,
+                   fill = ActionPhase)) +
+  geom_boxplot() 
+
+fig1 +
+  labs(title = "Total Phytoplankton Abundance by Year",
+       y = bquote(Log[10]~'Biovolume Density'~(um^3~mL^-1)), 
+       x = "Sampling Region",
+       fill = "Pulse Period") +
+  facet_wrap(Year ~ ., ncol = 2) +
+  scale_fill_manual(values = c("#4DAF4A",
+                               "#984EA3",
+                               "#A3D0D4"),
+                    labels=c("Before", "During", "After"))
+
+ggsave(path = plots,
+       filename = "fig1_log_phyto_biovolume_by_year_and_AP.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=4,
+       width=6, 
+       dpi="print")
+
+# Plot Total BV by Flow Pulse Type at Each Station
+
+fig2 <- ggplot(data = df_phyto_FASTR_sum, 
+               aes(y= log10(Total.BV.per.mL),
+                   x = FlowPulseCategory,
+                   color = ActionPhase)) +
+  geom_boxplot()
+
+fig2 +
+  labs(title = "Total Phytoplankton Abundance by Flow Pulse Type",
+       y = bquote(Log[10]~'Biovolume Density'~(um^3~mL^-1)), 
+       x = "Flow Pulse Category") +
+  facet_wrap(StationCode ~ ., ncol = 2)
+
+ggsave(path = plots,
+       filename = "fig2_log_phyto_biovolume_by_site_and_pulse_type.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=8,
+       width=6.5, 
+       dpi="print")
+
+# Stacked Bar Charts for Biovolume ---------------------------------------------
+
+# Upstream/Downstream
+fig4 <- ggplot(df_phyto_FASTR_grp_BV, aes(x = ActionPhase,
+                                       y = BV.um3.per.mL,
+                                       fill = Group)) + 
+  geom_bar(position = "stack",  
+           width = 0.6, 
+           stat = "summary", 
+           fun = "mean") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0)) 
+
+fig4 + 
+  labs(x = NULL, 
+       y = bquote('Average Biovolume Density'~(um^3~mL^-1)), 
+       title = paste0("Abundance of Phytoplankton Groups During Flow Pulses")) + 
+  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+  scale_fill_manual(values = c("#E41A1C",
+                               "#377EB8",
+                               "#4DAF4A",
+                               "#984EA3",
+                               "#FF7F00",
+                               "#FFFF33",
+                               "#A65628",
+                               "#F781BF")) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.7)) +
+  facet_grid(Region~Year) # dir = v makes order of station go "north to south"
+
+ggsave(path = plots,
+       filename = paste0("fig4_phyto_group_biovolume_by_year.png"), 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=5,
+       width=7.5, 
+       dpi="print")
+
+```
+
+## Plot Yearly Abundance of Phytoplankton
+
+```{r plot yearly abundance}
+
+## Create biovolume plots for each year
+years <- unique(df_phyto_FASTR_grp_BV$Year) 
+years <- sort(years, decreasing = F, na.last = T)
+
+for (year in years) {
+  df_temp <- df_phyto_FASTR_grp_BV %>%
+    filter(Year == year)
+  
+  biovolume.plot <- ggplot(df_phyto_FASTR_grp_BV, 
+                           aes(x = ActionPhase, 
+                               y = BV.um3.per.mL, 
+                               fill = Group)) +
+    geom_bar(data = subset(df_phyto_FASTR_grp_BV, Year == year), 
+             position = "stack",  
+             width = 0.6, 
+             stat = "summary", 
+             fun = "mean") +
+    theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+    theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+    labs(x = "Pulse Period", 
+         y = bquote('Average Biovolume Density'~(um^3~mL^-1)), 
+         title = paste0("Abundance of Phytoplankton Groups During Flow Pulses - ",year)) 
+  
+  biovolume.plot +
+    scale_fill_manual(values = c("#E41A1C",
+                                 "#377EB8",
+                                 "#4DAF4A",
+                                 "#984EA3",
+                                 "#FF7F00",
+                                 "#FFFF33",
+                                 "#A65628",
+                                 "#F781BF")) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.7)) +
+    facet_wrap(StationCode ~ ., ncol = 5, dir = "h")
+  
+  ggsave(path = plots,
+         filename = paste0("phyto_avg_BV_by_station_",year,".png"), 
+         device = "png",
+         scale=1.0, 
+         units="in",
+         height=3.5,
+         width=7, 
+         dpi="print")
+  
+  rm(df_temp)
+  
+}
+
+```
+
+## Multivariate Calculations 
+
+```{r multivariate calcs}
+
+## Calculate NMDS axes
+## Create Biovolume-only data frame at genus level
+df_phyto_FASTR_gen_BV <- df_phyto_FASTR_gen %>% select(Year:Genus,BV.um3.per.mL)
+
+## Generate NMDS data with metaMDS by each year separately
+
+#df_phyto_FASTR_gen_BV$Year <- as.integer(df_phyto_FASTR_gen_BV$Year)
+
+years <- unique(df_phyto_FASTR_gen_BV$Year) 
+years <- sort(years, decreasing = F, na.last = T)
+
+## Create blank data frame to fill stresses in
+stresses <- data.frame(Year = years, stress = NA)
+ls_dfs <- list()
+
+for (i in 1:length(years)) {
+  genw <- pivot_wider(df_phyto_FASTR_gen_BV, 
+                      names_from = "Genus", 
+                      values_from = "BV.um3.per.mL",
+                      values_fill = 0)
+  
+  genw <- genw %>% filter(Year == years[i])
+  
+  #look at number of observations per station
+  #table(genw$StationCode)
+  
+  # Calculate the nMDS using vegan 
+  # A good rule of thumb: stress < 0.05 provides an excellent representation in reduced dimensions,
+  # < 0.1 is great, < 0.2 is good/ok, and stress < 0.3 provides a poor representation.
+  phyto.NMDS <- metaMDS(
+    comm = genw[c(7:139)],
+    distance = "bray",
+    k = 3,
+    trymax = 500
+    #trace = F,
+    #autotransform = F
+  )
+  
+  stresses$stress[which(stresses$Year == years[i])] <- phyto.NMDS$stress
+  
+  #look at Shepard plot which shows scatter around the regression between the interpoint distances 
+  #in the final configuration (i.e., the distances between each pair of communities) against their 
+  #original dissimilarities.
+  stressplot(phyto.NMDS)
+  
+  # Using the scores function from vegan to extract the site scores and convert to a data.frame
+  data.scores <- as_tibble(scores(phyto.NMDS, display = "sites"))
+  
+  # Combine metadata with NMDS data scores to plot in ggplot
+  meta <- genw %>% select(1:6)
+  meta <- cbind(meta, data.scores)
+  
+  # Read in years as a character otherwise it shows up as a number and gets displayed as a gradient
+  meta$Year <- as.character(meta$Year)
+  
+  ls_dfs[[i]] <- meta
+  
+}
+
+df_phyto_NMDS <- do.call(rbind, ls_dfs)
+
+# Plot NMDS Results
+
+# Create a ggplot2 theme for the NMDS plots
+theme_update(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    plot.background = element_rect(fill = "white", colour = NA),
+    panel.background = element_rect(fill = "white", colour = NA),
+    panel.border = element_rect(fill = NA, colour = "black"),
+    strip.background = element_rect(fill = "gray", colour = "black"),
+    legend.position = "bottom",
+    legend.key = element_rect(fill = "white", colour = NA)
+    )
+
+fig.NMDS.Reg <- ggplot(df_phyto_NMDS,
+                       aes(x = NMDS1, y = NMDS2, color = Region)) +
+  geom_point(size = 3) +
+  stat_ellipse() + 
+  labs(color = "Region",
+       x = NULL,
+       y = NULL)
+
+fig.NMDS.Reg +
+  facet_wrap(Year ~ ., ncol = 3, dir = "h") +
+  scale_color_brewer(palette = "Set1")
+
+ggsave(path = plots,
+       filename = paste0("phyto_NMDS_biovolume_by_reg.png"), 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=4.5,
+       width=5.5, 
+       dpi="print")
+
+# Create plot colored by ActionPhase
+fig.NMDS.AP <- ggplot(df_phyto_NMDS, 
+                      aes(x = NMDS1, y = NMDS2, color = ActionPhase)) +
+  geom_point(size = 3) +
+  stat_ellipse() + 
+  labs(color = "Flow Pulse Period",
+       x = NULL,
+       y = NULL)
+
+fig.NMDS.AP +
+  facet_wrap(Year ~ ., ncol = 3, dir = "h") +
+  scale_color_brewer(palette = "Set1") 
+
+ggsave(path = plots,
+       filename = paste0("phyto_NMDS_biovolume_by_AP.png"), 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=4.5,
+       width=5.5, 
+       dpi="print")
+
+```
+
+## Calculate ANOVAs
+
+```{r anovas}
+
+suppressWarnings(suppressMessages(library(ggpubr)))
+suppressWarnings(suppressMessages(library(car)))
+suppressWarnings(suppressMessages(library(rstatix)))
+suppressWarnings(suppressMessages(library(visreg)))
+suppressWarnings(suppressMessages(library(emmeans)))
+
+## Change Year category to factor
+df_phyto_FASTR_sum$Year <- as.factor(df_phyto_FASTR_sum$Year)
+df_phyto_FASTR_sum$FlowPulseType <- as.factor(df_phyto_FASTR_sum$FlowPulseType)
+
+## Create QQ Plot to check for normality
+ggqqplot(log10(df_phyto_FASTR_sum$Total.BV.per.mL))
+
+## View histogram to check for normality
+hist(log10(df_phyto_FASTR_sum$Total.BV.per.mL))
+
+## Run Shapiro-Wilks test to check whether data is normally distributed
+shapiro.test(log10(df_phyto_FASTR_sum$Total.BV.per.mL))
+
+## Run Levene test to compare variance
+df_phyto_FASTR_sum %>% levene_test(log10(Total.BV.per.mL)~FlowPulseType) # p = 0.901
+df_phyto_FASTR_sum %>% levene_test(log10(Total.BV.per.mL)~Year) # p = 0.980
+df_phyto_FASTR_sum %>% levene_test(log10(Total.BV.per.mL)~Region) # p = 0.0230
+
+## Run 3-way ANOVA
+phyto.sum.aov <- df_phyto_FASTR_sum %>% anova_test(log10(Total.BV.per.mL) ~ Region*Year*ActionPhase)
+phyto.sum.aov
+
+## Rosie Code
+L1 <- lm(log10(Total.BV.per.mL)~ Region*Year + Region*ActionPhase + ActionPhase*Year, 
+         data = df_phyto_FASTR_sum)
+
+summary(L1)
+
+Anova(L1, type = 2)
+
+visreg(L1)
+
+visreg.AP.Region <- visreg(L1, xvar = "ActionPhase", by = "Year", gg = T)
+
+visreg.AP.Region +
+  facet_wrap(Year ~ ., ncol = 3, dir = "h")
+
+ggsave(path = plots,
+       filename = "visreg.AP.Region.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=3.5,
+       width=7, 
+       dpi="print")
+
+visreg(L1, xvar = "Region", by = "Year")
+visreg(L1, xvar = "Region", by = "ActionPhase")
+visreg(L1, xvar = "ActionPhase", by = "Region")
+
+emmeans(L1, pairwise ~ Region:ActionPhase)
+emmeans(L1, pairwise ~ ActionPhase)
+emmeans(L1, pairwise ~ Year:ActionPhase)
+
+detach("package:ggpubr", unload=TRUE)
+detach("package:car", unload=TRUE)
+detach("package:rstatix", unload=TRUE)
+detach("package:visreg", unload=TRUE)
+detach("package:emmeans", unload=TRUE)
+
+```
+
+## PERMANOVA Comparisons
+
+```{r PERMANOVA}
+
+# Calculate PERMANOVA comparisons for phytoplankton communities by Region and Year
+genw <- pivot_wider(df_phyto_FASTR_gen_BV, 
+                    names_from = "Genus", 
+                    values_from = "BV.um3.per.mL",
+                    values_fill = 0)
+
+adon.results <- adonis2(genw[c(7:139)] ~ genw$Region + genw$Year, 
+                        strata = genw$StationCode,
+                        method = "bray",
+                        perm = 999)
+
+adon.results <- adonis2(genw[c(7:139)] ~ genw$Region*genw$ActionPhase + genw$Year*genw$ActionPhase + genw$Region*genw$Year, 
+                        strata = genw$StationCode,
+                        method = "bray",
+                        perm = 999)
+
+dm_phyto_gen <- vegdist(genw[c(7:139)], method = "bray")
+
+bd <- betadisper(dm_phyto_gen, genw$Region)
+
+anova(bd)
+permutest(bd)
 
 ```
 
