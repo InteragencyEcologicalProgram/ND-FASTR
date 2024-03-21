@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 suppressWarnings(suppressMessages(library(tidyverse)))
+suppressWarnings(suppressMessages(library(knitr)))
 suppressWarnings(suppressMessages(library(lubridate)))
 suppressWarnings(suppressMessages(library(RColorBrewer)))
 suppressWarnings(suppressMessages(library(vegan)))
@@ -259,8 +260,6 @@ df_phyto <- df_phyto %>%
 # Convert years to factors for plotting
 df_phyto$Year <- as.factor(df_phyto$Year)
 
-# 
-
 ```
 
 ## Clean Combined Data
@@ -334,8 +333,6 @@ rm(df_taxa)
 df_phyto <- df_phyto %>% 
   relocate(Group, .before = Taxon)
 
-
-
 ```
 
 ## Analyze FASTR Biovolume Data for Outliers
@@ -361,7 +358,9 @@ cutoff <- quartiles[2]
 df_outliers <- df_phyto_FASTR %>% 
   filter(BV.um3.per.mL > cutoff)
 
-list(df_outliers) ## 4 of top 6 are Spirogyra. 
+df_outliers %>% 
+  select(DateTime,Taxon,BV.um3.per.mL) %>% 
+  kable(caption = "Al")## 4 of top 6 are Spirogyra. 
 
 df_phyto_FASTR %>% filter(Genus == "Spirogyra")# Only 5 total samples w/ Spirogyra
 
@@ -382,9 +381,18 @@ df_phyto_FASTR <- df_phyto_FASTR %>% filter(Year != 2013)
 
 ```
 
+## Review Outliers in FASTR Data
+
+```{r spirogyra, echo = FALSE}
+
+
+
+```
+
+
 ## Estimate Phytoplankton Biomass
 
-```{r biomass calcs}
+```{r biomass calcs, echo = FALSE}
 
 # Convert biovolume to biomass using relationships from Menden-Deuer and Lussard
 # (2000) doi: 10.4319/lo.2000.45.3.0569
