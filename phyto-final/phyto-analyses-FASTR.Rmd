@@ -282,6 +282,98 @@ ggsave(path = plots,
 
 ```
 
+## Plot abundance of LCEFA 
+
+```{r LCEFA, echo=FALSE, message=FALSE}
+
+# Separate out data frames by density type and add zeros
+# Biovolume Density + Group
+df_phyto_FASTR_grp_LCEFA <- df_phyto_FASTR_grp %>% 
+  select(Year:Group,LCEFA.per.mL)
+
+# Add zeros for taxa that weren't detected
+temp <- pivot_wider(df_phyto_FASTR_grp_LCEFA, 
+                    names_from = Group,
+                    values_from = LCEFA.per.mL,
+                    values_fill = 0)
+
+#Remove taxa that aren't used for LCEFA calculations
+temp <- temp %>% select(!c("Ciliates","Other","Golden Algae"))
+
+df_phyto_FASTR_grp_LCEFA <- pivot_longer(temp,
+                             cols = Cyanobacteria:last_col(),
+                             names_to = "Group",
+                             values_to = "LCEFA.per.mL")
+
+# Create stacked bar chart for yearly LCEFA abundance by Action Phase
+# and Upstream/Downstream
+fig12 <- ggplot(df_phyto_FASTR_grp_LCEFA, aes(x = ActionPhase,
+                                              y = LCEFA.per.mL,
+                                              fill = Group)) + 
+  geom_bar(position = "stack",  
+           width = 0.6, 
+           stat = "summary", 
+           fun = "mean") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0)) 
+
+fig12 + 
+  labs(x = NULL, 
+       y = bquote('Average LCEFA'~(mu*g~mL^-1)))
+  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+  scale_fill_manual(values = c("#377EB8",
+                               "#4DAF4A",
+                               "#984EA3",
+                               "#FF7F00",
+                               "#A65628")) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.7)) +
+  facet_grid(Region~Year) # dir = v makes order of station go "north to south"
+
+ggsave(path = plots,
+       filename = paste0("fig12_phyto_group_LCEFA_by_year.png"), 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=5,
+       width=7.5, 
+       dpi="print")
+
+# Plot LCEFA at each station before, during and after flow pulses in 2016
+p_LCEFA_by_station <- ggplot(df_phyto_FASTR_grp_LCEFA, 
+                             aes(x = StationCode,
+                                 y = LCEFA.per.mL,
+                                 fill = Group)) + 
+  geom_bar(data = subset(df_phyto_FASTR_grp_LCEFA, Year == "2016"),
+           position = "stack",
+           width = 0.6,
+           stat = "summary",
+           fun = "mean") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0)) 
+
+p_LCEFA_by_station + 
+  labs(x = NULL, 
+       y = bquote('Average LCEFA'~(mu*g~mL^-1))) +
+  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
+  scale_fill_manual(values = c("#377EB8",
+                               "#4DAF4A",
+                               "#984EA3",
+                               "#FF7F00",
+                               "#A65628")) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.7)) +
+  facet_wrap(ActionPhase ~ ., ncol = 1, dir = "v") # dir = v makes order of station go "north to south"
+
+ggsave(path = plots,
+       filename = paste0("phyto_group_LCEFA_2016.png"), 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=5,
+       width=7.5, 
+       dpi="print")
+
+```
+
 
 ## Calculate ANOVAs
 
