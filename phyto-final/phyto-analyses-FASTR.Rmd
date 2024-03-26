@@ -22,6 +22,7 @@ plots <- here("phyto-final","plots")
 ```
 
 ## Import data from Processing Scripts
+
 ```{r import data}
 
 # Read in RData files processed in the data processing Rmd file
@@ -246,6 +247,41 @@ ggsave(path = plots,
        dpi="print")
 
 ```
+
+## Plot Abundance of Cyclotella
+SIMPER analysis showed that the genus Cyclotella was a primary differentiator between the upstream and downstream regions. This code creates a boxplot to look at the differential abundance between each region. 
+
+```{r cyclotella, echo=FALSE, message=FALSE}
+
+# Compare Cyclotella Abundance Upstream and Downstream -------------------------
+
+theme_set(theme_bw())
+
+p_cyc <- ggplot(df_phyto_FASTR_gen_BV,
+                aes(x = Region, 
+                    y = log10(BV.um3.per.mL+1))) +
+  geom_jitter(data = subset(df_phyto_FASTR_gen_BV, Genus == "Cyclotella"),
+              width = 0.1) +
+  geom_boxplot(data = subset(df_phyto_FASTR_gen_BV, Genus == "Cyclotella"),
+              width = 0.1,
+              outlier.shape = NA)
+
+p_cyc +
+  labs(y = bquote(Log[10]~'Biovolume Density'~(um^3~mL^-1)), 
+       x = NULL) +
+  facet_wrap(Year ~ ., ncol = 3)
+
+ggsave(path = plots,
+       filename = "cyclotella_abundance.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=3.5,
+       width=6.5, 
+       dpi="print")
+
+```
+
 
 ## Calculate ANOVAs
 
