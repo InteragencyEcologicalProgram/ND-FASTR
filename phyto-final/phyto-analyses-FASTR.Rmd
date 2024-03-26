@@ -356,7 +356,74 @@ suppressWarnings(suppressMessages(library(sf)))
 suppressWarnings(suppressMessages(library(ggrepel)))
 suppressWarnings(suppressMessages(library(maps)))
 
+# Read EMP Station location data (GPS coordinates)
+df_EMP <- read_csv(here("phyto-final","CSVs","EMP_Stations_All.csv"))
 
+df_EMP$Longitude <- df_EMP$Longitude * -1
+
+# Read region data
+df_regions <- read_csv(here("phyto-final","CSVs","station_regions.csv"))
+
+# Rename header for StationCode & select phyto stations
+df_EMP <- df_EMP %>% 
+  rename("StationCode" = "Station ID") %>%
+  filter(StationType == "Phytoplankton")
+
+df_EMP <- df_EMP %>% select(StationCode:Longitude)
+
+# Combine region data and phyto data
+df_EMP <- left_join(df_EMP, df_regions)
+
+# Select only stations in FASTR report
+df_EMP <- df_EMP %>%
+  filter(!Region %in% c("San Pablo Bay",
+                        "Grizzly and Suisun Bay",
+                        "Entrapment Zone"))
+
+#Import data about city locations
+CA <- map_data("world") %>% filter(subregion=="California")
+cities <- world.cities %>% filter(country.etc=="USA")
+cities$long <- cities$long * -1
+
+## Plot EMP station maps
+plot <- ggplot(WW_Delta) + 
+  geom_sf(fill = "lightblue") + 
+  geom_point(data = df_EMP,
+             aes(x = Longitude,
+                 y = Latitude,
+                 fill = Region,
+                 size = 3),
+             pch = 21,
+             color = "black") +
+  geom_point(data = cities %>% arrange(pop) %>% tail(250),
+             aes(x = long,
+                 y = lat)) +
+  geom_text_repel(data = cities %>% arrange(pop) %>% tail(250), 
+                  aes(x = long,
+                      y = lat, 
+                      label = name)) +
+  ylim(37.65, 38.4) +
+  xlim(122.0, 121.2) +
+  scale_fill_brewer(palette = "Dark2") +
+  theme_bw()
+
+plot + 
+  labs(x = NULL,
+       y = NULL,
+       fill = "Region") +
+  guides(size = "none") +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.position = c(0.25, 0.16))
+
+ggsave(path=plots,
+       filename = "map-EMP-phyto-stations.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=5.5,
+       width=6.5, 
+       dpi="print")
 
 ```
 
