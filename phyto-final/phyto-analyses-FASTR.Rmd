@@ -19,6 +19,13 @@ suppressWarnings(suppressMessages(library(here)))
 # Set location to save plots
 plots <- here("phyto-final","plots")
 
+# Create custom palettes
+color_phyto_grp8 <- c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FF7F00","#FFFF33","#A65628","#F781BF")
+
+color_phyto_grp5 <- c("#377EB8","#4DAF4A","#984EA3","#FF7F00","#A65628")
+
+color_phyto_phase <- c("#4DAF4A","#984EA3","#A3D0D4")
+
 ```
 
 ## Import data from Processing Scripts
@@ -56,10 +63,10 @@ theme_update(
     )
 
 # Plot Upstream and Downstream Total BV by ActionPhase for each year
-p_phyto_BV_boxplot <- ggplot(data = df_phyto_FASTR_sum, 
-               aes(y = log10(Total.BV.per.mL),
-                   x = Region,
-                   fill = ActionPhase)) +
+p_phyto_BV_boxplot <- ggplot(data = df_phyto_FASTR_sum,
+                             aes(y = log10(Total.BV.per.mL),
+                                 x = Region,
+                                 fill = ActionPhase)) +
   geom_boxplot() 
 
 p_phyto_BV_boxplot +
@@ -67,10 +74,7 @@ p_phyto_BV_boxplot +
        x = NULL,
        fill = "Pulse Period") +
   facet_wrap(Year ~ ., ncol = 2) +
-  scale_fill_manual(values = c("#4DAF4A",
-                               "#984EA3",
-                               "#A3D0D4"),
-                    labels=c("Before", "During", "After"))
+  scale_fill_manual(values = color_phyto_phase)
 
 ggsave(path = plots,
        filename = "phyto_BV_by_year_and_AP.png", 
@@ -83,20 +87,17 @@ ggsave(path = plots,
 
 # Plot Total BV by Flow Pulse Type at Each Station
 
-p_phyto_BV_site_phase <- ggplot(data = df_phyto_FASTR_sum, 
-               aes(y= log10(Total.BV.per.mL),
-                   x = FlowPulseCategory,
-                   fill = ActionPhase)) +
+p_phyto_BV_site_phase <- ggplot(data = df_phyto_FASTR_sum,
+                                aes(y= log10(Total.BV.per.mL),
+                                    x = FlowPulseCategory,
+                                    fill = ActionPhase)) +
   geom_boxplot()
 
 p_phyto_BV_site_phase +
   labs(y = bquote(Log[10]~'Biovolume Density'~(mu*m^3~mL^-1)), 
        x = NULL) +
   facet_wrap(StationCode ~ ., ncol = 2) +
-  scale_fill_manual(values = c("#4DAF4A",
-                               "#984EA3",
-                               "#A3D0D4"),
-                    labels=c("Before", "During", "After"))
+  scale_fill_manual(values = color_phyto_phase)
 
 ggsave(path = plots,
        filename = "phyto_BV_by_site_and_phase.png", 
@@ -110,9 +111,10 @@ ggsave(path = plots,
 # Stacked Bar Charts for Biovolume ---------------------------------------------
 
 # Upstream/Downstream
-p_phyto_grp_BV_by_year <- ggplot(df_phyto_FASTR_grp_BV, aes(x = ActionPhase,
-                                          y = BV.um3.per.mL,
-                                          fill = Group)) + 
+p_phyto_grp_BV_by_year <- ggplot(df_phyto_FASTR_grp_BV, 
+                                 aes(x = ActionPhase,
+                                     y = BV.um3.per.mL,
+                                     fill = Group)) + 
   geom_bar(position = "stack",  
            width = 0.6, 
            stat = "summary", 
@@ -122,18 +124,9 @@ p_phyto_grp_BV_by_year <- ggplot(df_phyto_FASTR_grp_BV, aes(x = ActionPhase,
 p_phyto_grp_BV_by_year + 
   labs(x = NULL, 
        y = bquote('Average Biovolume Density'~(mu*m^3~mL^-1))) + 
-  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
-  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
-  scale_fill_manual(values = c("#E41A1C",
-                               "#377EB8",
-                               "#4DAF4A",
-                               "#984EA3",
-                               "#FF7F00",
-                               "#FFFF33",
-                               "#A65628",
-                               "#F781BF")) +
+  scale_fill_manual(values = color_phyto_grp8) +
   theme(axis.text.x = element_text(angle = 45, vjust = 0.7)) +
-  facet_grid(Region~Year) # dir = v makes order of station go "north to south"
+  facet_grid(Region~Year) 
 
 ggsave(path = plots,
        filename = "phyto_grp_BV_by_year.png", 
@@ -150,9 +143,7 @@ ggsave(path = plots,
 
 ```{r plot yearly abundance}
 
-color_phyto_grp8 <- c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FF7F00","#FFFF33","#A65628","#F781BF")
-
-## Create biovolume plots for each year
+# Create biovolume plots for each year
 years <- unique(df_phyto_FASTR_grp_BV$Year) 
 years <- sort(years, decreasing = F, na.last = T)
 
@@ -327,9 +318,6 @@ theme_update(
     legend.key = element_rect(fill = "white", colour = NA),
     axis.text.x = element_text(angle = 45, vjust = 0.7)
     )
-
-# Set colors for LCEFA plots
-color_phyto_grp5 <- c("#377EB8","#4DAF4A","#984EA3","#FF7F00","#A65628")
 
 # Separate out data frames by density type and add zeros
 # Biovolume Density + Group
@@ -538,6 +526,42 @@ ggsave(path = plots,
        width=6.5, 
        dpi="print")
 
+```
+
+## Plot Biovolume (per cell) of Aulacoseira 
+```{r aul BV, echo=FALSE, message=FALSE}
+
+# Select only data with Aulacoseira and Biovolume-per-cell data
+df_Aul_vol <- df_phyto %>% 
+  select(DateTime:Study,Taxon:Genus,BV.Avg) %>% 
+  filter(Genus == "Aulacoseira")
+
+# Combine data to genus level
+df_Aul_vol <- df_Aul_vol %>%
+  group_by(Year, Month, Region, DateTime, StationCode, Genus) %>%
+  summarize(Mean.BV = mean(BV.Avg)) %>%
+  ungroup
+
+# 
+# Plot EMP and FASTR samples from 2016 only by pulse period, facet by Region
+ggplot(df_Aul_vol, aes(x = Year, y = BV.Avg)) +
+  geom_jitter(width = 0.1,
+              size = 2,
+              pch = 21, 
+              color = "black",
+              fill = "darkgreen") +
+  labs(x = NULL,
+       y = bquote('Biovolume'~(mu*m^3~per~cell))) +
+  facet_wrap(Region ~ ., ncol = 3)
+
+ggsave(path = plots,
+       filename = "aul_volume.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=4,
+       width=6.5, 
+       dpi="print")
 ```
 
 
