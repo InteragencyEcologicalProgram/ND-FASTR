@@ -33,23 +33,38 @@ load(file = here("phyto-final","RData","df_phyto_FASTR_gen_BV.RData"))
 load(file = here("phyto-final","RData","df_phyto_FASTR_grp.RData"))
 load(file = here("phyto-final","RData","df_phyto_FASTR_grp_BV.RData"))
 load(file = here("phyto-final","RData","df_phyto_NMDS.RData"))
+load(file = here("phyto-final","RData","df_phyto_FASTR_top_taxa_BV.RData"))
 
 ```
 
 ## Create Plots for Paper
 ```{r Total Biovolume Plots, echo=FALSE, message=FALSE}
 
+# Use the black-and-white theme
+theme_set(theme_bw())
+
+# Set the theme
+theme_update(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.background = element_rect(fill = "white", colour = NA),
+    panel.background = element_rect(fill = "white", colour = NA),
+    panel.border = element_rect(fill = NA, colour = "black"),
+    strip.background = element_rect(fill = "gray", colour = "black"),
+    legend.position = "right",
+    legend.key = element_rect(fill = "white", colour = NA)
+    )
+
 # Plot Upstream and Downstream Total BV by ActionPhase for each year
-fig1 <- ggplot(data = df_phyto_FASTR_sum, 
+p_phyto_BV_boxplot <- ggplot(data = df_phyto_FASTR_sum, 
                aes(y = log10(Total.BV.per.mL),
                    x = Region,
                    fill = ActionPhase)) +
   geom_boxplot() 
 
-fig1 +
-  labs(title = "Total Phytoplankton Abundance by Year",
-       y = bquote(Log[10]~'Biovolume Density'~(um^3~mL^-1)), 
-       x = "Sampling Region",
+p_phyto_BV_boxplot +
+  labs(y = bquote(Log[10]~'Biovolume Density'~(mu*m^3~mL^-1)), 
+       x = NULL,
        fill = "Pulse Period") +
   facet_wrap(Year ~ ., ncol = 2) +
   scale_fill_manual(values = c("#4DAF4A",
@@ -58,7 +73,7 @@ fig1 +
                     labels=c("Before", "During", "After"))
 
 ggsave(path = plots,
-       filename = "fig1_log_phyto_biovolume_by_year_and_AP.png", 
+       filename = "phyto_BV_by_year_and_AP.png", 
        device = "png",
        scale=1.0, 
        units="in",
@@ -68,20 +83,23 @@ ggsave(path = plots,
 
 # Plot Total BV by Flow Pulse Type at Each Station
 
-fig2 <- ggplot(data = df_phyto_FASTR_sum, 
+p_phyto_BV_site_phase <- ggplot(data = df_phyto_FASTR_sum, 
                aes(y= log10(Total.BV.per.mL),
                    x = FlowPulseCategory,
-                   color = ActionPhase)) +
+                   fill = ActionPhase)) +
   geom_boxplot()
 
-fig2 +
-  labs(title = "Total Phytoplankton Abundance by Flow Pulse Type",
-       y = bquote(Log[10]~'Biovolume Density'~(um^3~mL^-1)), 
-       x = "Flow Pulse Category") +
-  facet_wrap(StationCode ~ ., ncol = 2)
+p_phyto_BV_site_phase +
+  labs(y = bquote(Log[10]~'Biovolume Density'~(mu*m^3~mL^-1)), 
+       x = NULL) +
+  facet_wrap(StationCode ~ ., ncol = 2) +
+  scale_fill_manual(values = c("#4DAF4A",
+                               "#984EA3",
+                               "#A3D0D4"),
+                    labels=c("Before", "During", "After"))
 
 ggsave(path = plots,
-       filename = "fig2_log_phyto_biovolume_by_site_and_pulse_type.png", 
+       filename = "phyto_BV_by_site_and_phase.png", 
        device = "png",
        scale=1.0, 
        units="in",
@@ -92,19 +110,18 @@ ggsave(path = plots,
 # Stacked Bar Charts for Biovolume ---------------------------------------------
 
 # Upstream/Downstream
-fig4 <- ggplot(df_phyto_FASTR_grp_BV, aes(x = ActionPhase,
-                                       y = BV.um3.per.mL,
-                                       fill = Group)) + 
+p_phyto_grp_BV_by_year <- ggplot(df_phyto_FASTR_grp_BV, aes(x = ActionPhase,
+                                          y = BV.um3.per.mL,
+                                          fill = Group)) + 
   geom_bar(position = "stack",  
            width = 0.6, 
            stat = "summary", 
            fun = "mean") +
   theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0)) 
 
-fig4 + 
+p_phyto_grp_BV_by_year + 
   labs(x = NULL, 
-       y = bquote('Average Biovolume Density'~(um^3~mL^-1)), 
-       title = paste0("Abundance of Phytoplankton Groups During Flow Pulses")) + 
+       y = bquote('Average Biovolume Density'~(mu*m^3~mL^-1))) + 
   theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
   theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
   scale_fill_manual(values = c("#E41A1C",
@@ -119,7 +136,7 @@ fig4 +
   facet_grid(Region~Year) # dir = v makes order of station go "north to south"
 
 ggsave(path = plots,
-       filename = paste0("fig4_phyto_group_biovolume_by_year.png"), 
+       filename = "phyto_grp_BV_by_year.png", 
        device = "png",
        scale=1.0, 
        units="in",
@@ -132,6 +149,8 @@ ggsave(path = plots,
 ## Plot Yearly Abundance of Phytoplankton
 
 ```{r plot yearly abundance}
+
+color_phyto_grp8 <- c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FF7F00","#FFFF33","#A65628","#F781BF")
 
 ## Create biovolume plots for each year
 years <- unique(df_phyto_FASTR_grp_BV$Year) 
@@ -152,24 +171,16 @@ for (year in years) {
              fun = "mean") +
     theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
     theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
-    labs(x = "Pulse Period", 
-         y = bquote('Average Biovolume Density'~(um^3~mL^-1)), 
-         title = paste0("Abundance of Phytoplankton Groups During Flow Pulses - ",year)) 
+    labs(x = NULL, 
+         y = bquote('Average Biovolume Density'~(mu*m^3~mL^-1))) 
   
   biovolume.plot +
-    scale_fill_manual(values = c("#E41A1C",
-                                 "#377EB8",
-                                 "#4DAF4A",
-                                 "#984EA3",
-                                 "#FF7F00",
-                                 "#FFFF33",
-                                 "#A65628",
-                                 "#F781BF")) +
+    scale_fill_manual(values = color_phyto_grp8) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.7)) +
     facet_wrap(StationCode ~ ., ncol = 5, dir = "h")
   
   ggsave(path = plots,
-         filename = paste0("phyto_avg_BV_by_station_",year,".png"), 
+         filename = paste0("phyto_avg_BV_by_site_",year,".png"), 
          device = "png",
          scale=1.0, 
          units="in",
@@ -187,8 +198,6 @@ for (year in years) {
 
 ```{r NMDS, echo=FALSE, message=FALSE}
 
-# Plot NMDS Results
-
 # Create a ggplot2 theme for the NMDS plots
 theme_update(
     panel.grid.major = element_blank(),
@@ -203,20 +212,23 @@ theme_update(
     legend.key = element_rect(fill = "white", colour = NA)
     )
 
-fig.NMDS.Reg <- ggplot(df_phyto_NMDS,
-                       aes(x = NMDS1, y = NMDS2, color = Region)) +
-  geom_point(size = 3) +
-  stat_ellipse() + 
+p_NMDS_region <- ggplot(df_phyto_NMDS,
+                       aes(x = NMDS1, y = NMDS2, fill = Region)) +
+  geom_point(size = 3,
+             pch = 21,
+             color = "black") +
+  stat_ellipse(aes(color = Region)) + 
   labs(color = "Region",
        x = NULL,
        y = NULL)
 
-fig.NMDS.Reg +
+p_NMDS_region +
   facet_wrap(Year ~ ., ncol = 3, dir = "h") +
+  scale_fill_brewer(palette = "Set1") +
   scale_color_brewer(palette = "Set1")
 
 ggsave(path = plots,
-       filename = paste0("phyto_NMDS_biovolume_by_reg.png"), 
+       filename = "phyto_NMDS_by_region.png", 
        device = "png",
        scale=1.0, 
        units="in",
@@ -225,20 +237,24 @@ ggsave(path = plots,
        dpi="print")
 
 # Create plot colored by ActionPhase
-fig.NMDS.AP <- ggplot(df_phyto_NMDS, 
-                      aes(x = NMDS1, y = NMDS2, color = ActionPhase)) +
-  geom_point(size = 3) +
-  stat_ellipse() + 
+p_NMDS_phase <- ggplot(df_phyto_NMDS,
+                       aes(x = NMDS1, y = NMDS2, fill = ActionPhase)) +
+  geom_point(size = 3,
+             pch = 21,
+             color = "black") +
+  stat_ellipse(aes(color = ActionPhase)) + 
   labs(color = "Flow Pulse Period",
+       fill = "Flow Pulse Period",
        x = NULL,
        y = NULL)
 
-fig.NMDS.AP +
+p_NMDS_phase +
   facet_wrap(Year ~ ., ncol = 3, dir = "h") +
-  scale_color_brewer(palette = "Set1") 
+  scale_fill_brewer(palette = "Set1") +
+  scale_color_brewer(palette = "Set1")
 
 ggsave(path = plots,
-       filename = paste0("phyto_NMDS_biovolume_by_AP.png"), 
+       filename = "phyto_NMDS_by_AP.png", 
        device = "png",
        scale=1.0, 
        units="in",
@@ -253,9 +269,21 @@ SIMPER analysis showed that the genus Cyclotella was a primary differentiator be
 
 ```{r cyclotella, echo=FALSE, message=FALSE}
 
-# Compare Cyclotella Abundance Upstream and Downstream -------------------------
-
+# Set the theme
 theme_set(theme_bw())
+
+theme_update(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.background = element_rect(fill = "white", colour = NA),
+    panel.background = element_rect(fill = "white", colour = NA),
+    panel.border = element_rect(fill = NA, colour = "black"),
+    strip.background = element_rect(fill = "gray", colour = "black"),
+    legend.position = "right",
+    legend.key = element_rect(fill = "white", colour = NA)
+    )
+
+# Compare Cyclotella Abundance Upstream and Downstream -------------------------
 
 p_cyc <- ggplot(df_phyto_FASTR_gen_BV,
                 aes(x = Region, 
@@ -267,7 +295,7 @@ p_cyc <- ggplot(df_phyto_FASTR_gen_BV,
               outlier.shape = NA)
 
 p_cyc +
-  labs(y = bquote(Log[10]~'Biovolume Density'~(um^3~mL^-1)), 
+  labs(y = bquote(Log[10]~'Biovolume Density'~(mu*m^3~mL^-1)), 
        x = NULL) +
   facet_wrap(Year ~ ., ncol = 3)
 
@@ -285,6 +313,23 @@ ggsave(path = plots,
 ## Plot abundance of LCEFA 
 
 ```{r LCEFA, echo=FALSE, message=FALSE}
+# Set the theme
+theme_set(theme_bw())
+
+theme_update(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.background = element_rect(fill = "white", colour = NA),
+    panel.background = element_rect(fill = "white", colour = NA),
+    panel.border = element_rect(fill = NA, colour = "black"),
+    strip.background = element_rect(fill = "gray", colour = "black"),
+    legend.position = "right",
+    legend.key = element_rect(fill = "white", colour = NA),
+    axis.text.x = element_text(angle = 45, vjust = 0.7)
+    )
+
+# Set colors for LCEFA plots
+color_phyto_grp5 <- c("#377EB8","#4DAF4A","#984EA3","#FF7F00","#A65628")
 
 # Separate out data frames by density type and add zeros
 # Biovolume Density + Group
@@ -301,36 +346,29 @@ temp <- pivot_wider(df_phyto_FASTR_grp_LCEFA,
 temp <- temp %>% select(!c("Ciliates","Other","Golden Algae"))
 
 df_phyto_FASTR_grp_LCEFA <- pivot_longer(temp,
-                             cols = Cyanobacteria:last_col(),
-                             names_to = "Group",
-                             values_to = "LCEFA.per.mL")
+                                         cols = Cyanobacteria:last_col(),
+                                         names_to = "Group",
+                                         values_to = "LCEFA.per.mL")
 
 # Create stacked bar chart for yearly LCEFA abundance by Action Phase
 # and Upstream/Downstream
-fig12 <- ggplot(df_phyto_FASTR_grp_LCEFA, aes(x = ActionPhase,
-                                              y = LCEFA.per.mL,
-                                              fill = Group)) + 
+p_phyto_LCEFA_year <- ggplot(df_phyto_FASTR_grp_LCEFA, 
+                             aes(x = ActionPhase,
+                                 y = LCEFA.per.mL,
+                                 fill = Group)) + 
   geom_bar(position = "stack",  
            width = 0.6, 
            stat = "summary", 
-           fun = "mean") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0)) 
+           fun = "mean") 
 
-fig12 + 
+p_phyto_LCEFA_year + 
   labs(x = NULL, 
-       y = bquote('Average LCEFA'~(mu*g~mL^-1)))
-  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
-  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
-  scale_fill_manual(values = c("#377EB8",
-                               "#4DAF4A",
-                               "#984EA3",
-                               "#FF7F00",
-                               "#A65628")) +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.7)) +
+       y = bquote('Average LCEFA'~(mu*g~mL^-1))) +
+  scale_fill_manual(values = color_phyto_grp5) +
   facet_grid(Region~Year) # dir = v makes order of station go "north to south"
 
 ggsave(path = plots,
-       filename = paste0("fig12_phyto_group_LCEFA_by_year.png"), 
+       filename = "phyto_grp_LCEFA_by_year.png", 
        device = "png",
        scale=1.0, 
        units="in",
@@ -347,24 +385,16 @@ p_LCEFA_by_station <- ggplot(df_phyto_FASTR_grp_LCEFA,
            position = "stack",
            width = 0.6,
            stat = "summary",
-           fun = "mean") +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0)) 
+           fun = "mean") 
 
 p_LCEFA_by_station + 
   labs(x = NULL, 
        y = bquote('Average LCEFA'~(mu*g~mL^-1))) +
-  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
-  theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
-  scale_fill_manual(values = c("#377EB8",
-                               "#4DAF4A",
-                               "#984EA3",
-                               "#FF7F00",
-                               "#A65628")) +
-  theme(axis.text.x = element_text(angle = 45, vjust = 0.7)) +
+  scale_fill_manual(values = color_phyto_grp5) +
   facet_wrap(ActionPhase ~ ., ncol = 1, dir = "v") # dir = v makes order of station go "north to south"
 
 ggsave(path = plots,
-       filename = paste0("phyto_group_LCEFA_2016.png"), 
+       filename = "phyto_grp_LCEFA_2016.png", 
        device = "png",
        scale=1.0, 
        units="in",
@@ -372,6 +402,141 @@ ggsave(path = plots,
        width=7.5, 
        dpi="print")
 
+```
+
+## Plot abundance of Aulacoseira Diatoms
+
+```{r aulacoseira, echo=FALSE, message=FALSE}
+
+# Set the theme
+theme_set(theme_bw())
+
+theme_update(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.background = element_rect(fill = "white", colour = NA),
+    panel.background = element_rect(fill = "white", colour = NA),
+    panel.border = element_rect(fill = NA, colour = "black"),
+    strip.background = element_rect(fill = "gray", colour = "black"),
+    legend.position = "right",
+    legend.key = element_rect(fill = "white", colour = NA)
+    )
+
+# Filter out non-Aulacoseira taxa and years outside of FASTR study
+df_Aul <- df_phyto %>% 
+  filter(Genus == "Aulacoseira") %>%
+  filter(Year %in% c(2014,2015,2016,2017,2018,2019))
+
+# Plot EMP and FASTR samples by year, facet by study
+ggplot(df_Aul, aes(x = Year, y = BV.um3.per.mL)) +
+  geom_jitter(width = 0.1,
+              size = 2,
+              pch = 21, 
+              color = "black",
+              fill = "darkgreen") +
+  labs(x = "Year",
+       y = bquote('Biovolume'~(mu*m^3~mL^-1))) +
+  facet_wrap(Study ~ ., ncol = 1)
+
+ggsave(path = plots,
+       filename = "aul_BV_all_years.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=4,
+       width=4, 
+       dpi="print")
+
+# Plot EMP and FASTR samples from 2016 only by month, facet by study
+ggplot(df_Aul, aes(x = Month, y = BV.um3.per.mL)) +
+  geom_jitter(data = subset(df_Aul, Year == "2016"),
+              width = 0.1,
+              size = 2,
+              pch = 21, 
+              color = "black",
+              fill = "darkgreen") +
+  labs(x = NULL,
+       y = bquote('Biovolume'~(mu*m^3~mL^-1))) +
+  facet_wrap(Study ~ ., ncol = 1)
+
+ggsave(path = plots,
+       filename = "aul_BV_2016.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=4,
+       width=4, 
+       dpi="print")
+
+# Plot EMP and FASTR samples from 2016 only by pulse period, facet by Region
+ggplot(df_Aul, aes(x = ActionPhase, y = BV.um3.per.mL)) +
+  geom_jitter(data = subset(df_Aul, Year == "2016"),
+              width = 0.1,
+              size = 2,
+              pch = 21, 
+              color = "black",
+              fill = "darkgreen") +
+  labs(x = NULL,
+       y = bquote('Biovolume'~(mu*m^3~mL^-1))) +
+  facet_wrap(Region ~ ., ncol = 1)
+
+ggsave(path = plots,
+       filename = "aul_BV_2016_by_month.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=4,
+       width=4, 
+       dpi="print")
+
+```
+
+## Diatom Abundance in 2016
+```{r diatoms, echo=FALSE, message=FALSE}
+
+# Filter out non-diatoms and non-2016 samples
+df_diatom_BV_2016 <- df_phyto_FASTR_top_taxa_BV %>% 
+  filter(Year == "2016") %>%
+  filter(Group == "Diatoms")
+
+# Pare down data frame, rename Type column and remove unneeded columns
+df_diatom_BV_2016 <- df_diatom_BV_2016 %>% 
+  select(-Group) %>% 
+  rename("Genus" = "Type")
+
+# Reorder Genus column
+type.order <- c("Aulacoseira","Cyclotella","Ulnaria","Other")
+
+df_diatom_BV_2016$Genus <- factor(as.character(df_diatom_BV_2016$Genus),
+                                  levels =  type.order)
+
+df_top_taxa_2016 <-  df_phyto_FASTR_top_taxa_BV %>% 
+  filter(Year == "2016") %>% 
+  group_by(Month,Type) %>% 
+  summarize(BV.um3.per.mL = sum(BV.um3.per.mL)) %>%
+  ungroup()
+  
+# Create plot of most abundant diatoms
+p_top_gen_2016 <- ggplot(df_diatom_BV_2016, aes(x = StationCode,
+                                       y = BV.um3.per.mL,
+                                       color = Genus,
+                                       shape = Genus)) +
+  geom_jitter(size = 3, width = 0.2) +
+  labs(x = NULL,
+       y = bquote('Biovolume'~(mu*m^3~mL^-1))) +
+  scale_color_brewer(palette = "Set2")
+
+p_top_gen_2016 +
+    facet_wrap(ActionPhase ~ ., ncol = 1)
+
+ggsave(path = plots,
+       filename = "diatom_BV_2016_by_site.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=4,
+       width=6.5, 
+       dpi="print")
 ```
 
 
