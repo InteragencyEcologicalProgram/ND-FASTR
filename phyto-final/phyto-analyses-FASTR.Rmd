@@ -542,8 +542,7 @@ df_Aul_vol <- df_Aul_vol %>%
   summarize(Mean.BV = mean(BV.Avg)) %>%
   ungroup
 
-# 
-# Plot EMP and FASTR samples from 2016 only by pulse period, facet by Region
+# Plot biovolume of Aulacoseira 
 ggplot(df_Aul_vol, aes(x = Year, y = BV.Avg)) +
   geom_jitter(width = 0.1,
               size = 2,
