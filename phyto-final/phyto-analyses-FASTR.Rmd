@@ -478,7 +478,7 @@ ggplot(df_Aul, aes(x = ActionPhase, y = BV.um3.per.mL)) +
               fill = "darkgreen") +
   labs(x = NULL,
        y = bquote('Biovolume'~(mu*m^3~mL^-1))) +
-  facet_wrap(Region ~ ., ncol = 1)
+  facet_wrap(Region ~ ., ncol = 3)
 
 ggsave(path = plots,
        filename = "aul_BV_2016_by_month.png", 
@@ -486,7 +486,7 @@ ggsave(path = plots,
        scale=1.0, 
        units="in",
        height=4,
-       width=4, 
+       width=6.5, 
        dpi="print")
 
 ```
@@ -537,6 +537,7 @@ ggsave(path = plots,
        height=4,
        width=6.5, 
        dpi="print")
+
 ```
 
 

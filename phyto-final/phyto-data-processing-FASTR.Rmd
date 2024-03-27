@@ -338,7 +338,6 @@ df_phyto <- left_join(df_phyto, df_taxa)
 
 # Check if any groups are missing
 sum(is.na(df_phyto$Group)) # none missing 
-rm(df_taxa)
 
 # Reorder Group classification column
 df_phyto <- df_phyto %>% 
@@ -393,6 +392,73 @@ df_phyto <- df_phyto %>%
 
 ```
 
+## Add Regional Metadata
+```{r regions, echo=FALSE, message=FALSE}
+
+# Select only stations in FASTR report
+df_phyto <- df_phyto %>%
+  filter(!Region %in% c("San Pablo Bay",
+                        "Grizzly and Suisun Bay",
+                        "Entrapment Zone"))
+
+# Set display levels for different regions
+unique(df_phyto$Region)
+
+region.levels <- c("Upstream","Downstream","Northern Interior Delta","Confluence",
+                   "Central Delta","Southern Interior Delta")
+
+# Set levels so that Upstream stations appear before Downstream in graphs
+df_phyto$Region <- factor(df_phyto$Region, levels = region.levels)
+
+# Import flow pulse dates and categories
+df_flow_designation <- read_csv(here("phyto-final",
+                                     "CSVs",
+                                     "FlowDatesDesignations_45days.csv"),
+                                show_col_types = FALSE)
+
+# Remove column with net flow days. Won't be used in any analyses.
+df_flow_designation <- df_flow_designation %>% select(!(NetFlowDays))
+
+# Format dates as dates in each of the 4 date columns
+df_flow_designation <- df_flow_designation %>% 
+  mutate(across(PreFlowStart:PostFlowEnd, mdy))
+
+# Merge data from FlowDesignation Table (Water Year Type, Flow days and type)
+df_phyto <- inner_join(df_phyto, df_flow_designation, by = "Year")   
+
+# Label samples with the appropriate phase (Pre-During-Post) and filter
+# FASTR phyto data to include only samples collected within the flow pulse window
+df_phyto <- df_phyto %>%
+  mutate(ActionPhase = ifelse(DateTime > PreFlowStart & DateTime < PreFlowEnd, "Before", NA)) %>%
+  mutate(ActionPhase = replace(ActionPhase, DateTime >= PreFlowEnd & DateTime < PostFlowStart, "During")) %>% 
+  mutate(ActionPhase = replace(ActionPhase, DateTime >= PostFlowStart & DateTime < PostFlowEnd, "After")) %>% 
+  filter(!is.na(ActionPhase)) %>%
+  select(-c(PreFlowStart:PostFlowEnd))
+
+# Order the new ActionPhase so that it plots in the order Pre < During < Post
+phase.order <- c("Before","During","After")
+df_phyto$ActionPhase <- factor(as.character(df_phyto$ActionPhase), 
+                                     levels = phase.order)
+
+# Add in Flow Pulse Category Data
+df_pulse_category <- read_csv(here("phyto-final","CSVs","FlowPulseType.csv"),
+                              show_col_types = FALSE)
+
+df_pulse_category <- df_pulse_category %>% 
+  rename("FlowPulseCategory" = "FlowPulseType")
+
+# Add Flow Pulse Category to phytoplankton data frame
+df_phyto <- left_join(df_phyto, df_pulse_category, by = "Year")
+
+## Relocate metadata columns
+df_phyto <- df_phyto %>%
+  relocate(FlowPulseCategory, .after = Study) %>%
+  relocate(WYType:ActionPhase, .after = Study) %>% 
+  relocate(Biomass.ug.C, .after = BV.Avg)
+
+```
+
+
 ## Analyze FASTR Data for Outliers
 
 ```{r outlier analysis, echo=FALSE, message=FALSE}
@@ -443,64 +509,12 @@ Code for Merging Flow Designations was provided by Cat Pien and includes 45 days
 
 ```{r FASTR metadata, echo=FALSE, message=FALSE}
 
-# Set levels so that Upstream stations appear before Downstream in graphs
-df_phyto_FASTR$Region <- factor(df_phyto_FASTR$Region, 
-                           levels = c("Upstream","Downstream"))
-
-# Import flow pulse dates and categories
-df_flow_designation <- read_csv(here("phyto-final",
-                                     "CSVs",
-                                     "FlowDatesDesignations_45days.csv"),
-                                show_col_types = FALSE)
-
-# Remove column with net flow days. Won't be used in any analyses.
-df_flow_designation <- df_flow_designation %>% select(!(NetFlowDays))
-
-# Format dates as dates in each of the 4 date columns
-df_flow_designation <- df_flow_designation %>% 
-  mutate(across(PreFlowStart:PostFlowEnd, mdy))
-
-# Merge data from FlowDesignation Table (Water Year Type, Flow days and type)
-df_phyto_FASTR <- inner_join(df_phyto_FASTR, 
-                             df_flow_designation, 
-                             by = "Year")   
-
-# Label samples with the appropriate phase (Pre-During-Post) and filter
-# FASTR phyto data to include only samples collected within the flow pulse window
-df_phyto_FASTR <- df_phyto_FASTR %>%
-  mutate(ActionPhase = ifelse(DateTime > PreFlowStart & DateTime < PreFlowEnd, "Before", NA)) %>%
-  mutate(ActionPhase = replace(ActionPhase, DateTime >= PreFlowEnd & DateTime < PostFlowStart, "During")) %>% 
-  mutate(ActionPhase = replace(ActionPhase, DateTime >= PostFlowStart & DateTime < PostFlowEnd, "After")) %>% 
-  filter(!is.na(ActionPhase)) %>%
-  select(-c(PreFlowStart:PostFlowEnd))
-
-# Order the new ActionPhase so that it plots in the order Pre < During < Post
-phase.order <- c("Before","During","After")
-df_phyto_FASTR$ActionPhase <- factor(as.character(df_phyto_FASTR$ActionPhase), 
-                                     levels = phase.order)
-
-# Add in Flow Pulse Category Data
-df_pulse_category <- read_csv(here("phyto-final","CSVs","FlowPulseType.csv"),
-                              show_col_types = FALSE)
-
-df_pulse_category <- df_pulse_category %>% 
-  rename("FlowPulseCategory" = "FlowPulseType")
-
-# Add Flow Pulse Category to phytoplankton data frame
-df_phyto_FASTR <- left_join(df_phyto_FASTR, df_pulse_category, by = "Year")
-
 # Create a list of stations used for FASTR
 stations <- c("RMB","RCS","RD22","I80","LIS","STTD","BL5","LIB","RYI","RVB")
 
 # Re-order stations from North to South
 df_phyto_FASTR$StationCode <- factor(as.character(df_phyto_FASTR$StationCode),
                                      levels = stations)
-## Relocate metadata columns
-df_phyto_FASTR <- df_phyto_FASTR %>%
-  relocate(FlowPulseCategory, .before = ActionPhase) %>%
-  relocate(WYType:ActionPhase, .before = GALD) %>% 
-  relocate(Biomass.ug.C, .after = BV.Avg)
-
 
 ```
 
@@ -578,6 +592,54 @@ rm(temp)
 
 ```
 
+## Create Condensed Data Frame for Most Abundant Genera
+```{r condensed genera, echo=FALSE, message=FALSE}
+
+## Calculate relative abundance of each genus within a group
+df_phyto_FASTR_gen_RA <- df_phyto_FASTR_gen_BV %>%
+  group_by(Genus) %>%
+  summarize(Mean.BV.per.mL = mean(BV.um3.per.mL)) %>%
+  mutate(MeanRelAbund = Mean.BV.per.mL/sum(Mean.BV.per.mL)) %>%
+  ungroup()
+
+# Highlight most abundant genera
+df_phyto_FASTR_gen_RA <- df_phyto_FASTR_gen_RA %>%
+  mutate(Type = case_when(MeanRelAbund > 0.05 ~ Genus,
+                          TRUE ~ 'Other'))
+
+# lump together all "other" taxa
+df_phyto_FASTR_gen_RA_tot <- df_phyto_FASTR_gen_RA %>%
+  group_by(Type) %>%
+  summarize(MeanRelAbund = sum(MeanRelAbund)) %>%
+  ungroup()
+
+# Create cross-walk table for what taxa are lumped into the Other category
+df_gen_types <- df_phyto_FASTR_gen_RA %>% select(Genus, Type)
+
+# Add classification of "Named Genus" or "Other to main df
+df_phyto_FASTR_gen_BV <- left_join(df_phyto_FASTR_gen_BV,
+                                   df_gen_types,
+                                   by = "Genus")
+
+# Add higher-level taxonomy info
+df_phyto_FASTR_gen_BV <- left_join(df_phyto_FASTR_gen_BV,
+                                   df_taxa,
+                                   by = "Genus")
+
+# Reorganize columns
+df_phyto_FASTR_gen_BV <- df_phyto_FASTR_gen_BV %>% 
+  relocate(Group, .before = Genus) %>% 
+  relocate(Type, .before = Genus)
+
+# lump together all "other" taxa
+df_phyto_FASTR_top_taxa_BV <- df_phyto_FASTR_gen_BV %>%
+  group_by(Year, Month, Region, ActionPhase, DateTime, StationCode, Group, Type) %>%
+  summarize(BV.um3.per.mL = sum(BV.um3.per.mL)) %>%
+  ungroup()
+
+```
+
+
 ## Multivariate Calculations 
 Use the vegan package in R to calculate the Bray-Curtis similarity coefficients for phytoplankton community comparisons in each year (2014 - 2019). A good rule of thumb: stress < 0.05 provides an excellent representation in reduced dimensions, < 0.1 is great, < 0.2 is good/ok, and stress < 0.3 provides a poor representation.
 
@@ -651,6 +713,7 @@ save(df_phyto, file = here("phyto-final","RData","df_phyto.RData"))
 save(df_phyto_FASTR_sum, file = here("phyto-final","RData","df_phyto_FASTR_sum.RData"))
 save(df_phyto_FASTR_gen, file = here("phyto-final","RData","df_phyto_FASTR_gen.RData"))
 save(df_phyto_FASTR_gen_BV, file = here("phyto-final","RData","df_phyto_FASTR_gen_BV.RData"))
+save(df_phyto_FASTR_top_taxa_BV, file = here("phyto-final","RData","df_phyto_FASTR_top_taxa_BV.RData"))
 save(df_phyto_FASTR_grp, file = here("phyto-final","RData","df_phyto_FASTR_grp.RData"))
 save(df_phyto_FASTR_grp_BV, file = here("phyto-final","RData","df_phyto_FASTR_grp_BV.RData"))
 save(df_phyto_NMDS, file = here("phyto-final","RData","df_phyto_NMDS.RData"))
