@@ -533,17 +533,33 @@ ggsave(path = plots,
 
 # Select only data with Aulacoseira and Biovolume-per-cell data
 df_Aul_vol <- df_phyto %>% 
-  select(DateTime:Study,Taxon:Genus,BV.Avg) %>% 
-  filter(Genus == "Aulacoseira")
+  select(DateTime:ActionPhase,Taxon:Genus,BV.Avg) 
 
 # Combine data to genus level
 df_Aul_vol <- df_Aul_vol %>%
-  group_by(Year, Month, Region, DateTime, StationCode, Genus) %>%
+  group_by(Year, Month, Region, DateTime, ActionPhase, StationCode, Study, Genus) %>%
   summarize(Mean.BV = mean(BV.Avg)) %>%
   ungroup
 
+# Create Biovolume-only data frame at genus level
+
+temp <- pivot_wider(df_Aul_vol,
+                    names_from = Genus,
+                    values_from = Mean.BV,
+                    values_fill = 0)
+
+df_Aul_vol <- pivot_longer(temp,
+                           cols = Chlorella:last_col(),
+                           names_to = "Genus",
+                           values_to = "Mean.BV")
+
+df_Aul_vol <- df_Aul_vol %>% 
+  filter(Genus == "Aulacoseira")
+
+rm(temp)
+
 # Plot biovolume of Aulacoseira 
-ggplot(df_Aul_vol, aes(x = Year, y = BV.Avg)) +
+ggplot(df_Aul_vol, aes(x = Year, y = Mean.BV)) +
   geom_jitter(width = 0.1,
               size = 2,
               pch = 21, 
@@ -554,13 +570,61 @@ ggplot(df_Aul_vol, aes(x = Year, y = BV.Avg)) +
   facet_wrap(Region ~ ., ncol = 3)
 
 ggsave(path = plots,
-       filename = "aul_volume.png", 
+       filename = "aul_volume_all.png", 
        device = "png",
        scale=1.0, 
        units="in",
        height=4,
        width=6.5, 
        dpi="print")
+
+# Plot biovolume of Aulacoseira in 2016 only
+ggplot(df_Aul_vol, aes(x = Month, y = Mean.BV)) +
+  geom_jitter(data = subset(df_Aul_vol, Year == "2016"),
+    width = 0.1,
+              size = 2,
+              pch = 21, 
+              color = "black",
+              fill = "darkgreen") +
+  labs(x = NULL,
+       y = bquote('Biovolume'~(mu*m^3~per~cell))) +
+  facet_wrap(Region ~ ., ncol = 3)
+
+ggsave(path = plots,
+       filename = "aul_volume_2016.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=4,
+       width=6.5, 
+       dpi="print")
+
+# Subset to just FASTR data
+df_Aul_vol_FASTR <- df_Aul_vol %>%
+  filter(Study == "FASTR" & Year == "2016") %>% 
+  mutate(Date = date(DateTime))
+
+ggplot(df_Aul_vol_FASTR, aes(x = StationCode, y = Mean.BV)) +
+  geom_point( width = 0.1,
+              size = 2,
+              pch = 21, 
+              color = "black",
+              fill = "darkgreen") +
+  geom_vline(xintercept = as.numeric(as.Date("2016-07-13"))) +
+  geom_vline(xintercept = as.numeric(as.Date("2016-08-02"))) +
+  labs(x = NULL,
+       y = bquote('Biovolume'~(mu*m^3~per~cell))) +
+  facet_wrap(ActionPhase ~ ., ncol = 1)
+
+ggsave(path = plots,
+       filename = "aul_volume_FASTR_2016.png", 
+       device = "png",
+       scale=1.0, 
+       units="in",
+       height=4,
+       width=6.5, 
+       dpi="print")
+
 ```
 
 
