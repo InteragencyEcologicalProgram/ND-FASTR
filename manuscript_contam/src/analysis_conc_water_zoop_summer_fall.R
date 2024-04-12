@@ -197,10 +197,10 @@ fp_tables <- here("manuscript_contam/results/tables")
 # Combine and export summary tables of flow-application models
 df_m_q_appl_summ <- 
   bind_rows(
-    df_m_zoop_q_appl_shr, 
-    df_m_zoop_q_appl_sttd, 
-    df_m_water_q_appl_shr, 
-    df_m_water_q_appl_sttd
+    df_m_water_q_appl_sttd,
+    df_m_water_q_appl_shr,
+    df_m_zoop_q_appl_sttd,
+    df_m_zoop_q_appl_shr
   ) %>% 
   transmute(
     Response,
