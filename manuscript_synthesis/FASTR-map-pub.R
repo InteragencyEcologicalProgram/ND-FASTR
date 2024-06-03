@@ -1,16 +1,25 @@
-# Create map of FASTR sampling locations
-# Laura Twardochleb
-# 11/21/23
+## Generate map of FASTR sampling locations
+## 6/3/2024
 
-#1. Global Code and Functions ---------------------------------------------------------------------------------------------------------------------------------------------
+# Load required libraries ------------------------------------------------------
+suppressWarnings(suppressMessages(library(tidyverse)))
+suppressWarnings(suppressMessages(library(deltamapr)))
+suppressWarnings(suppressMessages(library(sf)))
+suppressWarnings(suppressMessages(library(ggrepel)))
+suppressWarnings(suppressMessages(library(ggspatial)))
+suppressWarnings(suppressMessages(library(maps)))
+suppressWarnings(suppressMessages(library(here)))
 
-library(tidyverse)
-library(here)
+# Set plot themes and output ---------------------------------------------------
+plots <- here(file = here("manuscript_synthesis","plots"))
 
-require(sf)
-require(ggplot2)
-require(dplyr)
+# Read in FASTR station and city location data ---------------------------------
 
+# Import data about city locations
+CA <- map_data("world") %>% filter(subregion=="California")
+cities <- world.cities %>% filter(country.etc=="USA")
+
+# Import FASTR station data (Laura code)
 SubRegions<-deltamapr::R_EDSM_Subregions_Mahardja%>%
   filter(Region!="South")%>%
   filter(!SubRegion%in%c("Upper Napa River", "Lower Napa River", "San Pablo Bay", "San Francisco Bay"))
@@ -47,21 +56,46 @@ locations_text<-tibble(Location=c("Freeport", "Antioch", "Rio Vista", "Cache Slo
   st_as_sf(coords=c("Longitude", "Latitude"), crs=4326)
 
 
-p<-ggplot()+
+# Plot all stations maps together ----------------------------------------------
+theme_set(theme_bw())
+
+# Set the theme
+theme_update(
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank(),
+  plot.background = element_rect(fill = "white", colour = NA),
+  panel.background = element_rect(fill = "white", colour = NA),
+  panel.border = element_rect(fill = NA, colour = "black"),
+  strip.background = element_rect(fill = "gray", colour = "black"),
+  legend.position = "bottom",
+  legend.key = element_rect(fill = "white", colour = NA)
+)
+
+plot <- ggplot(WW_Delta) +
   geom_sf(data=yolo, color=NA, fill="gray80")+
   geom_sf(data=base, fill="slategray3", color="slategray4")+
   geom_sf(data=locations_points)+
-  geom_sf(data=stations, aes(fill=Region), shape=21, color="black", size=3)+
   geom_sf_text(data=locations_text, aes(label=Location), lineheight = 1)+
-  scale_fill_manual(values=c("#E41A1C", "#377EB8"))+
-  theme_void()
-p
+  geom_sf(fill = "lightblue") + 
+  geom_sf(data=stations, aes(fill=Region), shape=21, color="black", size=3)+
+  geom_sf_text(data=stations, aes(label=Station), nudge_x = 0.05)+
+  annotation_scale(location = "bl", 
+                   width_hint = 0.4, 
+                   unit_category = "imperial") +
+  scale_fill_manual(values=c("#E41A1C", "#377EB8")) +
+  ylim(38.0, 38.8) +
+  xlim(-122.2, -121.2)
 
-ggsave(here("manuscript_synthesis","plots","FASTR_MS_map.pdf"), 
-       plot=p, 
-       device="pdf", 
-       scale=1.0,
+plot + labs(x = NULL,
+            y = NULL,
+            fill = NULL) +
+  guides(size = "none")
+
+ggsave(path=plots,
+       filename = "FASTR-stations-all.pdf", 
+       device = "pdf",
+       scale=1.0, 
+       units="in",
+       height=8,
        width=8, 
-       height=8, 
-       units = "in",
        dpi="print")
