@@ -5,8 +5,9 @@
 #1. Global Code and Functions ---------------------------------------------------------------------------------------------------------------------------------------------
 
 library(tidyverse)
+library(here)
 
-setwd("C:/Users/ltwardochleb/Documents/NDFA/ND-FASTR/manuscript_synthesis/")
+# setwd("C:/Users/ltwardochleb/Documents/NDFA/ND-FASTR/manuscript_synthesis/")
 
 require(sf)
 require(ggplot2)
@@ -16,7 +17,7 @@ SubRegions<-deltamapr::R_EDSM_Subregions_Mahardja%>%
   filter(Region!="South")%>%
   filter(!SubRegion%in%c("Upper Napa River", "Lower Napa River", "San Pablo Bay", "San Francisco Bay"))
 
-yolo<-sf::st_read("/data/Yolo Bypass Extent")%>%
+yolo<-sf::st_read(here("manuscript_synthesis","data","Yolo Bypass Extent"))%>%
   st_transform(crs=st_crs(SubRegions))%>%
   st_union()
 
@@ -58,4 +59,4 @@ p<-ggplot()+
   theme_void()
 p
 
-ggsave("FASTR_MS_map.png", plot=p, device="png", width=8, height=8, units = "in")
+ggsave(here("manuscript_synthesis","plots","FASTR_MS_map.png"), plot=p, device="png", width=8, height=8, units = "in")
