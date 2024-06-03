@@ -7,8 +7,6 @@
 library(tidyverse)
 library(here)
 
-# setwd("C:/Users/ltwardochleb/Documents/NDFA/ND-FASTR/manuscript_synthesis/")
-
 require(sf)
 require(ggplot2)
 require(dplyr)
@@ -59,4 +57,9 @@ p<-ggplot()+
   theme_void()
 p
 
-ggsave(here("manuscript_synthesis","plots","FASTR_MS_map.png"), plot=p, device="png", width=8, height=8, units = "in")
+ggsave(here("manuscript_synthesis","plots","FASTR_MS_map.pdf"), 
+       plot=p, 
+       device="pdf", 
+       width=8, 
+       height=8, 
+       units = "in")
