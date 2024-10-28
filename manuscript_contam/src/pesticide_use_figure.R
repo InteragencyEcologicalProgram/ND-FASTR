@@ -20,7 +20,7 @@ df_pest_use <- readRDS(here("manuscript_contam/data/processed/pesticide_use_dail
 # Calculate monthly totals for each Region and Pesticide Class and prepare for figure
 df_pest_use_c <- df_pest_use %>% 
   summarize(
-    TotalApplication = sum(TotalApplication),
+    TotalApplication = sum(TotalApplication) / 2.205,
     .by = c(Region, Month, Year, PesticideClass)
   ) %>%
   mutate(PesticideClass = factor(PesticideClass, levels = c("Rice", "Pyrethroid", "Other")))
@@ -36,7 +36,7 @@ plt_pest_use <- df_pest_use_c %>%
     end = 0.8
   ) +
   scale_y_continuous(
-    name = "Total Application (lbs)",
+    name = "Total Application (kg)",
     labels = label_comma()
   ) +
   theme_bw() +
