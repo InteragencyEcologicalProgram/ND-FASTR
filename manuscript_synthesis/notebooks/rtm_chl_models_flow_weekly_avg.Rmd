@@ -347,6 +347,402 @@ The model diagnostics look pretty good. Note that the 2-way interaction between 
 rm(m_gam_flow2, m_gam_flow2_lag1)
 ```
 
+
+```{r gam flow2 backfit to observed values}
+df_m_gam_flow2_lag2_fit <- df_chla_c2_lag %>% 
+  drop_na(lag1, lag2) %>% 
+  fitted_values(m_gam_flow2_lag2, data = .) %>% 
+  mutate(fitted_bt = exp(.fitted) / 1000)
+
+plt_m_gam_flow2_lag2_fit <- df_m_gam_flow2_lag2_fit %>% 
+  ggplot(aes(x = fitted_bt, y = Chla)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  theme_bw() +
+  labs(
+    x = "Back-transformed Fitted Values",
+    y = "Observed Values"
+  )
+
+plt_m_gam_flow2_lag2_fit
+
+plt_m_gam_flow2_lag2_fit + facet_wrap(vars(StationCode), scales = "free")
+
+plt_m_gam_flow2_lag2_fit + facet_wrap(vars(Year_fct), scales = "free")
+```
+
+```{r gam flow2 emmeans}
+em_gam_sta_yr <- emmeans(m_gam_flow2_lag2, ~ StationCode | Year_fct)
+
+# Tukey post-hoc contrasts
+pairs(em_gam_sta_yr)
+
+# Create table of contrasts and convert it to a tibble for plot
+df_gam_sta_yr <- em_gam_sta_yr %>% 
+  cld(sort = FALSE, Letters = letters) %>% 
+  as_tibble() %>% 
+  mutate(
+    group = str_remove_all(.group, fixed(" ")),
+    # back transform log-transformed results
+    across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000)
+  ) %>% 
+  # Add min and max values of observed data to the Tukey post-hoc results and
+    # calculate vertical positioning of letters
+  left_join(
+    df_chla_c %>% 
+      summarize(
+        max_val = max(Chla),
+        min_val = min(Chla),
+        .by = Year_fct
+    ), 
+    by = join_by(Year_fct)
+  ) %>% 
+  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>% 
+  group_by(Year_fct) %>% 
+  mutate(max_val = max(max_val)) %>% 
+  ungroup() %>% 
+  mutate(y_pos = max_val + (max_val - min_val) / 10) %>% 
+  select(
+    StationCode,
+    Year_fct,
+    emmean,
+    lower.CL,
+    upper.CL,
+    group,
+    y_pos
+  )
+
+# Create boxplot showing Tukey post-hoc results
+plt_gam_sta_yr <- df_gam_sta_yr %>% 
+  ggplot(
+    aes(
+      x = StationCode,
+      y = emmean,
+      ymin = lower.CL,
+      ymax = upper.CL
+    )
+  ) +
+  geom_boxplot(
+    data = df_chla_c,
+    aes(x = StationCode, y = Chla),
+    inherit.aes = FALSE
+  ) +
+  geom_crossbar(color = "grey82", fill = "grey", alpha = 0.7, linewidth = 0.1) +
+  geom_point(color = "red") +
+  geom_text(aes(y = y_pos, label = group), size = 3.5) +
+  facet_wrap(vars(Year_fct), scales = "free_y") +
+  xlab("Station") +
+  ylab(expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))) +
+  theme_bw()
+
+plt_gam_sta_yr
+```
+
+## Year by Station Contrasts
+
+```{r gam sflow lag2 contrasts year by station, warning = FALSE}
+# Estimated marginal means for year by station
+em_gam_yr_sta <- emmeans(m_gam_flow2_lag2, ~ Year_fct | StationCode)
+
+# Tukey post-hoc contrasts
+pairs(em_gam_yr_sta)
+
+# Create table of contrasts and convert it to a tibble for plot
+df_gam_yr_sta <- em_gam_yr_sta %>% 
+  cld(sort = FALSE, Letters = letters) %>% 
+  as_tibble() %>% 
+  mutate(
+    group = str_remove_all(.group, fixed(" ")),
+    # back transform log-transformed results
+    across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000)
+  ) %>% 
+  # Add min and max values of observed data to the Tukey post-hoc results and
+    # calculate vertical positioning of letters
+  left_join(
+    df_chla_c %>% 
+      summarize(
+        max_val = max(Chla),
+        min_val = min(Chla),
+        .by = StationCode
+    ), 
+    by = join_by(StationCode)
+  ) %>% 
+  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>% 
+  group_by(StationCode) %>% 
+  mutate(max_val = max(max_val)) %>% 
+  ungroup() %>% 
+  mutate(y_pos = max_val + (max_val - min_val) / 10) %>% 
+  select(
+    StationCode,
+    Year_fct,
+    emmean,
+    lower.CL,
+    upper.CL,
+    group,
+    y_pos
+  )
+
+# Create boxplot showing Tukey post-hoc results
+plt_gam_yr_sta <- df_gam_yr_sta %>% 
+  ggplot(
+    aes(
+      x = Year_fct,
+      y = emmean,
+      ymin = lower.CL,
+      ymax = upper.CL
+    )
+  ) +
+  geom_boxplot(
+    data = df_chla_c,
+    aes(x = Year_fct, y = Chla),
+    inherit.aes = FALSE
+  ) +
+  geom_crossbar(color = "grey82", fill = "grey", alpha = 0.7, linewidth = 0.1) +
+  geom_point(color = "red") +
+  geom_text(aes(y = y_pos, label = group), size = 3.5) +
+  facet_wrap(vars(StationCode), scales = "free_y") +
+  xlab("Year") +
+  ylab(expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))) +
+  theme_bw()
+
+plt_gam_yr_sta
+```
+
+# Model 2: GAM Model with Flow and 2-way interactions for RD22
+
+Now we'll try running a GAM using all two-way interactions between Year, Flow, and Station.
+
+## Initial Model
+
+```{r gam flow2 no autocorr, warning = FALSE}
+m_gam_flow2_RD22 <- gam(
+  Chla_log ~ Year_fct*Flow + s(Week, bs = "cc", k = 5), 
+  data = filter(df_chla_c2, StationCode=="RD22"),
+  method = "REML", 
+  knots = list(week = c(0, 52))
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam flow2 no autocorr diag, warning = FALSE}
+summary(m_gam_flow2_RD22)
+appraise(m_gam_flow2_RD22)
+shapiro.test(residuals(m_gam_flow2_RD22))
+k.check(m_gam_flow2_RD22)
+draw(m_gam_flow2_RD22, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_flow2_RD22, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_flow2_RD22))
+Box.test(residuals(m_gam_flow2_RD22), lag = 20, type = 'Ljung-Box')
+```
+
+Shapiro-Wilk normality test shows that the residuals are normal, the diagnostic plots look really good. Box-LJung indicates no serial autocorrelation.
+
+#backfit values to observed values and run emmeans
+```{r gam flow2 backfit to observed values}
+df_m_gam_flow2_RD22_fit <- df_chla_c2 %>% filter(StationCode=="RD22")%>%
+  fitted_values(m_gam_flow2_RD22, data = .) %>% 
+  mutate(fitted_bt = exp(.fitted) / 1000)
+
+plt_m_gam_flow2_RD22_fit <- df_m_gam_flow2_RD22_fit %>% 
+  ggplot(aes(x = fitted_bt, y = Chla)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  theme_bw() +
+  labs(
+    x = "Back-transformed Fitted Values",
+    y = "Observed Values"
+  )
+
+plt_m_gam_flow2_RD22_fit
+
+
+plt_m_gam_flow2_RD22_fit + facet_wrap(vars(Year_fct), scales = "free")
+```
+
+```{r gam flow2 emmeans}
+em_gam_RD22_yr <- emmeans(m_gam_flow2_RD22, ~ Year_fct)
+
+# Tukey post-hoc contrasts
+pairs(em_gam_RD22_yr)
+
+# Create table of contrasts and convert it to a tibble for plot
+df_gam_RD22_yr <- em_gam_RD22_yr %>% 
+  cld(sort = FALSE, Letters = letters) %>% 
+  as_tibble() %>% 
+  mutate(
+    group = str_remove_all(.group, fixed(" ")),
+    # back transform log-transformed results
+    across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000)
+  ) %>% 
+  # Add min and max values of observed data to the Tukey post-hoc results and
+    # calculate vertical positioning of letters
+  left_join(
+    df_chla_c %>% 
+      summarize(
+        max_val = max(Chla),
+        min_val = min(Chla),
+        .by = Year_fct
+    ), 
+    by = join_by(Year_fct)
+  ) %>% 
+  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>% 
+  group_by(Year_fct) %>% 
+  mutate(max_val = max(max_val)) %>% 
+  ungroup() %>% 
+  mutate(y_pos = max_val + (max_val - min_val) / 10) %>% 
+  select(
+    Year_fct,
+    emmean,
+    lower.CL,
+    upper.CL,
+    group,
+    y_pos
+  )
+
+# Create boxplot showing Tukey post-hoc results
+plt_gam_RD22_yr <- df_gam_RD22_yr %>% 
+  ggplot(
+    aes(
+      x = Year_fct,
+      y = emmean,
+      ymin = lower.CL,
+      ymax = upper.CL
+    )
+  ) +
+  geom_boxplot(
+    data = df_chla_c,
+    aes(x = Year_fct, y = Chla),
+    inherit.aes = FALSE
+  ) +
+  geom_crossbar(color = "grey82", fill = "grey", alpha = 0.7, linewidth = 0.1) +
+  geom_point(color = "red") +
+  geom_text(aes(y = y_pos, label = group), size = 3.5) +
+  xlab("Year") +
+  ylab(expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))) +
+  theme_bw()
+
+plt_gam_RD22_yr
+```
+
+# Model 2: GAM Model with Flow and 2-way interactions for STTD
+
+Now we'll try running a GAM using all two-way interactions between Year, Flow, and Station.
+
+## Initial Model
+
+```{r gam flow2 no autocorr, warning = FALSE}
+m_gam_flow2_STTD <- gam(
+  Chla_log ~ Year_fct*Flow + s(Week, bs = "cc", k = 5), 
+  data = filter(df_chla_c2, StationCode=="STTD"),
+  method = "REML", 
+  knots = list(week = c(0, 52))
+)
+```
+
+Lets look at the model summary and diagnostics:
+
+```{r gam flow2 no autocorr diag, warning = FALSE}
+summary(m_gam_flow2_STTD)
+appraise(m_gam_flow2_STTD)
+shapiro.test(residuals(m_gam_flow2_STTD))
+k.check(m_gam_flow2_STTD)
+draw(m_gam_flow2_STTD, select = 1, residuals = TRUE, rug = FALSE)
+plot(m_gam_flow2_STTD, pages = 1, all.terms = TRUE)
+acf(residuals(m_gam_flow2_STTD))
+Box.test(residuals(m_gam_flow2_STTD), lag = 20, type = 'Ljung-Box')
+```
+
+Shapiro-Wilk normality test shows that the residuals are normal, the diagnostic plots look really good. Box-LJung indicates no serial autocorrelation.
+
+#backfit values to observed values and run emmeans
+```{r gam flow2 backfit to observed values}
+df_m_gam_flow2_STTD_fit <- df_chla_c2 %>% filter(StationCode=="STTD")%>%
+  fitted_values(m_gam_flow2_STTD, data = .) %>% 
+  mutate(fitted_bt = exp(.fitted) / 1000)
+
+plt_m_gam_flow2_STTD_fit <- df_m_gam_flow2_STTD %>% 
+  ggplot(aes(x = fitted_bt, y = Chla)) +
+  geom_point() +
+  geom_abline(slope = 1, intercept = 0, color = "red") +
+  theme_bw() +
+  labs(
+    x = "Back-transformed Fitted Values",
+    y = "Observed Values"
+  )
+
+plt_m_gam_flow2_STTD_fit
+
+
+plt_m_gam_flow2_STTD_fit + facet_wrap(vars(Year_fct), scales = "free")
+```
+
+```{r gam flow2 emmeans}
+em_gam_STTD_yr <- emmeans(m_gam_flow2_STTD, ~ Year_fct)
+
+# Tukey post-hoc contrasts
+pairs(em_gam_STTD_yr)
+
+# Create table of contrasts and convert it to a tibble for plot
+df_gam_STTD_yr <- em_gam_RD22_yr %>% 
+  cld(sort = FALSE, Letters = letters) %>% 
+  as_tibble() %>% 
+  mutate(
+    group = str_remove_all(.group, fixed(" ")),
+    # back transform log-transformed results
+    across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000)
+  ) %>% 
+  # Add min and max values of observed data to the Tukey post-hoc results and
+    # calculate vertical positioning of letters
+  left_join(
+    df_chla_c %>% 
+      summarize(
+        max_val = max(Chla),
+        min_val = min(Chla),
+        .by = Year_fct
+    ), 
+    by = join_by(Year_fct)
+  ) %>% 
+  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>% 
+  group_by(Year_fct) %>% 
+  mutate(max_val = max(max_val)) %>% 
+  ungroup() %>% 
+  mutate(y_pos = max_val + (max_val - min_val) / 10) %>% 
+  select(
+    Year_fct,
+    emmean,
+    lower.CL,
+    upper.CL,
+    group,
+    y_pos
+  )
+
+# Create boxplot showing Tukey post-hoc results
+plt_gam_STTD_yr <- df_gam_STTD_yr %>% 
+  ggplot(
+    aes(
+      x = Year_fct,
+      y = emmean,
+      ymin = lower.CL,
+      ymax = upper.CL
+    )
+  ) +
+  geom_boxplot(
+    data = df_chla_c,
+    aes(x = Year_fct, y = Chla),
+    inherit.aes = FALSE
+  ) +
+  geom_crossbar(color = "grey82", fill = "grey", alpha = 0.7, linewidth = 0.1) +
+  geom_point(color = "red") +
+  geom_text(aes(y = y_pos, label = group), size = 3.5) +
+  xlab("Year") +
+  ylab(expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))) +
+  theme_bw()
+
+plt_gam_STTD_yr
+```
+
+
 # Model 3: GAM Model with 2-way interaction between Station and Year but without Flow
 
 Next we'll try running a GAM using a two-way interaction between Year and Station but not including flow as a predictor.
@@ -846,7 +1242,7 @@ anova(m_gam_sflow_lag2)
 df_m_gam_sflow_lag2_fit <- df_chla_c2_lag %>% 
   drop_na(lag1, lag2) %>% 
   fitted_values(m_gam_sflow_lag2, data = .) %>% 
-  mutate(fitted_bt = exp(fitted) / 1000)
+  mutate(fitted_bt = exp(.fitted) / 1000)
 
 plt_m_gam_sflow_lag2_fit <- df_m_gam_sflow_lag2_fit %>% 
   ggplot(aes(x = fitted_bt, y = Chla)) +
