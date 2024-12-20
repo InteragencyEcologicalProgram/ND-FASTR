@@ -1313,11 +1313,12 @@ df_gam_yr_rd22 <- em_gam_yr_rd22 %>%
     ), 
     by = join_by(Year_fct)
   ) %>% 
-  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>% 
-  group_by(Year_fct) %>% 
-  mutate(max_val = max(max_val)) %>% 
-  ungroup() %>% 
-  mutate(y_pos = max_val + (max_val - min_val) / 10) %>% 
+  mutate(
+    max_val = if_else(upper.CL > max_val, upper.CL, max_val),
+    y_pos = max_val + (max_val - min_val) / 10,
+    # Make all post-hoc contrast letters at same height equal to max of all
+    y_pos = max(y_pos)
+  ) %>% 
   select(
     Year_fct,
     emmean,
@@ -1507,11 +1508,12 @@ df_gam_yr_sttd <- em_gam_yr_sttd %>%
     ), 
     by = join_by(Year_fct)
   ) %>% 
-  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>% 
-  group_by(Year_fct) %>% 
-  mutate(max_val = max(max_val)) %>% 
-  ungroup() %>% 
-  mutate(y_pos = max_val + (max_val - min_val) / 10) %>% 
+  mutate(
+    max_val = if_else(upper.CL > max_val, upper.CL, max_val),
+    y_pos = max_val + (max_val - min_val) / 10,
+    # Make all post-hoc contrast letters at same height equal to max of all
+    y_pos = max(y_pos)
+  ) %>% 
   select(
     Year_fct,
     emmean,
@@ -1759,11 +1761,12 @@ df_gam_yr_lib <- em_gam_yr_lib %>%
     ), 
     by = join_by(Year_fct)
   ) %>% 
-  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>% 
-  group_by(Year_fct) %>% 
-  mutate(max_val = max(max_val)) %>% 
-  ungroup() %>% 
-  mutate(y_pos = max_val + (max_val - min_val) / 10) %>% 
+  mutate(
+    max_val = if_else(upper.CL > max_val, upper.CL, max_val),
+    y_pos = max_val + (max_val - min_val) / 10,
+    # Make all post-hoc contrast letters at same height equal to max of all
+    y_pos = max(y_pos)
+  ) %>% 
   select(
     Year_fct,
     emmean,
@@ -2011,11 +2014,12 @@ df_gam_yr_rvb <- em_gam_yr_rvb %>%
     ), 
     by = join_by(Year_fct)
   ) %>% 
-  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>% 
-  group_by(Year_fct) %>% 
-  mutate(max_val = max(max_val)) %>% 
-  ungroup() %>% 
-  mutate(y_pos = max_val + (max_val - min_val) / 10) %>% 
+  mutate(
+    max_val = if_else(upper.CL > max_val, upper.CL, max_val),
+    y_pos = max_val + (max_val - min_val) / 10,
+    # Make all post-hoc contrast letters at same height equal to max of all
+    y_pos = max(y_pos)
+  ) %>% 
   select(
     Year_fct,
     emmean,
