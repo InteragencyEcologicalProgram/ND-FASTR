@@ -48,8 +48,8 @@ zoopNDFAv2 <- zoopNDFAv2%>%filter(Classification!= "Harpacticoids")
 glimpse(zoopNDFAv2)
 
 #read in data with additional flow parameters and create new data table joined with zoop data
-flow_magnitude<-read.csv("Zoop_code/flow_magnitude.csv", stringsAsFactors = FALSE, na.strings="",header = TRUE)
-flow_dates<-read.csv("Zoop_code/FlowDatesDesignations.csv", stringsAsFactors = FALSE, na.strings="",header = TRUE)
+flow_magnitude<-read.csv("flow_magnitude.csv", stringsAsFactors = FALSE, na.strings="",header = TRUE)
+flow_dates<-read.csv("FlowDatesDesignations.csv", stringsAsFactors = FALSE, na.strings="",header = TRUE)
 flow_dates$PreFlowStart <- format(as.Date(flow_dates$PreFlowStart, format = "%m/%d/%Y"), "%Y-%m-%d")
 flow_dates$PreFlowEnd <- format(as.Date(flow_dates$PreFlowEnd, format = "%m/%d/%Y"), "%Y-%m-%d")
 flow_dates$PostFlowStart <- format(as.Date(flow_dates$PostFlowStart, format = "%m/%d/%Y"), "%Y-%m-%d")
@@ -300,10 +300,12 @@ fig1 <- ggplot(data=zoopNDFA7, aes(y= log10(cpue),
 
 fig1 +
   labs(title = NULL,
-       y = bquote(Log[10]~'Zooplankton CPUE'~(indiv.~L^-1)), 
+       y = bquote(Log[10]~'Zooplankton CPUE'~ ('organisms *'~m^-3)), 
        x = NULL,
        fill = "Pulse Period") + 
   theme_bw()+
+  theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
   scale_fill_manual(values = c("#4DAF4A",
                                "#984EA3",
                                "#A3D0D4"),
@@ -312,7 +314,7 @@ fig1 +
 
 ggsave(path = "Plots",
        filename = "fig1_log_zoop_cpue_by_year_and_AP.png", 
-       device = "tiff",
+       device = "png",
        scale=1.0, 
        units="in",
        height=4,
