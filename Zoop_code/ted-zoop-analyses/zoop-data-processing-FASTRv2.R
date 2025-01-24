@@ -268,31 +268,36 @@ for (i in 1:length(years)) {
 df_zoop_gen_NMDS <- do.call(rbind, ls_dfs)
 
 # Create NMDS Plots ------------------------------------------------------------
-
+# Create a ggplot2 theme for the NMDS plots
+theme_update(
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank(),
+  axis.text = element_blank(),
+  axis.ticks = element_blank(),
+  plot.background = element_rect(fill = "white", colour = NA),
+  panel.background = element_rect(fill = "white", colour = NA),
+  panel.border = element_rect(fill = NA, colour = "black"),
+  strip.background = element_rect(fill = "gray", colour = "black"),
+  legend.position = "bottom",
+  legend.key = element_rect(fill = "white", colour = NA)
+)
 # Create NMDS plots for each year by Region
 p_zoop_NMDS_Region <- ggplot(df_zoop_gen_NMDS, aes(x = NMDS1, 
                                                    y = NMDS2, 
-                                                   color = Region)) +
-  geom_point(size = 3) +
-  stat_ellipse() + 
-  labs(title = NULL) +
-  labs(color = "Region") +
-  theme_bw() +
-  scale_color_brewer(palette = "Set1")
+                                                   fill = Region)) +
+  geom_point(size = 3,
+             pch = 21,
+             color = "black") +
+  stat_ellipse(aes(color = Region)) + 
+  labs(color = "Region",
+       x = NULL,
+       y = NULL)
 
 p_zoop_NMDS_Region +
   facet_wrap(Year ~ ., ncol = 3, dir = "h") +
-  labs(x = NULL,
-       y = NULL,
-       title = NULL,
-       color = "Region") +
-  theme(axis.text.x=element_blank(),
-        axis.ticks.x=element_blank(),
-        axis.text.y=element_blank(),
-        axis.ticks.y=element_blank(),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank())
+  scale_fill_brewer(palette = "Set1") +
+  scale_color_brewer(palette = "Set1")
+
 
 ggsave(path = output,
        filename = "p_zoop_NMDS_region.png", 
@@ -306,27 +311,20 @@ ggsave(path = output,
 # Create NMDS plots for each year by Sample Period
 p_zoop_NMDS_SamplePeriod <- ggplot(df_zoop_gen_NMDS, aes(x = NMDS1, 
                                                    y = NMDS2, 
-                                                   color = SamplePeriod)) +
-  geom_point(size = 3) +
-  stat_ellipse() + 
-  labs(title = NULL) +
-  labs(color = "Sample Period") +
-  theme_bw() +
-  scale_color_brewer(palette = "Set1")
+                                                   fill = SamplePeriod)) +
+  geom_point(size = 3,
+             pch = 21,
+             color = "black") +
+  stat_ellipse(aes(color = SamplePeriod)) + 
+  labs(color = "Flow Pulse Period",
+       fill = "Flow Pulse Period",
+       x = NULL,
+       y = NULL)
 
 p_zoop_NMDS_SamplePeriod +
-  facet_wrap(Year~., ncol = 3, dir = "h") +
-  labs(x = NULL,
-       y = NULL,
-       title = NULL,
-       color = "Flow Pulse Period") +
-  theme(axis.text.x=element_blank(),
-        axis.ticks.x=element_blank(),
-        axis.text.y=element_blank(),
-        axis.ticks.y=element_blank(),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank())
+  facet_wrap(Year ~ ., ncol = 3, dir = "h") +
+  scale_fill_brewer(palette = "Set1") +
+  scale_color_brewer(palette = "Set1")
 
 ggsave(path = output,
        filename = "p_zoop_NMDS_sampleperiod.png", 
@@ -368,11 +366,10 @@ genw2 <- pivot_wider(df_zoop_gen,
                      values_from = "CPUEZoop",
                      values_fill = 0)
 
-
 adon.results <- adonis2(genw2[c(9:70)] ~ genw2$Region*genw2$SamplePeriod + genw2$Year*genw2$SamplePeriod+genw2$Region*genw2$Year, 
-                        strata = genw2$StationCode,
-                        method = "bray",
-                        perm = 999)
+                         strata = genw2$StationCode,
+                         method = "bray",
+                         perm = 999)
 #write.csv(adon.results, file = "adon.results.csv")
 
 dm_zoop_gen <- vegdist(genw2[c(9:70)], method = "bray")
@@ -381,6 +378,31 @@ bd <- betadisper(dm_zoop_gen, genw2$Region)
 
 anova(bd)
 permutest(bd)
+#this resulted in significant p values for beta diversity below, so the assumptions of homogeneity of variances for permanova are not met
+
+#try log transformation and re-run
+df_zoop_gen3 <- df_zoop_gen
+
+df_zoop_gen3$CPUEZoop <- log10(df_zoop_gen3$CPUEZoop+1)
+
+genw3 <- pivot_wider(df_zoop_gen3, 
+                     names_from = "TaxonName", 
+                     values_from = "CPUEZoop",
+                     values_fill = 0)
+
+adon.results3 <- adonis2(genw3[c(9:70)] ~ genw3$Region*genw3$SamplePeriod + genw3$Year*genw3$SamplePeriod+genw3$Region*genw3$Year, 
+                        strata = genw3$StationCode,
+                        method = "bray",
+                        perm = 999)
+#write.csv(adon.results, file = "adon.results.csv")
+
+dm_zoop_gen3 <- vegdist(genw3[c(9:70)], method = "bray")
+
+bd3 <- betadisper(dm_zoop_gen3, genw3$Region)
+
+anova(bd3)
+permutest(bd3)
+#still significant p values for beta diversity with the log-transformed data 
 
 # Calculate ANOSIM comparisons for zoop communities by Region
 anosim_r <- data.frame(Year = years, 
@@ -426,9 +448,15 @@ anosim_S
 
 ####recreating Ted's plots####
 
+datfig <- df_zoop %>% group_by(Year,Order,Region,SamplePeriod) %>% 
+  summarise(avg=mean(CPUEZoop))
+write.csv(datfig, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/Manuscript/ND-FASTR/Zoop_code/Jesse-zoop-analyses/datfig.csv")
+
+df_zoop_sampavg <- df_zoop %>% group_by(Date,StationCode,Year,SamplePeriod,Region,Order) %>% 
+  summarise(avg=mean(CPUEZoop))
 # Upstream/Downstream
-fig4 <- ggplot(df_zoop, aes(x = SamplePeriod, 
-                                 y = CPUEZoop, 
+fig4 <- ggplot(df_zoop_sampavg, aes(x = SamplePeriod, 
+                                 y = avg, 
                                  fill = Order)) + 
   geom_bar(position = "stack",  
            width = 0.6, 
@@ -438,7 +466,7 @@ fig4 <- ggplot(df_zoop, aes(x = SamplePeriod,
 
 fig4 + 
   labs(x = NULL, 
-       y = bquote('Average Zooplankton CPUE ' ~ ('organisms *'~L^-1)), 
+       y = bquote('Average Zooplankton CPUE ' ~ ('organisms *'~m^-3)), 
        title = paste0(NULL)) + 
   theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
   theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
@@ -453,6 +481,7 @@ fig4 +
                     labels=c("Calanoida", "Cyclopoida", "Cladocera")) +
     theme(axis.text.x = element_text(angle = 45, vjust = 0.7)) +
   facet_grid(Region~Year) # dir = v makes order of station go "north to south"
+
 
 ggsave(path = output,
        filename = paste0("fig4_zoop_order_by_year.png"), 
@@ -470,7 +499,7 @@ testplot <- ggplot(testdata, aes(x = SamplePeriod, y = logCPUEzoop, fill = Regio
   geom_boxplot()
 testplot+
   labs(x = bquote(NULL), 
-       y = expression(paste("Log CPUE of " ,italic(" P. forbesi "), ~ ("organisms *"~L^-1))), 
+       y = expression(paste("Log CPUE of " ,italic(" P. forbesi "), ~ ('organisms *'~m^-3))), 
        title = paste0(NULL)) + 
   theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
   theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
@@ -489,7 +518,7 @@ ggsave(path = output,
 testplot+
   facet_wrap(vars(Year), ncol = 3, dir = "h") +
   labs(x = bquote(NULL), 
-       y = expression(paste("Log CPUE of " ,italic(" P. forbesi "), ~ ("organisms *"~L^-1))), 
+       y = expression(paste("Log CPUE of " ,italic(" P. forbesi "), ~ ('organisms *'~m^-3))), 
        title = paste0(NULL)) + 
   theme(panel.background = element_rect(fill = "white", linetype = 0)) + 
   theme(panel.grid.major.x = element_blank(), panel.grid.minor = element_blank()) +
