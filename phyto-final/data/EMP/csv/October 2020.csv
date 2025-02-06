@@ -1,0 +1,136 @@
+﻿MethodCode,SampleDate,SampleTime,StationCode,Volume Received (mL),Volume Analyzed (mL),Percent of Sample Counted,Field-of-view (mm²),Slide/ Chamber Area (mm²),Area Counted,Number of Fields Counted,Factor,BSA_TIN,Taxon,Diatom/SoftBody,Genus,Species,Synonym,Unit Abundance,Number of cells per unit,GALD 1,Colony/Filament/Individual Group Code,BSA#,Taxonomist,Comments,Shape,Biovolume 1,Biovolume 2,Biovolume 3,Biovolume 4,Biovolume 5,Biovolume 6,Biovolume 7,Biovolume 8,Biovolume 9,Biovolume 10
+Phyto,10/6/2020,8:45,C3A-Hood,63.0,1,1.59%,0.0697,314.159,3.485,50,90.15,1037,cf. Chlorella sp.,Soft Body,Chlorella,sp.,,7,7,1.9,i,BSA.10-01,BB,,sphere,3.59,,,,,,,,,
+Phyto,10/6/2020,8:45,C3A-Hood,63.0,1,1.59%,0.0697,314.159,3.485,50,90.15,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,288,596,0.8,c,BSA.10-01,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/6/2020,10:45,C9,60.0,1,1.67%,0.0697,314.159,2.1607,31,145.40,1037,cf. Chlorella sp.,Soft Body,Chlorella,sp.,,12,12,3.7,i,BSA.10-02,BB,,sphere,6.37,,,,,,,,,
+Phyto,10/6/2020,10:45,C9,60.0,1,1.67%,0.0697,314.159,2.1607,31,145.40,1761,Drepanochloris nannoselene,Soft Body,Drepanochloris,nannoselene,,1,1,5.6,i,BSA.10-02,BB,,cylinder + 2 cones,8.03,,,,,,,,,
+Phyto,10/6/2020,10:45,C9,60.0,1,1.67%,0.0697,314.159,2.1607,31,145.40,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,1,1,9.3,i,BSA.10-02,BB,,cone + half sphere,337.38,,,,,,,,,
+Phyto,10/6/2020,10:45,C9,60.0,1,1.67%,0.0697,314.159,2.1607,31,145.40,1423,Chroococcus sp.,Soft Body,Chroococcus,sp.,,20,28,6.5,i,BSA.10-02,BB,,sphere,113.10,,,,,,,,,
+Phyto,10/6/2020,10:45,C9,60.0,1,1.67%,0.0697,314.159,2.1607,31,145.40,1766,Dolichospermum sp.,Soft Body,Dolichospermum,sp.,,1,2,6.5,i,BSA.10-02,BB,,sphere,85.08,,,,,,,,,
+Phyto,10/6/2020,10:45,C9,60.0,1,1.67%,0.0697,314.159,2.1607,31,145.40,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,364,744,0.8,c,BSA.10-02,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/6/2020,10:45,C9,60.0,1,1.67%,0.0697,314.159,2.1607,31,145.40,1508,Pseudanabaena sp.,Soft Body,Pseudanabaena,sp.,,1,3,4.3,i,BSA.10-02,BB,,cylinder,12.19,,,,,,,,,
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,190,Cyclotella sp.,Diatom,Cyclotella,sp.,,1,1,10.2,i,BSA.10-03,BB,,cylinder,457.59,,,,,,,,,
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,586,Navicula cf. gregaria,Diatom,Navicula,gregaria,,2,2,44.4,i,BSA.10-03,BB,,elliptic prism,1662.85,,,,,,,,,
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1860,Skeletonema potamos,Diatom,Skeletonema,potamos,,20,20,8.3,i,BSA.10-03,BB,,cylinder + 2 half spheres,76.34,,,,,,,,,
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1037,cf. Chlorella sp.,Soft Body,Chlorella,sp.,,25,25,1.9,i,BSA.10-03,BB,,sphere,3.59,,,,,,,,,
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1085,Dictyosphaerium sp.,Soft Body,Dictyosphaerium,sp.,,2,16,5.6,i,BSA.10-03,BB,,sphere,91.95,,,,,,,,,
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1135,Monoraphidium convolutum,Soft Body,Monoraphidium,convolutum,,3,3,7.4,i,BSA.10-03,BB,,2 cones,22.32,,,,,,,,,
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1235,cf. Scenedesmus sp.,Soft Body,Scenedesmus,sp.,,1,2,3.7,i,BSA.10-03,BB,,prolate spheroid,6.99,,,,,,,,,
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,1,1,8.3,i,BSA.10-03,BB,,cone + half sphere,232.66,,,,,,,,,
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1733,Plagioselmis prolonga,Soft Body,Plagioselmis,prolonga,,1,1,6.5,i,BSA.10-03,BB,,cone + half sphere,112.82,,,,,,,,,
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1423,Chroococcus sp.,Soft Body,Chroococcus,sp.,,2,3,3.7,i,BSA.10-03,BB,,sphere,26.52,,,,,,,,,
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,351,728,0.8,c,BSA.10-03,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1471,Merismopedia tenuissima,Soft Body,Merismopedia,tenuissima,,1,80,1.3,i,BSA.10-03,BB,,cube,2.20,,,,,,,,,
+Phyto,10/6/2020,12:30,C10A,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1477,cf. Microcystis sp.,Soft Body,Microcystis,sp.,,1,1,3.7,i,BSA.10-03,BB,,sphere,26.52,,,,,,,,,
+Phyto,10/9/2020,9:35,EZ6-SJR,62.0,1,1.61%,0.0697,314.159,0.5576,8,563.41,1037,cf. Chlorella sp.,Soft Body,Chlorella,sp.,,3,3,1.9,i,BSA.10-04,BB,,sphere,3.59,,,,,,,,,
+Phyto,10/9/2020,9:35,EZ6-SJR,62.0,1,1.61%,0.0697,314.159,0.5576,8,563.41,1357,cf. Hemiselmis sp.,Soft Body,Hemiselmis,sp.,,1,1,3.7,i,BSA.10-04,BB,,prolate spheroid,6.99,,,,,,,,,
+Phyto,10/9/2020,9:35,EZ6-SJR,62.0,1,1.61%,0.0697,314.159,0.5576,8,563.41,1423,cf. Chroococcus sp.,Soft Body,Chroococcus,sp.,,4,4,5.6,i,BSA.10-04,BB,,sphere,41.63,,,,,,,,,
+Phyto,10/9/2020,9:35,EZ6-SJR,62.0,1,1.61%,0.0697,314.159,0.5576,8,563.41,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,413,842,0.8,c,BSA.10-04,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/8/2020,11:50,P8,63.0,1,1.59%,0.0697,314.159,3.485,50,90.15,190,cf. Cyclotella sp.,Diatom,Cyclotella,sp.,,7,7,3.7,i,BSA.10-05,BB,,cylinder,39.78,,,,,,,,,
+Phyto,10/8/2020,11:50,P8,63.0,1,1.59%,0.0697,314.159,3.485,50,90.15,1037,cf. Chlorella sp.,Soft Body,Chlorella,sp.,,13,13,1.9,i,BSA.10-05,BB,,sphere,3.59,,,,,,,,,
+Phyto,10/8/2020,11:50,P8,63.0,1,1.59%,0.0697,314.159,3.485,50,90.15,1733,Plagioselmis prolonga,Soft Body,Plagioselmis,prolonga,,14,14,6.5,i,BSA.10-05,BB,,cone + half sphere,84.55,,,,,,,,,
+Phyto,10/8/2020,11:50,P8,63.0,1,1.59%,0.0697,314.159,3.485,50,90.15,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,363,734,0.8,c,BSA.10-05,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/7/2020,10:55,D16,61.0,1,1.64%,0.0697,314.159,1.5334,22,204.88,1037,cf. Chlorella sp.,Soft Body,Chlorella,sp.,,12,12,1.9,i,BSA.10-06,BB,,sphere,3.59,,,,,,,,,
+Phyto,10/7/2020,10:55,D16,61.0,1,1.64%,0.0697,314.159,1.5334,22,204.88,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,1,1,9.3,i,BSA.10-06,BB,,cone + half sphere,337.38,,,,,,,,,
+Phyto,10/7/2020,10:55,D16,61.0,1,1.64%,0.0697,314.159,1.5334,22,204.88,1402,Aphanocapsa sp.,Soft Body,Aphanocapsa,sp.,,1,33,0.9,i,BSA.10-06,BB,,sphere,0.38,,,,,,,,,
+Phyto,10/7/2020,10:55,D16,61.0,1,1.64%,0.0697,314.159,1.5334,22,204.88,1423,cf. Chroococcus sp.,Soft Body,Chroococcus,sp.,,7,8,5.6,i,BSA.10-06,BB,,sphere,91.95,,,,,,,,,
+Phyto,10/7/2020,10:55,D16,61.0,1,1.64%,0.0697,314.159,1.5334,22,204.88,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,385,784,0.8,c,BSA.10-06,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/7/2020,10:55,D16,61.0,1,1.64%,0.0697,314.159,1.5334,22,204.88,1508,Pseudanabaena sp.,Soft Body,Pseudanabaena,sp.,,1,4,3.7,i,BSA.10-06,BB,,cylinder,4.91,,,,,,,,,
+Phyto,10/14/2020,11:45,NZ004,62.0,1,1.61%,0.0697,314.159,0.9758,14,321.95,1037,cf. Chlorella sp.,Soft Body,Chlorella,sp.,,3,3,3.7,i,BSA.10-07,BB,,sphere,15.60,,,,,,,,,
+Phyto,10/14/2020,11:45,NZ004,62.0,1,1.61%,0.0697,314.159,0.9758,14,321.95,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,409,832,0.8,c,BSA.10-07,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/12/2020,14:05,D10,62.0,1,1.61%,0.0697,314.159,0.8364,12,375.61,595,Navicula cf. lanceolata,Diatom,Navicula,lanceolata,,1,1,35.2,i,BSA.10-08,BB,,elliptic prism,756.95,,,,,,,,,
+Phyto,10/12/2020,14:05,D10,62.0,1,1.61%,0.0697,314.159,0.8364,12,375.61,1037,Chlorella sp.,Soft Body,Chlorella,sp.,,2,2,1.9,i,BSA.10-08,BB,,sphere,3.59,,,,,,,,,
+Phyto,10/12/2020,14:05,D10,62.0,1,1.61%,0.0697,314.159,0.8364,12,375.61,1692,cf. Kephyrion sp.,Soft Body,Kephyrion,sp.,,1,1,7.4,i,BSA.10-08,BB,,prolate spheroid,121.51,,,,,,,,,
+Phyto,10/12/2020,14:05,D10,62.0,1,1.61%,0.0697,314.159,0.8364,12,375.61,1733,Plagioselmis prolonga,Soft Body,Plagioselmis,prolonga,,2,2,5.6,i,BSA.10-08,BB,,cone + half sphere,68.96,,,,,,,,,
+Phyto,10/12/2020,14:05,D10,62.0,1,1.61%,0.0697,314.159,0.8364,12,375.61,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,420,862,0.8,c,BSA.10-08,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/14/2020,11:10,NZ325,61.0,1,1.64%,0.0697,314.159,1.2546,18,250.41,190,cf. Cyclotella sp.,Diatom,Cyclotella,sp.,,1,1,5.6,i,BSA.10-09,BB,,cylinder,68.96,,,,,,,,,
+Phyto,10/14/2020,11:10,NZ325,61.0,1,1.64%,0.0697,314.159,1.2546,18,250.41,984,cf. Thalassionema sp.,Diatom,Thalassionema,sp.,,1,1,20.4,i,BSA.10-09,BB,,box,639.74,,,,,,,,,
+Phyto,10/14/2020,11:10,NZ325,61.0,1,1.64%,0.0697,314.159,1.2546,18,250.41,1037,Chlorella sp.,Soft Body,Chlorella,sp.,,2,2,1.9,i,BSA.10-09,BB,,sphere,3.59,,,,,,,,,
+Phyto,10/14/2020,11:10,NZ325,61.0,1,1.64%,0.0697,314.159,1.2546,18,250.41,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,1,1,7.4,i,BSA.10-09,BB,,cone + half sphere,159.13,,,,,,,,,
+Phyto,10/14/2020,11:10,NZ325,61.0,1,1.64%,0.0697,314.159,1.2546,18,250.41,1733,Plagioselmis prolonga,Soft Body,Plagioselmis,prolonga,,1,1,5.6,i,BSA.10-09,BB,,cone + half sphere,71.43,,,,,,,,,
+Phyto,10/14/2020,11:10,NZ325,61.0,1,1.64%,0.0697,314.159,1.2546,18,250.41,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,406,818,0.8,c,BSA.10-09,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/8/2020,10:30,MD10A,60.0,1,1.67%,0.0697,314.159,1.8122,26,173.36,145,Cocconeis placentula,Diatom,Cocconeis,placentula,,1,1,16.7,i,BSA.10-10,BB,,elliptic prism,341.54,,,,,,,,,
+Phyto,10/8/2020,10:30,MD10A,60.0,1,1.67%,0.0697,314.159,1.8122,26,173.36,310,cf. Encyonema sp.,Diatom,Encyonema,sp.,,1,1,10.2,i,BSA.10-10,BB,,cymbelloid,70.46,,,,,,,,,
+Phyto,10/8/2020,10:30,MD10A,60.0,1,1.67%,0.0697,314.159,1.8122,26,173.36,1037,cf. Chlorella sp.,Soft Body,Chlorella,sp.,,2,2,3.7,i,BSA.10-10,BB,,sphere,11.49,,,,,,,,,
+Phyto,10/8/2020,10:30,MD10A,60.0,1,1.67%,0.0697,314.159,1.8122,26,173.36,1423,cf. Chroococcus sp.,Soft Body,Chroococcus,sp.,,1,1,5.6,i,BSA.10-10,BB,,sphere,91.95,,,,,,,,,
+Phyto,10/8/2020,10:30,MD10A,60.0,1,1.67%,0.0697,314.159,1.8122,26,173.36,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,403,828,0.8,c,BSA.10-10,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/8/2020,9:15,D26,60.0,1,1.67%,0.0697,314.159,2.3698,34,132.57,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,1,1,9.3,i,BSA.10-11,BB,,cone + half sphere,337.38,,,,,,,,,
+Phyto,10/8/2020,9:15,D26,60.0,1,1.67%,0.0697,314.159,2.3698,34,132.57,1423,cf. Chroococcus sp.,Soft Body,Chroococcus,sp.,,1,1,7.4,i,BSA.10-11,BB,,sphere,212.17,,,,,,,,,
+Phyto,10/8/2020,9:15,D26,60.0,1,1.67%,0.0697,314.159,2.3698,34,132.57,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,403,832,0.8,c,BSA.10-11,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/9/2020,10:15,EZ2-SJR,60.0,1,1.67%,0.0697,314.159,1.4637,21,214.63,145,Cocconeis placentula,Diatom,Cocconeis,placentula,,1,1,18.5,i,BSA.10-12,BB,,elliptic prism,548.36,,,,,,,,,
+Phyto,10/9/2020,10:15,EZ2-SJR,60.0,1,1.67%,0.0697,314.159,1.4637,21,214.63,190,Cyclotella sp.,Diatom,Cyclotella,sp.,,4,4,5.6,i,BSA.10-12,BB,,cylinder,46.50,,,,,,,,,
+Phyto,10/9/2020,10:15,EZ2-SJR,60.0,1,1.67%,0.0697,314.159,1.4637,21,214.63,500,Hippodonta sp.,Diatom,Hippodonta,sp.,,1,1,13,i,BSA.10-12,BB,,elliptic prism,245.55,,,,,,,,,
+Phyto,10/9/2020,10:15,EZ2-SJR,60.0,1,1.67%,0.0697,314.159,1.4637,21,214.63,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,3,3,9.3,i,BSA.10-12,BB,,cone + half sphere,277.42,,,,,,,,,
+Phyto,10/9/2020,10:15,EZ2-SJR,60.0,1,1.67%,0.0697,314.159,1.4637,21,214.63,1733,Plagioselmis prolonga,Soft Body,Plagioselmis,prolonga,,1,1,4.6,i,BSA.10-12,BB,,cone + half sphere,45.98,,,,,,,,,
+Phyto,10/9/2020,10:15,EZ2-SJR,60.0,1,1.67%,0.0697,314.159,1.4637,21,214.63,1423,cf. Chroococcus sp.,Soft Body,Chroococcus,sp.,,9,12,5.6,c,BSA.10-12,BB,,sphere,77.95,,,,,,,,,
+Phyto,10/9/2020,10:15,EZ2-SJR,60.0,1,1.67%,0.0697,314.159,1.4637,21,214.63,1945,Cuspidothrix sp.,Diatom,Cuspidothrix,sp.,,1,33,7.4,f.,BSA.10-12,BB,,cylinder,79.57,,,,,,,,,
+Phyto,10/9/2020,10:15,EZ2-SJR,60.0,1,1.67%,0.0697,314.159,1.4637,21,214.63,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,398,816,0.8,c,BSA.10-12,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/7/2020,11:50,D19,60.0,1,1.67%,0.0697,314.159,3.485,50,90.15,190,Cyclotella sp.,Diatom,Cyclotella,sp.,,2,2,7.4,i,BSA.10-13,BB,Cannot meet tally in 50 fields.,cylinder,184.94,,,,,,,,,
+Phyto,10/7/2020,11:50,D19,60.0,1,1.67%,0.0697,314.159,3.485,50,90.15,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,8,8,11.1,i,BSA.10-13,BB,Cannot meet tally in 50 fields.,cone + half sphere,288.25,,,,,,,,,
+Phyto,10/7/2020,11:50,D19,60.0,1,1.67%,0.0697,314.159,3.485,50,90.15,1423,Chroococcus sp.,Soft Body,Chroococcus,sp.,,1,2,5.6,i,BSA.10-13,BB,Cannot meet tally in 50 fields.,sphere,91.95,,,,,,,,,
+Phyto,10/7/2020,11:50,D19,60.0,1,1.67%,0.0697,314.159,3.485,50,90.15,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,201,416,0.8,c,BSA.10-13,BB,Cannot meet tally in 50 fields.,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/14/2020,11:30,NZ002,60.0,1,1.67%,0.0697,314.159,0.9061,13,346.72,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,2,2,9.3,i,BSA.10-14,BB,,cone + half sphere,281.80,,,,,,,,,
+Phyto,10/14/2020,11:30,NZ002,60.0,1,1.67%,0.0697,314.159,0.9061,13,346.72,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,424,852,0.8,c,BSA.10-14,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/12/2020,12:20,D6,62.0,1,1.61%,0.0697,314.159,1.1152,16,281.71,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,6,6,9.3,i,BSA.10-15,BB,,cone + half sphere,251.57,,,,,,,,,
+Phyto,10/12/2020,12:20,D6,62.0,1,1.61%,0.0697,314.159,1.1152,16,281.71,1423,Chroococcus sp.,Soft Body,Chroococcus,sp.,,1,2,2.8,c,BSA.10-15,BB,,sphere,11.49,,,,,,,,,
+Phyto,10/12/2020,12:20,D6,62.0,1,1.61%,0.0697,314.159,1.1152,16,281.71,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,414,844,0.8,c,BSA.10-15,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/9/2020,13:05,EZ2,61.0,1,1.64%,0.0683,314.159,1.8441,27,170.36,145,Cocconeis placentula,Diatom,Cocconeis,placentula,,2,2,20,i,BSA.10-16,LA,,elliptic prism,418.18,,,,,,,,,
+Phyto,10/9/2020,13:05,EZ2,61.0,1,1.64%,0.0683,314.159,1.8441,27,170.36,1994,Fallacia hodgeana,Diatom,Fallacia,hodgeana,,1,1,14.8,i,BSA.10-16,LA,,elliptic prism,273.39,,,,,,,,,
+Phyto,10/9/2020,13:05,EZ2,61.0,1,1.64%,0.0683,314.159,1.8441,27,170.36,1707,Navicula antonii,Diatom,Navicula,antonii,,1,1,22.2,i,BSA.10-16,LA,,elliptic prism,410.09,,,,,,,,,
+Phyto,10/9/2020,13:05,EZ2,61.0,1,1.64%,0.0683,314.159,1.8441,27,170.36,749,Nitzschia sp.,Diatom,Nitzschia,sp.,,1,1,18.5,i,BSA.10-16,LA,,prism on parallelogram,72.52,,,,,,,,,
+Phyto,10/9/2020,13:05,EZ2,61.0,1,1.64%,0.0683,314.159,1.8441,27,170.36,2000,Stauroforma exiguiformis,Diatom,Stauroforma ,exiguiformis,,1,1,22.2,i,BSA.10-16,LA,,elliptic prism,278.97,,,,,,,,,
+Phyto,10/9/2020,13:05,EZ2,61.0,1,1.64%,0.0683,314.159,1.8441,27,170.36,1699,Tryblionella acuminata,Diatom,Tryblionella,acuminata,,1,1,38,i,BSA.10-16,LA,,elliptic prism,1634.32,,,,,,,,,
+Phyto,10/9/2020,13:05,EZ2,61.0,1,1.64%,0.0683,314.159,1.8441,27,170.36,1352,cf. Cryptomonas sp.,Soft Body,Cryptomonas,sp.,,2,2,14,i,BSA.10-16,LA,,prolate spheroid,469.14,,,,,,,,,
+Phyto,10/9/2020,13:05,EZ2,61.0,1,1.64%,0.0683,314.159,1.8441,27,170.36,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,3,3,12,i,BSA.10-16,LA,,cone + half sphere,637.62,,,,,,,,,
+Phyto,10/9/2020,13:05,EZ2,61.0,1,1.64%,0.0683,314.159,1.8441,27,170.36,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,398,796,0.8,c,BSA.10-16,LA,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/7/2020,9:12,D12,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,481,Gyrosigma sp.,Diatom,Gyrosigma,sp.,,1,1,107.4,i,BSA.10-17,BB,,prism on parallelogram,2796.70,,,,,,,,,
+Phyto,10/7/2020,9:12,D12,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1365,Plagioselmis lacustris,Soft Body,Plagioselmis,lacustris,,2,2,14.8,i,BSA.10-17,BB,,cone + half sphere,1057.17,,,,,,,,,
+Phyto,10/7/2020,9:12,D12,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,3,3,9.3,i,BSA.10-17,BB,,cone + half sphere,337.38,,,,,,,,,
+Phyto,10/7/2020,9:12,D12,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1423,Chroococcus sp.,Soft Body,Chroococcus,sp.,,2,3,7.4,i,BSA.10-17,BB,,sphere,124.79,,,,,,,,,
+Phyto,10/7/2020,9:12,D12,59.0,1,1.69%,0.0697,314.159,1.1849,17,265.14,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,398,808,0.8,c,BSA.10-17,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/12/2020,13:25,D8,62.0,1,1.61%,0.0697,314.159,2.1607,31,145.40,1020,cf. Carteria sp.,Soft Body,Carteria,sp.,,3,3,13,i,BSA.10-18,BB,,sphere,479.54,,,,,,,,,
+Phyto,10/12/2020,13:25,D8,62.0,1,1.61%,0.0697,314.159,2.1607,31,145.40,1806,cf. Chrysochromulina sp.,Soft Body,Chrysochromulina,sp.,,1,1,3.7,i,BSA.10-18,BB,,prolate spheroid,26.52,,,,,,,,,
+Phyto,10/12/2020,13:25,D8,62.0,1,1.61%,0.0697,314.159,2.1607,31,145.40,1352,Cryptomonas sp.,Soft Body,Cryptomonas,sp.,,1,1,16.7,i,BSA.10-18,BB,,prolate spheroid,756.28,,,,,,,,,
+Phyto,10/12/2020,13:25,D8,62.0,1,1.61%,0.0697,314.159,2.1607,31,145.40,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,7,7,9.3,i,BSA.10-18,BB,,cone + half sphere,292.39,,,,,,,,,
+Phyto,10/12/2020,13:25,D8,62.0,1,1.61%,0.0697,314.159,2.1607,31,145.40,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,406,832,0.8,c,BSA.10-18,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/9/2020,11:20,EZ6,62.0,1,1.61%,0.0683,314.159,1.5026,22,209.08,190,Cyclotella sp.,Diatom,Cyclotella,sp.,,1,1,11.1,i,BSA.10-19,LA,,cylinder,899.95,,,,,,,,,
+Phyto,10/9/2020,11:20,EZ6,62.0,1,1.61%,0.0683,314.159,1.5026,22,209.08,1732,Entomoneis paludosa,Diatom,Entomoneis,paludosa,,1,1,46.3,i,BSA.10-19,LA,,elliptic prism,7272.78,,,,,,,,,
+Phyto,10/9/2020,11:20,EZ6,62.0,1,1.61%,0.0683,314.159,1.5026,22,209.08,2003,Psammodictyon sp.,Diatom,Psammodictyon,sp.,,1,1,33.3,i,BSA.10-19,LA,,elliptic prism,3766.14,,,,,,,,,
+Phyto,10/9/2020,11:20,EZ6,62.0,1,1.61%,0.0683,314.159,1.5026,22,209.08,987,Thalassiosira sp.,Diatom,Thalassiosira,sp.,,1,1,5.6,i,BSA.10-19,LA,,cylinder,53.88,,,,,,,,,
+Phyto,10/9/2020,11:20,EZ6,62.0,1,1.61%,0.0683,314.159,1.5026,22,209.08,1423,Chroococcus sp.,Soft Body,Chroococcus,sp.,,7,10,5.6,i,BSA.10-19,LA,,sphere,82.45,,,,,,,,,
+Phyto,10/9/2020,11:20,EZ6,62.0,1,1.61%,0.0683,314.159,1.5026,22,209.08,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,389,778,0.8,c,BSA.10-19,LA,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/13/2020,13:10,NZS42,60.0,1,1.67%,0.0683,314.159,1.9124,28,164.27,272,Diatoma moniliformis,Diatom,Diatoma,moniliformis,,1,1,21.3,i,BSA.10-20,LA,High detritus or possible bacteria.  ,elliptic prism,524.62,,,,,,,,,
+Phyto,10/13/2020,13:10,NZS42,60.0,1,1.67%,0.0683,314.159,1.9124,28,164.27,2004,Fragilariforma sp.,Diatom,Fragilariforma,sp.,,1,1,49,i,BSA.10-20,LA,High detritus or possible bacteria.  ,elliptic prism,3328.52,,,,,,,,,
+Phyto,10/13/2020,13:10,NZS42,60.0,1,1.67%,0.0683,314.159,1.9124,28,164.27,712,Nitzschia incognita,Diatom,Nitzschia,incognita,,1,1,24.1,i,BSA.10-20,LA,High detritus or possible bacteria.  ,prism on parallelogram,108.45,,,,,,,,,
+Phyto,10/13/2020,13:10,NZS42,60.0,1,1.67%,0.0683,314.159,1.9124,28,164.27,719,Nitzschia liebetruthii,Diatom,Nitzschia,liebetruthii,,1,1,11.1,i,BSA.10-20,LA,High detritus or possible bacteria.  ,prism on parallelogram,75.98,,,,,,,,,
+Phyto,10/13/2020,13:10,NZS42,60.0,1,1.67%,0.0683,314.159,1.9124,28,164.27,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,412,824,0.8,c,BSA.10-20,LA,High detritus or possible bacteria.  ,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/9/2020,13:45,NZ068,60.0,2,3.33%,0.0683,314.159,2.1856,32,71.87,145,Cocconeis placentula,Diatom,Cocconeis,placentula,,1,1,28,i,BSA.10-21,LA,,elliptic prism,2441.02,,,,,,,,,
+Phyto,10/9/2020,13:45,NZ068,60.0,2,3.33%,0.0683,314.159,2.1856,32,71.87,190,Cyclotella sp.,Diatom,Cyclotella,sp.,,1,1,7.4,i,BSA.10-21,LA,,cylinder,210.74,,,,,,,,,
+Phyto,10/9/2020,13:45,NZ068,60.0,2,3.33%,0.0683,314.159,2.1856,32,71.87,190,cf. Cyclotella sp.,Diatom,Cyclotella,sp.,,3,3,13,i,BSA.10-21,LA,,cylinder,638.43,,,,,,,,,
+Phyto,10/9/2020,13:45,NZ068,60.0,2,3.33%,0.0683,314.159,2.1856,32,71.87,1037,Chlorella sp.,Soft Body,Chlorella,sp.,,4,4,2,i,BSA.10-21,LA,,sphere,4.19,,,,,,,,,
+Phyto,10/9/2020,13:45,NZ068,60.0,2,3.33%,0.0683,314.159,2.1856,32,71.87,1347,Cryptomonas marssonii,Soft Body,Cryptomonas,marssonii,,2,2,14,i,BSA.10-21,LA,,prolate spheroid,441.15,,,,,,,,,
+Phyto,10/9/2020,13:45,NZ068,60.0,2,3.33%,0.0683,314.159,2.1856,32,71.87,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,3,3,11.1,i,BSA.10-21,LA,,cone + half sphere,395.15,,,,,,,,,
+Phyto,10/9/2020,13:45,NZ068,60.0,2,3.33%,0.0683,314.159,2.1856,32,71.87,1423,Chroococcus sp.,Soft Body,Chroococcus,sp.,,8,9,6,c,BSA.10-21,LA,,sphere,82.45,,,,,,,,,
+Phyto,10/9/2020,13:45,NZ068,60.0,2,3.33%,0.0683,314.159,2.1856,32,71.87,1891,Cyanodictyon sp.,Soft Body,Cyanodictyon,sp.,,1,17,1.8,c,BSA.10-21,LA,,prolate spheroid,0.94,,,,,,,,,
+Phyto,10/9/2020,13:45,NZ068,60.0,2,3.33%,0.0683,314.159,2.1856,32,71.87,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,381,762,0.8,c,BSA.10-21,LA,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/7/2020,12:30,D28A,63.0,1,1.59%,0.0697,314.159,3.485,50,90.15,586,Navicula gregaria,Diatom,Navicula,gregaria,,1,1,37,i,BSA.10-22,BB,,elliptic prism,1659.89,,,,,,,,,
+Phyto,10/7/2020,12:30,D28A,63.0,1,1.59%,0.0697,314.159,3.485,50,90.15,1364,Plagioselmis nannoplanctica,Soft Body,Plagioselmis,nannoplanctica,,3,3,10.2,i,BSA.10-22,BB,,cone + half sphere,359.50,,,,,,,,,
+Phyto,10/7/2020,12:30,D28A,63.0,1,1.59%,0.0697,314.159,3.485,50,90.15,1733,Plagioselmis prolonga,Soft Body,Plagioselmis,prolonga,,2,2,6.5,i,BSA.10-22,BB,,cone + half sphere,112.82,,,,,,,,,
+Phyto,10/7/2020,12:30,D28A,63.0,1,1.59%,0.0697,314.159,3.485,50,90.15,1423,Chroococcus sp.,Soft Body,Chroococcus,sp.,,12,13,5.6,i,BSA.10-22,BB,,sphere,69.46,,,,,,,,,
+Phyto,10/7/2020,12:30,D28A,63.0,1,1.59%,0.0697,314.159,3.485,50,90.15,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,306,712,0.8,c,BSA.10-22,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/9/2020,11:55,D22,63.0,1,1.59%,0.0697,314.159,0.7667,11,409.75,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,409,834,0.8,c,BSA.10-23,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/13/2020,12:15,D7,61.0,2,3.28%,0.0683,314.159,2.1173,31,74.19,182,Cyclotella meneghiniana,Diatom,Cyclotella,meneghiniana,,1,1,7.4,i,BSA.10-24,LA,,cylinder,210.74,,,,,,,,,
+Phyto,10/13/2020,12:15,D7,61.0,2,3.28%,0.0683,314.159,2.1173,31,74.19,190,Cyclotella sp.,Diatom,Cyclotella,sp.,,1,1,5.6,i,BSA.10-24,LA,,cylinder,91.13,,,,,,,,,
+Phyto,10/13/2020,12:15,D7,61.0,2,3.28%,0.0683,314.159,2.1173,31,74.19,987,Thalassiosira sp.,Diatom,Thalassiosira,sp.,,2,2,3.7,i,BSA.10-24,LA,,cylinder,26.15,,,,,,,,,
+Phyto,10/13/2020,12:15,D7,61.0,2,3.28%,0.0683,314.159,2.1173,31,74.19,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,398,796,0.8,c,BSA.10-24,LA,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/13/2020,12:15,D7,61.0,2,3.28%,0.0683,314.159,2.1173,31,74.19,1550,Eutreptiella sp.,Soft Body,Eutreptiella,sp.,,1,1,27.8,i,BSA.10-24,LA,,cylinder + cone,2204.30,,,,,,,,,
+Phyto,10/9/2020,10:25,D4,61.0,1,1.64%,0.0697,314.159,1.1849,17,265.14,1037,cf. Chlorella sp.,Soft Body,Chlorella,sp.,,6,13,3.7,i,BSA.10-25,BB,,sphere,22.45,,,,,,,,,
+Phyto,10/9/2020,10:25,D4,61.0,1,1.64%,0.0697,314.159,1.1849,17,265.14,1423,Chroococcus sp.,Soft Body,Chroococcus,sp.,,1,2,5.6,i,BSA.10-25,BB,,sphere,91.95,,,,,,,,,
+Phyto,10/9/2020,10:25,D4,61.0,1,1.64%,0.0697,314.159,1.1849,17,265.14,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,401,812,0.8,c,BSA.10-25,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/13/2020,14:05,NZ032,60.0,2,3.33%,0.0697,314.159,0.7667,11,204.88,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,417,842,0.8,c,BSA.10-26,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/14/2020,10:35,D41,63.0,5,7.94%,0.0697,314.159,0.6273,9,100.16,1352,Cryptomonas sp.,Soft Body,Cryptomonas,sp.,,1,1,33.3,i,BSA.10-27,BB,,prolate spheroid,7256.09,,,,,,,,,
+Phyto,10/14/2020,10:35,D41,63.0,5,7.94%,0.0697,314.159,0.6273,9,100.16,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,405,828,0.8,c,BSA.10-27,BB,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18
+Phyto,10/14/2020,9:50,D41A,63.0,3,4.76%,0.0683,314.159,2.8003,41,37.40,2005,cf. Gomphosinica sp.,Diatom,Gomphosinica,sp.,,1,1,22.2,i,BSA.10-28,LA,,gomphonemoid,1844.35,,,,,,,,,
+Phyto,10/14/2020,9:50,D41A,63.0,3,4.76%,0.0683,314.159,2.8003,41,37.40,481,Gyrosigma sp.,Diatom,Gyrosigma,sp.,,1,1,77.8,i,BSA.10-28,LA,,prism on parallelogram,8185.34,,,,,,,,,
+Phyto,10/14/2020,9:50,D41A,63.0,3,4.76%,0.0683,314.159,2.8003,41,37.40,744,Nitzschia sigma,Diatom,Nitzschia,sigma,,1,1,57.4,i,BSA.10-28,LA,,prism on parallelogram,2870.00,,,,,,,,,
+Phyto,10/14/2020,9:50,D41A,63.0,3,4.76%,0.0683,314.159,2.8003,41,37.40,1970,Chlorococcum minutum,Soft Body,Chlorococcum,minutum,,1,1,7.4,i,BSA.10-28,LA,,sphere,212.17,,,,,,,,,
+Phyto,10/14/2020,9:50,D41A,63.0,3,4.76%,0.0683,314.159,2.8003,41,37.40,1419,Eucapsis microscopica,Soft Body,Eucapsis,microscopica,,396,792,0.8,c,BSA.10-28,LA,,sphere,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18,0.18

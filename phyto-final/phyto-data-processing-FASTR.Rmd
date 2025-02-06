@@ -1,0 +1,722 @@
+---
+title: "FASTR - Phytoplankton Data Processing"
+author: "Ted Flynn"
+date: "2024-03-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+suppressWarnings(suppressMessages(library(tidyverse)))
+suppressWarnings(suppressMessages(library(knitr)))
+suppressWarnings(suppressMessages(library(lubridate)))
+suppressWarnings(suppressMessages(library(RColorBrewer)))
+suppressWarnings(suppressMessages(library(vegan)))
+suppressWarnings(suppressMessages(library(janitor)))
+suppressWarnings(suppressMessages(library(here)))
+
+```
+
+## Import phyto data collected for FASTR project
+
+These steps import raw phytoplankton data collected by DWR's Aquatic Ecology group as part of the FASTR project and combines them into a single data frame. 
+
+```{r import FASTR, echo=FALSE, message=FALSE}
+# Import AEU data files (comment out when finished)
+
+files_AEU <- list.files(path = here("phyto-final","data","csv"), 
+                   pattern = "\\.csv", 
+                   full.names = T)
+
+df_phyto_AEU <- map(files_AEU, ~read_csv(.x, show_col_types = FALSE)) %>% 
+  list_rbind()
+
+# Remove empty rows
+df_phyto_AEU <- df_phyto_AEU %>% filter_all(any_vars(!is.na(.)))
+
+# Remove weird row with only a single zero in biovolume
+df_phyto_AEU <- df_phyto_AEU %>% drop_na(MethodCode)
+
+# Clean up column names
+df_phyto_AEU <- df_phyto_AEU %>% clean_names(case = "big_camel")
+
+# Filter out samples from other projects. Read in station names with flags and 
+# merge together.
+df_keepers <- read_csv(here("phyto-final","CSVs", "station_names_flagged.csv"),
+                       show_col_types = FALSE)
+
+df_phyto_AEU <- left_join(df_phyto_AEU, df_keepers)
+
+rm(df_keepers)
+
+# Remove data unrelated to project
+df_phyto_AEU <- df_phyto_AEU %>% filter(Flag == "Keep")
+
+# Remove flag column
+df_phyto_AEU <- df_phyto_AEU %>% select(!(Flag))
+
+# Confirm station IDs
+unique(df_phyto_AEU$StationCode) # Shows only 10 FASTR stations
+table(df_phyto_AEU$StationCode)
+
+# Remove blank columns
+df_phyto_AEU <- df_phyto_AEU %>% select_if(~ !all(is.na(.)))
+
+# Remove individual measurement columns as they are only present in a small 
+# number of samples.
+df_phyto_AEU <- df_phyto_AEU %>% select(!(Dimension:DepthM))
+
+# Remove secondary and tertiary GALD measurements as they don't vary much and 
+# aren't present in EMP data
+df_phyto_AEU <- df_phyto_AEU %>% select(!(Gald2:Gald3))
+
+# Correct GALD, which is imported into two separate columns. Test to see if NAs 
+# are 'either/or' and that there aren't some rows with a value in both GALD and 
+# GALD 1
+
+sum(is.na(df_phyto_AEU$Gald)) # Total is 1791
+sum(is.na(df_phyto_AEU$Gald1)) # Total is 4535
+
+# Sum of NAs is 6326 which is the same as the number of rows in the df. This
+# shows that there aren't any rows with two values so that we can Combine them 
+# without any issues.
+
+# Move Gald1 column
+df_phyto_AEU <- df_phyto_AEU %>% relocate(Gald1, .after = Gald)
+
+# Combine both GALD columns
+df_phyto_AEU <- df_phyto_AEU %>%
+  rowwise() %>%
+  mutate(GALD.Tot = sum(c_across(Gald:Gald1), na.rm = TRUE))
+
+# Check if rows have two NAs or no NAs in the GALD columns
+# test <- df_phyto_AEU %>%
+#   mutate(GALD.Value = case_when(is.na(Gald) & is.na(Gald1) ~ "Fix",
+#                                 TRUE ~ "Okay"))
+
+# Remove old GALD columns and rename GALD.Tot
+df_phyto_AEU <- df_phyto_AEU %>% 
+  select(!(Gald:Gald1)) %>%
+  rename("GALD" = "GALD.Tot")
+
+# Remove MethodCode column that just says "Phyto" 
+df_phyto_AEU <- df_phyto_AEU %>% select(!(MethodCode))
+
+# Add column to indicate what study it came from
+df_phyto_AEU <- df_phyto_AEU %>% mutate(Study = "FASTR", .after = StationCode)
+
+```
+
+## Import EMP Data
+
+Import phytoplankton data collected by the Environmental Monitoring Program. 
+
+```{r import EMP, echo=FALSE, message=FALSE}
+
+# Import EMP data files
+phyto_files_EMP <- list.files(path = here("phyto-final","data","EMP","csv"), 
+                   pattern = "\\.csv", 
+                   full.names = T)
+
+df_phyto_EMP <- map(phyto_files_EMP, ~read_csv(.x, show_col_types = FALSE)) %>% 
+  list_rbind()
+
+# Read in files with non-standard headers individually
+df_Dec2021 <- read_csv(here("phyto-final","data","EMP","oddballs","December 2021.csv"), 
+                       show_col_types = FALSE)
+df_Nov2021 <- read_csv(here("phyto-final","data","EMP","oddballs","November 2021.csv"),
+                       show_col_types = FALSE)
+df_Sep2013 <- read_csv(here("phyto-final","data","EMP","oddballs","September 2013.csv"), 
+                       show_col_types = FALSE)
+df_Nov2013 <- read_csv(here("phyto-final","data","EMP","oddballs","November 2013.csv"), 
+                       show_col_types = FALSE)
+
+# Combine like oddball dfs
+df_phyto2013 <- bind_rows(df_Sep2013, df_Nov2013)
+df_phyto2021 <- bind_rows(df_Dec2021, df_Nov2021)
+
+# Remove individual dfs
+rm(df_Dec2021)
+rm(df_Nov2021)
+rm(df_Nov2013)
+rm(df_Sep2013)
+
+# Rename headers to match standard BSA headers Oddballs actually have the 
+# "correct" name of Total Cells rather than the incorrect "Number of cells per 
+# unit"
+
+df_phyto2013 <- df_phyto2013 %>%
+  rename("Number of cells per unit" = "Total Cells Counted")
+
+df_phyto2021 <- df_phyto2021 %>%
+  rename("Number of cells per unit" = "Total Number of Cells") %>%
+  rename("Unit Abundance" = "Unit Abundance (# of Natural Units)")
+
+# Combine oddball files with others
+df_phyto_EMP <- bind_rows(df_phyto_EMP, df_phyto2013)
+df_phyto_EMP <- bind_rows(df_phyto_EMP, df_phyto2021)
+
+# Remove unneeded dfs
+rm(df_phyto2013)
+rm(df_phyto2021)
+
+# Remove empty rows
+df_phyto_EMP <- df_phyto_EMP %>% filter_all(any_vars(!is.na(.)))
+
+# Correct GALD, which is imported into two separate columns
+# Test to see if NAs are 'either/or' and that there aren't some rows with a 
+# value in both GALD and GALD 1
+
+sum(is.na(df_phyto_EMP$GALD)) # Total is 5880
+sum(is.na(df_phyto_EMP$`GALD 1`)) # Total is 8072
+
+# Sum of NAs is 13952 which is the same as the number of rows in the df.
+# This shows that there aren't any rows with two values so that we can 
+# Combine them without any issues.
+
+# Move GALD header
+df_phyto_EMP <- df_phyto_EMP %>% relocate(`GALD 1`, .after = GALD)
+
+# Combine both GALD columns
+df_phyto_EMP <- df_phyto_EMP %>%
+  rowwise() %>%
+  mutate(GALD.Tot = sum(c_across(GALD:`GALD 1`), na.rm = TRUE))
+
+# Remove old GALD columns and rename GALD.Tot
+df_phyto_EMP <- df_phyto_EMP %>% 
+  select(!(GALD:`GALD 1`)) %>%
+  rename("GALD" = "GALD.Tot")
+
+# Clean up column names
+df_phyto_EMP <- df_phyto_EMP %>% clean_names(case = "big_camel")
+
+df_phyto_EMP <- df_phyto_EMP %>% rename("GALD" = "Gald")
+
+# Remove blank columns
+df_phyto_EMP <- df_phyto_EMP %>% select_if(~ !all(is.na(.)))
+
+# Remove columns that just have the method code "Phyto" as well as 
+# pre-calculated organisms per mL
+df_phyto_EMP <- df_phyto_EMP %>% select(SampleDate:Biovolume10,GALD)
+
+# Add column to indicate what study it came from
+df_phyto_EMP <- df_phyto_EMP %>% mutate(Study = "EMP", .after = StationCode)
+
+```
+
+## Combine EMP and AEU data
+
+```{r combine data, echo=FALSE, message=FALSE}
+
+df_phyto <- bind_rows(df_phyto_EMP, df_phyto_AEU)
+
+# Average all 10 biovolume measurements for each taxon
+df_phyto <- df_phyto %>% 
+  rowwise() %>% 
+  mutate(BV.Avg = mean(c_across(Biovolume1:Biovolume10), na.rm = T)) %>% 
+  select(!(Biovolume1:Biovolume10)) # Remove Individual Biovolume Columns
+
+# Remove unneeded columns
+df_phyto <- df_phyto %>% select(!c("BsaTin","DiatomSoftBody"))
+df_phyto <- df_phyto %>% select(!(ColonyFilamentIndividualGroupCode:Shape))
+df_phyto <- df_phyto %>% select(!(VolumeReceivedML:NumberOfFieldsCounted))
+
+# Fix samples with missing times
+# Just replace with 12:00:00 b/c aren't doing any time-based analyses
+df_phyto <- df_phyto %>% replace_na(list(SampleTime = "12:00:00"))
+
+# Get dates in the right format. Some are 1/1/14 and others 1/1/2014.
+df_phyto$SampleDate <- mdy(df_phyto$SampleDate)
+
+# Combine date and time column
+df_phyto <- df_phyto %>% unite(DateTime, c("SampleDate","SampleTime"), sep = " ") #, remove = FALSE, na.rm = FALSE)
+
+df_phyto$DateTime <- as_datetime(df_phyto$DateTime, 
+                              tz = "US/Pacific",
+                              format = c("%Y-%m-%d %H:%M:%OS"))
+
+# Check for missing dates
+df_phyto %>% filter(is.na(DateTime)) # No missing dates
+
+# Correct BSA header
+df_phyto <- df_phyto %>% rename("TotalCells" = "NumberOfCellsPerUnit")
+
+# Calculate Unit Density & Biovolume Density
+df_phyto <- df_phyto %>%
+  mutate(Units.per.mL = UnitAbundance * Factor) %>%
+  mutate(BV.um3.per.mL= TotalCells * BV.Avg * Factor) %>% 
+  mutate(Cells.per.mL = TotalCells * Factor) 
+
+# Remove columns used for density calcs
+# Remove Biovolume Columns
+df_phyto <- df_phyto %>% select(!(c(Factor,UnitAbundance:TotalCells)))
+
+# Add column for year and month for highlighting data
+df_phyto <- df_phyto %>% 
+  mutate(Year = year(df_phyto$DateTime)) %>%
+  mutate(Month = month(df_phyto$DateTime, label = T))
+
+# Order month in calendar order rather than (default) alphabetical
+df_phyto$Month = factor(df_phyto$Month, levels = month.abb)
+
+# Reorder date/time columns
+df_phyto <- df_phyto %>% 
+  relocate(Year, .after = DateTime) %>% 
+  relocate(Month, .after = DateTime)
+
+# Remove 2013 data (FASTR data is very limited)
+df_phyto <- df_phyto %>% filter(Year != 2013)
+
+```
+
+## Fix Station Names
+
+```{r data cleaning, echo=FALSE, message=FALSE}
+
+# Fix EMP site names
+df_phyto$StationCode <- gsub("EZ6 SAC","EZ6",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("EZ6SAC","EZ6",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("EZ6SJR","EZ6-SJR",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("EZ2SAC","EZ2",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("EZ2 SAC","EZ2",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("EZ2SJR","EZ2-SJR",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("EZ2 SJR","EZ2-SJR",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("EZ6 SJR","EZ6-SJR",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("D16-Twitchell","D16",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("D16-Twitchel","D16",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("D16 - Twitchell","D16",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("D16 Twitchell","D16",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("NZ328","NZ325",df_phyto$StationCode) # Typo in August 2019
+df_phyto$StationCode <- gsub("C3A-HOOD","C3A",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("C3A Hood","C3A",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("C3A- Hood","C3A",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("C3A-Hood","C3A",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("NZ542","NZS42",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("E26","EZ6",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("E22","EZ2",df_phyto$StationCode) # Typo in May 2018
+
+# Fix AEU site names
+df_phyto$StationCode <- gsub("SHER","SHR",df_phyto$StationCode)
+df_phyto$StationCode <- gsub("BL-5","BL5",df_phyto$StationCode)
+
+# Remove extra Microcystis tows at D19
+df_phyto <- df_phyto %>% filter(StationCode != "D19 MC Tow")
+
+```
+
+## Add Taxonomy Data and Fix Errors
+
+In Fall 2016, taxonomists began classifying the species Chroococcus microscopicus as Eucapsis microscopica. This is one of the most dominant species in this samples, so all taxa previously classified asC. microscopicus will be re-named E. microscopica. Also, the taxon Plagioselmis lacustris is inconsistently named, appearing sometimes as Rhodomonas lacustris. Change to Rhodomonas lacustris to avoid having these show up as separate genera. 
+
+We also use a CSV of group classification names matched up with the genera occurring here to add higher-level taxonomic resolution.
+
+```{r taxonomy, echo=FALSE, message=FALSE}
+
+# Rename Chroococcus microscopicus as Eucapsis microscopica
+df_phyto <- df_phyto %>% 
+  mutate(Taxon = case_when(Taxon == 'Chroococcus microscopicus' ~ 'Eucapsis microscopica',
+                           TRUE ~ Taxon)) %>%
+  mutate(Genus = case_when(Taxon == 'Eucapsis microscopica' ~ 'Eucapsis',
+                           TRUE ~ Genus))
+
+# Rename Plagioselmis lacustris as Rhodomonas lacustris
+df_phyto <- df_phyto %>% 
+  mutate(Taxon = case_when(Taxon == 'Plagioselmis lacustris' ~ 'Rhodomonas lacustris',
+                           TRUE ~ Taxon)) %>%
+  mutate(Genus = case_when(Taxon == 'Rhodomonas lacustris' ~ 'Rhodomonas',
+                           TRUE ~ Genus))
+
+# Correct the genus label for a Chlorella entry
+df_phyto$Genus <- gsub("cf Chlorella","Chlorella",df_phyto$Genus)
+
+# Read in CSV with manually-added WoRMS classification
+df_taxa <- read_csv(here("phyto-final","CSVs","phyto_group_classification.csv"),
+                    show_col_types = FALSE)
+
+df_phyto <- left_join(df_phyto, df_taxa)
+
+# Check if any groups are missing
+sum(is.na(df_phyto$Group)) # none missing 
+
+# Reorder Group classification column
+df_phyto <- df_phyto %>% 
+  relocate(Group, .before = Taxon)
+
+# Read in Region data for EMP stations
+df_region <- read_csv(here("phyto-final","CSVs","station_regions.csv"),
+                      show_col_types = FALSE)
+
+# Combine region data and phyto data
+df_phyto <- left_join(df_phyto, df_region)
+
+# Reorder column
+df_phyto <- df_phyto %>% relocate(Region, .after = StationCode)
+
+# check if there are any NAs in Region after the join
+table(is.na(df_phyto$Region)) # no NAs
+
+# Remove data frames with old data
+rm(df_region)
+rm(df_phyto_EMP)
+rm(df_phyto_AEU)
+
+```
+## Estimate Phytoplankton Biomass and LCEFA Abundance
+
+Convert biovolume to biomass using relationships from Menden-Deuer and Lussard (2000, doi: 10.4319/lo.2000.45.3.0569). This is only relevant to group-level data. Use biovolume measurements to calculate the abundance of long-chain essential fatty acids for each group based on the method in Galloway & Winder (2015, doi: 10.1371/journal.pone.0130053). 
+
+
+```{r biomass calcs, echo=FALSE, message=FALSE}
+
+# Calculate Biomass (pg-C per cell) from Biovolume (um^3 per cell)
+df_phyto <- df_phyto %>% 
+  mutate(Biomass.pg.C = case_when(Group == "Diatoms" ~ 0.288 * (BV.Avg^0.811), 
+                                  Group != "Diatoms" ~ 0.216 * (BV.Avg^0.939)))
+
+# Convert pg to ug (ug-C per mL)
+df_phyto <- df_phyto %>% 
+  mutate(Biomass.ug.C = Biomass.pg.C / 10^6, .keep = "unused")
+
+# Calculate Biomass Density (pg-C per mL)
+df_phyto <- df_phyto %>% 
+  mutate(BM.ug.per.mL = Biomass.ug.C * Cells.per.mL)
+
+df_phyto <- df_phyto %>% 
+  mutate(LCEFA.per.mL = case_when(Group == 'Diatoms' ~ BM.ug.per.mL*2.77/100,
+                                  Group == 'Cyanobacteria' ~ BM.ug.per.mL*0.02/100,
+                                  Group == 'Green Algae' ~ BM.ug.per.mL*0.52/100,
+                                  Group == 'Cryptophytes' ~ BM.ug.per.mL*2.13/100,
+                                  Group == 'Dinoflagellates' ~ BM.ug.per.mL*3.82/100,
+                                  TRUE ~ 0))
+
+```
+
+## Add Regional Metadata
+```{r regions, echo=FALSE, message=FALSE}
+
+# Select only stations in FASTR report
+df_phyto <- df_phyto %>%
+  filter(!Region %in% c("San Pablo Bay",
+                        "Grizzly and Suisun Bay",
+                        "Entrapment Zone"))
+
+# Set display levels for different regions
+unique(df_phyto$Region)
+
+region.levels <- c("Upstream","Downstream","Northern Interior Delta","Confluence",
+                   "Central Delta","Southern Interior Delta")
+
+# Set levels so that Upstream stations appear before Downstream in graphs
+df_phyto$Region <- factor(df_phyto$Region, levels = region.levels)
+
+# Import flow pulse dates and categories
+df_flow_designation <- read_csv(here("phyto-final",
+                                     "CSVs",
+                                     "FlowDatesDesignations_45days.csv"),
+                                show_col_types = FALSE)
+
+# Remove column with net flow days. Won't be used in any analyses.
+df_flow_designation <- df_flow_designation %>% select(!(NetFlowDays))
+
+# Format dates as dates in each of the 4 date columns
+df_flow_designation <- df_flow_designation %>% 
+  mutate(across(PreFlowStart:PostFlowEnd, mdy))
+
+# Merge data from FlowDesignation Table (Water Year Type, Flow days and type)
+df_phyto <- inner_join(df_phyto, df_flow_designation, by = "Year")   
+
+# Label samples with the appropriate phase (Pre-During-Post) and filter
+# FASTR phyto data to include only samples collected within the flow pulse window
+df_phyto <- df_phyto %>%
+  mutate(ActionPhase = ifelse(DateTime > PreFlowStart & DateTime < PreFlowEnd, "Before", NA)) %>%
+  mutate(ActionPhase = replace(ActionPhase, DateTime >= PreFlowEnd & DateTime < PostFlowStart, "During")) %>% 
+  mutate(ActionPhase = replace(ActionPhase, DateTime >= PostFlowStart & DateTime < PostFlowEnd, "After")) %>% 
+  filter(!is.na(ActionPhase)) %>%
+  select(-c(PreFlowStart:PostFlowEnd))
+
+# Order the new ActionPhase so that it plots in the order Pre < During < Post
+phase.order <- c("Before","During","After")
+df_phyto$ActionPhase <- factor(as.character(df_phyto$ActionPhase), 
+                                     levels = phase.order)
+
+# Add in Flow Pulse Category Data
+df_pulse_category <- read_csv(here("phyto-final","CSVs","FlowPulseType.csv"),
+                              show_col_types = FALSE)
+
+df_pulse_category <- df_pulse_category %>% 
+  rename("FlowPulseCategory" = "FlowPulseType")
+
+# Add Flow Pulse Category to phytoplankton data frame
+df_phyto <- left_join(df_phyto, df_pulse_category, by = "Year")
+
+## Relocate metadata columns
+df_phyto <- df_phyto %>%
+  relocate(FlowPulseCategory, .after = Study) %>%
+  relocate(WYType:ActionPhase, .after = Study) %>% 
+  relocate(Biomass.ug.C, .after = BV.Avg)
+
+```
+
+
+## Analyze FASTR Data for Outliers
+
+```{r outlier analysis, echo=FALSE, message=FALSE}
+
+# Subset combined dataset to FASTR-only
+df_phyto_FASTR <- df_phyto %>% filter(Study == "FASTR")
+
+# Identify if outliers are present
+boxplot(df_phyto_FASTR$BV.um3.per.mL)
+
+# Identify 0.1% and 99.9% percentiles of the data
+quartiles <- quantile(df_phyto_FASTR$BV.um3.per.mL, 
+                      probs=c(0.001, 0.999), 
+                      na.rm = TRUE)
+
+# List upper cutoff (99.9%)
+cutoff <- quartiles[2]
+
+# Filter FASTR dataset to show all taxa above this 99.9% cutoff
+df_outliers <- df_phyto_FASTR %>% 
+  filter(BV.um3.per.mL > cutoff)
+
+df_outliers %>% 
+  select(DateTime,Taxon,BV.um3.per.mL) %>% 
+  kable(caption = "Al")## 4 of top 6 are Spirogyra. 
+
+df_phyto_FASTR %>% filter(Genus == "Spirogyra")# Only 5 total samples w/ Spirogyra
+
+# Decision: Remove Spirogyra from datasets
+# 4/5 are above 99.9% cutoff, 5th is also highly abundant
+# These are benthic algae that clump, more likely to be "bullseye" samples
+# that got a big blob or clump
+
+# Remove Spirogyra from FASTR and combined dataset
+df_phyto_FASTR <- df_phyto_FASTR %>% 
+  filter(Genus != "Spirogyra")
+
+df_phyto <- df_phyto %>% 
+  filter(Genus != "Spirogyra")
+
+```
+
+## Add FASTR-Specific Metadata
+
+This section adds metadata specific to the FASTR project to a subset of the data. EMP data is not included in this data frame as the categories do not apply to it. 
+
+Code for Merging Flow Designations was provided by Cat Pien and includes 45 days limit on either end of the flow pulse. Code was tweaked by TF in May 2022 to include greater-than or equal-to signs avoid inadvertently removing samples falling on the exact dates of pre- and post-flow phases. 
+
+```{r FASTR metadata, echo=FALSE, message=FALSE}
+
+# Create a list of stations used for FASTR
+stations <- c("RMB","RCS","RD22","I80","LIS","STTD","BL5","LIB","RYI","RVB")
+
+# Re-order stations from North to South
+df_phyto_FASTR$StationCode <- factor(as.character(df_phyto_FASTR$StationCode),
+                                     levels = stations)
+
+```
+
+## Create New Data Frames summarizing by Genus and Algal Group
+
+```{r summarize phyto data, echo=FALSE, message=FALSE}
+
+# Summarize by algal group
+df_phyto_FASTR_grp <- df_phyto_FASTR %>%
+  group_by(Year, Month, Region, ActionPhase, DateTime, StationCode, Group) %>%
+  summarize(across(Units.per.mL:LCEFA.per.mL, ~sum(.x, na.rm = TRUE))) %>%
+  ungroup
+
+# Summarize by genus
+df_phyto_FASTR_gen <- df_phyto_FASTR %>%
+  group_by(Year, Month, Region, ActionPhase, DateTime, StationCode, Genus) %>%
+  summarize(across(Units.per.mL:LCEFA.per.mL, ~sum(.x, na.rm = TRUE))) %>%
+  ungroup
+
+# Set group display order
+group.order <- c("Diatoms",
+                 "Cyanobacteria",
+                 "Green Algae",
+                 "Cryptophytes",
+                 "Ciliates",
+                 "Dinoflagellates",
+                 "Golden Algae",
+                 "Other")
+
+df_phyto_FASTR_grp$Group <- factor(as.character(df_phyto_FASTR_grp$Group),
+                                   levels =  group.order)
+
+# Summarize totals
+df_phyto_FASTR_sum <- df_phyto_FASTR %>%
+  group_by(Year, Month, DateTime, StationCode, Region, WYType, FlowPulseType, FlowPulseCategory, ActionPhase) %>%
+  summarize(across(Units.per.mL:LCEFA.per.mL, ~sum(.x, na.rm = TRUE))) %>%
+  rename("Total.Units.per.mL" = "Units.per.mL") %>%
+  rename("Total.BV.per.mL" = "BV.um3.per.mL") %>%
+  rename("Total.Cells.per.mL" = "Cells.per.mL") %>%
+  rename("Total.BM.per.mL" = "BM.ug.per.mL") %>%
+  rename("Total.LCEFA.per.mL" = "LCEFA.per.mL") %>%
+  ungroup
+
+# Separate out data frames by density type and add zeros
+# Biovolume Density + Group
+df_phyto_FASTR_grp_BV <- df_phyto_FASTR_grp %>% 
+  select(Year:Group,BV.um3.per.mL)
+
+# Add zeros for taxa that weren't detected
+temp <- pivot_wider(df_phyto_FASTR_grp_BV, 
+                    names_from = Group,
+                    values_from = BV.um3.per.mL,
+                    values_fill = 0)
+
+df_phyto_FASTR_grp_BV <- pivot_longer(temp,
+                             cols = Cyanobacteria:last_col(),
+                             names_to = "Group",
+                             values_to = "BV.um3.per.mL")
+
+# Create Biovolume-only data frame at genus level
+df_phyto_FASTR_gen_BV <- df_phyto_FASTR_gen %>% 
+  select(Year:Genus,BV.um3.per.mL)
+
+temp <- pivot_wider(df_phyto_FASTR_gen_BV,
+                    names_from = Genus,
+                    values_from = BV.um3.per.mL,
+                    values_fill = 0)
+
+df_phyto_FASTR_gen_BV <- pivot_longer(temp,
+                                      cols = Chlorella:last_col(),
+                                      names_to = "Genus",
+                                      values_to = "BV.um3.per.mL")
+
+rm(temp)
+
+```
+
+## Create Condensed Data Frame for Most Abundant Genera
+```{r condensed genera, echo=FALSE, message=FALSE}
+
+## Calculate relative abundance of each genus within a group
+df_phyto_FASTR_gen_RA <- df_phyto_FASTR_gen_BV %>%
+  group_by(Genus) %>%
+  summarize(Mean.BV.per.mL = mean(BV.um3.per.mL)) %>%
+  mutate(MeanRelAbund = Mean.BV.per.mL/sum(Mean.BV.per.mL)) %>%
+  ungroup()
+
+# Highlight most abundant genera
+df_phyto_FASTR_gen_RA <- df_phyto_FASTR_gen_RA %>%
+  mutate(Type = case_when(MeanRelAbund > 0.05 ~ Genus,
+                          TRUE ~ 'Other'))
+
+# lump together all "other" taxa
+df_phyto_FASTR_gen_RA_tot <- df_phyto_FASTR_gen_RA %>%
+  group_by(Type) %>%
+  summarize(MeanRelAbund = sum(MeanRelAbund)) %>%
+  ungroup()
+
+# Create cross-walk table for what taxa are lumped into the Other category
+df_gen_types <- df_phyto_FASTR_gen_RA %>% select(Genus, Type)
+
+# Add classification of "Named Genus" or "Other to main df
+df_phyto_FASTR_gen_BV <- left_join(df_phyto_FASTR_gen_BV,
+                                   df_gen_types,
+                                   by = "Genus")
+
+# Add higher-level taxonomy info
+df_phyto_FASTR_gen_BV <- left_join(df_phyto_FASTR_gen_BV,
+                                   df_taxa,
+                                   by = "Genus")
+
+# Reorganize columns
+df_phyto_FASTR_gen_BV <- df_phyto_FASTR_gen_BV %>% 
+  relocate(Group, .before = Genus) %>% 
+  relocate(Type, .before = Genus)
+
+# lump together all "other" taxa
+df_phyto_FASTR_top_taxa_BV <- df_phyto_FASTR_gen_BV %>%
+  group_by(Year, Month, Region, ActionPhase, DateTime, StationCode, Group, Type) %>%
+  summarize(BV.um3.per.mL = sum(BV.um3.per.mL)) %>%
+  ungroup()
+
+```
+
+
+## Multivariate Calculations 
+Use the vegan package in R to calculate the Bray-Curtis similarity coefficients for phytoplankton community comparisons in each year (2014 - 2019). A good rule of thumb: stress < 0.05 provides an excellent representation in reduced dimensions, < 0.1 is great, < 0.2 is good/ok, and stress < 0.3 provides a poor representation.
+
+```{r multivariate, echo=FALSE, message=FALSE}
+
+set.seed(2390)
+
+# Generate NMDS data with metaMDS by each year separately
+years <- unique(df_phyto_FASTR_gen_BV$Year) 
+years <- sort(years, decreasing = F, na.last = T)
+
+# Create blank data frame to fill stresses in
+stresses <- data.frame(Year = years, stress = NA)
+ls_dfs <- list()
+
+for (i in 1:length(years)) {
+  genw <- pivot_wider(df_phyto_FASTR_gen_BV, 
+                      names_from = "Genus", 
+                      values_from = "BV.um3.per.mL",
+                      values_fill = 0)
+  
+  genw <- genw %>%
+    filter(Year == years[i])
+  
+  # Calculate the nMDS using vegan 
+
+  phyto.NMDS <- metaMDS(
+    comm = genw[c(7:139)],
+    distance = "bray",
+    k = 3,
+    trymax = 500
+    #trace = F,
+    #autotransform = F
+  )
+  
+  stresses$stress[which(stresses$Year == years[i])] <- phyto.NMDS$stress
+  
+  #look at Shepard plot which shows scatter around the regression between the interpoint distances 
+  #in the final configuration (i.e., the distances between each pair of communities) against their 
+  #original dissimilarities.
+  stressplot(phyto.NMDS)
+  
+  # Using the scores function from vegan to extract the site scores and convert to a data.frame
+  data.scores <- as_tibble(scores(phyto.NMDS, display = "sites"))
+  
+  # Combine metadata with NMDS data scores to plot in ggplot
+  meta <- genw %>% select(1:6)
+  meta <- cbind(meta, data.scores)
+  
+  # Read in years as a character otherwise it shows up as a number and gets displayed as a gradient
+  meta$Year <- as.character(meta$Year)
+  
+  ls_dfs[[i]] <- meta
+  
+}
+
+
+df_phyto_NMDS <- do.call(rbind, ls_dfs)
+
+# Output stresses for us in plotting NMDS
+write_csv(stresses, file = here("phyto-final","analyses","phyto_NMDS_stress.csv"))
+
+```
+
+## Save RData files for use in analysis 
+
+```{r save RData, echo=FALSE, message=FALSE}
+
+## Save data files
+save(df_phyto, file = here("phyto-final","RData","df_phyto.RData"))
+save(df_phyto_FASTR_sum, file = here("phyto-final","RData","df_phyto_FASTR_sum.RData"))
+save(df_phyto_FASTR_gen, file = here("phyto-final","RData","df_phyto_FASTR_gen.RData"))
+save(df_phyto_FASTR_gen_BV, file = here("phyto-final","RData","df_phyto_FASTR_gen_BV.RData"))
+save(df_phyto_FASTR_top_taxa_BV, file = here("phyto-final","RData","df_phyto_FASTR_top_taxa_BV.RData"))
+save(df_phyto_FASTR_grp, file = here("phyto-final","RData","df_phyto_FASTR_grp.RData"))
+save(df_phyto_FASTR_grp_BV, file = here("phyto-final","RData","df_phyto_FASTR_grp_BV.RData"))
+save(df_phyto_NMDS, file = here("phyto-final","RData","df_phyto_NMDS.RData"))
+
+```
+

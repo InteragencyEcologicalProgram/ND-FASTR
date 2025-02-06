@@ -5,8 +5,7 @@
 #1. Global Code and Functions ---------------------------------------------------------------------------------------------------------------------------------------------
 
 library(tidyverse)
-
-setwd("C:/Users/ltwardochleb/Documents/NDFA/ND-FASTR/manuscript_synthesis/")
+library(here)
 
 require(sf)
 require(ggplot2)
@@ -16,7 +15,7 @@ SubRegions<-deltamapr::R_EDSM_Subregions_Mahardja%>%
   filter(Region!="South")%>%
   filter(!SubRegion%in%c("Upper Napa River", "Lower Napa River", "San Pablo Bay", "San Francisco Bay"))
 
-yolo<-sf::st_read("/data/Yolo Bypass Extent")%>%
+yolo<-sf::st_read(here("manuscript_synthesis","data","Yolo Bypass Extent"))%>%
   st_transform(crs=st_crs(SubRegions))%>%
   st_union()
 
@@ -49,7 +48,7 @@ locations_text<-tibble(Location=c("Freeport", "Antioch", "Rio Vista", "Cache Slo
 
 
 p<-ggplot()+
-  geom_sf(data=yolo, color=NA, fill="gray80", alpha=0.5)+
+  geom_sf(data=yolo, color=NA, fill="gray80")+
   geom_sf(data=base, fill="slategray3", color="slategray4")+
   geom_sf(data=locations_points)+
   geom_sf(data=stations, aes(fill=Region), shape=21, color="black", size=3)+
@@ -58,4 +57,11 @@ p<-ggplot()+
   theme_void()
 p
 
-ggsave("FASTR_MS_map.png", plot=p, device="png", width=8, height=8, units = "in")
+ggsave(here("manuscript_synthesis","plots","FASTR_MS_map.pdf"), 
+       plot=p, 
+       device="pdf", 
+       scale=1.0,
+       width=8, 
+       height=8, 
+       units = "in",
+       dpi="print")

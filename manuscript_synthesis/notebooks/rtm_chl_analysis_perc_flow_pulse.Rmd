@@ -55,9 +55,9 @@ devtools::session_info()
 # Define file path for processed data
 fp_data <- here("manuscript_synthesis/data/processed")
 
-# Import daily average chlorophyll data
-df_chla <- readRDS(file.path(fp_data, "chla_wt_daily_avg_2013-2019.rds")) %>% select(-WaterTemp)
-
+# Import daily average water quality data
+df_wq <- readRDS(file.path(fp_data, "wq_daily_avg_2013-2019.rds"))
+  
 # Import daily average percent flow pulse water data
 df_pfp <- readRDS(file.path(fp_data, "perc_flow_pulse_daily_avg_2016-2019.rds"))
 ```
@@ -66,16 +66,12 @@ df_pfp <- readRDS(file.path(fp_data, "perc_flow_pulse_daily_avg_2016-2019.rds"))
 
 ```{r prepare chla data, message = FALSE}
 # Create a vector for the factor order of StationCode
-sta_order <- c(
-  "LIS",
-  "STTD",
-  "LIB",
-  "RYI",
-  "RVB"
-)
+sta_order <- c("LIS", "STTD", "LIB", "RYI", "RVB")
 
 # Prepare chlorophyll and percent flow pulse water data for exploration and analysis
-df_chla_c <- df_chla %>% 
+df_chla_c <- df_wq %>% 
+  select(StationCode, Date, Chla) %>% 
+  drop_na(Chla) %>% 
   # Join flow data to chlorophyll data
   left_join(df_pfp, by = join_by(StationCode, Date)) %>% 
   # Remove all NA flow values
@@ -86,7 +82,7 @@ df_chla_c <- df_chla %>%
     # Apply factor order to StationCode
     StationCode = factor(StationCode, levels = sta_order),
     # Convert percent flow pulse water values to proportions so they scale
-    # correctly with scales::label_percent()
+      # correctly with scales::label_percent()
     PercFlowPulseAvg = PercFlowPulseAvg / 100
   ) %>% 
   arrange(StationCode, Date)

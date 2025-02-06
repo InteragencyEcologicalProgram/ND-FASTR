@@ -1,7 +1,7 @@
 # NDFS Contaminants Manuscript
-# Purpose: Create figure of the 2017-2020 pesticide use data for the Sacramento
-  # River and Yolo Bypass regions for the NDFS contaminants manuscript.
-  # Exploratory figures are in:
+# Purpose: Create figure and summary table of the 2017-2020 pesticide use data
+  # for the Sacramento River and Yolo Bypass regions for the NDFS contaminants
+  # manuscript. Exploratory figures are in:
   # ND-FASTR/manuscript_contam/notebooks/explore_pesticide_use.Rmd
 # Author: Dave Bosworth
 # Contacts: David.Bosworth@water.ca.gov
@@ -20,7 +20,7 @@ df_pest_use <- readRDS(here("manuscript_contam/data/processed/pesticide_use_dail
 # Calculate monthly totals for each Region and Pesticide Class and prepare for figure
 df_pest_use_c <- df_pest_use %>% 
   summarize(
-    TotalApplication = sum(TotalApplication),
+    TotalApplication = sum(TotalApplication) / 2.205,
     .by = c(Region, Month, Year, PesticideClass)
   ) %>%
   mutate(PesticideClass = factor(PesticideClass, levels = c("Rice", "Pyrethroid", "Other")))
@@ -36,7 +36,7 @@ plt_pest_use <- df_pest_use_c %>%
     end = 0.8
   ) +
   scale_y_continuous(
-    name = "Total Application (lbs)",
+    name = "Total Application (kg)",
     labels = label_comma()
   ) +
   theme_bw() +
@@ -53,4 +53,14 @@ ggsave(
   height = 5.5,
   units = "in"
 )
+
+# Calculate annual pesticide application totals for each Region and Year
+df_pest_use_summ <- df_pest_use %>% 
+  summarize(
+    TotalApplication = sum(TotalApplication) / 2.205,
+    .by = c(Year, Region)
+  )
+
+# Export annual pesticide application totals
+df_pest_use_summ %>% write_csv(file = here("manuscript_contam/results/tables/appl_totals.csv"))
 

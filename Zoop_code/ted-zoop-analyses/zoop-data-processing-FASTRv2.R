@@ -380,6 +380,7 @@ genw2 <- pivot_wider(df_zoop_gen,
                      values_from = "CPUEZoop",
                      values_fill = 0)
 
+<<<<<<< HEAD
 adon.results <- adonis2(genw2[c(9:61)] ~ genw2$Region*genw2$SamplePeriod + genw2$Year*genw2$SamplePeriod+genw2$Region*genw2$Year, 
                          strata = genw2$StationCode,
                          method = "bray",
@@ -387,6 +388,15 @@ adon.results <- adonis2(genw2[c(9:61)] ~ genw2$Region*genw2$SamplePeriod + genw2
 write.csv(adon.results, file = "adon.results.csv")
 
 dm_zoop_gen <- vegdist(genw2[c(9:61)], method = "bray")
+=======
+adon.results <- adonis2(genw2[c(9:70)] ~ genw2$Region*genw2$SamplePeriod + genw2$Year*genw2$SamplePeriod+genw2$Region*genw2$Year, 
+                         strata = genw2$StationCode,
+                         method = "bray",
+                         perm = 999)
+#write.csv(adon.results, file = "adon.results.csv")
+
+dm_zoop_gen <- vegdist(genw2[c(9:70)], method = "bray")
+>>>>>>> ee35623b151d8b4475bea871837d7940bf579ff9
 
 bd <- betadisper(dm_zoop_gen, genw2$Region)
 
@@ -404,13 +414,21 @@ genw3 <- pivot_wider(df_zoop_gen3,
                      values_from = "CPUEZoop",
                      values_fill = 0)
 
+<<<<<<< HEAD
 adon.results3 <- adonis2(genw3[c(9:61)] ~ genw3$Region*genw3$SamplePeriod + genw3$Year*genw3$SamplePeriod+genw3$Region*genw3$Year, 
+=======
+adon.results3 <- adonis2(genw3[c(9:70)] ~ genw3$Region*genw3$SamplePeriod + genw3$Year*genw3$SamplePeriod+genw3$Region*genw3$Year, 
+>>>>>>> ee35623b151d8b4475bea871837d7940bf579ff9
                         strata = genw3$StationCode,
                         method = "bray",
                         perm = 999)
 #write.csv(adon.results, file = "adon.results.csv")
 
+<<<<<<< HEAD
 dm_zoop_gen3 <- vegdist(genw3[c(9:61)], method = "bray")
+=======
+dm_zoop_gen3 <- vegdist(genw3[c(9:70)], method = "bray")
+>>>>>>> ee35623b151d8b4475bea871837d7940bf579ff9
 
 bd3 <- betadisper(dm_zoop_gen3, genw3$Region)
 
@@ -480,9 +498,19 @@ df_zoop_ordertot2 <- df_zoop_ordertot %>% group_by(Region,Year,SamplePeriod,Orde
 df_zoop_regmean <- df_zoop_ordertot %>% group_by(Region,Order) %>% 
   summarise(avg=mean(tot))
 
+datfig <- df_zoop %>% group_by(Year,Order,Region,SamplePeriod) %>% 
+  summarise(avg=mean(CPUEZoop))
+write.csv(datfig, file = "C:/Users/jadams/Documents/DES docs and forms/NDFA/Manuscript/ND-FASTR/Zoop_code/Jesse-zoop-analyses/datfig.csv")
+
+df_zoop_sampavg <- df_zoop %>% group_by(Date,StationCode,Year,SamplePeriod,Region,Order) %>% 
+  summarise(avg=mean(CPUEZoop))
 # Upstream/Downstream
 fig4 <- ggplot(df_zoop_sampavg, aes(x = SamplePeriod, 
+<<<<<<< HEAD
                                  y = tot, 
+=======
+                                 y = avg, 
+>>>>>>> ee35623b151d8b4475bea871837d7940bf579ff9
                                  fill = Order)) + 
   geom_bar(position = "stack",  
            width = 0.6, 
