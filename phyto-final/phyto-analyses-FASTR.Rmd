@@ -46,7 +46,6 @@ load(file = here("phyto-final","RData","df_phyto_FASTR_top_taxa_BV.RData"))
 
 ## Create Plots for Paper
 ```{r Total Biovolume Plots, echo=FALSE, message=FALSE}
-
 # Use the black-and-white theme
 theme_set(theme_bw())
 
@@ -58,7 +57,7 @@ theme_update(
     panel.background = element_rect(fill = "white", colour = NA),
     panel.border = element_rect(fill = NA, colour = "black"),
     strip.background = element_rect(fill = "gray", colour = "black"),
-    legend.position = "right",
+    legend.position = "bottom",
     legend.key = element_rect(fill = "white", colour = NA)
     )
 
@@ -77,8 +76,8 @@ p_phyto_BV_boxplot +
   scale_fill_manual(values = color_phyto_phase)
 
 ggsave(path = plots,
-       filename = "phyto_BV_by_year_and_AP.png", 
-       device = "png",
+       filename = "phyto_BV_by_year_and_AP.pdf", 
+       device = "pdf",
        scale=1.0, 
        units="in",
        height=4,
@@ -129,8 +128,8 @@ p_phyto_grp_BV_by_year +
   facet_grid(Region~Year) 
 
 ggsave(path = plots,
-       filename = "phyto_grp_BV_by_year.png", 
-       device = "png",
+       filename = "phyto_grp_BV_by_year.pdf", 
+       device = "pdf",
        scale=1.0, 
        units="in",
        height=5,
@@ -206,7 +205,7 @@ theme_update(
 p_NMDS_region <- ggplot(df_phyto_NMDS,
                        aes(x = NMDS1, y = NMDS2, fill = Region)) +
   geom_point(size = 3,
-             pch = 21,
+             pch = 22,
              color = "black") +
   stat_ellipse(aes(color = Region)) + 
   labs(color = "Region",
@@ -219,19 +218,19 @@ p_NMDS_region +
   scale_color_brewer(palette = "Set1")
 
 ggsave(path = plots,
-       filename = "phyto_NMDS_by_region.png", 
-       device = "png",
+       filename = "phyto_NMDS_by_region.pdf", 
+       device = "pdf",
        scale=1.0, 
        units="in",
-       height=4.5,
-       width=5.5, 
+       height=5,
+       width=6.5, 
        dpi="print")
 
 # Create plot colored by ActionPhase
 p_NMDS_phase <- ggplot(df_phyto_NMDS,
                        aes(x = NMDS1, y = NMDS2, fill = ActionPhase)) +
   geom_point(size = 3,
-             pch = 21,
+             pch = 22,
              color = "black") +
   stat_ellipse(aes(color = ActionPhase)) + 
   labs(color = "Flow Pulse Period",
@@ -241,16 +240,16 @@ p_NMDS_phase <- ggplot(df_phyto_NMDS,
 
 p_NMDS_phase +
   facet_wrap(Year ~ ., ncol = 3, dir = "h") +
-  scale_fill_brewer(palette = "Set1") +
-  scale_color_brewer(palette = "Set1")
+  scale_fill_manual(values = color_phyto_phase) +
+  scale_color_manual(values = color_phyto_phase)
 
 ggsave(path = plots,
-       filename = "phyto_NMDS_by_AP.png", 
-       device = "png",
+       filename = "phyto_NMDS_by_AP.pdf", 
+       device = "pdf",
        scale=1.0, 
        units="in",
-       height=4.5,
-       width=5.5, 
+       height=5,
+       width=6.5, 
        dpi="print")
 
 ```
