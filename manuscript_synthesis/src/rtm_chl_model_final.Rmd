@@ -494,6 +494,14 @@ ggsave(
   units = "in"
 )
 
+ggsave(
+  file.path(fp_figures, "chl_flow_eff_plot_by_year_each_sta.pdf"),
+  plot = plt_gam_eff_flow,
+  width = 7,
+  height = 9,
+  units = "in"
+)
+
 # Export boxplots of year contrasts for each station
 ggsave(
   file.path(fp_figures, "chl_year_contrasts_each_sta.jpg"),
@@ -503,9 +511,25 @@ ggsave(
   units = "in"
 )
 
+ggsave(
+  file.path(fp_figures, "chl_year_contrasts_each_sta.pdf"),
+  plot = plt_gam_cont_yr,
+  width = 6.5,
+  height = 5,
+  units = "in"
+)
+
 # Export effects plots of smooth of Week
 ggsave(
   file.path(fp_figures, "chl_smooth_week.jpg"),
+  plot = plt_gam_s_week,
+  width = 6.5,
+  height = 5,
+  units = "in"
+)
+
+ggsave(
+  file.path(fp_figures, "chl_smooth_week.pdf"),
   plot = plt_gam_s_week,
   width = 6.5,
   height = 5,

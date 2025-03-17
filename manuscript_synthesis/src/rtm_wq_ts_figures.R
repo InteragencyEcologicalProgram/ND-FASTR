@@ -155,3 +155,16 @@ walk2(
   )
 )
 
+walk2(
+  ndf_wq_plt$plt_ts,
+  ndf_wq_plt$Parameter,
+  ~ ggsave(
+    plot = .x,
+    filename = paste0(fp_ts_plt, "/", .y, "_daily_avg_ts.pdf"),
+    width = 6.5, 
+    height = 8.25, 
+    units = "in", 
+    dpi = 300
+  )
+)
+
