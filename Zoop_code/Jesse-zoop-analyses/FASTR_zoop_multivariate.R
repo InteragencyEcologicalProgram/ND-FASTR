@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 #FASTR zooplankton
 
 library(tidyverse)
@@ -15,9 +15,10 @@ library(here)
 # Source functions
 source(here("global_ndfa_funcs.R"))
 source(here("Water_Quality/global_wq_funcs.R"))
+data<-here("C:/Users/ltwardochleb/Documents/NDFA/ND-FASTR/zoop_code/Jesse-zoop-analyses")
 
 #zooplankton data from Mallory and Nicole (biomass)
-zoopNDFAv2<-read.csv("zoop_NDFA_v2.csv", stringsAsFactors = FALSE)
+zoopNDFAv2<-read_csv(here(data,"zoop_NDFA_v2.csv"))
 #data organization and cleanup
 #change to factors and organize sample period levels
 zoopNDFAv2$SamplePeriod <- factor(zoopNDFAv2$SamplePeriod,levels = c("Before","During","After"))
@@ -49,8 +50,8 @@ zoopNDFAv2 <- zoopNDFAv2%>%filter(Classification!= "Harpacticoids")
 glimpse(zoopNDFAv2)
 
 #read in data with additional flow parameters and create new data table joined with zoop data
-flow_magnitude<-read.csv("flow_magnitude.csv", stringsAsFactors = FALSE, na.strings="",header = TRUE)
-flow_dates<-read.csv("FlowDatesDesignations.csv", stringsAsFactors = FALSE, na.strings="",header = TRUE)
+flow_magnitude<-read_csv(here(data, "flow_magnitude.csv"))
+flow_dates<-read_csv(here(data,"FlowDatesDesignations.csv"))
 flow_dates$PreFlowStart <- format(as.Date(flow_dates$PreFlowStart, format = "%m/%d/%Y"), "%Y-%m-%d")
 flow_dates$PreFlowEnd <- format(as.Date(flow_dates$PreFlowEnd, format = "%m/%d/%Y"), "%Y-%m-%d")
 flow_dates$PostFlowStart <- format(as.Date(flow_dates$PostFlowStart, format = "%m/%d/%Y"), "%Y-%m-%d")
@@ -93,6 +94,8 @@ zoopNDFA6 <- zoopNDFA4 %>% group_by(Date,StationCode,Year, Regions2,SamplePeriod
   summarise(cpue=sum(CPUEZoop))
 
 zoopNDFA7 <- zoopNDFA6
+
+zoopNDFA7<-write_csv(zoopNDFA7,here(data, "zoopNDFA7.csv"))
 
 #make subset dataframes for taxa groups
 zoopNDFA5_calanoid=zoopNDFA5 %>% filter(Classification=="Calanoids")
@@ -322,7 +325,7 @@ ggsave(path = "Plots",
        width=6, 
        dpi= "print")
 
-=======
+
 #FASTR zooplankton
 
 library(tidyverse)
