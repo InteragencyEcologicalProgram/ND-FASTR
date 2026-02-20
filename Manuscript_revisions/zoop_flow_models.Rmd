@@ -61,13 +61,7 @@ calc_flow_yr_marg_eff <- function(df_data, m_gam) {
   as_tibble() %>% 
   # Narrow down range of flow values for each station
   left_join(df_flow_yr_summ, by = join_by(Year_fct)) %>% 
-  filter(Flow >= Flow_min & Flow <= Flow_max) %>% 
-  transmute(
-    Year_fct,
-    Flow,
-    # Back calculate model fits and confidence levels
-    across(c(predicted, conf.low, conf.high), \(x) exp(x) / 1000)
-  )
+  filter(Flow >= Flow_min & Flow <= Flow_max)
 }
 
 # Create effects plot of flow on zooplankton by year
@@ -99,8 +93,6 @@ boxplot_cont_yr <- function(em_obj, df_data, xlab = TRUE) {
     as_tibble() %>% 
     mutate(
       group = str_remove_all(.group, fixed(" ")),
-      # back transform log-transformed results
-      across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000)
     ) %>% 
     # Add min and max values of observed data to the Tukey post-hoc results and
       # calculate vertical positioning of letters
@@ -198,10 +190,10 @@ ls_zoop <- df_zoop_weekly %>%
   select(StationCode, Year, Week, cpue) %>% 
   drop_na(cpue) %>% 
   # Filter to only include representative stations for 4 habitat types (RD22,
-    # STTD, LIB, RVB) and only include years 2015-2019
+    # STTD, LIB, RVB) and only include years 2014-2019
   filter(
     StationCode %in% sta_order,
-    Year %in% 2015:2019
+    Year %in% 2014:2019
   ) %>% 
   # Join flow data to zoop data
   left_join(df_flow_c, by = join_by(StationCode, Year, Week)) %>% 
