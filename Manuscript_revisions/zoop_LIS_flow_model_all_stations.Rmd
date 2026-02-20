@@ -1,0 +1,117 @@
+---
+title: "zoop_LIS_flow_models"
+author: "Laura"
+date: "2026-02-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Global code and functions
+
+```{r load packages and functions, message = FALSE, warning = FALSE}
+# Load packages
+library(tidyverse)
+library(scales)
+library(mgcv)
+library(ggeffects)
+library(emmeans)
+library(multcomp)
+library(gratia)
+library(patchwork)
+library(here)
+library(conflicted)
+
+# Declare package conflict preferences 
+conflicts_prefer(dplyr::filter(), dplyr::lag(), dplyr::select())
+```
+
+Display current versions of R and packages used for this analysis:
+
+```{r print session info}
+devtools::session_info()
+```
+
+
+# Import Data
+
+```{r import data}
+
+# Import zooplankton data
+df_zoop <- read_csv(here("Zoop_code/Jesse-zoop-analyses/zoopNDFA7.csv"))
+
+# Import weekly average flow data
+df_flow <- readRDS(here("manuscript_synthesis/data/processed/flow_week_avg_2013-2019.rds"))
+```
+
+# Prepare Data
+
+```{r prepare zoop data}
+#add week of year to zoop data
+df_zoop_weekly<-df_zoop%>%mutate(Week=week(Date))
+
+# Create a vector for the factor order of StationCode
+sta_order <- c("RD22", "STTD", "LIB", "RVB")
+
+#create list of flow stations that we will use in analysis
+flow_stations<-c("LIS", "RD22")
+
+# We will use LIS flow data as a proxy for STTD, LIB, and RVB
+df_flow_c <- df_flow %>% filter(StationCode%in%flow_stations)
+#define stations for which we want to use LIS flow data
+df_zoop_stations<-c("STTD", "LIB", "RVB") 
+
+
+# Prepare zooplankton and flow data for analysis
+df_zoop2 <- df_zoop_weekly %>% 
+  select(StationCode, Year, Week, cpue) %>% 
+  drop_na(cpue) %>% 
+  # Filter to only include representative stations for 4 habitat types (RD22,
+    # STTD, LIB, RVB) and only include years 2014-2019
+  filter(
+    StationCode %in% sta_order,
+    Year %in% 2014:2019
+  ) %>% 
+  # Join flow data to zoop data
+  left_join(df_flow_c, by = join_by(Year, Week))%>%
+  #remove rows with RD22 as flow and STTD, LIB, or RVB as zoop
+  filter(!(StationCode.x %in% df_zoop_stations & StationCode.y == "RD22")) %>%
+  #remove rows with LIS as flow and RD22 as zoop
+  filter(!(StationCode.x == "RD22" & StationCode.y == "LIS")) %>% 
+  # Remove all NA flow values
+  drop_na(Flow) %>% 
+  mutate(
+    # Scale and log transform chlorophyll values
+    zoop_log = log(cpue),
+    # Add a column for Year as a factor for the models
+    Year_fct = factor(Year),
+    #add a column for station as a factor
+    Station_fact=factor(StationCode.x, levels = sta_order)
+  ) %>% 
+  arrange(Station_fact, Year, Week) 
+
+```
+
+# Create GAM
+
+```{r create gams, warning = FALSE}
+# Run GAM for all stations
+
+all_stations_gam<-gam(zoop_log ~ Year_fct * Flow + Station_fact*Flow+ s(Week, bs = 'cc', k = 5), data = df_zoop2, method = "REML", knots =list(week = c(0, 52)))
+summary(all_stations_gam)
+```
+
+# Model Results
+
+## ANOVA Tables
+
+```{r gam anova tables, warning = FALSE}
+# Create ANOVA tables for each GAM model and extract elements for export
+ndf_gam_anova <- anova(all_stations_gam)
+ndf_gam_anova
+
+```
+## Effect of Flow by Year: below code is in development
+
