@@ -65,6 +65,34 @@ df_zoop_stations<-c("STTD", "LIB", "RVB")
 
 
 # Prepare zooplankton and flow data for analysis
+df_zoop2 <- df_zoop_weekly %>%
+  select(StationCode, Year, Week, cpue) %>%
+  drop_na(cpue) %>%
+  filter(
+    StationCode %in% sta_order,
+    Year %in% 2014:2019
+  ) %>%
+  # Assign the appropriate flow station BEFORE joining
+  mutate(
+    FlowStation = case_when(
+      StationCode == "RD22" ~ "RD22",
+      StationCode %in% c("STTD", "LIB", "RVB") ~ "LIS"
+    )
+  ) %>%
+  # Now join on Year, Week, AND the specific flow station
+  left_join(
+    df_flow_c,
+    by = join_by(Year, Week, FlowStation == StationCode)
+  ) %>%
+  drop_na(Flow) %>%
+  mutate(
+    zoop_log = log(cpue),
+    Year_fct = factor(Year),
+    Station_fact = factor(StationCode, levels = sta_order)
+  ) %>%
+  arrange(Station_fact, Year, Week)
+
+
 df_zoop2 <- df_zoop_weekly %>% 
   select(StationCode, Year, Week, cpue) %>% 
   drop_na(cpue) %>% 
@@ -92,14 +120,27 @@ df_zoop2 <- df_zoop_weekly %>%
   ) %>% 
   arrange(Station_fact, Year, Week) 
 
+#verify that the join worked as expected
+# Full diagnostic summary
+df_zoop2 %>%
+  group_by(StationCode, FlowStation, Year) %>%
+  summarise(
+    n_weeks = n_distinct(Week),
+    n_rows = n(),
+    has_duplicates = n() > n_distinct(Week),
+    flow_range = paste(round(min(Flow)), "-", round(max(Flow))),
+    .groups = "drop"
+  ) %>%
+  print(n = Inf)
+
 ```
 
-# Create GAM
+# Initial model with two-way interactions and a smooth term for week of year
 
 ```{r create gams, warning = FALSE}
 # Run GAM for all stations
 
-all_stations_gam<-gam(zoop_log ~ Year_fct * Flow + Station_fact*Flow+ s(Week, bs = 'cc', k = 5), data = df_zoop2, method = "REML", knots =list(week = c(0, 52)))
+all_stations_gam<-gam(zoop_log ~ (Year_fct + Flow + Station_fact)^2 + s(Week, bs = 'cc', k = 5), data = df_zoop2, method = "REML", knots =list(week = c(0, 52)))
 summary(all_stations_gam)
 ```
 
@@ -113,5 +154,38 @@ ndf_gam_anova <- anova(all_stations_gam)
 ndf_gam_anova
 
 ```
+#Model diagnostics
+```{r gam diagnostics, warning = FALSE}
+cat("\n=== Model Diagnostics ===\n")
+cat("AIC:", AIC(all_stations_gam), "\n")
+cat("BIC:", BIC(all_stations_gam), "\n")
+cat("Deviance explained:", 
+    round(summary(all_stations_gam)$dev.expl * 100, 2), "%\n")
+
+```
+# Linear model with two-way interactions
+
+```{r create lms, warning = FALSE}
+# Run LM for all stations
+
+all_stations_lm<-lm(zoop_log ~ (Year_fct + Flow + Station_fact)^2, data = df_zoop2)
+summary(all_stations_lm)
+```
+## ANOVA Tables
+
+```{r lm anova tables, warning = FALSE}
+# Create ANOVA tables for each GAM model and extract elements for export
+ndf_lm_anova <- anova(all_stations_lm)
+ndf_lm_anova
+
+```
+#Model diagnostics
+```{r lm diagnostics, warning = FALSE}
+cat("\n=== Model Diagnostics ===\n")
+cat("AIC:", AIC(all_stations_lm), "\n")
+cat("BIC:", BIC(all_stations_lm), "\n")
+
+```
+
 ## Effect of Flow by Year: below code is in development
 
