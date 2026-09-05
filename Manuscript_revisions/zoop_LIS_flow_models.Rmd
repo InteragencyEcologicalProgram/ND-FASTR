@@ -178,6 +178,7 @@ df_flow <- readRDS(here("manuscript_synthesis/data/processed/flow_week_avg_2013-
 # Prepare Data
 
 ```{r prepare zoop data}
+
 #add week of year to zoop data
 df_zoop_weekly<-df_zoop%>%mutate(Week=week(Date))
 
@@ -189,35 +190,39 @@ flow_stations<-c("LIS", "RD22")
 
 # We will use LIS flow data as a proxy for STTD, LIB, and RVB
 df_flow_c <- df_flow %>% filter(StationCode%in%flow_stations)
-df_zoop_stations<-c("STTD", "LIB", "RVB") #define statiosn for which we want to use LIS flow data
+df_zoop_stations<-c("STTD", "LIB", "RVB") #define stations for which we want to use LIS flow data
 
 
 # Prepare zooplankton and flow data for analysis
-df_zoop2 <- df_zoop_weekly %>% 
-  select(StationCode, Year, Week, cpue) %>% 
-  drop_na(cpue) %>% 
-  # Filter to only include representative stations for 4 habitat types (RD22,
-    # STTD, LIB, RVB) and only include years 2014-2019
+df_zoop2 <- df_zoop_weekly %>%
+  select(StationCode, Year, Week, cpue) %>%
+  drop_na(cpue) %>%
   filter(
     StationCode %in% sta_order,
     Year %in% 2014:2019
-  ) %>% 
-  # Join flow data to zoop data
-  left_join(df_flow_c, by = join_by(Year, Week))%>%
-  #remove rows with RD22 as flow and STTD, LIB, or RVB as zoop
-  filter(!(StationCode.x %in% df_zoop_stations & StationCode.y == "RD22")) %>%
-  #remove rows with LIS as flow and RD22 as zoop
-  filter(!(StationCode.x == "RD22" & StationCode.y == "LIS")) %>% 
-  # Remove all NA flow values
-  drop_na(Flow) %>% 
+  ) %>%
+  # Map each zoop station to its corresponding flow station BEFORE joining
   mutate(
-    # Scale and log transform chlorophyll values
-    zoop_log = log(cpue),
-    # Add a column for Year as a factor for the models
-    Year_fct = factor(Year)
-  ) %>% 
-  arrange(StationCode.x, Year, Week) %>% 
-  split(~ StationCode.x)
+    FlowStation = case_when(
+      StationCode == "RD22"                        ~ "RD22",
+      StationCode %in% df_zoop_stations            ~ "LIS"  # STTD, LIB, RVB → LIS
+    )
+  ) %>%
+  # Now join on Year, Week, AND the mapped flow station — no many-to-many!
+  left_join(
+    df_flow_c,
+    by = join_by(Year, Week, FlowStation == StationCode)
+  ) %>%
+  drop_na(Flow) %>%
+  mutate(
+    zoop_log  = log(cpue),
+    Year_fct  = factor(Year), 
+    flow_lag1 = lag(Flow),
+    flow_lag2 = lag(flow_lag1),
+    flow_lag3 = lag(flow_lag2)
+  ) %>%
+  arrange(StationCode, Year, Week) %>%
+  split(~ StationCode)
 
 # Combine all data sets into a nested data frame to be used for analysis
 ndfa_zoop <- 
@@ -230,11 +235,18 @@ ndfa_zoop <-
   arrange(StationCode)
 ```
 
-# Create GAMs
+# Evaluate collinearity between lagged flow terms
+```{r, evaluate collinearity between lagged flow terms}
+cor(df_zoop2$STTD$Flow, df_zoop2$STTD$flow_lag1)
+
+cor(df_zoop2$STTD$Flow, df_zoop2$STTD$flow_lag2)
+
+```
+# Create GAMs- no lag on flow variable
 
 ```{r create gams, warning = FALSE}
 # Define base model formula
-f_base <- " zoop_log ~ Year_fct * Flow + s(Week, bs = 'cc', k = 5)"
+f_base <- " zoop_log ~ Year_fct * Flow + Year_fct + s(Week, bs = 'cc', k = 5)"
 
 
 
@@ -251,14 +263,14 @@ ndf_gam <- ndfa_zoop %>% mutate(
       \(x, y) gam(
         formula = as.formula(x),
         data = y,
-        method = "REML", 
+        method = "ML", 
         knots = list(week = c(0, 52))
       )
     )
   )
 ```
 
-# Model Results
+# Model Results- no lag on flow variable
 
 ## ANOVA Tables
 
@@ -267,6 +279,8 @@ ndf_gam <- ndfa_zoop %>% mutate(
 ndf_gam_anova <- ndf_gam %>% 
   mutate(
     an_gam = map(model, anova),
+    # Extract AIC from each model
+    aic = map_dbl(model, AIC),
     # Parametric terms
     df_parametric = map(
       an_gam, 
@@ -284,7 +298,7 @@ ndf_gam_anova <- ndf_gam %>%
 
 # Combine ANOVA tables and format for export
 df_gam_anova_tbl_c <- ndf_gam_anova %>% 
-  select(StationCode, df_anova_tbl) %>% 
+  select(StationCode, df_anova_tbl, aic) %>% 
   unnest(df_anova_tbl) %>% 
   transmute(
     Station = StationCode,
@@ -301,12 +315,303 @@ df_gam_anova_tbl_c <- ndf_gam_anova %>%
       `p-value` < 0.001, 
       "< 0.001", 
       formatC(`p-value`, digits = 3, format = "f")
-    )
-  )
+    ),
+    aic) %>%
+  # Add AIC as a summary row per station
+  bind_rows(
+    ndf_gam_anova %>%
+      transmute(
+        Station = as.character(StationCode),
+        Term    = "AIC",
+        df      = NA_character_,
+        F       = NA_character_,
+        p_value = NA_character_,
+        aic
+      )
+  ) %>%
+  arrange(Station, Term == "AIC")  # Keep AIC rows at the bottom per station
 
 df_gam_anova_tbl_c
 ```
-## Effect of Flow by Year
+# Create GAMs- one week lag on flow variable
+
+```{r create gams, warning = FALSE}
+# Define base model formula
+f_lag1 <- " zoop_log ~ Year_fct * flow_lag1 + Year_fct + s(Week, bs = 'cc', k = 5)"
+
+
+
+# Create gam models for each station
+ndf_gam_lag1 <- ndfa_zoop %>% mutate(
+    str_formula = case_when(
+      StationCode == "LIB" ~ paste(f_lag1),
+      StationCode == "RVB" ~ paste(f_lag1),
+      TRUE ~ f_lag1
+    ),
+    model = map2(
+      str_formula,
+      df_data,
+      \(x, y) gam(
+        formula = as.formula(x),
+        data = y,
+        method = "ML", 
+        knots = list(week = c(0, 52))
+      )
+    )
+  )
+```
+
+# Model Results- one week lag on flow variable
+
+## ANOVA Tables
+
+```{r gam anova tables, warning = FALSE}
+# Create ANOVA tables for each GAM model and extract elements for export
+ndf_gam_anova_lag1 <- ndf_gam_lag1 %>% 
+  mutate(
+    an_gam = map(model, anova),
+    # Extract AIC from each model
+    aic = map_dbl(model, AIC),
+    # Parametric terms
+    df_parametric = map(
+      an_gam, 
+      \(x) as_tibble(chuck(x, "pTerms.table"), rownames = "Term")
+    ),
+    # Smooth terms
+    df_smooth = map(
+      an_gam, 
+      \(x) as_tibble(chuck(x, "s.table"), rownames = "Term") %>% 
+        rename(df = edf) %>% 
+        select(-Ref.df)
+    ),
+    df_anova_tbl = map2(df_parametric, df_smooth, bind_rows)
+  )
+
+# Combine ANOVA tables and format for export
+df_gam_anova_lag1_tbl_c <- ndf_gam_anova_lag1 %>% 
+  select(StationCode, df_anova_tbl, aic) %>% 
+  unnest(df_anova_tbl) %>% 
+  transmute(
+    Station = StationCode,
+    Term,
+    across(
+      c("df", "F"),
+      \(x) if_else(
+        abs(x) < 0.01,
+        formatC(signif(x, 3), digits = 2, format = "e"),
+        formatC(signif(x, 3), digits = 3, format = "fg", flag = "#")
+      )
+    ),
+    p_value = if_else(
+      `p-value` < 0.001, 
+      "< 0.001", 
+      formatC(`p-value`, digits = 3, format = "f")
+    ),
+    aic
+  )%>%
+   # Add AIC as a summary row per station
+  bind_rows(
+    ndf_gam_anova_lag1 %>%
+      transmute(
+        Station = as.character(StationCode),
+        Term    = "AIC",
+        df      = NA_character_,
+        F       = NA_character_,
+        p_value = NA_character_,
+        aic
+      )
+  ) %>%
+  arrange(Station, Term == "AIC")  # Keep AIC rows at the bottom per station
+
+
+df_gam_anova_lag1_tbl_c
+```
+# Create GAMs- two week lag on flow variable
+
+```{r create gams, warning = FALSE}
+# Define base model formula
+f_lag2 <- " zoop_log ~ Year_fct * flow_lag2 + Year_fct + s(Week, bs = 'cc', k = 5)"
+
+
+
+# Create gam models for each station
+ndf_gam_lag2 <- ndfa_zoop %>% mutate(
+    str_formula = case_when(
+      StationCode == "LIB" ~ paste(f_lag2),
+      StationCode == "RVB" ~ paste(f_lag2),
+      TRUE ~ f_lag2
+    ),
+    model = map2(
+      str_formula,
+      df_data,
+      \(x, y) gam(
+        formula = as.formula(x),
+        data = y,
+        method = "ML", 
+        knots = list(week = c(0, 52))
+      )
+    )
+  )
+```
+
+# Model Results- two week lag on flow variable
+
+## ANOVA Tables
+
+```{r gam anova tables, warning = FALSE}
+# Create ANOVA tables for each GAM model and extract elements for export
+ndf_gam_anova_lag2 <- ndf_gam_lag2 %>% 
+  mutate(
+    an_gam = map(model, anova),
+    # Extract AIC from each model
+    aic = map_dbl(model, AIC),
+    # Parametric terms
+    df_parametric = map(
+      an_gam, 
+      \(x) as_tibble(chuck(x, "pTerms.table"), rownames = "Term")
+    ),
+    # Smooth terms
+    df_smooth = map(
+      an_gam, 
+      \(x) as_tibble(chuck(x, "s.table"), rownames = "Term") %>% 
+        rename(df = edf) %>% 
+        select(-Ref.df)
+    ),
+    df_anova_tbl = map2(df_parametric, df_smooth, bind_rows)
+  )
+
+# Combine ANOVA tables and format for export
+df_gam_anova_lag2_tbl_c <- ndf_gam_anova_lag2 %>% 
+  select(StationCode, df_anova_tbl, aic) %>% 
+  unnest(df_anova_tbl) %>% 
+  transmute(
+    Station = StationCode,
+    Term,
+    across(
+      c("df", "F"),
+      \(x) if_else(
+        abs(x) < 0.01,
+        formatC(signif(x, 3), digits = 2, format = "e"),
+        formatC(signif(x, 3), digits = 3, format = "fg", flag = "#")
+      )
+    ),
+    p_value = if_else(
+      `p-value` < 0.001, 
+      "< 0.001", 
+      formatC(`p-value`, digits = 3, format = "f")
+    ),
+    aic
+  ) %>%
+   # Add AIC as a summary row per station
+  bind_rows(
+    ndf_gam_anova_lag2 %>%
+      transmute(
+        Station = as.character(StationCode),
+        Term    = "AIC",
+        df      = NA_character_,
+        F       = NA_character_,
+        p_value = NA_character_,
+        aic
+      )
+  ) %>%
+  arrange(Station, Term == "AIC")  # Keep AIC rows at the bottom per station
+
+df_gam_anova_lag2_tbl_c
+```
+# Create GAMs- three week lag on flow variable
+
+```{r create gams, warning = FALSE}
+# Define base model formula
+f_lag3 <- " zoop_log ~ Year_fct * flow_lag3 + Year_fct + s(Week, bs = 'cc', k = 5)"
+
+
+
+# Create gam models for each station
+ndf_gam_lag3 <- ndfa_zoop %>% mutate(
+    str_formula = case_when(
+      StationCode == "LIB" ~ paste(f_lag3),
+      StationCode == "RVB" ~ paste(f_lag3),
+      TRUE ~ f_lag3
+    ),
+    model = map2(
+      str_formula,
+      df_data,
+      \(x, y) gam(
+        formula = as.formula(x),
+        data = y,
+        method = "ML", 
+        knots = list(week = c(0, 52))
+      )
+    )
+  )
+```
+
+# Model Results- three week lag on flow variable
+
+## ANOVA Tables
+
+```{r gam anova tables, warning = FALSE}
+# Create ANOVA tables for each GAM model and extract elements for export
+ndf_gam_anova_lag3 <- ndf_gam_lag3 %>% 
+  mutate(
+    an_gam = map(model, anova),
+    # Extract AIC from each model
+    aic = map_dbl(model, AIC),
+    # Parametric terms
+    df_parametric = map(
+      an_gam, 
+      \(x) as_tibble(chuck(x, "pTerms.table"), rownames = "Term")
+    ),
+    # Smooth terms
+    df_smooth = map(
+      an_gam, 
+      \(x) as_tibble(chuck(x, "s.table"), rownames = "Term") %>% 
+        rename(df = edf) %>% 
+        select(-Ref.df)
+    ),
+    df_anova_tbl = map2(df_parametric, df_smooth, bind_rows)
+  )
+
+# Combine ANOVA tables and format for export
+df_gam_anova_lag3_tbl_c <- ndf_gam_anova_lag3 %>% 
+  select(StationCode, df_anova_tbl, aic) %>% 
+  unnest(df_anova_tbl) %>% 
+  transmute(
+    Station = StationCode,
+    Term,
+    across(
+      c("df", "F"),
+      \(x) if_else(
+        abs(x) < 0.01,
+        formatC(signif(x, 3), digits = 2, format = "e"),
+        formatC(signif(x, 3), digits = 3, format = "fg", flag = "#")
+      )
+    ),
+    p_value = if_else(
+      `p-value` < 0.001, 
+      "< 0.001", 
+      formatC(`p-value`, digits = 3, format = "f")
+    ),
+    aic
+  ) %>%
+   # Add AIC as a summary row per station
+  bind_rows(
+    ndf_gam_anova_lag3 %>%
+      transmute(
+        Station = as.character(StationCode),
+        Term    = "AIC",
+        df      = NA_character_,
+        F       = NA_character_,
+        p_value = NA_character_,
+        aic
+      )
+  ) %>%
+  arrange(Station, Term == "AIC")  # Keep AIC rows at the bottom per station
+
+df_gam_anova_lag3_tbl_c
+```
+
+## Effect of Flow by Year- start here for modifying. Will show RD22 lag1, STTD no lag, RVB no lag, and LIB 2 week lag of flow
 
 ### Effect Plots
 
