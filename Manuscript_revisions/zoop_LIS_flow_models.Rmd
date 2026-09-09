@@ -611,9 +611,14 @@ df_gam_anova_lag3_tbl_c <- ndf_gam_anova_lag3 %>%
 df_gam_anova_lag3_tbl_c
 ```
 
-## Effect of Flow by Year- start here for modifying. Will show RD22 lag1, STTD no lag, RVB no lag, and LIB 2 week lag of flow
+## Extract AIC values into their own table
 
-### Effect Plots
+## Run model diagnostics on top fitting models
+
+## Start a new script or modify the below to create the final tables and figures for the MS.
+Effect of Flow by Year. Will show RD22 lag1, STTD no lag, RVB no lag, and LIB 2 week lag of flow
+
+### Effect Plots for top models
 
 ```{r gam flow year effect plots, warning = FALSE, fig.height = 9}
 # Create effects plot of flow on zooplankton by year for each station
