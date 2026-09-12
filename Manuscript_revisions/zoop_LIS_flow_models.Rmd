@@ -216,12 +216,12 @@ df_zoop2 <- df_zoop_weekly %>%
   drop_na(Flow) %>%
   mutate(
     zoop_log  = log(cpue),
-    Year_fct  = factor(Year), 
-    flow_lag1 = lag(Flow),
-    flow_lag2 = lag(flow_lag1),
-    flow_lag3 = lag(flow_lag2)
-  ) %>%
-  arrange(StationCode, Year, Week) %>%
+    Year_fct  = factor(Year))%>%
+  arrange(StationCode, Year, Week) %>% 
+  group_by(StationCode, Year) %>%
+  mutate(flow_lag1 = lag(Flow, n=1),
+    flow_lag2 = lag(Flow, n=2),
+    flow_lag3 = lag(Flow, n=3)) %>%
   split(~ StationCode)
 
 # Combine all data sets into a nested data frame to be used for analysis
@@ -235,27 +235,22 @@ ndfa_zoop <-
   arrange(StationCode)
 ```
 
-# Evaluate collinearity between lagged flow terms
-```{r, evaluate collinearity between lagged flow terms}
-cor(df_zoop2$STTD$Flow, df_zoop2$STTD$flow_lag1)
-
-cor(df_zoop2$STTD$Flow, df_zoop2$STTD$flow_lag2)
-
-```
-# Create GAMs- no lag on flow variable
+## Create GAMs with interaction terms
 
 ```{r create gams, warning = FALSE}
-# Define base model formula
+# Define model formulae
 f_base <- " zoop_log ~ Year_fct * Flow + Year_fct + s(Week, bs = 'cc', k = 5)"
-
-
+f_lag1 <- " zoop_log ~ Year_fct * flow_lag1 + Year_fct + s(Week, bs = 'cc', k = 5)"
+f_lag2 <- " zoop_log ~ Year_fct * flow_lag2 + Year_fct + s(Week, bs = 'cc', k = 5)"
+f_lag3 <- " zoop_log ~ Year_fct * flow_lag3 + Year_fct + s(Week, bs = 'cc', k = 5)"
 
 # Create gam models for each station
 ndf_gam <- ndfa_zoop %>% mutate(
     str_formula = case_when(
-      StationCode == "LIB" ~ paste(f_base),
-      StationCode == "RVB" ~ paste(f_base),
-      TRUE ~ f_base
+      StationCode == "RD22" ~ paste(f_base),
+      StationCode == "STTD" ~ paste(f_lag1),
+      StationCode == "LIB" ~ paste(f_lag2),
+      StationCode == "RVB" ~ paste(f_lag3)
     ),
     model = map2(
       str_formula,
@@ -270,17 +265,189 @@ ndf_gam <- ndfa_zoop %>% mutate(
   )
 ```
 
-# Model Results- no lag on flow variable
+## Model summaries for GAMs with interaction terms
+
+```{r model summaries}
+library(broom)
+
+#append model summaries
+ndf_gam <- ndf_gam %>%
+  mutate(
+    # Tidy parametric coefficients
+    tidy_params = map(model, ~ tidy(.x, parametric = TRUE)),
+
+    # Tidy smooth terms
+    tidy_smooths = map(model, ~ tidy(.x, parametric = FALSE)),
+
+    # Model-level fit statistics (AIC, R-sq, deviance explained, etc.)
+    glance_stats = map(model, glance)
+  )
+
+#print summaries by station
+walk2(ndf_gam$StationCode, ndf_gam$model, ~ {
+  cat("\n", strrep("=", 50), "\n")
+  cat("Station:", .x, "\n")
+  cat(strrep("=", 50), "\n")
+  print(summary(.y))
+})
+
+#unnest to create a single comparison table
+fit_table <- ndf_gam %>%
+  select(StationCode, glance_stats) %>%
+  unnest(glance_stats) %>%
+  select(StationCode, AIC, BIC, adj.r.squared, deviance, df.residual)
+
+print(fit_table)
+
+```
+
+
+## Diagnostic plots for GAMs with interaction terms
+
+```{r diagnostic plots}
+
+library(gratia)
+
+diag_plots <- ndf_gam %>%
+  mutate(
+    diag_plot = map2(model, StationCode, ~ 
+      appraise(.x) + 
+        patchwork::plot_annotation(title = paste("Station:", .y))
+    )
+  )
+
+# Save all to PDF
+pdf("gam_diagnostics_gratia.pdf", width = 10, height = 8)
+walk(diag_plots$diag_plot, print)
+dev.off()
+
+
+# Using gratia::draw() for partial effects of smooth terms
+smooth_plots <- ndf_gam %>%
+  mutate(
+    smooth_plot = map2(model, StationCode, ~
+      draw(.x) +
+        patchwork::plot_annotation(title = paste("Smooths — Station:", .y))
+    )
+  )
+
+pdf("gam_smooths.pdf", width = 10, height = 6)
+walk(smooth_plots$smooth_plot, print)
+dev.off()
+```
+
+## GAMs without interaction terms
+
+```{r create gams without interaction terms, warning = FALSE}
+# Define model formulae
+f2_base <- " zoop_log ~ Flow + Year_fct + s(Week, bs = 'cc', k = 5)"
+f2_lag1 <- " zoop_log ~ flow_lag1 + Year_fct + s(Week, bs = 'cc', k = 5)"
+f2_lag2 <- " zoop_log ~ flow_lag2 + Year_fct + s(Week, bs = 'cc', k = 5)"
+f2_lag3 <- " zoop_log ~ flow_lag3 + Year_fct + s(Week, bs = 'cc', k = 5)"
+
+# Create gam models for each station
+ndf_gam2 <- ndfa_zoop %>% mutate(
+    str_formula = case_when(
+      StationCode == "RD22" ~ paste(f2_base),
+      StationCode == "STTD" ~ paste(f2_lag1),
+      StationCode == "LIB" ~ paste(f2_lag2),
+      StationCode == "RVB" ~ paste(f2_lag3)
+    ),
+    model = map2(
+      str_formula,
+      df_data,
+      \(x, y) gam(
+        formula = as.formula(x),
+        data = y,
+        method = "ML", 
+        knots = list(week = c(0, 52))
+      )
+    )
+  )
+```
+
+## Model summaries for GAMs without interaction terms
+
+```{r model summaries}
+library(broom)
+
+#append model summaries
+ndf_gam2 <- ndf_gam2 %>%
+  mutate(
+    # Tidy parametric coefficients
+    tidy_params = map(model, ~ tidy(.x, parametric = TRUE)),
+
+    # Tidy smooth terms
+    tidy_smooths = map(model, ~ tidy(.x, parametric = FALSE)),
+
+    # Model-level fit statistics (AIC, R-sq, deviance explained, etc.)
+    glance_stats = map(model, glance),
+    k.check= map(model, k.check))
+
+#print summaries by station
+walk2(ndf_gam2$StationCode, ndf_gam2$model, ~ {
+  cat("\n", strrep("=", 50), "\n")
+  cat("Station:", .x, "\n")
+  cat(strrep("=", 50), "\n")
+  print(summary(.y))
+})
+
+#unnest to create a single comparison table
+fit_table2 <- ndf_gam2 %>%
+  select(StationCode, glance_stats) %>%
+  unnest(glance_stats) %>%
+  select(StationCode, AIC, BIC, adj.r.squared, deviance, df.residual)
+
+print(fit_table2)
+print(ndf_gam2$k.check)
+
+```
+
+## Diagnostic plots for GAMs without interaction terms
+
+```{r diagnostic plots}
+
+library(gratia)
+
+diag_plots2 <- ndf_gam2 %>%
+  mutate(
+    diag_plot = map2(model, StationCode, ~ 
+      appraise(.x) + 
+        patchwork::plot_annotation(title = paste("Station:", .y))
+    )
+  )
+
+# Save all to PDF
+pdf("gam_diagnostics_gratia2.pdf", width = 10, height = 8)
+walk(diag_plots2$diag_plot, print)
+dev.off()
+
+
+# Using gratia::draw() for partial effects of smooth terms
+smooth_plots2 <- ndf_gam2 %>%
+  mutate(
+    smooth_plot = map2(model, StationCode, ~
+      draw(.x) +
+        patchwork::plot_annotation(title = paste("Smooths — Station:", .y))
+    )
+  )
+
+pdf("gam_smooths2.pdf", width = 10, height = 6)
+walk(smooth_plots2$smooth_plot, print)
+dev.off()
+
+
+```
+
+## lower AIC for GAMs without interaction terms, so moving forward with those models
 
 ## ANOVA Tables
 
 ```{r gam anova tables, warning = FALSE}
 # Create ANOVA tables for each GAM model and extract elements for export
-ndf_gam_anova <- ndf_gam %>% 
+ndf_gam_anova <- ndf_gam2 %>% 
   mutate(
     an_gam = map(model, anova),
-    # Extract AIC from each model
-    aic = map_dbl(model, AIC),
     # Parametric terms
     df_parametric = map(
       an_gam, 
@@ -298,7 +465,7 @@ ndf_gam_anova <- ndf_gam %>%
 
 # Combine ANOVA tables and format for export
 df_gam_anova_tbl_c <- ndf_gam_anova %>% 
-  select(StationCode, df_anova_tbl, aic) %>% 
+  select(StationCode, df_anova_tbl) %>% 
   unnest(df_anova_tbl) %>% 
   transmute(
     Station = StationCode,
@@ -315,429 +482,131 @@ df_gam_anova_tbl_c <- ndf_gam_anova %>%
       `p-value` < 0.001, 
       "< 0.001", 
       formatC(`p-value`, digits = 3, format = "f")
-    ),
-    aic) %>%
-  # Add AIC as a summary row per station
+    )) %>%
   bind_rows(
     ndf_gam_anova %>%
       transmute(
         Station = as.character(StationCode),
-        Term    = "AIC",
         df      = NA_character_,
         F       = NA_character_,
-        p_value = NA_character_,
-        aic
+        p_value = NA_character_
       )
-  ) %>%
-  arrange(Station, Term == "AIC")  # Keep AIC rows at the bottom per station
+  ) 
 
 df_gam_anova_tbl_c
-```
-# Create GAMs- one week lag on flow variable
 
-```{r create gams, warning = FALSE}
-# Define base model formula
-f_lag1 <- " zoop_log ~ Year_fct * flow_lag1 + Year_fct + s(Week, bs = 'cc', k = 5)"
+df_gam_anova_tbl_c %>% 
+  mutate(across(c("df", "F", "p_value"), ~ paste0(.x, "##"))) %>% 
+  write_csv("zoop_LIS_flow_GAM_anova.csv")
 
 
-
-# Create gam models for each station
-ndf_gam_lag1 <- ndfa_zoop %>% mutate(
-    str_formula = case_when(
-      StationCode == "LIB" ~ paste(f_lag1),
-      StationCode == "RVB" ~ paste(f_lag1),
-      TRUE ~ f_lag1
-    ),
-    model = map2(
-      str_formula,
-      df_data,
-      \(x, y) gam(
-        formula = as.formula(x),
-        data = y,
-        method = "ML", 
-        knots = list(week = c(0, 52))
-      )
-    )
-  )
 ```
 
-# Model Results- one week lag on flow variable
+## Flow Effect plots
+```{r flow effect plots}
 
-## ANOVA Tables
+flow_var_lookup <- c(
+  RD22 = "Flow",
+  STTD = "flow_lag1",
+  LIB  = "flow_lag2",
+  RVB  = "flow_lag3"
+)
 
-```{r gam anova tables, warning = FALSE}
-# Create ANOVA tables for each GAM model and extract elements for export
-ndf_gam_anova_lag1 <- ndf_gam_lag1 %>% 
+ndf_gam2 <- ndf_gam2 %>%
   mutate(
-    an_gam = map(model, anova),
-    # Extract AIC from each model
-    aic = map_dbl(model, AIC),
-    # Parametric terms
-    df_parametric = map(
-      an_gam, 
-      \(x) as_tibble(chuck(x, "pTerms.table"), rownames = "Term")
-    ),
-    # Smooth terms
-    df_smooth = map(
-      an_gam, 
-      \(x) as_tibble(chuck(x, "s.table"), rownames = "Term") %>% 
-        rename(df = edf) %>% 
-        select(-Ref.df)
-    ),
-    df_anova_tbl = map2(df_parametric, df_smooth, bind_rows)
-  )
+    flow_var = flow_var_lookup[StationCode],
 
-# Combine ANOVA tables and format for export
-df_gam_anova_lag1_tbl_c <- ndf_gam_anova_lag1 %>% 
-  select(StationCode, df_anova_tbl, aic) %>% 
-  unnest(df_anova_tbl) %>% 
-  transmute(
-    Station = StationCode,
-    Term,
-    across(
-      c("df", "F"),
-      \(x) if_else(
-        abs(x) < 0.01,
-        formatC(signif(x, 3), digits = 2, format = "e"),
-        formatC(signif(x, 3), digits = 3, format = "fg", flag = "#")
-      )
-    ),
-    p_value = if_else(
-      `p-value` < 0.001, 
-      "< 0.001", 
-      formatC(`p-value`, digits = 3, format = "f")
-    ),
-    aic
-  )%>%
-   # Add AIC as a summary row per station
-  bind_rows(
-    ndf_gam_anova_lag1 %>%
-      transmute(
-        Station = as.character(StationCode),
-        Term    = "AIC",
-        df      = NA_character_,
-        F       = NA_character_,
-        p_value = NA_character_,
-        aic
-      )
-  ) %>%
-  arrange(Station, Term == "AIC")  # Keep AIC rows at the bottom per station
+    pred_data = pmap(
+      list(model, df_data, flow_var),
+      \(mod, dat, fv) {
+        flow_seq <- seq(min(dat[[fv]], na.rm = TRUE),
+                        max(dat[[fv]], na.rm = TRUE),
+                        length.out = 200)
 
+        ref_year <- levels(dat$Year_fct)[1]
 
-df_gam_anova_lag1_tbl_c
-```
-# Create GAMs- two week lag on flow variable
+        # Use setNames() to name the flow column correctly from the start
+        nd <- tibble(
+          flow_val = flow_seq,
+          Year_fct = factor(ref_year, levels = levels(dat$Year_fct)),
+          Week     = median(dat$Week, na.rm = TRUE)
+        ) %>%
+          setNames(c(fv, "Year_fct", "Week"))  # rename flow_val -> fv here
 
-```{r create gams, warning = FALSE}
-# Define base model formula
-f_lag2 <- " zoop_log ~ Year_fct * flow_lag2 + Year_fct + s(Week, bs = 'cc', k = 5)"
+        preds <- predict(mod, newdata = nd, type = "link", se.fit = TRUE)
 
-
-
-# Create gam models for each station
-ndf_gam_lag2 <- ndfa_zoop %>% mutate(
-    str_formula = case_when(
-      StationCode == "LIB" ~ paste(f_lag2),
-      StationCode == "RVB" ~ paste(f_lag2),
-      TRUE ~ f_lag2
-    ),
-    model = map2(
-      str_formula,
-      df_data,
-      \(x, y) gam(
-        formula = as.formula(x),
-        data = y,
-        method = "ML", 
-        knots = list(week = c(0, 52))
-      )
-    )
-  )
-```
-
-# Model Results- two week lag on flow variable
-
-## ANOVA Tables
-
-```{r gam anova tables, warning = FALSE}
-# Create ANOVA tables for each GAM model and extract elements for export
-ndf_gam_anova_lag2 <- ndf_gam_lag2 %>% 
-  mutate(
-    an_gam = map(model, anova),
-    # Extract AIC from each model
-    aic = map_dbl(model, AIC),
-    # Parametric terms
-    df_parametric = map(
-      an_gam, 
-      \(x) as_tibble(chuck(x, "pTerms.table"), rownames = "Term")
-    ),
-    # Smooth terms
-    df_smooth = map(
-      an_gam, 
-      \(x) as_tibble(chuck(x, "s.table"), rownames = "Term") %>% 
-        rename(df = edf) %>% 
-        select(-Ref.df)
-    ),
-    df_anova_tbl = map2(df_parametric, df_smooth, bind_rows)
-  )
-
-# Combine ANOVA tables and format for export
-df_gam_anova_lag2_tbl_c <- ndf_gam_anova_lag2 %>% 
-  select(StationCode, df_anova_tbl, aic) %>% 
-  unnest(df_anova_tbl) %>% 
-  transmute(
-    Station = StationCode,
-    Term,
-    across(
-      c("df", "F"),
-      \(x) if_else(
-        abs(x) < 0.01,
-        formatC(signif(x, 3), digits = 2, format = "e"),
-        formatC(signif(x, 3), digits = 3, format = "fg", flag = "#")
-      )
-    ),
-    p_value = if_else(
-      `p-value` < 0.001, 
-      "< 0.001", 
-      formatC(`p-value`, digits = 3, format = "f")
-    ),
-    aic
-  ) %>%
-   # Add AIC as a summary row per station
-  bind_rows(
-    ndf_gam_anova_lag2 %>%
-      transmute(
-        Station = as.character(StationCode),
-        Term    = "AIC",
-        df      = NA_character_,
-        F       = NA_character_,
-        p_value = NA_character_,
-        aic
-      )
-  ) %>%
-  arrange(Station, Term == "AIC")  # Keep AIC rows at the bottom per station
-
-df_gam_anova_lag2_tbl_c
-```
-# Create GAMs- three week lag on flow variable
-
-```{r create gams, warning = FALSE}
-# Define base model formula
-f_lag3 <- " zoop_log ~ Year_fct * flow_lag3 + Year_fct + s(Week, bs = 'cc', k = 5)"
-
-
-
-# Create gam models for each station
-ndf_gam_lag3 <- ndfa_zoop %>% mutate(
-    str_formula = case_when(
-      StationCode == "LIB" ~ paste(f_lag3),
-      StationCode == "RVB" ~ paste(f_lag3),
-      TRUE ~ f_lag3
-    ),
-    model = map2(
-      str_formula,
-      df_data,
-      \(x, y) gam(
-        formula = as.formula(x),
-        data = y,
-        method = "ML", 
-        knots = list(week = c(0, 52))
-      )
-    )
-  )
-```
-
-# Model Results- three week lag on flow variable
-
-## ANOVA Tables
-
-```{r gam anova tables, warning = FALSE}
-# Create ANOVA tables for each GAM model and extract elements for export
-ndf_gam_anova_lag3 <- ndf_gam_lag3 %>% 
-  mutate(
-    an_gam = map(model, anova),
-    # Extract AIC from each model
-    aic = map_dbl(model, AIC),
-    # Parametric terms
-    df_parametric = map(
-      an_gam, 
-      \(x) as_tibble(chuck(x, "pTerms.table"), rownames = "Term")
-    ),
-    # Smooth terms
-    df_smooth = map(
-      an_gam, 
-      \(x) as_tibble(chuck(x, "s.table"), rownames = "Term") %>% 
-        rename(df = edf) %>% 
-        select(-Ref.df)
-    ),
-    df_anova_tbl = map2(df_parametric, df_smooth, bind_rows)
-  )
-
-# Combine ANOVA tables and format for export
-df_gam_anova_lag3_tbl_c <- ndf_gam_anova_lag3 %>% 
-  select(StationCode, df_anova_tbl, aic) %>% 
-  unnest(df_anova_tbl) %>% 
-  transmute(
-    Station = StationCode,
-    Term,
-    across(
-      c("df", "F"),
-      \(x) if_else(
-        abs(x) < 0.01,
-        formatC(signif(x, 3), digits = 2, format = "e"),
-        formatC(signif(x, 3), digits = 3, format = "fg", flag = "#")
-      )
-    ),
-    p_value = if_else(
-      `p-value` < 0.001, 
-      "< 0.001", 
-      formatC(`p-value`, digits = 3, format = "f")
-    ),
-    aic
-  ) %>%
-   # Add AIC as a summary row per station
-  bind_rows(
-    ndf_gam_anova_lag3 %>%
-      transmute(
-        Station = as.character(StationCode),
-        Term    = "AIC",
-        df      = NA_character_,
-        F       = NA_character_,
-        p_value = NA_character_,
-        aic
-      )
-  ) %>%
-  arrange(Station, Term == "AIC")  # Keep AIC rows at the bottom per station
-
-df_gam_anova_lag3_tbl_c
-```
-
-## Extract AIC values into their own table
-
-## Run model diagnostics on top fitting models
-
-## Start a new script or modify the below to create the final tables and figures for the MS.
-Effect of Flow by Year. Will show RD22 lag1, STTD no lag, RVB no lag, and LIB 2 week lag of flow
-
-### Effect Plots for top models
-
-```{r gam flow year effect plots, warning = FALSE, fig.height = 9}
-# Create effects plot of flow on zooplankton by year for each station
-ndf_gam_eff_flow_plt <- ndf_gam %>% 
-  mutate(
-    df_marg_eff = map2(df_data, model, calc_flow_yr_marg_eff),
-    plt_marg_eff = map2(df_marg_eff, df_data, plot_eff_flow_by_yr)
-  )
-
-# Combine effects plots together using patchwork
-plt_gam_eff_flow <- 
-  wrap_plots(ndf_gam_eff_flow_plt$plt_marg_eff, ncol = 1) + 
-  plot_layout(axes = "collect")
-
-plt_gam_eff_flow
-```
-### Slopes and p-values
-
-```{r gam flow year effect stats}
-# Calculate slopes and p-values of the modeled effects of flow on zoop by
-  # year for each station
-ndf_gam_eff_flow_stat <- ndf_gam %>% 
-  mutate(
-    em_gam_flow = map(model, \(x) emtrends(x, ~ Year_fct, var = "Flow")),
-    df_stat = map(em_gam_flow, \(x) as_tibble(test(x)))
-  )
-
-# Combine slopes and p-values into one data frame for export
-df_gam_eff_flow_stat <- ndf_gam_eff_flow_stat %>% 
-  select(StationCode, df_stat) %>% 
-  unnest(df_stat) %>% 
-  # Format for export
-  rename(
-    Station = StationCode,
-    Year = Year_fct,
-    Flow_slope = Flow.trend,
-    t_ratio = t.ratio,
-    p_value = p.value
-  ) %>% 
-  mutate(
-    p_value = if_else(
-      p_value < 0.001, 
-      "< 0.001", 
-      formatC(p_value, digits = 3, format = "f")
-    ),
-    across(
-      where(is.numeric),
-      \(x) if_else(
-        abs(x) < 0.01,
-        formatC(signif(x, 3), digits = 2, format = "e"),
-        formatC(signif(x, 3), digits = 3, format = "fg", flag = "#")
-      )
+        # Pull flow column back out by name for plotting
+        nd %>%
+          mutate(
+            flow_val = .[[fv]],  # extract by name for ggplot
+            fit      = preds$fit,
+            lower    = fit - 1.96 * preds$se.fit,
+            upper    = fit + 1.96 * preds$se.fit
+          )
+      }
     )
   )
 
-df_gam_eff_flow_stat
-```
-## Year Contrasts
-
-### Boxplots
-
-```{r gam year contrast boxplots, warning = FALSE}
-# Calculate estimated marginal means of year for each station
-ndf_gam_cont_yr <- ndf_gam %>% 
-  mutate(em_gam_yr = map(model, \(x) emmeans(x, ~ Year_fct)))
-
-# Create boxplots showing Tukey post-hoc results of year contrasts for each station
-ndf_gam_cont_yr_plt <- ndf_gam_cont_yr %>% 
-  mutate(plt_cont_yr = map2(em_gam_yr, df_data, boxplot_cont_yr))
-
-# Combine boxplots together using patchwork
-plt_gam_cont_yr <- 
-  wrap_plots(ndf_gam_cont_yr_plt$plt_cont_yr, ncol = 2) + 
-  plot_layout(axes = "collect")
-
-plt_gam_cont_yr
-```
-### Statistics
-
-```{r gam year contrast stats}
-# Generate pairwise Tukey post-hoc year contrasts for each station
-ndf_gam_cont_yr_stat <- ndf_gam_cont_yr %>% 
-  mutate(df_stat = map(em_gam_yr, \(x) as_tibble(pairs(x))))
-
-# Combine pairwise Tukey post-hoc year contrasts into one data frame for export
-df_gam_cont_yr_stat <- ndf_gam_cont_yr_stat %>% 
-  select(StationCode, df_stat) %>% 
-  unnest(df_stat) %>% 
-  # Format for export
-  rename(
-    Station = StationCode,
-    Contrast = contrast,
-    Estimate = estimate,
-    t_ratio = t.ratio,
-    p_value = p.value
-  ) %>% 
+station_plots <- ndf_gam2 %>%
   mutate(
-    p_value = if_else(
-      p_value < 0.001, 
-      "< 0.001", 
-      formatC(p_value, digits = 3, format = "f")
-    ),
-    across(
-      where(is.numeric),
-      \(x) if_else(
-        abs(x) < 0.01,
-        formatC(signif(x, 3), digits = 2, format = "e"),
-        formatC(signif(x, 3), digits = 3, format = "fg", flag = "#")
-      )
+    plot = pmap(
+      list(pred_data, StationCode, flow_var),
+      \(pd, stn, fv) {
+        ggplot(pd, aes(x = flow_val, y = fit)) +
+          geom_ribbon(aes(ymin = lower, ymax = upper),
+                      fill = "steelblue", alpha = 0.25) +
+          geom_line(color = "steelblue", linewidth = 1) +
+          labs(
+            title = stn,
+            x     = paste0("Flow (cfs)"),
+            y     = "Zooplankton density"
+          ) +
+          theme_bw(base_size = 11) +
+          theme(plot.title = element_text(face = "plain"))
+      }
     )
   )
 
-print(df_gam_cont_yr_stat, n = Inf)
+# Combine into 2x2 grid
+library(cowplot)
+
+# Step 1 — Strip only axis titles from individual plots, leave tick labels alone
+cleaned_plots <- map(station_plots$plot, ~ .x &
+  theme(axis.title = element_blank())
+)
+
+# Step 2 — Combine with patchwork, no axis collecting
+inner_plot <- wrap_plots(cleaned_plots, ncol = 2) &
+  theme(plot.margin = margin(4, 4, 4, 4))
+
+# Step 3 — Add true margin y-axis label
+combined_with_y <- plot_grid(
+  ggdraw() +
+    draw_label("log10(Zooplankton density)", angle = 90,
+               fontface = "plain", size = 15),
+  inner_plot,
+  ncol       = 2,
+  rel_widths = c(0.05, 1)
+)
+
+# Step 4 — Add true margin x-axis label
+combined_plot <- plot_grid(
+  combined_with_y,
+  ggdraw(clip="off") +
+    draw_label("Flow (cfs)", fontface = "plain", size = 15)+
+  theme(plot.margin = margin(t = -3, 0, 0, 0)), 
+  ncol        = 1,
+  rel_heights = c(1, 0.04)
+)
+
+combined_plot
 ```
+
 ## s(Week) Plots
 
 ```{r gam sWeek plots, warning = FALSE}
 # Create smooth of Week plots for each station
-ndf_gam_s_week_plt <- ndf_gam %>% 
+ndf_gam_s_week_plt <- ndf_gam2 %>% 
   mutate(plt_s_week = map2(model, StationCode, plot_smooth_week))
 
 # Combine smooth of Week plots together using patchwork
@@ -748,58 +617,86 @@ plt_gam_s_week <-
 
 plt_gam_s_week
 ```
+## Create boxplots of density by year
+
+```{r boxplots}
+ndf_gam2 <- ndf_gam2 %>%
+  mutate(
+    boxplot = map2(
+      df_data, StationCode,
+      \(dat, stn) {
+        ggplot(dat, aes(x = Year_fct, y = zoop_log)) +
+          geom_boxplot(fill = "purple", alpha = 0.6, outlier.shape = 19) +
+          geom_jitter(width = 0.15, alpha = 0.4, size = 1.5, color = "gray30") +
+          labs(
+            title = stn,
+            x     = "Year",
+            y     = "log(Zooplankton Density)"
+          ) +
+          theme_bw(base_size = 11) +
+          theme(
+            plot.title     = element_text(face = "plain"),
+            axis.text.x    = element_text(angle = 45, hjust = 1)
+          )
+      }
+    )
+  )
+
+walk2(
+  ndf_gam2$StationCode, ndf_gam2$boxplot,
+  \(stn, plt) {
+    ggsave(
+      filename = paste0("boxplot_", stn, ".png"),
+      plot     = plt,
+      width    = 8,
+      height   = 5,
+      dpi      = 300
+    )
+  }
+)
+
+# Combine into 2x2 grid
+
+# Step 1 — Build individual boxplots with no axis titles
+cleaned_boxplots <- map(ndf_gam2$boxplot, ~ .x +
+  theme(axis.title = element_blank())
+)
+
+# Step 2 — Combine with patchwork, no axis collecting
+inner_boxplot <- wrap_plots(cleaned_boxplots, ncol = 2) &
+  theme(plot.margin = margin(4, 4, 4, 4))
+
+# Step 3 — Add true margin y-axis label
+boxplot_with_y <- plot_grid(
+  ggdraw() +
+    draw_label("log10(Zooplankton density)", angle = 90,
+               fontface = "plain", size = 15),
+  inner_boxplot,
+  ncol       = 2,
+  rel_widths = c(0.05, 1)
+)
+
+# Step 4 — Add true margin x-axis label
+combined_boxplot <- plot_grid(
+  boxplot_with_y,
+  ggdraw() +
+    draw_label("Year", fontface = "plain", size = 15, vjust = 0),
+  ncol        = 1,
+  rel_heights = c(1, 0.04)
+)
+
+combined_boxplot
+
+
+```
+
 # Export Results
 
 ```{r export results}
-# Define file path for figures and tables for the manuscript
-fp_figures <- here("manuscript_synthesis/results/figures")
-fp_tables <- here("manuscript_synthesis/results/tables")
-
-# Export effects plot of flow by year for each station
-ggsave(
-  file.path(fp_figures, "zoop_LIS_flow_eff_plot_by_year_each_sta.jpg"),
-  plot = plt_gam_eff_flow,
-  width = 7,
-  height = 9,
-  units = "in"
-)
-
-ggsave(
-  file.path(fp_figures, "zoop_LIS_flow_eff_plot_by_year_each_sta.pdf"),
-  plot = plt_gam_eff_flow,
-  width = 7,
-  height = 9,
-  units = "in"
-)
-
-# Export boxplots of year contrasts for each station
-ggsave(
-  file.path(fp_figures, "zoop_LIS_flow_year_contrasts_each_sta.jpg"),
-  plot = plt_gam_cont_yr,
-  width = 6.5,
-  height = 5,
-  units = "in"
-)
-
-ggsave(
-  file.path(fp_figures, "zoop_LIS_flow_year_contrasts_each_sta.pdf"),
-  plot = plt_gam_cont_yr,
-  width = 6.5,
-  height = 5,
-  units = "in"
-)
 
 # Export effects plots of smooth of Week
 ggsave(
   file.path(fp_figures, "zoop_LIS_flow_smooth_week.jpg"),
-  plot = plt_gam_s_week,
-  width = 6.5,
-  height = 5,
-  units = "in"
-)
-
-ggsave(
-  file.path(fp_figures, "zoop_LIS_flow_smooth_week.pdf"),
   plot = plt_gam_s_week,
   width = 6.5,
   height = 5,
