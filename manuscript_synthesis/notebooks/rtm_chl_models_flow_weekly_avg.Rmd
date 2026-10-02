@@ -1,6 +1,6 @@
 ---
 title: "NDFS Synthesis Manuscript: Chlorophyll analysis"
-subtitle: "Models using weekly average flow as continuous predictor"
+subtitle: "Combined models using weekly average flow as continuous predictor"
 author: "Dave Bosworth"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output:
@@ -9,6 +9,9 @@ output:
     toc: true
     toc_float:
       collapsed: false
+execute:
+  message: false
+  warning: false
 editor_options:
   chunk_output_type: console
 knit: (function(input, ...) {
@@ -31,7 +34,7 @@ Explore and analyze the continuous chlorophyll data to be included in the NDFS s
 
 # Global code and functions
 
-```{r load packages and functions, message = FALSE, warning = FALSE}
+```{r load packages and functions}
 # Load packages
 library(tidyverse)
 library(scales)
@@ -73,7 +76,7 @@ df_flow <- readRDS(file.path(fp_data, "flow_week_avg_2013-2019.rds"))
 
 # Prepare Data
 
-```{r prepare chla data, message = FALSE}
+```{r prepare chla data}
 # Create a vector for the factor order of StationCode
 sta_order <- c("RD22", "STTD", "LIB", "RVB")
 
@@ -85,7 +88,6 @@ df_flow_c <- bind_rows(
   ),
   df_flow |> filter(StationCode == "RD22")
 )
-
 
 # Prepare chlorophyll and flow data for exploration and analysis
 df_chla_c1 <- df_wq %>%
@@ -148,7 +150,7 @@ df_chla_c2_lag <- df_chla_c2 %>%
 
 Let's explore the data with some plots. First, lets plot the data in scatter plots of chlorophyll and flow faceted by Station and grouping all years together.
 
-```{r chla scatterplot all yrs, message = FALSE, fig.height = 6}
+```{r chla scatterplot all yrs, fig.height = 6}
 df_chla_c2 %>%
   ggplot(aes(x = Flow, y = Chla)) +
   geom_point() +
@@ -161,7 +163,7 @@ At first glance, I'm not sure how well flow is going to be able to predict chlor
 
 Let's break these scatterplots apart by year to see how these patterns vary annually.
 
-```{r chla scatterplot facet yrs, message = FALSE, fig.height = 8, fig.width = 8.5}
+```{r chla scatterplot facet yrs, fig.height = 8, fig.width = 8.5}
 df_chla_c2 %>%
   ggplot(aes(x = Flow, y = Chla)) +
   geom_point() +
@@ -183,18 +185,18 @@ First, we will attempt to fit a generalized additive model (GAM) to the data set
 
 ## Initial Model
 
-```{r gam flow3 no autocorr, warning = FALSE}
+```{r gam flow3 no autocorr}
 m_gam_flow3 <- gam(
-  Chla_log ~ Year_fct * Flow * StationCode + s(Week,  bs = "cc", k = 5),
+  Chla_log ~ Year_fct * Flow * StationCode + s(Week, bs = "cc", k = 5),
   data = df_chla_c2,
   method = "REML",
-  knots = list(week = c(0, 52))
+  knots = list(Week = c(0, 52))
 )
 ```
 
 Lets look at the model summary and diagnostics:
 
-```{r gam flow3 no autocorr diag, warning = FALSE}
+```{r gam flow3 no autocorr diag}
 summary(m_gam_flow3)
 appraise(m_gam_flow3)
 shapiro.test(residuals(m_gam_flow3))
@@ -213,12 +215,12 @@ Now, we'll try to deal with the residual autocorrelation. We'll run a series of 
 
 ### Lag 1
 
-```{r gam flow3 lag1, warning = FALSE}
+```{r gam flow3 lag1}
 m_gam_flow3_lag1 <- gam(
   Chla_log ~ Year_fct * Flow * StationCode + s(Week, bs = "cc", k = 5) + lag1,
   data = df_chla_c2_lag,
   method = "REML",
-  knots = list(week = c(0, 52))
+  knots = list(Week = c(0, 52))
 )
 
 acf(residuals(m_gam_flow3_lag1))
@@ -227,19 +229,24 @@ Box.test(residuals(m_gam_flow3_lag1), lag = 20, type = 'Ljung-Box')
 
 ### Lag 2
 
-```{r gam flow3 lag2, warning = FALSE}
+```{r gam flow3 lag2}
 m_gam_flow3_lag2 <- gam(
-  Chla_log ~ Year_fct * Flow * StationCode + s(Week, bs = "cc", k = 5) + lag1 + lag2,
+  Chla_log ~ Year_fct *
+    Flow *
+    StationCode +
+    s(Week, bs = "cc", k = 5) +
+    lag1 +
+    lag2,
   data = df_chla_c2_lag,
   method = "REML",
-  knots = list(week = c(0, 52))
+  knots = list(Week = c(0, 52))
 )
 
 acf(residuals(m_gam_flow3_lag2))
 Box.test(residuals(m_gam_flow3_lag2), lag = 20, type = 'Ljung-Box')
 ```
 
-The model with 1 lag term already seems to address the serial autocorrelation. Let's use AIC to see how they compare.
+Let's use AIC to see how they compare.
 
 ### Compare Models
 
@@ -251,7 +258,7 @@ It looks like the lag2 model has the best fit according to the AIC values. Let's
 
 ### Lag 2 model summary
 
-```{r gam flow3 lag2 summary and diag, warning = FALSE}
+```{r gam flow3 lag2 summary and diag}
 summary(m_gam_flow3_lag2)
 appraise(m_gam_flow3_lag2)
 shapiro.test(residuals(m_gam_flow3_lag2))
@@ -261,7 +268,7 @@ plot(m_gam_flow3_lag2, pages = 1, all.terms = TRUE)
 anova(m_gam_flow3_lag2)
 ```
 
-The model diagnostics look pretty good. Note that the 2-way interaction between Year and Flow isn't significant. We'll use `m_gam_flow3_lag2` in the model selection process.
+The model diagnostics look pretty good. We'll use `m_gam_flow3_lag2` in the model selection process.
 
 ```{r gam flow3 clean up}
 rm(m_gam_flow3, m_gam_flow3_lag1)
@@ -273,18 +280,18 @@ Now we'll try running a GAM using all two-way interactions between Year, Flow, a
 
 ## Initial Model
 
-```{r gam flow2 no autocorr, warning = FALSE}
+```{r gam flow2 no autocorr}
 m_gam_flow2 <- gam(
   Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(Week, bs = "cc", k = 5),
   data = df_chla_c2,
   method = "REML",
-  knots = list(week = c(0, 52))
+  knots = list(Week = c(0, 52))
 )
 ```
 
 Lets look at the model summary and diagnostics:
 
-```{r gam flow2 no autocorr diag, warning = FALSE}
+```{r gam flow2 no autocorr diag}
 summary(m_gam_flow2)
 appraise(m_gam_flow2)
 shapiro.test(residuals(m_gam_flow2))
@@ -303,12 +310,14 @@ Now, we'll try to deal with the residual autocorrelation. We'll run a series of 
 
 ### Lag 1
 
-```{r gam flow2 lag1, warning = FALSE}
+```{r gam flow2 lag1}
 m_gam_flow2_lag1 <- gam(
-  Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(Week, bs = "cc", k = 5) + lag1,
+  Chla_log ~ (Year_fct + Flow + StationCode)^2 +
+    s(Week, bs = "cc", k = 5) +
+    lag1,
   data = df_chla_c2_lag,
   method = "REML",
-  knots = list(week = c(0, 52))
+  knots = list(Week = c(0, 52))
 )
 
 acf(residuals(m_gam_flow2_lag1))
@@ -317,12 +326,15 @@ Box.test(residuals(m_gam_flow2_lag1), lag = 20, type = 'Ljung-Box')
 
 ### Lag 2
 
-```{r gam flow2 lag2, warning = FALSE}
+```{r gam flow2 lag2}
 m_gam_flow2_lag2 <- gam(
-  Chla_log ~ (Year_fct + Flow + StationCode)^2 + s(Week, bs = "cc", k = 5) + lag1 + lag2,
+  Chla_log ~ (Year_fct + Flow + StationCode)^2 +
+    s(Week, bs = "cc", k = 5) +
+    lag1 +
+    lag2,
   data = df_chla_c2_lag,
   method = "REML",
-  knots = list(week = c(0, 52))
+  knots = list(Week = c(0, 52))
 )
 
 acf(residuals(m_gam_flow2_lag2))
@@ -341,7 +353,7 @@ Again, it looks like the lag2 model has the best fit according to the AIC values
 
 ### Lag 2 model summary
 
-```{r gam flow2 lag2 summary and diag, warning = FALSE}
+```{r gam flow2 lag2 summary and diag}
 summary(m_gam_flow2_lag2)
 appraise(m_gam_flow2_lag2)
 shapiro.test(residuals(m_gam_flow2_lag2))
@@ -363,18 +375,18 @@ Next we'll try running a GAM using a two-way interaction between Year and Statio
 
 ## Initial Model
 
-```{r gam cat2 no autocorr, warning = FALSE}
+```{r gam cat2 no autocorr}
 m_gam_cat2 <- gam(
   Chla_log ~ Year_fct * StationCode + s(Week, bs = "cc", k = 5),
   data = df_chla_c2,
   method = "REML",
-  knots = list(week = c(0, 52))
+  knots = list(Week = c(0, 52))
 )
 ```
 
 Lets look at the model summary and diagnostics:
 
-```{r gam cat2 no autocorr diag, warning = FALSE}
+```{r gam cat2 no autocorr diag}
 summary(m_gam_cat2)
 appraise(m_gam_cat2)
 shapiro.test(residuals(m_gam_cat2))
@@ -393,12 +405,12 @@ Now, we'll try to deal with the residual autocorrelation. We'll run a series of 
 
 ### Lag 1
 
-```{r gam cat2 lag1, warning = FALSE}
+```{r gam cat2 lag1}
 m_gam_cat2_lag1 <- gam(
   Chla_log ~ Year_fct * StationCode + s(Week, bs = "cc", k = 5) + lag1,
   data = df_chla_c2_lag,
   method = "REML",
-  knots = list(week = c(0, 52))
+  knots = list(Week = c(0, 52))
 )
 
 acf(residuals(m_gam_cat2_lag1))
@@ -407,12 +419,12 @@ Box.test(residuals(m_gam_cat2_lag1), lag = 20, type = 'Ljung-Box')
 
 ### Lag 2
 
-```{r gam cat2 lag2, warning = FALSE}
+```{r gam cat2 lag2}
 m_gam_cat2_lag2 <- gam(
   Chla_log ~ Year_fct * StationCode + s(Week, bs = "cc", k = 5) + lag1 + lag2,
   data = df_chla_c2_lag,
   method = "REML",
-  knots = list(week = c(0, 52))
+  knots = list(Week = c(0, 52))
 )
 
 acf(residuals(m_gam_cat2_lag2))
@@ -431,7 +443,7 @@ Again, it looks like the lag2 model has the best fit according to the AIC values
 
 ### Lag 2 model summary
 
-```{r gam cat2 lag2 summary and diag, warning = FALSE}
+```{r gam cat2 lag2 summary and diag}
 summary(m_gam_cat2_lag2)
 appraise(m_gam_cat2_lag2)
 shapiro.test(residuals(m_gam_cat2_lag2))
@@ -501,7 +513,7 @@ The model with 1 lag term already has better ACF and Box-Ljung test results than
 
 ### Compare Models
 
-```{r lm flow3 compare, warning = FALSE}
+```{r lm flow3 compare}
 AIC(m_lm_flow3, m_lm_flow3_lag1, m_lm_flow3_lag2)
 ```
 
@@ -518,7 +530,11 @@ df_chla_c2_lag %>%
 
 shapiro.test(residuals(m_lm_flow3_lag2))
 
-Anova(m_lm_flow3_lag2, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+Anova(
+  m_lm_flow3_lag2,
+  type = 3,
+  contrasts = list(topic = contr.sum, sys = contr.sum)
+)
 ```
 
 The model diagnostics look okay, but not as good as with the GAM models. We'll use `m_lm_flow3_lag2` in the model selection process.
@@ -534,7 +550,10 @@ Let's try a linear model using all two-way interactions between Year, Weekly Ave
 ## Initial Model
 
 ```{r lm flow2 no autocorr}
-m_lm_flow2 <- lm(Chla_log ~ (Year_fct + Flow + StationCode)^2, data = df_chla_c2)
+m_lm_flow2 <- lm(
+  Chla_log ~ (Year_fct + Flow + StationCode)^2,
+  data = df_chla_c2
+)
 ```
 
 Lets look at the model summary and diagnostics:
@@ -581,7 +600,7 @@ The model with 2 lag terms seems to be okay in terms of serial autocorrelation. 
 
 ### Compare Models
 
-```{r lm flow2 compare, warning = FALSE}
+```{r lm flow2 compare}
 AIC(m_lm_flow2, m_lm_flow2_lag1, m_lm_flow2_lag2)
 ```
 
@@ -598,7 +617,11 @@ df_chla_c2_lag %>%
 
 shapiro.test(residuals(m_lm_flow2_lag2))
 
-Anova(m_lm_flow2_lag2, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+Anova(
+  m_lm_flow2_lag2,
+  type = 3,
+  contrasts = list(topic = contr.sum, sys = contr.sum)
+)
 ```
 
 The model diagnostics look somewhat worse than those for the 3-way interaction model. Note that the 2-way interaction between Year and Flow isn't significant. We'll use `m_lm_flow2_lag2` in the model selection process.
@@ -661,7 +684,7 @@ The model with 2 lag terms seems to be okay in terms of serial autocorrelation. 
 
 ### Compare Models
 
-```{r lm cat2 compare, warning = FALSE}
+```{r lm cat2 compare}
 AIC(m_lm_cat2, m_lm_cat2_lag1, m_lm_cat2_lag2)
 ```
 
@@ -678,7 +701,11 @@ df_chla_c2_lag %>%
 
 shapiro.test(residuals(m_lm_cat2_lag2))
 
-Anova(m_lm_cat2_lag2, type = 3, contrasts = list(topic = contr.sum, sys = contr.sum))
+Anova(
+  m_lm_cat2_lag2,
+  type = 3,
+  contrasts = list(topic = contr.sum, sys = contr.sum)
+)
 ```
 
 The model diagnostics don't look that great. However, we'll use `m_lm_cat2_lag2` in the model selection process.
@@ -693,18 +720,21 @@ Finally, we'll try running a GAM model using smooths for weekly average flow by 
 
 ## Initial Model
 
-```{r gam sflow no autocorr, warning = FALSE}
+```{r gam sflow no autocorr}
 m_gam_sflow <- gam(
-  Chla_log ~ s(Flow, by = StationCode) + s(Flow, by = Year_fct) + Year_fct * StationCode + s(Week, bs = "cc", k = 5),
+  Chla_log ~ s(Flow, by = StationCode) +
+    s(Flow, by = Year_fct) +
+    Year_fct * StationCode +
+    s(Week, bs = "cc", k = 5),
   data = df_chla_c2,
   method = "REML",
-  knots = list(week = c(0, 52))
+  knots = list(Week = c(0, 52))
 )
 ```
 
 Lets look at the model summary and diagnostics:
 
-```{r gam sflow no autocorr diag, warning = FALSE}
+```{r gam sflow no autocorr diag}
 summary(m_gam_sflow)
 appraise(m_gam_sflow)
 shapiro.test(residuals(m_gam_sflow))
@@ -724,12 +754,16 @@ Now, we'll try to deal with the residual autocorrelation. We'll run a series of 
 
 ### Lag 1
 
-```{r gam sflow lag1, warning = FALSE}
+```{r gam sflow lag1}
 m_gam_sflow_lag1 <- gam(
-  Chla_log ~ s(Flow, by = StationCode) + s(Flow, by = Year_fct) + Year_fct * StationCode + s(Week, bs = "cc", k = 5) + lag1,
+  Chla_log ~ s(Flow, by = StationCode) +
+    s(Flow, by = Year_fct) +
+    Year_fct * StationCode +
+    s(Week, bs = "cc", k = 5) +
+    lag1,
   data = df_chla_c2_lag,
   method = "REML",
-  knots = list(week = c(0, 52))
+  knots = list(Week = c(0, 52))
 )
 
 acf(residuals(m_gam_sflow_lag1))
@@ -738,12 +772,17 @@ Box.test(residuals(m_gam_sflow_lag1), lag = 20, type = 'Ljung-Box')
 
 ### Lag 2
 
-```{r gam sflow lag2, warning = FALSE}
+```{r gam sflow lag2}
 m_gam_sflow_lag2 <- gam(
-  Chla_log ~ s(Flow, by = StationCode) + s(Flow, by = Year_fct) + Year_fct * StationCode + s(Week, bs = "cc", k = 5) + lag1 + lag2,
+  Chla_log ~ s(Flow, by = StationCode) +
+    s(Flow, by = Year_fct) +
+    Year_fct * StationCode +
+    s(Week, bs = "cc", k = 5) +
+    lag1 +
+    lag2,
   data = df_chla_c2_lag,
   method = "REML",
-  knots = list(week = c(0, 52))
+  knots = list(Week = c(0, 52))
 )
 
 acf(residuals(m_gam_sflow_lag2))
@@ -762,7 +801,7 @@ It looks like the lag2 model has the best fit according to the AIC values. Let's
 
 ### Lag 2 model summary
 
-```{r gam sflow lag2 summary and diag, warning = FALSE}
+```{r gam sflow lag2 summary and diag}
 summary(m_gam_sflow_lag2)
 appraise(m_gam_sflow_lag2)
 shapiro.test(residuals(m_gam_sflow_lag2))
@@ -842,60 +881,20 @@ Export the AIC/BIC table.
 ```{r export aic table}
 df_m_aic_bic %>%
   arrange(AIC) %>%
-  mutate(across(where(is.numeric), ~ paste0(formatC(.x, digits = 1, format = "f"), "##"))) %>%
-  write_csv(here("manuscript_synthesis/results/tables/chl_aic_weekly_models.csv"))
+  mutate(across(
+    where(is.numeric),
+    ~ paste0(formatC(.x, digits = 1, format = "f"), "##")
+  )) %>%
+  write_csv(here(
+    "manuscript_synthesis/results/tables/chl_aic_weekly_models.csv"
+  ))
 ```
 
-According to AIC, Model 1 (GAM 3-way interactions with s(Week)) was the model with the best fit. BIC preferred Model 2 (GAM 2-way interactions with s(Week)). BIC prefers simpler models, so I'm inclined to go with Model 2, especially since we really don't need to look at the 3-way interaction. Before we proceed with either Models 1 or 2, let's revisit the model diagnostics for each and take a closer look at how the back-transformed fitted values from the models match the observed values.
-
-# Model 1 diagnostics
-
-```{r gam flow3 lag2 diag revist, warning = FALSE}
-appraise(m_gam_flow3_lag2)
-shapiro.test(residuals(m_gam_flow3_lag2))
-k.check(m_gam_flow3_lag2)
-draw(m_gam_flow3_lag2, select = 1, residuals = TRUE, rug = FALSE)
-plot(m_gam_flow3_lag2, pages = 1, all.terms = TRUE)
-anova(m_gam_flow3_lag2)
-```
-
-# Model 1 observed vs fitted values
-
-```{r gam flow3 lag2 obs vs fit, warning = FALSE}
-df_chla_c2_lag2 <- df_chla_c2_lag %>% drop_na(lag1, lag2)
-
-df_m_gam_flow3_lag2_fit <- df_chla_c2_lag2 %>%
-  fitted_values(m_gam_flow3_lag2, data = .) %>%
-  mutate(fitted_bt = exp(.fitted) / 1000)
-
-plt_m_gam_flow3_lag2_fit <- df_m_gam_flow3_lag2_fit %>%
-  ggplot(aes(x = fitted_bt, y = Chla)) +
-  geom_point() +
-  geom_abline(slope = 1, intercept = 0, color = "red") +
-  theme_bw() +
-  labs(
-    x = "Back-transformed Fitted Values",
-    y = "Observed Values"
-  )
-
-plt_m_gam_flow3_lag2_fit
-```
-
-Let's group by station.
-
-```{r gam flow3 lag2 obs vs fit facet sta}
-plt_m_gam_flow3_lag2_fit + facet_wrap(vars(StationCode), scales = "free")
-```
-
-Now, group by year.
-
-```{r gam flow3 lag2 obs vs fit facet yr}
-plt_m_gam_flow3_lag2_fit + facet_wrap(vars(Year_fct), scales = "free")
-```
+According to AIC, Model 7 (GAM using smooths for Flow with s(Week)) was the model with the best fit. BIC preferred Model 2 (GAM 2-way interactions with s(Week)). BIC prefers simpler models, so I'm inclined to go with Model 2, especially since its difficult to interpret the smooths for Flow in Model 7. Before we proceed with Model 2, let's revisit the model diagnostics and take a closer look at how the back-transformed fitted values from the model match the observed values.
 
 # Model 2 diagnostics
 
-```{r gam flow2 lag2 diag revist, warning = FALSE}
+```{r gam flow2 lag2 diag revist}
 appraise(m_gam_flow2_lag2)
 shapiro.test(residuals(m_gam_flow2_lag2))
 k.check(m_gam_flow2_lag2)
@@ -906,7 +905,9 @@ anova(m_gam_flow2_lag2)
 
 # Model 2 observed vs fitted values
 
-```{r gam flow2 lag2 obs vs fit, warning = FALSE}
+```{r gam flow2 lag2 obs vs fit}
+df_chla_c2_lag2 <- df_chla_c2_lag %>% drop_na(lag1, lag2)
+
 df_m_gam_flow2_lag2_fit <- df_chla_c2_lag2 %>%
   fitted_values(m_gam_flow2_lag2, data = .) %>%
   mutate(fitted_bt = exp(.fitted) / 1000)
@@ -936,13 +937,13 @@ Now, group by year.
 plt_m_gam_flow2_lag2_fit + facet_wrap(vars(Year_fct), scales = "free")
 ```
 
-Everything looks pretty decent with both models. Not perfect, but pretty good given the number of data points. Note that variability does increase as the chlorophyll values increase. Before proceeding with either Model 1 or 2, let's look more closely at their results.
+Everything looks pretty decent. Not perfect, but pretty good given the number of data points. Note that variability does increase as the chlorophyll values increase. Before proceeding with Model 2, let's look more closely at its results.
 
-# Model 1 Results
+# Model 2 Results
 
 ## Effect of Flow by Station
 
-```{r gam flow3 lag2 flow station effects plot}
+```{r gam flow2 lag2 flow station effects plot}
 # Calculate min and max flows for each station to narrow down x-axis in the plot
 df_chla_flow_sta_summ <- df_chla_c2_lag2 %>%
   summarize(
@@ -957,269 +958,7 @@ df_chla_flow_sta_summ <- df_chla_c2_lag2 %>%
   )
 
 # Calculate effects of flow on chlorophyll for each station holding the
-  # non-focal variables constant - marginal effects/adjusted predictions
-df_gam_flow3_sta_eff <-
-  as.data.frame(
-    predict_response(
-      m_gam_flow3_lag2,
-      terms = c("Flow", "StationCode"),
-      margin = "marginalmeans"
-    ),
-    terms_to_colnames = TRUE
-  ) %>%
-  as_tibble() %>%
-  # Narrow down range of flow values for each station
-  left_join(df_chla_flow_sta_summ, by = join_by(StationCode)) %>%
-  filter(Flow >= Flow_min & Flow <= Flow_max) %>%
-  transmute(
-    StationCode,
-    Flow,
-    # Back calculate model fits and confidence levels
-    across(c(predicted, conf.low, conf.high), ~ exp(.x) / 1000)
-  )
-
-# Create effects plot
-plt_gam_flow3_sta_eff <- df_gam_flow3_sta_eff %>%
-  ggplot(aes(x = Flow, y = predicted)) +
-  geom_point(
-    data = df_chla_c2_lag2,
-    aes(y = Chla, color = Year_fct),
-    alpha = 0.6
-  ) +
-  geom_line(linewidth = 1) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.25) +
-  facet_wrap(vars(StationCode), scales = "free") +
-  theme_bw() +
-  labs(
-    x = "Flow (cfs)",
-    y = expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))
-  ) +
-  scale_x_continuous(breaks = breaks_extended(6)) +
-  scale_color_viridis_d(name = "Year", option = "C")
-
-plt_gam_flow3_sta_eff
-```
-
-There is a lot of uncertainty in the model results at the highest flows. This seems problematic.
-
-## Effect of Flow by Year
-
-```{r gam flow3 lag2 flow year effects plot, warning = FALSE, fig.width = 8}
-# Calculate min and max flows for each station to narrow down x-axis in the plot
-df_chla_flow_yr_summ <- df_chla_c2_lag2 %>%
-  summarize(
-    Flow_min = min(Flow),
-    Flow_max = max(Flow),
-    .by = c(Year_fct)
-  ) %>%
-  mutate(
-    Flow_buffer = (Flow_max - Flow_min) * 0.05,
-    Flow_min = Flow_min - Flow_buffer,
-    Flow_max = Flow_max + Flow_buffer
-  )
-
-# Calculate effects of flow on chlorophyll for each year holding the
-  # non-focal variables constant - marginal effects/adjusted predictions
-df_gam_flow3_yr_eff <-
-  as.data.frame(
-    predict_response(
-      m_gam_flow3_lag2,
-      terms = c("Flow", "Year_fct"),
-      margin = "marginalmeans"
-    ),
-    terms_to_colnames = TRUE
-  ) %>%
-  as_tibble() %>%
-  # Narrow down range of flow values for each station
-  left_join(df_chla_flow_yr_summ, by = join_by(Year_fct)) %>%
-  filter(Flow >= Flow_min & Flow <= Flow_max) %>%
-  transmute(
-    Year_fct,
-    Flow,
-    # Back calculate model fits and confidence levels
-    across(c(predicted, conf.low, conf.high), ~ exp(.x) / 1000)
-  )
-
-# Create effects plot
-plt_gam_flow3_yr_eff <- df_gam_flow3_yr_eff %>%
-  ggplot(aes(x = Flow, y = predicted)) +
-  geom_point(
-    data = df_chla_c2_lag2,
-    aes(y = Chla, color = StationCode),
-    alpha = 0.6
-  ) +
-  geom_line(linewidth = 1) +
-  geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.25) +
-  facet_wrap(vars(Year_fct), scales = "free") +
-  theme_bw() +
-  labs(
-    x = "Flow (cfs)",
-    y = expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))
-  ) +
-  scale_x_continuous(breaks = breaks_extended(6)) +
-  scale_color_viridis_d(name = "Station", option = "C") +
-  theme(
-    legend.margin = margin(0, 0, 0, 0),
-    legend.position = "inside",
-    legend.position.inside = c(0.8, 0.3)
-  )
-
-plt_gam_flow3_yr_eff
-```
-
-These results look reasonable.
-
-## Station by Year Contrasts
-
-```{r gam flow3 lag2 contrasts station by year, warning = FALSE}
-# Estimated marginal means for station by year
-em_gam3_sta_yr <- emmeans(m_gam_flow3_lag2, ~ StationCode | Year_fct)
-
-# Tukey post-hoc contrasts
-pairs(em_gam3_sta_yr)
-
-# Create table of contrasts and convert it to a tibble for plot
-df_gam3_sta_yr <- em_gam3_sta_yr %>%
-  cld(sort = FALSE, Letters = letters) %>%
-  as_tibble() %>%
-  mutate(
-    group = str_remove_all(.group, fixed(" ")),
-    # back transform log-transformed results
-    across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000)
-  ) %>%
-  # Add min and max values of observed data to the Tukey post-hoc results and
-    # calculate vertical positioning of letters
-  left_join(
-    df_chla_c2_lag2 %>%
-      summarize(
-        max_val = max(Chla),
-        min_val = min(Chla),
-        .by = Year_fct
-    ),
-    by = join_by(Year_fct)
-  ) %>%
-  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>%
-  group_by(Year_fct) %>%
-  mutate(max_val = max(max_val)) %>%
-  ungroup() %>%
-  mutate(y_pos = max_val + (max_val - min_val) / 10) %>%
-  select(
-    StationCode,
-    Year_fct,
-    emmean,
-    lower.CL,
-    upper.CL,
-    group,
-    y_pos
-  )
-
-# Create boxplot showing Tukey post-hoc results
-plt_gam3_sta_yr <- df_gam3_sta_yr %>%
-  ggplot(
-    aes(
-      x = StationCode,
-      y = emmean,
-      ymin = lower.CL,
-      ymax = upper.CL
-    )
-  ) +
-  geom_boxplot(
-    data = df_chla_c2_lag2,
-    aes(x = StationCode, y = Chla),
-    inherit.aes = FALSE
-  ) +
-  geom_crossbar(color = "grey82", fill = "grey", alpha = 0.7, linewidth = 0.1) +
-  geom_point(color = "red") +
-  geom_text(aes(y = y_pos, label = group), size = 3.5) +
-  facet_wrap(vars(Year_fct), scales = "free_y") +
-  xlab("Station") +
-  ylab(expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))) +
-  theme_bw()
-
-plt_gam3_sta_yr
-```
-
-Many of the contrasts are significant. The model under predicts some values, and 2017 has a lot of uncertainty.
-
-## Year by Station Contrasts
-
-```{r gam flow3 lag2 contrasts year by station, warning = FALSE}
-# Estimated marginal means for year by station
-em_gam3_yr_sta <- emmeans(m_gam_flow3_lag2, ~ Year_fct | StationCode)
-
-# Tukey post-hoc contrasts
-pairs(em_gam3_yr_sta)
-
-# Create table of contrasts and convert it to a tibble for plot
-df_gam3_yr_sta <- em_gam3_yr_sta %>%
-  cld(sort = FALSE, Letters = letters) %>%
-  as_tibble() %>%
-  mutate(
-    group = str_remove_all(.group, fixed(" ")),
-    # back transform log-transformed results
-    across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000)
-  ) %>%
-  # Add min and max values of observed data to the Tukey post-hoc results and
-    # calculate vertical positioning of letters
-  left_join(
-    df_chla_c2_lag2 %>%
-      summarize(
-        max_val = max(Chla),
-        min_val = min(Chla),
-        .by = StationCode
-    ),
-    by = join_by(StationCode)
-  ) %>%
-  mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>%
-  group_by(StationCode) %>%
-  mutate(max_val = max(max_val)) %>%
-  ungroup() %>%
-  mutate(y_pos = max_val + (max_val - min_val) / 10) %>%
-  select(
-    StationCode,
-    Year_fct,
-    emmean,
-    lower.CL,
-    upper.CL,
-    group,
-    y_pos
-  )
-
-# Create boxplot showing Tukey post-hoc results
-plt_gam3_yr_sta <- df_gam3_yr_sta %>%
-  ggplot(
-    aes(
-      x = Year_fct,
-      y = emmean,
-      ymin = lower.CL,
-      ymax = upper.CL
-    )
-  ) +
-  geom_boxplot(
-    data = df_chla_c2_lag2,
-    aes(x = Year_fct, y = Chla),
-    inherit.aes = FALSE
-  ) +
-  geom_crossbar(color = "grey82", fill = "grey", alpha = 0.7, linewidth = 0.1) +
-  geom_point(color = "red") +
-  geom_text(aes(y = y_pos, label = group), size = 3.5) +
-  facet_wrap(vars(StationCode), scales = "free_y") +
-  xlab("Year") +
-  ylab(expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))) +
-  theme_bw()
-
-plt_gam3_yr_sta
-```
-
-Again, the model under predicts some values, and 2017 has a lot of uncertainty.
-
-# Model 2 Results
-
-## Effect of Flow by Station
-
-```{r gam flow2 lag2 flow station effects plot}
-# Calculate effects of flow on chlorophyll for each station holding the
-  # non-focal variables constant - marginal effects/adjusted predictions
+# non-focal variables constant - marginal effects/adjusted predictions
 df_gam_flow2_sta_eff <-
   as.data.frame(
     predict_response(
@@ -1254,7 +993,11 @@ plt_gam_flow2_sta_eff <- df_gam_flow2_sta_eff %>%
   theme_bw() +
   labs(
     x = "Flow (cfs)",
-    y = expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))
+    y = expression(
+      Chlorophyll ~ Fluoresence ~ (mu * g ~ L^{
+        -1
+      })
+    )
   ) +
   scale_x_continuous(breaks = breaks_extended(6)) +
   scale_color_viridis_d(name = "Year", option = "C")
@@ -1262,13 +1005,24 @@ plt_gam_flow2_sta_eff <- df_gam_flow2_sta_eff %>%
 plt_gam_flow2_sta_eff
 ```
 
-There is much less uncertainty in the model results at the highest flows when compared to model 1. These results seem more reasonable.
-
 ## Effect of Flow by Year
 
-```{r gam flow2 lag2 flow year effects plot, warning = FALSE, fig.width = 8}
+```{r gam flow2 lag2 flow year effects plot, fig.width = 8}
+# Calculate min and max flows for each station to narrow down x-axis in the plot
+df_chla_flow_yr_summ <- df_chla_c2_lag2 %>%
+  summarize(
+    Flow_min = min(Flow),
+    Flow_max = max(Flow),
+    .by = c(Year_fct)
+  ) %>%
+  mutate(
+    Flow_buffer = (Flow_max - Flow_min) * 0.05,
+    Flow_min = Flow_min - Flow_buffer,
+    Flow_max = Flow_max + Flow_buffer
+  )
+
 # Calculate effects of flow on chlorophyll for each year holding the
-  # non-focal variables constant - marginal effects/adjusted predictions
+# non-focal variables constant - marginal effects/adjusted predictions
 df_gam_flow2_yr_eff <-
   as.data.frame(
     predict_response(
@@ -1303,7 +1057,11 @@ plt_gam_flow2_yr_eff <- df_gam_flow2_yr_eff %>%
   theme_bw() +
   labs(
     x = "Flow (cfs)",
-    y = expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))
+    y = expression(
+      Chlorophyll ~ Fluoresence ~ (mu * g ~ L^{
+        -1
+      })
+    )
   ) +
   scale_x_continuous(breaks = breaks_extended(6)) +
   scale_color_viridis_d(name = "Station", option = "C") +
@@ -1320,7 +1078,7 @@ These results look reasonable, but not interesting.
 
 ## Station by Year Contrasts
 
-```{r gam flow2 lag2 contrasts station by year, warning = FALSE}
+```{r gam flow2 lag2 contrasts station by year}
 # Estimated marginal means for station by year
 em_gam2_sta_yr <- emmeans(m_gam_flow2_lag2, ~ StationCode | Year_fct)
 
@@ -1337,14 +1095,14 @@ df_gam2_sta_yr <- em_gam2_sta_yr %>%
     across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000)
   ) %>%
   # Add min and max values of observed data to the Tukey post-hoc results and
-    # calculate vertical positioning of letters
+  # calculate vertical positioning of letters
   left_join(
     df_chla_c2_lag2 %>%
       summarize(
         max_val = max(Chla),
         min_val = min(Chla),
         .by = Year_fct
-    ),
+      ),
     by = join_by(Year_fct)
   ) %>%
   mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>%
@@ -1382,7 +1140,11 @@ plt_gam2_sta_yr <- df_gam2_sta_yr %>%
   geom_text(aes(y = y_pos, label = group), size = 3.5) +
   facet_wrap(vars(Year_fct), scales = "free_y") +
   xlab("Station") +
-  ylab(expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))) +
+  ylab(expression(
+    Chlorophyll ~ Fluoresence ~ (mu * g ~ L^{
+      -1
+    })
+  )) +
   theme_bw()
 
 plt_gam2_sta_yr
@@ -1392,7 +1154,7 @@ Many of the contrasts are significant. The model under predicts RD22, but the un
 
 ## Year by Station Contrasts
 
-```{r gam flow2 lag2 contrasts year by station, warning = FALSE}
+```{r gam flow2 lag2 contrasts year by station}
 # Estimated marginal means for year by station
 em_gam2_yr_sta <- emmeans(m_gam_flow2_lag2, ~ Year_fct | StationCode)
 
@@ -1409,14 +1171,14 @@ df_gam2_yr_sta <- em_gam2_yr_sta %>%
     across(c(emmean, lower.CL, upper.CL), ~ exp(.x) / 1000)
   ) %>%
   # Add min and max values of observed data to the Tukey post-hoc results and
-    # calculate vertical positioning of letters
+  # calculate vertical positioning of letters
   left_join(
     df_chla_c2_lag2 %>%
       summarize(
         max_val = max(Chla),
         min_val = min(Chla),
         .by = StationCode
-    ),
+      ),
     by = join_by(StationCode)
   ) %>%
   mutate(max_val = if_else(upper.CL > max_val, upper.CL, max_val)) %>%
@@ -1454,7 +1216,11 @@ plt_gam2_yr_sta <- df_gam2_yr_sta %>%
   geom_text(aes(y = y_pos, label = group), size = 3.5) +
   facet_wrap(vars(StationCode), scales = "free_y") +
   xlab("Year") +
-  ylab(expression(Chlorophyll~Fluoresence~(mu*g~L^{-1}))) +
+  ylab(expression(
+    Chlorophyll ~ Fluoresence ~ (mu * g ~ L^{
+      -1
+    })
+  )) +
   theme_bw()
 
 plt_gam2_yr_sta
@@ -1464,4 +1230,4 @@ Again, the model under predicts RD22, but the uncertainty looks reasonable for a
 
 ## Conclusions
 
-After looking at the results more closely from Models 1 and 2, I think we should use Model 2 (GAM 2-way interactions with s(Week)) because it's the simpler model, supported by BIC, and the uncertainty around model predictions is less than with Model 1.
+After looking at the results more closely from Model 2, I think Model 2 (GAM 2-way interactions with s(Week)) looks pretty good.
