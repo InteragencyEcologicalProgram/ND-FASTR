@@ -9,9 +9,6 @@ output:
     toc: true
     toc_float:
       collapsed: false
-execute:
-  message: false
-  warning: false
 editor_options:
   chunk_output_type: console
 knit: (function(input, ...) {
