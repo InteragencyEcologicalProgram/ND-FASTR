@@ -23,8 +23,8 @@ knit: (function(input, ...) {
     })
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 options(knitr.kable.NA = "")
 ```
 
@@ -1228,6 +1228,6 @@ plt_gam2_yr_sta
 
 Again, the model under predicts RD22, but the uncertainty looks reasonable for all values.
 
-## Conclusions
+# Conclusions
 
 After looking at the results more closely from Model 2, I think Model 2 (GAM 2-way interactions with s(Week)) looks pretty good.
