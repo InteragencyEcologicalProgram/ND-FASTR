@@ -751,7 +751,13 @@ check_gam_diagnostics(m_gam_sttd)
 check_gam_autocorr(m_gam_sttd)
 ```
 
-Shapiro-Wilk normality test shows that the residuals are normal, the diagnostic plots look really good. The ACF plot and the Box-Ljung test indicate no serial autocorrelation. Note that the smooth term is not significant and it's essentially a flat line. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
+Shapiro-Wilk normality test shows that the residuals are normal, the diagnostic plots look really good. The ACF plot and the Box-Ljung test indicate no serial autocorrelation. Note that the smooth term is not significant and it's essentially a flat line. Let's look at the ANOVA results for the model.
+
+```{r}
+anova(m_gam_sttd)
+```
+
+All parametric terms are significant in this model. Let's take a closer look at how the back-transformed fitted values from the model match the observed values.
 
 ### Observed vs Fitted Values
 
