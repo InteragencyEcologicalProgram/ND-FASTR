@@ -187,10 +187,18 @@ sta_order <- c("RD22", "STTD", "LIB", "RVB")
 
 #create list of flow stations that we will use in analysis
 flow_stations<-c("LIS", "RD22")
+df_zoop_stations<-c("STTD", "LIB", "RVB") #define stations for which we want to use LIS flow data
 
 # We will use LIS flow data as a proxy for STTD, LIB, and RVB
-df_flow_c <- df_flow %>% filter(StationCode%in%flow_stations)
-df_zoop_stations<-c("STTD", "LIB", "RVB") #define stations for which we want to use LIS flow data
+df_flow_c <- df_flow %>% filter(StationCode%in%flow_stations)%>%
+  drop_na(Flow) %>% #need to calculate the lags on the original flow dataset and then join with the zooplankton dataset
+  mutate(
+    Year_fct  = factor(Year))%>%
+  arrange(StationCode, Year, Week) %>% 
+  group_by(StationCode, Year) %>%
+  mutate(flow_lag1 = lag(Flow, n=1),
+    flow_lag2 = lag(Flow, n=2),
+    flow_lag3 = lag(Flow, n=3)) 
 
 
 # Prepare zooplankton and flow data for analysis
@@ -213,15 +221,7 @@ df_zoop2 <- df_zoop_weekly %>%
     df_flow_c,
     by = join_by(Year, Week, FlowStation == StationCode)
   ) %>%
-  drop_na(Flow) %>%
-  mutate(
-    zoop_log  = log(cpue),
-    Year_fct  = factor(Year))%>%
-  arrange(StationCode, Year, Week) %>% 
-  group_by(StationCode, Year) %>%
-  mutate(flow_lag1 = lag(Flow, n=1),
-    flow_lag2 = lag(Flow, n=2),
-    flow_lag3 = lag(Flow, n=3)) %>%
+  mutate(zoop_log  = log(cpue))%>%
   split(~ StationCode)
 
 # Combine all data sets into a nested data frame to be used for analysis
@@ -237,7 +237,7 @@ ndfa_zoop <-
 
 ## Create GAMs with interaction terms
 
-```{r create gams, warning = FALSE}
+```{r create gams with interactions, warning = FALSE}
 # Define model formulae
 f_base <- " zoop_log ~ Year_fct * Flow + Year_fct + s(Week, bs = 'cc', k = 5)"
 f_lag1 <- " zoop_log ~ Year_fct * flow_lag1 + Year_fct + s(Week, bs = 'cc', k = 5)"
@@ -248,7 +248,7 @@ f_lag3 <- " zoop_log ~ Year_fct * flow_lag3 + Year_fct + s(Week, bs = 'cc', k = 
 ndf_gam <- ndfa_zoop %>% mutate(
     str_formula = case_when(
       StationCode == "RD22" ~ paste(f_base),
-      StationCode == "STTD" ~ paste(f_lag1),
+      StationCode == "STTD" ~ paste(f_base), #use non-lagged flow variable for STTD based on chla and SpCnd analysis
       StationCode == "LIB" ~ paste(f_lag2),
       StationCode == "RVB" ~ paste(f_lag3)
     ),
@@ -259,7 +259,7 @@ ndf_gam <- ndfa_zoop %>% mutate(
         formula = as.formula(x),
         data = y,
         method = "ML", 
-        knots = list(week = c(0, 52))
+        knots = list(Week = c(0, 52))
       )
     )
   )
@@ -267,7 +267,7 @@ ndf_gam <- ndfa_zoop %>% mutate(
 
 ## Model summaries for GAMs with interaction terms
 
-```{r model summaries}
+```{r model summaries for GAMs with interactions}
 library(broom)
 
 #append model summaries
@@ -304,7 +304,7 @@ print(fit_table)
 
 ## Diagnostic plots for GAMs with interaction terms
 
-```{r diagnostic plots}
+```{r diagnostic plots for GAMs with interactions}
 
 library(gratia)
 
@@ -349,7 +349,7 @@ f2_lag3 <- " zoop_log ~ flow_lag3 + Year_fct + s(Week, bs = 'cc', k = 5)"
 ndf_gam2 <- ndfa_zoop %>% mutate(
     str_formula = case_when(
       StationCode == "RD22" ~ paste(f2_base),
-      StationCode == "STTD" ~ paste(f2_lag1),
+      StationCode == "STTD" ~ paste(f2_base),
       StationCode == "LIB" ~ paste(f2_lag2),
       StationCode == "RVB" ~ paste(f2_lag3)
     ),
@@ -360,7 +360,7 @@ ndf_gam2 <- ndfa_zoop %>% mutate(
         formula = as.formula(x),
         data = y,
         method = "ML", 
-        knots = list(week = c(0, 52))
+        knots = list(Week = c(0, 52))
       )
     )
   )
@@ -368,7 +368,7 @@ ndf_gam2 <- ndfa_zoop %>% mutate(
 
 ## Model summaries for GAMs without interaction terms
 
-```{r model summaries}
+```{r model summaries for GAMs wihtout interactions}
 library(broom)
 
 #append model summaries
@@ -405,7 +405,7 @@ print(ndf_gam2$k.check)
 
 ## Diagnostic plots for GAMs without interaction terms
 
-```{r diagnostic plots}
+```{r diagnostic plots for GAMs without interactions}
 
 library(gratia)
 
@@ -507,7 +507,7 @@ df_gam_anova_tbl_c %>%
 
 flow_var_lookup <- c(
   RD22 = "Flow",
-  STTD = "flow_lag1",
+  STTD = "Flow",
   LIB  = "flow_lag2",
   RVB  = "flow_lag3"
 )
@@ -523,7 +523,8 @@ ndf_gam2 <- ndf_gam2 %>%
                         max(dat[[fv]], na.rm = TRUE),
                         length.out = 200)
 
-        ref_year <- levels(dat$Year_fct)[1]
+       model_year_levels <- mod$xlevels$Year_fct
+        ref_year <- model_year_levels[1]
 
         # Use setNames() to name the flow column correctly from the start
         nd <- tibble(
@@ -531,7 +532,8 @@ ndf_gam2 <- ndf_gam2 %>%
           Year_fct = factor(ref_year, levels = levels(dat$Year_fct)),
           Week     = median(dat$Week, na.rm = TRUE)
         ) %>%
-          setNames(c(fv, "Year_fct", "Week"))  # rename flow_val -> fv here
+          setNames(c(fv, "Year_fct", "Week"))%>%
+          as.data.frame()
 
         preds <- predict(mod, newdata = nd, type = "link", se.fit = TRUE)
 
@@ -690,31 +692,3 @@ combined_boxplot
 
 ```
 
-# Export Results
-
-```{r export results}
-
-# Export effects plots of smooth of Week
-ggsave(
-  file.path(fp_figures, "zoop_LIS_flow_smooth_week.jpg"),
-  plot = plt_gam_s_week,
-  width = 6.5,
-  height = 5,
-  units = "in"
-)
-
-# Export combined ANOVA tables for GAMs
-df_gam_anova_tbl_c %>% 
-  mutate(across(c("df", "F", "p_value"), ~ paste0(.x, "##"))) %>% 
-  write_csv(file.path(fp_tables, "zoop_LIS_flow_GAM_anova.csv"))
-
-# Export slopes and p-values of the modeled effects of flow by year for each station
-df_gam_eff_flow_stat %>% 
-  mutate(across(c("Flow_slope", "SE", "df", "t_ratio", "p_value"), ~ paste0(.x, "##"))) %>% 
-  write_csv(file.path(fp_tables, "zoop_LIS_flow_GAM_eff_flow_stat.csv"))
-
-# Export pairwise Tukey post-hoc year contrasts
-df_gam_cont_yr_stat %>% 
-  mutate(across(c("Estimate", "SE", "df", "t_ratio", "p_value"), ~ paste0(.x, "##"))) %>% 
-  write_csv(file.path(fp_tables, "zoop_LIS_flow_GAM_year_contrasts_stat.csv"))
-```

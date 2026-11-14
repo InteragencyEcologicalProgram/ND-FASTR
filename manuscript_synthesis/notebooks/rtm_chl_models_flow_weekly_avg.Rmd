@@ -29,6 +29,7 @@ options(knitr.kable.NA = "")
 
 Explore and analyze the continuous chlorophyll data to be included in the NDFS synthesis manuscript. We will attempt to fit multiple models to predict weekly average chlorophyll fluorescence values.  All models will only include representative stations for 4 habitat types - upstream (RD22), lower Yolo Bypass (STTD), Cache Slough complex (LIB), and downstream (RVB). At a minimum, the models will contain the two categorical variables - Year and Station - as predictor variables. In some of the models, we will add weekly average flow as a continuous predictor which replaces the categorical predictor - flow action period - in the original analysis. Additionally, we'll add a GAM smooth for Week number term to account for seasonality in some of the models. After fitting multiple models, we'll use a model selection process to determine the best one.
 
+
 # Global code and functions
 
 ```{r load packages and functions, message = FALSE, warning = FALSE}
